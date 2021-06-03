@@ -1,0 +1,206 @@
+// +build cluster,!cloud
+
+package cmd
+
+import (
+	"net"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/jeremyhahn/cropdroid/builder"
+	"github.com/jeremyhahn/cropdroid/cluster"
+	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/cropdroid/webservice"
+
+	"github.com/spf13/cobra"
+)
+
+var ClusterID int
+var ClusterGossipPeers string
+var ClusterJoin bool
+var ClusterGossipPort int
+var ClusterRaftPort int
+var ClusterVirtualNodes int
+var ClusterRegion string
+var ClusterZone string
+var ClusterMaxNodes int
+var ClusterIaasProvider string
+var ClusterListenAddress string
+var ClusterRaft string
+var ClusterBootstrap int
+
+func init() {
+
+	// IaaS
+	clusterCmd.PersistentFlags().StringVarP(&ClusterIaasProvider, "provider", "", "kvm",
+		"Infrastructure-as-a-Service (IaaS) provider [ libvirt | terraform ]")
+
+	// General cluster
+	clusterCmd.PersistentFlags().IntVarP(&ClusterID, "cluster-id", "", 0, "Cluster unique identifier")
+	clusterCmd.PersistentFlags().IntVarP(&ClusterVirtualNodes, "vnodes", "", 1, "Number of virtual nodes on the consistent hash ring")
+	clusterCmd.PersistentFlags().BoolVarP(&ClusterJoin, "join", "", false, "True to join an existing cluster, false to create a new cluster")
+	clusterCmd.PersistentFlags().StringVarP(&ClusterListenAddress, "listen", "", "", "The IP address services listen for incoming requests")
+	//clusterCmd.PersistentFlags().IntVarP(&ClusterBootstrap, "bootstrap", "", 0, "Number of nodes to wait on when bootstrapping the cluster")
+	//clusterCmd.PersistentFlags().StringVarP(&ClusterGossipPeers, "peers", "", "localhost:63001,localhost:63002,localhost:63003", "Cluster member peer addresses")
+
+	// Gossip
+	clusterCmd.PersistentFlags().StringVarP(&ClusterGossipPeers, "gossip-peers", "", "", "Comma delimited list of gossip peers (ip:port,ip2:port2)")
+	clusterCmd.PersistentFlags().IntVarP(&ClusterGossipPort, "gossip-port", "", 60010, "Gossip server port")
+	clusterCmd.PersistentFlags().StringVarP(&ClusterRegion, "region", "", "us-east-1", "The Gossip region this node is placed")
+	clusterCmd.PersistentFlags().StringVarP(&ClusterZone, "zone", "", "z1", "The zone within the region which this node is placed")
+
+	// Raft
+	clusterCmd.PersistentFlags().StringVarP(&ClusterRaft, "raft", "", "", "Initial Raft members (for bootstrapping a new cluster)")
+	clusterCmd.PersistentFlags().IntVarP(&ClusterRaftPort, "raft-port", "", 60020, "Initial Raft members (for bootstrapping a new cluster)")
+	clusterCmd.PersistentFlags().IntVarP(&ClusterMaxNodes, "raft-max-nodes", "", 7, "Maximum number of nodes allowed to join a raft cluster")
+
+	rootCmd.AddCommand(clusterCmd)
+}
+
+/*
+https://github.com/lni/dragonboat/blob/master/CHANGELOG.md
+func gprcFactoryFunc(nhc NodeHostConfig, raftio.RequestHandler, raftio.IChunkHandler) raftio.IRaftRPC {
+}*/
+
+var clusterCmd = &cobra.Command{
+	Use:   "cluster",
+	Short: "Run the cropdroid service in cluster mode",
+	Long: `Starts the cropdroid real-time protection and notification service
+	using a cluster license. The Raft consenus algorithm is combined with an
+	embedded rocksdb database to provide a high performance, highly available,
+	fault-tolerant, and massively scalable cloud native architecture.`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		App.Mode = common.MODE_CLUSTER
+		App.InitGormDB()
+
+		if ClusterRaft != "" {
+			pieces := strings.Split(ClusterRaft, ",")
+			ClusterBootstrap = len(pieces) // bootstrapping; wait for all raft cluster to initialize
+		}
+
+		if ClusterListenAddress == "" {
+			ClusterListenAddress = parseLocalIP()
+		}
+
+		gossipPeers := strings.Split(ClusterGossipPeers, ",")
+		for i, peer := range gossipPeers {
+			gossipPeers[i] = strings.TrimSpace(peer)
+		}
+
+		raftPeers := strings.Split(ClusterRaft, ",")
+		for i, peer := range raftPeers {
+			raftPeers[i] = strings.TrimSpace(peer)
+		}
+
+		farmProvisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
+		farmTickerProvisionerChan := make(chan int, common.BUFFERED_CHANNEL_SIZE)
+		daoRegistry := gorm.NewGormRegistry(App.Logger, App.GORM)
+
+		params := cluster.NewClusterParams(App.Logger, uint64(ClusterID), uint64(NodeID), ClusterIaasProvider, ClusterRegion,
+			ClusterZone, App.DataDir, ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort, ClusterRaftPort,
+			ClusterVirtualNodes, ClusterMaxNodes, ClusterBootstrap, daoRegistry, farmProvisionerChan, farmTickerProvisionerChan)
+
+		App.GossipCluster = cluster.NewGossipCluster(params, cluster.NewHashring(ClusterVirtualNodes), daoRegistry.GetFarmDAO())
+		App.GossipCluster.Join()
+		go App.GossipCluster.Run()
+
+		App.RaftCluster = App.GossipCluster.GetSystemRaft()
+		for App.RaftCluster == nil {
+			App.Logger.Debug("Waiting to be assigned to a Raft cluster...")
+			time.Sleep(1 * time.Second)
+			App.RaftCluster = App.GossipCluster.GetSystemRaft()
+		}
+
+		App.ConfigStore = cluster.NewRaftFarmConfigStore(App.Logger, App.RaftCluster)
+		App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)
+
+		if MetricDatastore == "raft" {
+			App.MetricDatastore = cluster.NewRaftControllerStateDAO(App.Logger, App.RaftCluster)
+		} else if MetricDatastore == "datastore" {
+			// Don't subscribe to controller state changefeeds while running Raft cluster!
+			App.MetricDatastore = gorm.NewControllerStateDAO(App.Logger, App.GORM, App.GORMInitParams.Engine, App.Location)
+		}
+
+		// TODO: Check controller hardware and firmware versions at startup, update controllers db table
+		builder := builder.NewClusterConfigBuilder(App, params)
+		serverConfig, serviceRegistry, restServices, controllerIndex, channelIndex, err := builder.Build()
+		if err != nil {
+			App.Logger.Fatal(err)
+		}
+
+		//farmProvisioner := provisioner.NewFarmProvisioner(App.Logger, App.NewGormDB(), App.Location, datastoreRegistry.GetFarmDAO(), serviceRegistry)
+
+		App.Config = serverConfig.(*config.Server)
+		App.ControllerIndex = controllerIndex
+		App.ChannelIndex = channelIndex
+
+		for _, farmService := range serviceRegistry.GetFarmServices() {
+			go farmService.RunCluster()
+		}
+
+		if changefeedService := serviceRegistry.GetChangefeedService(); changefeedService != nil {
+			changefeedService.Subscribe()
+		}
+
+		webserver := webservice.NewWebserver(App, serviceRegistry, restServices, farmTickerProvisionerChan)
+		go webserver.Run()
+		go webserver.RunClusterProvisionerConsumer()
+
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, syscall.SIGINT) // syscall.SIGTERM, syscall.SIGHUP)
+
+		<-stop
+
+		App.Logger.Info("Shutting down...")
+
+		//webserver.Shutdown()
+
+		if err := App.GossipCluster.Shutdown(); err != nil {
+			App.Logger.Error(err)
+		}
+
+		if err := App.RaftCluster.Shutdown(); err != nil {
+			App.Logger.Fatal(err)
+		}
+
+		App.Logger.Info("Shutdown complete")
+	},
+}
+
+// parseLocalIP returns the first routable IP on the host
+// or localhost if a LAN/WAN interface is not found.
+func parseLocalIP() string {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		panic(err)
+	}
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			panic(err)
+		}
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					return ipnet.IP.String()
+				}
+			}
+		}
+	}
+	//return "localhost"
+	panic("Couldn't find any routeable IP addresses")
+}
+
+func nslookup(host string) string {
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		App.Logger.Fatal(err)
+	}
+	return ips[0].String()
+}

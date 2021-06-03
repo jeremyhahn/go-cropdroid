@@ -1,0 +1,12 @@
+.vscode
+cropdroid
+cropdroid-*
+cropdroid.*
+
+# config files
+test/config.*
+test/googleplay-oauth2.json
+test/googleplay-oauth2-web.json
+
+# sqlite
+db/

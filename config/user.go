@@ -1,0 +1,55 @@
+package config
+
+// User represents a user account in the app
+type User struct {
+	ID int `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	//Farms    []Farm `gorm:"many2many:permissions" yaml:"farmId" json:"farmId"`
+	Email    string `yaml:"email" json:"email"`
+	Password string `yaml:"password" json:"password"`
+	//Roles    []Role `yaml:"roles" json:"roles"`
+	Roles      []Role `gorm:"many2many:permissions" yaml:"roles" json:"roles"`
+	UserConfig `yaml:"-" json:"-"`
+}
+
+func NewUser() *User {
+	return &User{Roles: make([]Role, 0)}
+}
+
+// GetID gets the users ID
+func (entity *User) GetID() int {
+	return entity.ID
+}
+
+func (entity *User) SetEmail(email string) {
+	entity.Email = email
+}
+
+// GetEmail gets the users email address
+func (entity *User) GetEmail() string {
+	return entity.Email
+}
+
+func (entity *User) SetPassword(pw string) {
+	entity.Password = pw
+}
+
+// GetPassword gets the users encrypted password
+func (entity *User) GetPassword() string {
+	return entity.Password
+}
+
+func (entity *User) GetRoles() []Role {
+	return entity.Roles
+}
+
+func (entity *User) SetRoles(roles []Role) {
+	entity.Roles = roles
+}
+
+func (entity *User) AddRole(role Role) {
+	entity.Roles = append(entity.Roles, role)
+}
+
+func (entity *User) RedactPassword() {
+	entity.Password = "****"
+}

@@ -1,0 +1,34 @@
+{
+ "controller_id": 2,
+ "metrics": {
+  "co2": 2318.75,
+  "heatIndex0": 84.4,
+  "heatIndex1": 24.9,
+  "heatIndex2": 24.9,
+  "humidity0": 61,
+  "humidity1": 0,
+  "humidity2": 0,
+  "leak0": 2,
+  "leak1": 0,
+  "mem": 2,
+  "photo": 0,
+  "tempC0": 24.3,
+  "tempC1": 0,
+  "tempC2": 0,
+  "tempF0": 75,
+  "tempF1": 32,
+  "tempF2": 101,
+  "vpd": -0.51,
+  "water0": 65.19,
+  "water1": 63
+ },
+ "channels": [
+  1,
+  0,
+  0,
+  1,
+  0,
+  1
+ ],
+ "timestamp": "2021-05-30T10:01:11.952332429-04:00"
+}

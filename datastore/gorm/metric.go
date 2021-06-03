@@ -1,0 +1,70 @@
+package gorm
+
+import (
+	"fmt"
+
+	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/cropdroid/config/dao"
+	"github.com/jinzhu/gorm"
+	logging "github.com/op/go-logging"
+)
+
+type GormMetricDAO struct {
+	logger *logging.Logger
+	db     *gorm.DB
+	dao.MetricDAO
+}
+
+func NewMetricDAO(logger *logging.Logger, db *gorm.DB) dao.MetricDAO {
+	return &GormMetricDAO{logger: logger, db: db}
+}
+
+/*
+func (metricDAO *GormMetricDAO) Create(metric config.MetricConfig) error {
+	metricDAO.logger.Debugf("Creating metric record")
+	return metricDAO.db.Create(metric).Error
+}
+
+func (metricDAO *GormMetricDAO) Update(metric config.MetricConfig) error {
+	metricDAO.logger.Debugf("Updating metric record")
+	return metricDAO.db.Update(metric).Error
+}
+
+*/
+func (metricDAO *GormMetricDAO) Save(metric config.MetricConfig) error {
+	metricDAO.logger.Debugf(fmt.Sprintf("Saving metric record: %+v", metric))
+	return metricDAO.db.Save(metric).Error
+}
+
+func (metricDAO *GormMetricDAO) Get(metricID int) (config.MetricConfig, error) {
+	metricDAO.logger.Debugf("Getting metric id %d", metricID)
+	var entity config.Metric
+	if err := metricDAO.db.First(&entity, metricID).Error; err != nil {
+		return nil, err
+	}
+	return &entity, nil
+}
+
+func (metricDAO *GormMetricDAO) GetByControllerID(controllerID int) ([]config.Metric, error) {
+	metricDAO.logger.Debugf("Getting metric record for controller %d", controllerID)
+	var entities []config.Metric
+	if err := metricDAO.db.Where("controller_id = ?", controllerID).Find(&entities).Error; err != nil {
+		return nil, err
+	}
+	return entities, nil
+}
+
+func (metricDAO *GormMetricDAO) GetByOrgUserAndControllerID(orgID, userID, controllerID int) ([]config.Metric, error) {
+	metricDAO.logger.Debugf("Getting metric record for org '%d'", orgID)
+	var Metrics []config.Metric
+	if err := metricDAO.db.Table("metrics").
+		Select("metrics.*").
+		Joins("JOIN controllers on metrics.controller_id = controllers.id").
+		Joins("JOIN farms on farms.id = controllers.farm_id AND farms.organization_id = ?", orgID).
+		Joins("JOIN permissions on farms.id = permissions.farm_id").
+		Where("metrics.controller_id = ? and permissions.user_id = ?", controllerID, userID).
+		Find(&Metrics).Error; err != nil {
+		return nil, err
+	}
+	return Metrics, nil
+}

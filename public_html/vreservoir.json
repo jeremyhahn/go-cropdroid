@@ -1,0 +1,39 @@
+{
+ "controller_id": 3,
+ "metrics": {
+  "DO_PER": 25,
+  "DO_mgL": 10,
+  "EC": 900,
+  "ORP": 19,
+  "PH": 6.5,
+  "SAL": 0.42,
+  "SG": 1,
+  "TDS": 466,
+  "envHeatIndex": 8,
+  "envHumidity": 2,
+  "envTemp": 60.78,
+  "lowerFloat": 273,
+  "mem": 1500,
+  "resTemp": 63,
+  "upperFloat": 315
+ },
+ "channels": [
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  1,
+  1,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "timestamp": "2021-05-30T10:02:11.966978778-04:00"
+}

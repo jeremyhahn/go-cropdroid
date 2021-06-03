@@ -1,0 +1,33 @@
+{
+ "metrics": {
+  "co2": 1200,
+  "heatIndex0": 63.2,
+  "heatIndex1": 64.3,
+  "heatIndex2": 65,
+  "humidity0": 65,
+  "humidity1": 66,
+  "humidity2": 67,
+  "leak0": 1,
+  "leak1": 2,
+  "mem": 1200,
+  "photo": 800,
+  "tempC0": 24.17,
+  "tempC1": 25.17,
+  "tempC2": 26.17,
+  "tempF0": 75.52,
+  "tempF1": 76.17,
+  "tempF2": 77.17,
+  "vpd": 0.12,
+  "water0": 64,
+  "water1": 64.12
+ },
+ "channels": [
+  0,
+  0,
+  1,
+  0,
+  0,
+  1
+ ],
+ "timestamp": "0001-01-01T00:00:00Z"
+}

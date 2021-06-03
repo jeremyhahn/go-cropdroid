@@ -1,0 +1,68 @@
+package service
+
+import (
+	"time"
+
+	"github.com/jeremyhahn/cropdroid/app"
+	"github.com/jeremyhahn/cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/cropdroid/viewmodel"
+)
+
+type EventLog struct {
+	app        *app.App
+	dao        gorm.EventLogDAO
+	controller string
+}
+
+func NewEventLogService(app *app.App, dao gorm.EventLogDAO, controller string) EventLogService {
+	return &EventLog{
+		app:        app,
+		controller: controller,
+		dao:        dao}
+}
+
+func (eventLog *EventLog) Create(eventType, message string) {
+	eventLog.app.Logger.Debugf("[Create] type=%s, message=%s", eventType, message)
+	err := eventLog.dao.Create(&entity.EventLog{
+		Controller: eventLog.controller,
+		Type:       eventType,
+		Message:    message,
+		Timestamp:  time.Now()})
+	if err != nil {
+		eventLog.app.Logger.Errorf("[Create] Error: %s", err)
+	}
+}
+
+func (eventLog *EventLog) GetPage(page int64) *viewmodel.EventsPage {
+	var pageSize int64 = 10
+	if page < 1 {
+		page = 1
+	}
+	var offset = (page-1)*pageSize + 1
+	eventLog.app.Logger.Debugf("[GetPage]")
+	entities, err := eventLog.dao.GetPage(offset, pageSize)
+	if err != nil {
+		eventLog.app.Logger.Errorf("[GetPage] Error: %s", err)
+	}
+	count, err := eventLog.dao.Count()
+	if err != nil {
+		eventLog.app.Logger.Errorf("[GetPage] Error: %s", err)
+	}
+	return &viewmodel.EventsPage{
+		Events: entities,
+		Page:   page,
+		Size:   pageSize,
+		Count:  count,
+		Start:  offset,
+		End:    offset + pageSize}
+}
+
+func (eventLog *EventLog) GetAll() []entity.EventLog {
+	eventLog.app.Logger.Debugf("[GetAll]")
+	entities, err := eventLog.dao.GetLogs()
+	if err != nil {
+		eventLog.app.Logger.Errorf("[GetAll] Error: %s", err)
+	}
+	return entities
+}

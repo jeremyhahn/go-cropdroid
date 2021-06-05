@@ -1,58 +1,292 @@
-// +build notnow,!cluster,!pebble
+// +build cluster,!pebble
 
 package state
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"math/rand"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
+	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 
-	"github.com/jeremyhahn/cropdroid/config"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	"github.com/tecbot/gorocksdb"
 )
 
-// FarmDiskKV is a state machine that implements the IOnDiskStateMachine interface.
-// FarmDiskKV stores key-value pairs in the underlying RocksDB key-value store.
-type FarmDiskKV struct {
-	clusterID            uint64
-	nodeID               uint64
-	farmConfigChangeChan chan config.FarmConfig
-	lastApplied          uint64
-	db                   unsafe.Pointer
-	closed               bool
-	aborted              bool
-	dataDir              string
+const (
+	appliedIndexKey    string = "disk_kv_applied_index"
+	currentDBFilename  string = "current"
+	updatingDBFilename string = "current.updating"
+)
+
+func syncDir(dir string) (err error) {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	fileInfo, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !fileInfo.IsDir() {
+		panic("not a dir")
+	}
+	df, err := os.Open(filepath.Clean(dir))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := df.Close(); err == nil {
+			err = cerr
+		}
+	}()
+	return df.Sync()
 }
 
-// NewFarmDiskKV creates a new disk backed farm config state machine
-func NewFarmDiskKV(dataDir string, farmConfigChangeChan chan config.FarmConfig) *FarmDiskKV {
-	return &FarmDiskKV{
-		dataDir:              dataDir,
-		farmConfigChangeChan: farmConfigChangeChan}
+type KVData struct {
+	Key string
+	Val string
 }
 
-func (d *FarmDiskKV) CreateStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
+// rocksdb is a wrapper to ensure lookup() and close() can be concurrently
+// invoked. IOnDiskStateMachine.Update() and close() will never be concurrently
+// invoked.
+type rocksdb struct {
+	mu     sync.RWMutex
+	db     *gorocksdb.DB
+	ro     *gorocksdb.ReadOptions
+	wo     *gorocksdb.WriteOptions
+	opts   *gorocksdb.Options
+	closed bool
+}
+
+func (r *rocksdb) lookup(query []byte) ([]byte, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.closed {
+		return nil, errors.New("db already closed")
+	}
+	val, err := r.db.Get(r.ro, query)
+	if err != nil {
+		return nil, err
+	}
+	defer val.Free()
+	data := val.Data()
+	if len(data) == 0 {
+		return []byte(""), nil
+	}
+	v := make([]byte, len(data))
+	copy(v, data)
+	return v, nil
+}
+
+func (r *rocksdb) close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.closed = true
+	if r.db != nil {
+		r.db.Close()
+	}
+	if r.opts != nil {
+		r.opts.Destroy()
+	}
+	if r.wo != nil {
+		r.wo.Destroy()
+	}
+	if r.ro != nil {
+		r.ro.Destroy()
+	}
+	r.db = nil
+}
+
+// createDB creates a RocksDB DB at the specified directory.
+func createDB(dbdir string) (*rocksdb, error) {
+	opts := gorocksdb.NewDefaultOptions()
+	opts.SetCreateIfMissing(true)
+	opts.SetUseFsync(true)
+	wo := gorocksdb.NewDefaultWriteOptions()
+	wo.SetSync(true)
+	ro := gorocksdb.NewDefaultReadOptions()
+	db, err := gorocksdb.OpenDb(opts, dbdir)
+	if err != nil {
+		return nil, err
+	}
+	return &rocksdb{
+		db:   db,
+		ro:   ro,
+		wo:   wo,
+		opts: opts,
+	}, nil
+}
+
+// functions below are used to manage the current data directory of RocksDB DB.
+func isNewRun(dir string) bool {
+	fp := filepath.Join(dir, currentDBFilename)
+	if _, err := os.Stat(fp); os.IsNotExist(err) {
+		return true
+	}
+	return false
+}
+
+func getNodeDBDirName(clusterID uint64, nodeID uint64, dataDir string) string {
+	return fmt.Sprintf("%s/%d_%d", dataDir, clusterID, nodeID)
+}
+
+func getNewRandomDBDirName(dir string) string {
+	part := "%d_%d"
+	rn := rand.Uint64()
+	ct := time.Now().UnixNano()
+	return filepath.Join(dir, fmt.Sprintf(part, rn, ct))
+}
+
+func replaceCurrentDBFile(dir string) error {
+	fp := filepath.Join(dir, currentDBFilename)
+	tmpFp := filepath.Join(dir, updatingDBFilename)
+	if err := os.Rename(tmpFp, fp); err != nil {
+		return err
+	}
+	return syncDir(dir)
+}
+
+func saveCurrentDBDirName(dir string, dbdir string) error {
+	h := md5.New()
+	if _, err := h.Write([]byte(dbdir)); err != nil {
+		return err
+	}
+	fp := filepath.Join(dir, updatingDBFilename)
+	f, err := os.Create(fp)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+		if err := syncDir(dir); err != nil {
+			panic(err)
+		}
+	}()
+	if _, err := f.Write(h.Sum(nil)[:8]); err != nil {
+		return err
+	}
+	if _, err := f.Write([]byte(dbdir)); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func getCurrentDBDirName(dir string) (string, error) {
+	fp := filepath.Join(dir, currentDBFilename)
+	f, err := os.OpenFile(fp, os.O_RDONLY, 0755)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+	if len(data) <= 8 {
+		panic("corrupted content")
+	}
+	crc := data[:8]
+	content := data[8:]
+	h := md5.New()
+	if _, err := h.Write(content); err != nil {
+		return "", err
+	}
+	if !bytes.Equal(crc, h.Sum(nil)[:8]) {
+		panic("corrupted content with not matched crc")
+	}
+	return string(content), nil
+}
+
+func createNodeDataDir(dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	return syncDir(filepath.Dir(dir))
+}
+
+func cleanupNodeDataDir(dir string) error {
+	os.RemoveAll(filepath.Join(dir, updatingDBFilename))
+	dbdir, err := getCurrentDBDirName(dir)
+	if err != nil {
+		return err
+	}
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, fi := range files {
+		if !fi.IsDir() {
+			continue
+		}
+		fmt.Printf("dbdir %s, fi.name %s, dir %s\n", dbdir, fi.Name(), dir)
+		toDelete := filepath.Join(dir, fi.Name())
+		if toDelete != dbdir {
+			fmt.Printf("removing %s\n", toDelete)
+			if err := os.RemoveAll(toDelete); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// DiskKV is a state machine that implements the IOnDiskStateMachine interface.
+// DiskKV stores key-value pairs in the underlying RocksDB key-value store. As
+// it is used as an example, it is implemented using the most basic features
+// common in most key-value stores. This is NOT a benchmark program.
+type DiskKV struct {
+	clusterID   uint64
+	nodeID      uint64
+	lastApplied uint64
+	db          unsafe.Pointer
+	closed      bool
+	aborted     bool
+	dataDir     string
+}
+
+// NewDiskKV creates a new disk kv test state machine.
+func NewDiskKV(dataDir string) *DiskKV {
+	return &DiskKV{
+		dataDir: dataDir,
+	}
+}
+
+func (d *DiskKV) CreateStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
 	d.clusterID = clusterID
 	d.nodeID = nodeID
 	return d
 }
 
-func CreateFarmDiskKV(clusterID uint64, nodeID uint64) sm.IOnDiskStateMachine {
-	return &FarmDiskKV{
+func CreateDiskKV(clusterID uint64, nodeID uint64) sm.IOnDiskStateMachine {
+	return &DiskKV{
 		clusterID: clusterID,
 		nodeID:    nodeID,
 	}
 }
 
-func (d *FarmDiskKV) queryAppliedIndex(db *rocksdb) (uint64, error) {
+func (d *DiskKV) queryAppliedIndex(db *rocksdb) (uint64, error) {
 	val, err := db.db.Get(db.ro, []byte(appliedIndexKey))
 	if err != nil {
 		return 0, err
@@ -67,7 +301,7 @@ func (d *FarmDiskKV) queryAppliedIndex(db *rocksdb) (uint64, error) {
 
 // Open opens the state machine and return the index of the last Raft Log entry
 // already updated into the state machine.
-func (d *FarmDiskKV) Open(stopc <-chan struct{}) (uint64, error) {
+func (d *DiskKV) Open(stopc <-chan struct{}) (uint64, error) {
 	dir := getNodeDBDirName(d.clusterID, d.nodeID, d.dataDir)
 	if err := createNodeDataDir(dir); err != nil {
 		panic(err)
@@ -110,12 +344,12 @@ func (d *FarmDiskKV) Open(stopc <-chan struct{}) (uint64, error) {
 }
 
 // Lookup queries the state machine.
-func (d *FarmDiskKV) Lookup(key interface{}) (interface{}, error) {
+func (d *DiskKV) Lookup(key interface{}) (interface{}, error) {
 	db := (*rocksdb)(atomic.LoadPointer(&d.db))
 	if db != nil {
 		v, err := db.lookup(key.([]byte))
 		if err == nil && d.closed {
-			panic("lookup returned valid result when FarmDiskKV is already closed")
+			panic("lookup returned valid result when DiskKV is already closed")
 		}
 		return v, err
 	}
@@ -128,7 +362,7 @@ func (d *FarmDiskKV) Lookup(key interface{}) (interface{}, error) {
 // writes (db.wo.Sync=True). To get higher throughput, you can implement the
 // Sync() method below and choose not to synchronize for every Update(). Sync()
 // will periodically called by Dragonboat to synchronize the state.
-func (d *FarmDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
+func (d *DiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 	if d.aborted {
 		panic("update() called after abort set to true")
 	}
@@ -162,7 +396,7 @@ func (d *FarmDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 // Sync synchronizes all in-core state of the state machine. Since the Update
 // method in this example already does that every time when it is invoked, the
 // Sync method here is a NoOP.
-func (d *FarmDiskKV) Sync() error {
+func (d *DiskKV) Sync() error {
 	return nil
 }
 
@@ -175,7 +409,7 @@ type diskKVCtx struct {
 // capture a state identifier that identifies a point in time state of the
 // underlying data. In this example, we use RocksDB's snapshot feature to
 // achieve that.
-func (d *FarmDiskKV) PrepareSnapshot() (interface{}, error) {
+func (d *DiskKV) PrepareSnapshot() (interface{}, error) {
 	if d.closed {
 		panic("prepare snapshot called after Close()")
 	}
@@ -191,7 +425,7 @@ func (d *FarmDiskKV) PrepareSnapshot() (interface{}, error) {
 
 // saveToWriter saves all existing key-value pairs to the provided writer.
 // As an example, we use the most straight forward way to implement this.
-func (d *FarmDiskKV) saveToWriter(db *rocksdb,
+func (d *DiskKV) saveToWriter(db *rocksdb,
 	ss *gorocksdb.Snapshot, w io.Writer) error {
 	ro := gorocksdb.NewDefaultReadOptions()
 	ro.SetSnapshot(ss)
@@ -231,7 +465,7 @@ func (d *FarmDiskKV) saveToWriter(db *rocksdb,
 // SaveSnapshot saves the state machine state identified by the state
 // identifier provided by the input ctx parameter. Note that SaveSnapshot
 // is not suppose to save the latest state.
-func (d *FarmDiskKV) SaveSnapshot(ctx interface{},
+func (d *DiskKV) SaveSnapshot(ctx interface{},
 	w io.Writer, done <-chan struct{}) error {
 	if d.closed {
 		panic("prepare snapshot called after Close()")
@@ -250,7 +484,7 @@ func (d *FarmDiskKV) SaveSnapshot(ctx interface{},
 // RecoverFromSnapshot recovers the state machine state from snapshot. The
 // snapshot is recovered into a new DB first and then atomically swapped with
 // the existing DB to complete the recovery.
-func (d *FarmDiskKV) RecoverFromSnapshot(r io.Reader,
+func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
 	done <-chan struct{}) error {
 	if d.closed {
 		panic("recover from snapshot called after Close()")
@@ -311,7 +545,7 @@ func (d *FarmDiskKV) RecoverFromSnapshot(r io.Reader,
 }
 
 // Close closes the state machine.
-func (d *FarmDiskKV) Close() error {
+func (d *DiskKV) Close() error {
 	db := (*rocksdb)(atomic.SwapPointer(&d.db, unsafe.Pointer(nil)))
 	if db != nil {
 		d.closed = true
@@ -325,7 +559,7 @@ func (d *FarmDiskKV) Close() error {
 }
 
 // GetHash returns a hash value representing the state of the state machine.
-func (d *FarmDiskKV) GetHash() (uint64, error) {
+func (d *DiskKV) GetHash() (uint64, error) {
 	h := md5.New()
 	db := (*rocksdb)(atomic.LoadPointer(&d.db))
 	ss := db.db.NewSnapshot()

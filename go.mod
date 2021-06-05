@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/RedisTimeSeries/redistimeseries-go v1.4.4
+	github.com/cockroachdb/pebble v0.0.0-20210331181633-27fc006b8bfb // indirect
 	github.com/codegangsta/negroni v1.0.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gorilla/mux v1.8.0

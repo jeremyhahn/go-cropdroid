@@ -1,4 +1,4 @@
-// +build cluster
+// +build cluster,pebble
 
 package state
 
@@ -15,21 +15,29 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 
+	"github.com/cockroachdb/pebble"
+
 	sm "github.com/lni/dragonboat/v3/statemachine"
-	"github.com/tecbot/gorocksdb"
 )
 
 const (
 	appliedIndexKey    string = "disk_kv_applied_index"
+	testDBDirName      string = "example-data"
 	currentDBFilename  string = "current"
 	updatingDBFilename string = "current.updating"
 )
+
+//
+// Note: this is an example demonstrating how to use the on disk state machine
+// feature in Dragonboat. it assumes the underlying db only supports Get, Put
+// and TakeSnapshot operations. this is not a demonstration on how to build a
+// distributed key-value database.
+//
 
 func syncDir(dir string) (err error) {
 	if runtime.GOOS == "windows" {
@@ -59,78 +67,74 @@ type KVData struct {
 	Val string
 }
 
-// rocksdb is a wrapper to ensure lookup() and close() can be concurrently
+// pebbledb is a wrapper to ensure lookup() and close() can be concurrently
 // invoked. IOnDiskStateMachine.Update() and close() will never be concurrently
 // invoked.
-type rocksdb struct {
+type pebbledb struct {
 	mu     sync.RWMutex
-	db     *gorocksdb.DB
-	ro     *gorocksdb.ReadOptions
-	wo     *gorocksdb.WriteOptions
-	opts   *gorocksdb.Options
+	db     *pebble.DB
+	ro     *pebble.IterOptions
+	wo     *pebble.WriteOptions
+	syncwo *pebble.WriteOptions
 	closed bool
 }
 
-func (r *rocksdb) lookup(query []byte) ([]byte, error) {
+func (r *pebbledb) lookup(query []byte) ([]byte, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if r.closed {
 		return nil, errors.New("db already closed")
 	}
-	val, err := r.db.Get(r.ro, query)
+	val, closer, err := r.db.Get(query)
 	if err != nil {
 		return nil, err
 	}
-	defer val.Free()
-	data := val.Data()
-	if len(data) == 0 {
+	defer closer.Close()
+	if len(val) == 0 {
 		return []byte(""), nil
 	}
-	v := make([]byte, len(data))
-	copy(v, data)
-	return v, nil
+	buf := make([]byte, len(val))
+	copy(buf, val)
+	return buf, nil
 }
 
-func (r *rocksdb) close() {
+func (r *pebbledb) close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.closed = true
 	if r.db != nil {
 		r.db.Close()
 	}
-	if r.opts != nil {
-		r.opts.Destroy()
-	}
-	if r.wo != nil {
-		r.wo.Destroy()
-	}
-	if r.ro != nil {
-		r.ro.Destroy()
-	}
-	r.db = nil
 }
 
-// createDB creates a RocksDB DB at the specified directory.
-func createDB(dbdir string) (*rocksdb, error) {
-	opts := gorocksdb.NewDefaultOptions()
-	opts.SetCreateIfMissing(true)
-	opts.SetUseFsync(true)
-	wo := gorocksdb.NewDefaultWriteOptions()
-	wo.SetSync(true)
-	ro := gorocksdb.NewDefaultReadOptions()
-	db, err := gorocksdb.OpenDb(opts, dbdir)
+// createDB creates a PebbleDB DB in the specified directory.
+func createDB(dbdir string) (*pebbledb, error) {
+	ro := &pebble.IterOptions{}
+	wo := &pebble.WriteOptions{Sync: false}
+	syncwo := &pebble.WriteOptions{Sync: true}
+	cache := pebble.NewCache(0)
+	opts := &pebble.Options{
+		MaxManifestFileSize: 1024 * 32,
+		MemTableSize:        1024 * 32,
+		Cache:               cache,
+	}
+	if err := os.MkdirAll(dbdir, 0755); err != nil {
+		return nil, err
+	}
+	db, err := pebble.Open(dbdir, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &rocksdb{
-		db:   db,
-		ro:   ro,
-		wo:   wo,
-		opts: opts,
+	cache.Unref()
+	return &pebbledb{
+		db:     db,
+		ro:     ro,
+		wo:     wo,
+		syncwo: syncwo,
 	}, nil
 }
 
-// functions below are used to manage the current data directory of RocksDB DB.
+// functions below are used to manage the current data directory of Pebble DB.
 func isNewRun(dir string) bool {
 	fp := filepath.Join(dir, currentDBFilename)
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
@@ -139,8 +143,9 @@ func isNewRun(dir string) bool {
 	return false
 }
 
-func getNodeDBDirName(clusterID uint64, nodeID uint64, dataDir string) string {
-	return fmt.Sprintf("%s/%d_%d", dataDir, clusterID, nodeID)
+func getNodeDBDirName(clusterID uint64, nodeID uint64) string {
+	part := fmt.Sprintf("%d_%d", clusterID, nodeID)
+	return filepath.Join(testDBDirName, part)
 }
 
 func getNewRandomDBDirName(dir string) string {
@@ -253,7 +258,7 @@ func cleanupNodeDataDir(dir string) error {
 }
 
 // DiskKV is a state machine that implements the IOnDiskStateMachine interface.
-// DiskKV stores key-value pairs in the underlying RocksDB key-value store. As
+// DiskKV stores key-value pairs in the underlying PebbleDB key-value store. As
 // it is used as an example, it is implemented using the most basic features
 // common in most key-value stores. This is NOT a benchmark program.
 type DiskKV struct {
@@ -263,14 +268,15 @@ type DiskKV struct {
 	db          unsafe.Pointer
 	closed      bool
 	aborted     bool
-	dataDir     string
 }
 
 // NewDiskKV creates a new disk kv test state machine.
-func NewDiskKV(dataDir string) *DiskKV {
-	return &DiskKV{
-		dataDir: dataDir,
+func NewDiskKV(clusterID uint64, nodeID uint64) sm.IOnDiskStateMachine {
+	d := &DiskKV{
+		clusterID: clusterID,
+		nodeID:    nodeID,
 	}
+	return d
 }
 
 func (d *DiskKV) CreateStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
@@ -279,30 +285,26 @@ func (d *DiskKV) CreateStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMac
 	return d
 }
 
-func CreateDiskKV(clusterID uint64, nodeID uint64) sm.IOnDiskStateMachine {
-	return &DiskKV{
-		clusterID: clusterID,
-		nodeID:    nodeID,
-	}
-}
-
-func (d *DiskKV) queryAppliedIndex(db *rocksdb) (uint64, error) {
-	val, err := db.db.Get(db.ro, []byte(appliedIndexKey))
-	if err != nil {
+func (d *DiskKV) queryAppliedIndex(db *pebbledb) (uint64, error) {
+	val, closer, err := db.db.Get([]byte(appliedIndexKey))
+	if err != nil && err != pebble.ErrNotFound {
 		return 0, err
 	}
-	defer val.Free()
-	data := val.Data()
-	if len(data) == 0 {
+	defer func() {
+		if closer != nil {
+			closer.Close()
+		}
+	}()
+	if len(val) == 0 {
 		return 0, nil
 	}
-	return strconv.ParseUint(string(data), 10, 64)
+	return binary.LittleEndian.Uint64(val), nil
 }
 
 // Open opens the state machine and return the index of the last Raft Log entry
 // already updated into the state machine.
 func (d *DiskKV) Open(stopc <-chan struct{}) (uint64, error) {
-	dir := getNodeDBDirName(d.clusterID, d.nodeID, d.dataDir)
+	dir := getNodeDBDirName(d.clusterID, d.nodeID)
 	if err := createNodeDataDir(dir); err != nil {
 		panic(err)
 	}
@@ -345,11 +347,14 @@ func (d *DiskKV) Open(stopc <-chan struct{}) (uint64, error) {
 
 // Lookup queries the state machine.
 func (d *DiskKV) Lookup(key interface{}) (interface{}, error) {
-	db := (*rocksdb)(atomic.LoadPointer(&d.db))
+	db := (*pebbledb)(atomic.LoadPointer(&d.db))
 	if db != nil {
 		v, err := db.lookup(key.([]byte))
 		if err == nil && d.closed {
 			panic("lookup returned valid result when DiskKV is already closed")
+		}
+		if err == pebble.ErrNotFound {
+			return v, nil
 		}
 		return v, err
 	}
@@ -357,7 +362,7 @@ func (d *DiskKV) Lookup(key interface{}) (interface{}, error) {
 }
 
 // Update updates the state machine. In this example, all updates are put into
-// a RocksDB write batch and then atomically written to the DB together with
+// a PebbleDB write batch and then atomically written to the DB together with
 // the index of the last Raft Log entry. For simplicity, we always Sync the
 // writes (db.wo.Sync=True). To get higher throughput, you can implement the
 // Sync() method below and choose not to synchronize for every Update(). Sync()
@@ -369,21 +374,22 @@ func (d *DiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 	if d.closed {
 		panic("update called after Close()")
 	}
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	db := (*rocksdb)(atomic.LoadPointer(&d.db))
+	db := (*pebbledb)(atomic.LoadPointer(&d.db))
+	wb := db.db.NewBatch()
+	defer wb.Close()
 	for idx, e := range ents {
 		dataKV := &KVData{}
 		if err := json.Unmarshal(e.Cmd, dataKV); err != nil {
 			panic(err)
 		}
-		wb.Put([]byte(dataKV.Key), []byte(dataKV.Val))
+		wb.Set([]byte(dataKV.Key), []byte(dataKV.Val), db.wo)
 		ents[idx].Result = sm.Result{Value: uint64(len(ents[idx].Cmd))}
 	}
 	// save the applied index to the DB.
-	idx := fmt.Sprintf("%d", ents[len(ents)-1].Index)
-	wb.Put([]byte(appliedIndexKey), []byte(idx))
-	if err := db.db.Write(db.wo, wb); err != nil {
+	appliedIndex := make([]byte, 8)
+	binary.LittleEndian.PutUint64(appliedIndex, ents[len(ents)-1].Index)
+	wb.Set([]byte(appliedIndexKey), appliedIndex, db.wo)
+	if err := db.db.Apply(wb, db.syncwo); err != nil {
 		return nil, err
 	}
 	if d.lastApplied >= ents[len(ents)-1].Index {
@@ -401,13 +407,13 @@ func (d *DiskKV) Sync() error {
 }
 
 type diskKVCtx struct {
-	db       *rocksdb
-	snapshot *gorocksdb.Snapshot
+	db       *pebbledb
+	snapshot *pebble.Snapshot
 }
 
 // PrepareSnapshot prepares snapshotting. PrepareSnapshot is responsible to
 // capture a state identifier that identifies a point in time state of the
-// underlying data. In this example, we use RocksDB's snapshot feature to
+// underlying data. In this example, we use Pebble's snapshot feature to
 // achieve that.
 func (d *DiskKV) PrepareSnapshot() (interface{}, error) {
 	if d.closed {
@@ -416,37 +422,38 @@ func (d *DiskKV) PrepareSnapshot() (interface{}, error) {
 	if d.aborted {
 		panic("prepare snapshot called after abort")
 	}
-	db := (*rocksdb)(atomic.LoadPointer(&d.db))
+	db := (*pebbledb)(atomic.LoadPointer(&d.db))
 	return &diskKVCtx{
 		db:       db,
 		snapshot: db.db.NewSnapshot(),
 	}, nil
 }
 
+func iteratorIsValid(iter *pebble.Iterator) bool {
+	return iter.Valid()
+}
+
 // saveToWriter saves all existing key-value pairs to the provided writer.
 // As an example, we use the most straight forward way to implement this.
-func (d *DiskKV) saveToWriter(db *rocksdb,
-	ss *gorocksdb.Snapshot, w io.Writer) error {
-	ro := gorocksdb.NewDefaultReadOptions()
-	ro.SetSnapshot(ss)
-	iter := db.db.NewIterator(ro)
+func (d *DiskKV) saveToWriter(db *pebbledb,
+	ss *pebble.Snapshot, w io.Writer) error {
+	iter := ss.NewIter(db.ro)
 	defer iter.Close()
-	count := uint64(0)
-	for iter.SeekToFirst(); iter.Valid(); iter.Next() {
-		count++
+	values := make([]*KVData, 0)
+	for iter.First(); iteratorIsValid(iter); iter.Next() {
+		kv := &KVData{
+			Key: string(iter.Key()),
+			Val: string(iter.Value()),
+		}
+		values = append(values, kv)
 	}
+	count := uint64(len(values))
 	sz := make([]byte, 8)
 	binary.LittleEndian.PutUint64(sz, count)
 	if _, err := w.Write(sz); err != nil {
 		return err
 	}
-	for iter.SeekToFirst(); iter.Valid(); iter.Next() {
-		key := iter.Key()
-		val := iter.Value()
-		dataKv := &KVData{
-			Key: string(key.Data()),
-			Val: string(val.Data()),
-		}
+	for _, dataKv := range values {
 		data, err := json.Marshal(dataKv)
 		if err != nil {
 			panic(err)
@@ -478,6 +485,7 @@ func (d *DiskKV) SaveSnapshot(ctx interface{},
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 	ss := ctxdata.snapshot
+	defer ss.Close()
 	return d.saveToWriter(db, ss, w)
 }
 
@@ -489,7 +497,7 @@ func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
 	if d.closed {
 		panic("recover from snapshot called after Close()")
 	}
-	dir := getNodeDBDirName(d.clusterID, d.nodeID, d.dataDir)
+	dir := getNodeDBDirName(d.clusterID, d.nodeID)
 	dbdir := getNewRandomDBDirName(dir)
 	oldDirName, err := getCurrentDBDirName(dir)
 	if err != nil {
@@ -504,7 +512,8 @@ func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
 		return err
 	}
 	total := binary.LittleEndian.Uint64(sz)
-	wb := gorocksdb.NewWriteBatch()
+	wb := db.db.NewBatch()
+	defer wb.Close()
 	for i := uint64(0); i < total; i++ {
 		if _, err := io.ReadFull(r, sz); err != nil {
 			return err
@@ -518,9 +527,9 @@ func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
 		if err := json.Unmarshal(data, dataKv); err != nil {
 			panic(err)
 		}
-		wb.Put([]byte(dataKv.Key), []byte(dataKv.Val))
+		wb.Set([]byte(dataKv.Key), []byte(dataKv.Val), db.wo)
 	}
-	if err := db.db.Write(db.wo, wb); err != nil {
+	if err := db.db.Apply(wb, db.syncwo); err != nil {
 		return err
 	}
 	if err := saveCurrentDBDirName(dir, dbdir); err != nil {
@@ -533,20 +542,28 @@ func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
 	if err != nil {
 		panic(err)
 	}
+	// when d.lastApplied == newLastApplied, it probably means there were some
+	// dummy entries or membership change entries as part of the new snapshot
+	// that never reached the SM and thus never moved the last applied index
+	// in the SM snapshot.
 	if d.lastApplied > newLastApplied {
 		panic("last applied not moving forward")
 	}
 	d.lastApplied = newLastApplied
-	old := (*rocksdb)(atomic.SwapPointer(&d.db, unsafe.Pointer(db)))
+	old := (*pebbledb)(atomic.SwapPointer(&d.db, unsafe.Pointer(db)))
 	if old != nil {
 		old.close()
 	}
-	return os.RemoveAll(oldDirName)
+	parent := filepath.Dir(oldDirName)
+	if err := os.RemoveAll(oldDirName); err != nil {
+		return err
+	}
+	return syncDir(parent)
 }
 
 // Close closes the state machine.
 func (d *DiskKV) Close() error {
-	db := (*rocksdb)(atomic.SwapPointer(&d.db, unsafe.Pointer(nil)))
+	db := (*pebbledb)(atomic.SwapPointer(&d.db, unsafe.Pointer(nil)))
 	if db != nil {
 		d.closed = true
 		db.close()
@@ -556,18 +573,4 @@ func (d *DiskKV) Close() error {
 		}
 	}
 	return nil
-}
-
-// GetHash returns a hash value representing the state of the state machine.
-func (d *DiskKV) GetHash() (uint64, error) {
-	h := md5.New()
-	db := (*rocksdb)(atomic.LoadPointer(&d.db))
-	ss := db.db.NewSnapshot()
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	if err := d.saveToWriter(db, ss, h); err != nil {
-		return 0, err
-	}
-	md5sum := h.Sum(nil)
-	return binary.LittleEndian.Uint64(md5sum[:8]), nil
 }

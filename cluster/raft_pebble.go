@@ -179,8 +179,7 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	r.session[params.clusterID] = nh.GetNoOPSession(params.clusterID)
 	r.proposalChan[params.clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
 
-	diskkv := state.NewDiskKV(params.dataDir)
-	if err := nh.StartOnDiskCluster(initialMembers, params.join, diskkv.CreateStateMachine, rc); err != nil {
+	if err := nh.StartOnDiskCluster(initialMembers, params.join, state.NewDiskKV, rc); err != nil {
 		params.logger.Fatalf("Failed to create system raft cluster: %s", err)
 	}
 

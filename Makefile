@@ -11,11 +11,12 @@ NUMPROC                 := $(shell nproc)
 
 GOBIN                   := $(shell dirname `which go`)
 
+ARM_CC                  ?= arm-linux-gnueabihf-gcc-8
+ARM_CC_64				?= aarch64-linux-gnu-gcc
+
 APP                     := cropdroid
 APPTYPE					?= standalone
-
 ENV             		?= dev
-
 WEBSERVER_USER          ?= www-data
 
 CROPDROID_VERSION       ?= $(shell git describe --tags --abbrev=0)
@@ -36,7 +37,7 @@ ROCKSDB_INCLUDE ?= $(ROCKSDB_HOME)/include
 
 .PHONY: deps 
 
-default: build-standalone standalone
+default: build-standalone
 
 certs:
 	mkdir -p keys/
@@ -76,53 +77,63 @@ arm-deps:
 build-deps:
 	sudo apt-get install -y build-essential qemu qemu-user-static binfmt-support qemu-user-binfmt cloud-utils
 
+
 build-standalone:
 	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
+
+build-standalone-debug:
+	$(GOBIN)/go build -gcflags "-N" -o $(APP) -ldflags="-w -s ${LDFLAGS}"
+
+build-standalone-static:
+	CGO_ENABLED=1 $(GOBIN)/go build -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
+
 
 build-standalone-arm:
 	CC=$(ARM_CC) GOOS=linux GOARCH=arm GOARM=6 \
 	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
-build-standalone-arm64:
-	CC=$(ARM_CC_64) GOOS=linux GOARCH=arm64 \
-	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
-
-build-standalone-static:
-	CGO_ENABLED=1 $(GOBIN)/go build -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
-
 build-standalone-static-arm:
 	CC=$(ARM_CC) CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 \
 	$(GOBIN)/go build --tags="standalone" -v -a -o $(APP) -v --ldflags '-w -s -extldflags -static ${LDFLAGS}'
+
+build-standalone-debug-arm:
+	GOOS=linux GOARCH=arm GOARM=6 $(GOBIN)/go build -gcflags "-N" -o $(APP) -ldflags $(LDFLAGS)
+
+
+build-standalone-arm64:
+	CC=$(ARM_CC_64) GOOS=linux GOARCH=arm64 \
+	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-static-arm64:
 	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
 	$(GOBIN)/go build -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
 
-build-standalone-debug:
-	$(GOBIN)/go build -gcflags "-N" -o $(APP) -ldflags="-w -s ${LDFLAGS}"
-
-build-standalone-debug-arm:
-	GOOS=linux GOARCH=arm GOARM=6 $(GOBIN)/go build -gcflags "-N" -o $(APP) -ldflags $(LDFLAGS)
-
 build-standalone-debug-arm64:
-	GOOS=linux GOARCH=arm64 $(GOBIN)/go build -gcflags "-N" -o $(APP) -ldflags $(LDFLAGS)
+	CC=$(ARM_CC_64) GOOS=linux GOARCH=arm64 $(GOBIN)/go build -gcflags "-N" -o $(APP) --ldflags="$(LDFLAGS)"
 
 
-build-cluster:
+build-cluster: build-cluster-pebble
+
+build-cluster-pebble:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
 	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
-build-cluster-static:
-	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
-	CGO_ENABLED=1 GOOS=linux $(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
-
-build-cluster-debug:
+build-cluster-pebble-debug:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
 	$(GOBIN)/go build --tags="cluster pebble" -gcflags "-N" -o $(APP) -ldflags="$(LDFLAGS)"
 
-build-cluster-debug-static:
+build-cluster-pebble-static:
+	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
+	CGO_ENABLED=1 GOOS=linux $(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
+
+build-cluster-pebble-debug-static:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
 	$(GOBIN)/go build --tags="cluster pebble" -gcflags "-N" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
+
+build-cluster-pebble-static-arm64:
+	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
+	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
 
 
 build-cluster-rocksdb:
@@ -142,6 +153,12 @@ build-cluster-rocksdb-debug-static:
 	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
 	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
 	GOOS=linux CGO_ENABLED=1 $(GOBIN)/go build -a --tags="cluster rocksdb" -gcflags "-N" -o $(APP) -v --ldflags '-extldflags -static ${LDFLAGS}'
+
+# build-cluster-rocksdb-static-arm64:
+# 	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+# 	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
+# 	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
+# 	CGO_ENABLED=1 GOOS=linux $(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
 
 clean:
 	$(GOBIN)/go clean

@@ -1,4 +1,4 @@
-// +build notnow
+// +build notnow,!cluster,!pebble
 
 package state
 
@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/jeremyhahn/cropdroid/config"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	"github.com/tecbot/gorocksdb"
 )

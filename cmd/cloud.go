@@ -5,12 +5,12 @@ package cmd
 import (
 	"strings"
 
-	"github.com/jeremyhahn/cropdroid/builder"
-	"github.com/jeremyhahn/cropdroid/cluster"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/webservice"
+	"github.com/jeremyhahn/go-cropdroid/builder"
+	"github.com/jeremyhahn/go-cropdroid/cluster"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/webservice"
 
 	"github.com/spf13/cobra"
 )

@@ -3,8 +3,8 @@ package mapper
 import (
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/stretchr/testify/assert"
 )
 

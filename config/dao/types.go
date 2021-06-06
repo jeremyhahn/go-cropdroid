@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type OrganizationDAO interface {

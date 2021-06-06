@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore/yaml"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/yaml"
 )
 
 type ConfigMapper interface {

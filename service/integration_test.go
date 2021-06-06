@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	gormstore "github.com/jeremyhahn/cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )

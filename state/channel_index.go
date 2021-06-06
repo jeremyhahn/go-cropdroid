@@ -3,7 +3,7 @@ package state
 import (
 	"sync"
 
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type ChannelIndexMap struct {

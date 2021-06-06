@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
 type User struct {

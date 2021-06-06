@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
 const (

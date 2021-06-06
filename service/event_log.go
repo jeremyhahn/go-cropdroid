@@ -3,10 +3,10 @@ package service
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm/entity"
-	"github.com/jeremyhahn/cropdroid/viewmodel"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
 type EventLog struct {

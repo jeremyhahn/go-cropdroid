@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/config"
-	gormstore "github.com/jeremyhahn/cropdroid/datastore/gorm"
-	yamlstore "github.com/jeremyhahn/cropdroid/datastore/yaml"
-	"github.com/jeremyhahn/cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	yamlstore "github.com/jeremyhahn/go-cropdroid/datastore/yaml"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
 	logging "github.com/op/go-logging"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
@@ -50,6 +50,9 @@ var DatastorePass string
 var DatastoreHost string
 var DatastorePort int
 var DatastoreCDC bool
+var DatastoreCACert string
+var DatastoreTlsKey string
+var DatastoreTlsCert string
 
 var MetricDatastore string
 
@@ -88,7 +91,7 @@ var rootCmd = &cobra.Command{
  general purpose switching controller. Custom controllers are also available to meet your
  specific requirements.
 
- Complete documentation is available at https://github.com/jeremyhahn/cropdroid`,
+ Complete documentation is available at https://github.com/jeremyhahn/go-cropdroid`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		//initApp()
 	},
@@ -128,6 +131,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DatastoreHost, "datastore-host", "", "localhost", "Datastore IP or hostname")
 	rootCmd.PersistentFlags().IntVarP(&DatastorePort, "datastore-port", "", 26257, "Datastore listen port")
 	rootCmd.PersistentFlags().BoolVarP(&DatastoreCDC, "datastore-cdc", "", false, "Enable database changeefeed (Change Data Capture) real-time updates on supported tables")
+	rootCmd.PersistentFlags().StringVarP(&DatastoreCACert, "datastore-ca-cert", "", "", "TLS Certificate Authority public key")
+	rootCmd.PersistentFlags().StringVarP(&DatastoreTlsKey, "datastore-tls-key", "", "", "TLS key used to encrypt the database connection")
+	rootCmd.PersistentFlags().StringVarP(&DatastoreTlsCert, "datastore-tls-cert", "", "", "TLS certificate used to encrypt the database connection")
 
 	rootCmd.PersistentFlags().StringVarP(&MetricDatastore, "metric-datastore", "", "datastore", "Where to store metrics [ datastore | redis ]")
 
@@ -168,10 +174,18 @@ func initApp() {
 	initLogger()
 	initConfig()
 	if App.DebugFlag {
+
+		//listFiles()
+
 		logging.SetLevel(logging.DEBUG, "")
 		App.Logger.Debug("Starting logger in debug mode...")
 		App.Logger.Debugf("ConfigFile: \t\t%s", ConfigFile)
 		App.Logger.Debugf("DatastoreType: \t\t%s", DatastoreType)
+
+		App.Logger.Debugf("DatastoreCACert: \t\t%s", DatastoreCACert)
+		App.Logger.Debugf("DatastoreTlsKey: \t\t%s", DatastoreTlsKey)
+		App.Logger.Debugf("DatastoreTlsCert: \t\t%s", DatastoreTlsCert)
+
 		App.Logger.Debugf("HomeDir: \t\t%s", HomeDir)
 		App.Logger.Debugf("ConfigDir: \t\t%s", ConfigDir)
 		App.Logger.Debugf("DataDir: \t\t%s", DataDir)
@@ -188,6 +202,24 @@ func initApp() {
 	}
 	if SSLFlag && WebPort == 80 {
 		App.WebPort = 443
+	}
+}
+
+func listFiles() {
+	files, err := ioutil.ReadDir("/cockroach/cockroach-certs/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, file := range files {
+		fmt.Printf("File: %s", file.Name())
+	}
+
+	libs, err := ioutil.ReadDir("/usr/local/lib/cockroach")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, lib := range libs {
+		fmt.Printf("Lib: %s", lib.Name())
 	}
 }
 
@@ -219,6 +251,9 @@ func initConfig() {
 		Port:      DatastorePort,
 		Username:  DatastoreUser,
 		Password:  DatastorePass,
+		CACert:    DatastoreCACert,
+		TLSKey:    DatastoreTlsKey,
+		TLSCert:   DatastoreTlsCert,
 		DBName:    app.Name,
 		Location:  App.Location}
 	App.ConfigDir = ConfigDir

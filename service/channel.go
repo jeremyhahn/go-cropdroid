@@ -3,9 +3,9 @@
 package service
 
 import (
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config/dao"
-	"github.com/jeremyhahn/cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
 type ChannelService interface {

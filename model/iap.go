@@ -1,6 +1,6 @@
 package model
 
-import "github.com/jeremyhahn/cropdroid/common"
+import "github.com/jeremyhahn/go-cropdroid/common"
 
 type InAppPurchase struct {
 	//OrderID              string `json:"orderId"`

@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 type Controller interface {

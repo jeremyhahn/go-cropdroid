@@ -3,19 +3,19 @@
 package cmd
 
 import (
-	"net"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/builder"
-	"github.com/jeremyhahn/cropdroid/cluster"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/webservice"
+	"github.com/jeremyhahn/go-cropdroid/builder"
+	"github.com/jeremyhahn/go-cropdroid/cluster"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/util"
+	"github.com/jeremyhahn/go-cropdroid/webservice"
 
 	"github.com/spf13/cobra"
 )
@@ -84,8 +84,9 @@ var clusterCmd = &cobra.Command{
 			ClusterBootstrap = len(pieces) // bootstrapping; wait for all raft cluster to initialize
 		}
 
+		localAddress := util.ParseLocalIP()
 		if ClusterListenAddress == "" {
-			ClusterListenAddress = parseLocalIP()
+			ClusterListenAddress = localAddress
 		}
 
 		gossipPeers := strings.Split(ClusterGossipPeers, ",")
@@ -103,7 +104,7 @@ var clusterCmd = &cobra.Command{
 		daoRegistry := gorm.NewGormRegistry(App.Logger, App.GORM)
 
 		params := cluster.NewClusterParams(App.Logger, uint64(ClusterID), uint64(NodeID), ClusterIaasProvider, ClusterRegion,
-			ClusterZone, App.DataDir, ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort, ClusterRaftPort,
+			ClusterZone, App.DataDir, localAddress, ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort, ClusterRaftPort,
 			ClusterVirtualNodes, ClusterMaxNodes, ClusterBootstrap, daoRegistry, farmProvisionerChan, farmTickerProvisionerChan)
 
 		App.GossipCluster = cluster.NewGossipCluster(params, cluster.NewHashring(ClusterVirtualNodes), daoRegistry.GetFarmDAO())
@@ -171,36 +172,4 @@ var clusterCmd = &cobra.Command{
 
 		App.Logger.Info("Shutdown complete")
 	},
-}
-
-// parseLocalIP returns the first routable IP on the host
-// or localhost if a LAN/WAN interface is not found.
-func parseLocalIP() string {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		panic(err)
-	}
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			panic(err)
-		}
-		for _, addr := range addrs {
-			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-				if ipnet.IP.To4() != nil {
-					return ipnet.IP.String()
-				}
-			}
-		}
-	}
-	//return "localhost"
-	panic("Couldn't find any routeable IP addresses")
-}
-
-func nslookup(host string) string {
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		App.Logger.Fatal(err)
-	}
-	return ips[0].String()
 }

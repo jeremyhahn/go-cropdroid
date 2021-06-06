@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
 type Metric struct {

@@ -1,7 +1,7 @@
 package test
 
 import (
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/stretchr/testify/mock"
 )
 

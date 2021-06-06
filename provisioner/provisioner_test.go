@@ -5,10 +5,10 @@ package provisioner
 import (
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
 
-	gormstore "github.com/jeremyhahn/cropdroid/datastore/gorm"
+	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 )
 
 func TestProvisioner(t *testing.T) {

@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/cluster/gossip"
+	"github.com/jeremyhahn/go-cropdroid/cluster/gossip"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 )
 
 const (
@@ -118,7 +118,7 @@ func NewGossipCluster(params *ClusterParams, hashring *Consistent, farmDAO dao.F
 		hosts:      make(map[string]uint64, 0),
 		shutdownCh: make(chan struct{})}
 
-	params.logger.Debugf("Gossip peers: %s", cluster.params.peers)
+	params.logger.Debugf("Gossip peers: %s", cluster.params.gossipPeers)
 
 	serfConfig := serf.DefaultConfig()
 	serfConfig.Init()
@@ -177,10 +177,10 @@ func (cluster *Gossip) Join() {
 		}*/
 
 	joinCluster := func() (int, error) {
-		return cluster.serf.Join(cluster.params.peers, true) // true = dont replay events prior to join
+		return cluster.serf.Join(cluster.params.gossipPeers, true) // true = dont replay events prior to join
 	}
 
-	if len(cluster.params.peers) > 0 {
+	if len(cluster.params.gossipPeers) > 0 {
 		contacted, err = joinCluster()
 		if err != nil {
 			cluster.params.logger.Errorf("Failed to join cluster: %s", err)
@@ -193,8 +193,8 @@ func (cluster *Gossip) Join() {
 	members := cluster.serf.Members()
 	for len(members) < cluster.params.bootstrap {
 
-		cluster.params.logger.Debugf("Waiting for enough nodes to build initial Raft quorum. %d of %d members have joined. Contacted %d nodes.",
-			contacted, cluster.serf.NumNodes(), cluster.params.bootstrap)
+		cluster.params.logger.Debugf("Waiting for enough nodes to build initial Raft quorum. %d of %d members have joined, contacted %d.",
+			cluster.serf.NumNodes(), cluster.params.bootstrap, contacted)
 
 		time.Sleep(1 * time.Second)
 		members = cluster.serf.Members()

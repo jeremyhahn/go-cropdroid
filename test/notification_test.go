@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/model"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,7 +5,7 @@ package gorm
 // NOT IN USE YET! - intended for key/value compatibility if i end up going the route
 // of storing the entire config in etcd store
 import (
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/state"
 
 	redistimeseries "github.com/RedisTimeSeries/redistimeseries-go"
 )

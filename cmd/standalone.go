@@ -5,13 +5,13 @@ package cmd
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/builder"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/state"
-	"github.com/jeremyhahn/cropdroid/webservice"
+	"github.com/jeremyhahn/go-cropdroid/builder"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/webservice"
 	"github.com/spf13/cobra"
 )
 

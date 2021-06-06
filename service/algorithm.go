@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 )
 
 type AlgorithmService interface {

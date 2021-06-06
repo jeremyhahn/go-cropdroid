@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/state"
 
-	statemachine "github.com/jeremyhahn/cropdroid/cluster/state"
+	statemachine "github.com/jeremyhahn/go-cropdroid/cluster/state"
 )
 
 func (fb *FarmFactory) RunClusterProvisionerConsumer() {

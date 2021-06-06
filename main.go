@@ -6,8 +6,8 @@ License: Proprietary
 package main
 
 import (
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/cmd"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/cmd"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package rest
 import (
 	"net/http"
 
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
 func BadRequestError(w http.ResponseWriter, r *http.Request, err error, jsonWriter common.HttpWriter) {

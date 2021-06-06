@@ -7,10 +7,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/jeremyhahn/cropdroid/builder"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/util"
+	"github.com/jeremyhahn/go-cropdroid/builder"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
 )

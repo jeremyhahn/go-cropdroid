@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	androidpublisher "google.golang.org/api/androidpublisher/v2"
 	"google.golang.org/api/option"
 )

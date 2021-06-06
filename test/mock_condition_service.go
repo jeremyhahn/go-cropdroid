@@ -3,8 +3,8 @@ package test
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/stretchr/testify/mock"
 )
 

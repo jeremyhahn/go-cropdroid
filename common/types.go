@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 type UserAccount interface {

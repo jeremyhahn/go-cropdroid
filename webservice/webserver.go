@@ -16,12 +16,12 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/model"
-	"github.com/jeremyhahn/cropdroid/service"
-	"github.com/jeremyhahn/cropdroid/webservice/rest"
-	"github.com/jeremyhahn/cropdroid/webservice/websocket"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
+	"github.com/jeremyhahn/go-cropdroid/webservice/websocket"
 )
 
 type Webserver struct {

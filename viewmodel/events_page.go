@@ -1,6 +1,6 @@
 package viewmodel
 
-import "github.com/jeremyhahn/cropdroid/datastore/gorm/entity"
+import "github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 
 type EventsPage struct {
 	Events []entity.EventLog `json:"events"`

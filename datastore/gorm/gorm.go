@@ -7,10 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
+
 	//_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	logging "github.com/op/go-logging"
@@ -33,6 +34,9 @@ type GormInitParams struct {
 	Port      int
 	Username  string
 	Password  string
+	CACert    string
+	TLSKey    string
+	TLSCert   string
 
 	DBName   string
 	Location *time.Location
@@ -166,8 +170,14 @@ func (database *GormDatabase) newPgsql() *gorm.DB {
 
 // Create a new cockroach db connection
 func (database *GormDatabase) newCockroachDB() *gorm.DB {
-	connStr := fmt.Sprintf("postgres://%s@%s:%d/%s?sslmode=disable",
-		database.params.Username, database.params.Host, database.params.Port, database.params.DBName)
+	sslParams := "sslmode=disable"
+	if database.params.CACert != "" && database.params.TLSKey != "" && database.params.TLSCert != "" {
+		sslParams = fmt.Sprintf("sslmode=require&sslkey=%s&sslcert=%s&sslrootcert=%s",
+			database.params.TLSKey, database.params.TLSCert, database.params.CACert)
+	}
+	connStr := fmt.Sprintf("postgres://%s@%s:%d/%s?%s",
+		database.params.Username, database.params.Host,
+		database.params.Port, database.params.DBName, sslParams)
 	db, err := gorm.Open("postgres", connStr)
 	if err != nil {
 		database.logger.Fatalf("CockroachDB Error: %s", err)

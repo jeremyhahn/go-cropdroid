@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	fs "github.com/jeremyhahn/cropdroid/state"
+	fs "github.com/jeremyhahn/go-cropdroid/state"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )

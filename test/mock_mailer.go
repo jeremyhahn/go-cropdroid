@@ -3,7 +3,7 @@
 package test
 
 import (
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/stretchr/testify/mock"
 )
 

@@ -3,8 +3,8 @@ package viewmodel
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
 type ControllerViewModel struct {

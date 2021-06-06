@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )

@@ -1,8 +1,8 @@
 package gorm
 
 import (
-	"github.com/jeremyhahn/cropdroid/config/dao"
-	"github.com/jeremyhahn/cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )

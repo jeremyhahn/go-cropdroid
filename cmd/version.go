@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/spf13/cobra"
 )
 

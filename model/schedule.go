@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type Schedule struct {

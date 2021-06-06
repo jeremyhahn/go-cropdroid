@@ -1,6 +1,6 @@
 package service
 
-import "github.com/jeremyhahn/cropdroid/app"
+import "github.com/jeremyhahn/go-cropdroid/app"
 
 type ServerService interface {
 }

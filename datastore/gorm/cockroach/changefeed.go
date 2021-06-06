@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jinzhu/gorm"
 )
 

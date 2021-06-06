@@ -1,0 +1,9 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+        "label": "initsqlite",
+        "command": "rm",
+        "args": ["db/cropdroid.db", "&&", "./cropdroid", "config", "--init", "--datastore", "sqlite"],
+        "type": "shell"
+    }]
+}

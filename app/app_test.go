@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	logging "github.com/op/go-logging"
 )
 

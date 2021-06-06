@@ -5,7 +5,7 @@ package service
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 func (farm *DefaultFarmService) RunCluster() {

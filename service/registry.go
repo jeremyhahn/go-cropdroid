@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
 type DefaultServiceRegistry struct {

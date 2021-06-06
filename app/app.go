@@ -17,10 +17,10 @@ import (
 
 	logging "github.com/op/go-logging"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	datastore "github.com/jeremyhahn/cropdroid/datastore"
-	gormstore "github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	datastore "github.com/jeremyhahn/go-cropdroid/datastore"
+	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jinzhu/gorm"
 )
 

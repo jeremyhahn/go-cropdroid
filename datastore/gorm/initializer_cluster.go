@@ -3,9 +3,9 @@ package gorm
 import (
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 	"golang.org/x/crypto/bcrypt"

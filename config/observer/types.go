@@ -1,7 +1,7 @@
 package observer
 
 import (
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type FarmConfigObserver interface {

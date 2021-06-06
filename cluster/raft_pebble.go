@@ -16,8 +16,8 @@ import (
 	"github.com/lni/dragonboat/v3/logger"
 	"github.com/lni/dragonboat/v3/raftio"
 
-	"github.com/jeremyhahn/cropdroid/cluster/state"
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/cluster/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
 
 	sm "github.com/lni/dragonboat/v3/statemachine"
 )
@@ -105,7 +105,7 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	//    initialMembers map to be empty. This applies to both initial member nodes
 	//    and those joined later.
 
-	params.logger.Debugf("Starting raft server: %+v", params)
+	params.logger.Debugf("Starting raft server with pebble backend: %+v", params)
 
 	/*
 		if len(params.peers) == 0 {
@@ -113,30 +113,24 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 		}*/
 
 	var nodeAddr string
+	raftNodeID := params.nodeID + uint64(1)
 	initialMembers := make(map[uint64]string)
 	if !params.join {
+		// Bootsrap the cluster
 		for i, peer := range params.raft {
-
-			var nodeID uint64
-			if i < len(params.raft) {
-				nodeID = uint64(i + 1)
-			} else {
-				nodeID = uint64(params.nodeID)
-			}
-
-			params.logger.Debugf("Assigning nodeID %d to peer %s", nodeID, peer)
-
-			initialMembers[nodeID] = peer
+			initialMembers[uint64(i+1)] = peer
 			hashring.Add(peer)
 		}
 	} else {
+		params.logger.Fatal("Adding additional raft members needs to be debugged... raft_pebble.go#131")
 		nodeAddr = params.raft[0]
 		hashring.Add(nodeAddr)
 	}
 	if nodeAddr == "" {
-		nodeAddr = initialMembers[params.nodeID]
+		nodeAddr = initialMembers[raftNodeID]
 	}
-	fmt.Fprintf(os.Stdout, "node address: %s\n", nodeAddr)
+
+	fmt.Fprintf(os.Stdout, "Raft node address: %s\n", nodeAddr)
 
 	// change the log verbosity
 	logger.GetLogger("raft").SetLevel(logger.ERROR)
@@ -145,7 +139,7 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	logger.GetLogger("grpc").SetLevel(logger.WARNING)
 
 	rc := config.Config{
-		NodeID:             params.nodeID,
+		NodeID:             raftNodeID,
 		ElectionRTT:        5,
 		HeartbeatRTT:       1,
 		CheckQuorum:        true,
@@ -164,8 +158,8 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 		hashring:     hashring}
 
 	nhc := config.NodeHostConfig{
-		WALDir:            fmt.Sprintf("%s/node%d", params.dataDir, params.nodeID),
-		NodeHostDir:       fmt.Sprintf("%s/node%d", params.dataDir, params.nodeID),
+		WALDir:            fmt.Sprintf("%s/node%d", params.dataDir, r.config.NodeID),
+		NodeHostDir:       fmt.Sprintf("%s/node%d", params.dataDir, r.config.NodeID),
 		RTTMillisecond:    200,
 		RaftAddress:       nodeAddr,
 		RaftEventListener: r,
@@ -202,7 +196,7 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 	var getLeaderFunc = func() (uint64, bool, error) {
 		leaderID, ready, err := r.nodeHost.GetLeaderID(clusterID)
 		r.params.logger.Debugf("[Raft.WaitForClusterReady] clusterID=%d, leaderID: %d, nodeID=%d, ready=%t",
-			clusterID, leaderID, r.params.nodeID, ready)
+			clusterID, leaderID, r.config.NodeID, ready)
 		return leaderID, ready, err
 	}
 	leaderID, ready, err := getLeaderFunc()
@@ -219,7 +213,7 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 		time.Sleep(1 * time.Second)
 		leaderID, _, _ = getLeaderFunc()
 	}
-	if leaderID == r.params.nodeID {
+	if leaderID == r.config.NodeID {
 		return true
 	}
 	return false
@@ -309,9 +303,9 @@ func (r *Raft) CreateConfigCluster(clusterID uint64, sm state.FarmConfigMachine)
 }
 
 func (r *Raft) Shutdown() error {
-	if err := r.nodeHost.StopNode(r.params.clusterID, r.params.nodeID); err != nil {
+	if err := r.nodeHost.StopNode(r.params.clusterID, r.config.NodeID); err != nil {
 		r.params.logger.Error("Error shutting down Raft node. clusterID: %d, nodeID=%d, error=%s",
-			r.params.clusterID, r.params.nodeID, err)
+			r.params.clusterID, r.config.NodeID, err)
 	}
 	//for clusterID, _ := range r.session {
 	//for clusterID, session := range r.session {
@@ -350,7 +344,7 @@ func (r *Raft) IsLeader(clusterID uint64) bool {
 	opt := dragonboat.NodeHostInfoOption{SkipLogInfo: true}
 	membership := r.nodeHost.GetNodeHostInfo(opt)
 	for _, member := range membership.ClusterInfoList {
-		if member.IsLeader && member.NodeID == r.params.nodeID && member.ClusterID == clusterID {
+		if member.IsLeader && member.NodeID == r.config.NodeID && member.ClusterID == clusterID {
 			return true
 		}
 	}
@@ -441,7 +435,7 @@ func (r *Raft) GetLeaderInfo(clusterID uint64) *ClusterInfo {
 	opt := dragonboat.NodeHostInfoOption{SkipLogInfo: true}
 	membership := r.nodeHost.GetNodeHostInfo(opt)
 	for _, member := range membership.ClusterInfoList {
-		if member.IsLeader && member.NodeID == r.params.nodeID && clusterID == r.params.clusterID {
+		if member.IsLeader && member.NodeID == r.config.NodeID && clusterID == r.params.clusterID {
 			return &ClusterInfo{
 				ClusterID:         member.ClusterID,
 				NodeID:            member.NodeID,
@@ -478,7 +472,7 @@ func (r *Raft) SyncPropose(clusterID uint64, cmd []byte) error {
 		return err
 	}
 	r.params.logger.Debugf("[Raft.SyncPropose] Raft confirmation: clusterID=%d, nodeID=%d, message=%s, result=%+v",
-		clusterID, r.params.nodeID, string(cmd), result)
+		clusterID, r.config.NodeID, string(cmd), result)
 
 	return nil
 }

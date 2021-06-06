@@ -1,8 +1,8 @@
 package model
 
 import (
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type Server struct {

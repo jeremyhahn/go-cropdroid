@@ -1,8 +1,8 @@
 package rest
 
 import (
-	"github.com/jeremyhahn/cropdroid/mapper"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
 type FreewareRestServiceRegistry struct {

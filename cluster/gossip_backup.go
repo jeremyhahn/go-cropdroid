@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/memberlist"
-	statemachine "github.com/jeremyhahn/cropdroid/cluster/state"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
+	statemachine "github.com/jeremyhahn/go-cropdroid/cluster/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/pborman/uuid"
 )
 

@@ -5,8 +5,8 @@ package test
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/controller"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/controller"
 	"github.com/stretchr/testify/mock"
 )
 

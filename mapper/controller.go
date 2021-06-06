@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/model"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 type MicroControllerMapper struct {

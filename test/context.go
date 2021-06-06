@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	gormstore "github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )

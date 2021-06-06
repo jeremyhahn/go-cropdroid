@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/stretchr/testify/assert"
 )
 

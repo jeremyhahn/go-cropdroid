@@ -3,7 +3,7 @@
 package model
 
 import (
-	"github.com/jeremyhahn/cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/app"
 )
 
 // https://github.com/google/pprof

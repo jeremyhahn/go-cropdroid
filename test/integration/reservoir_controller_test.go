@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/controller"
-	"github.com/jeremyhahn/cropdroid/test"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/controller"
+	"github.com/jeremyhahn/go-cropdroid/test"
 	"github.com/stretchr/testify/assert"
 )
 

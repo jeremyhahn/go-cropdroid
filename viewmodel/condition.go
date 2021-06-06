@@ -3,7 +3,7 @@ package viewmodel
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type Condition struct {

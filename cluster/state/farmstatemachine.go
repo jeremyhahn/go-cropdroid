@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	fs "github.com/jeremyhahn/cropdroid/state"
+	fs "github.com/jeremyhahn/go-cropdroid/state"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	logging "github.com/op/go-logging"
 )

@@ -1,6 +1,6 @@
 package model
 
-import "github.com/jeremyhahn/cropdroid/common"
+import "github.com/jeremyhahn/go-cropdroid/common"
 
 type Role struct {
 	ID          int    `json:"id"`

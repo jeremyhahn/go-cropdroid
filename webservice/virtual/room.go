@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/entity"
-	"github.com/jeremyhahn/cropdroid/mapper"
-	"github.com/jeremyhahn/cropdroid/service"
-	"github.com/jeremyhahn/cropdroid/webservice/rest"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/entity"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 )
 
 type VirtualRoom struct {

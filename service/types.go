@@ -4,16 +4,16 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jeremyhahn/cropdroid/provisioner"
+	"github.com/jeremyhahn/go-cropdroid/provisioner"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm/entity"
-	"github.com/jeremyhahn/cropdroid/state"
-	"github.com/jeremyhahn/cropdroid/viewmodel"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
 var (

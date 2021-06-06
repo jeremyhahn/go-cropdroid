@@ -3,8 +3,8 @@ package datastore
 import (
 	"encoding/json"
 
-	"github.com/jeremyhahn/cropdroid/config/dao"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 type ChangefeedCallback func(Changefeed)

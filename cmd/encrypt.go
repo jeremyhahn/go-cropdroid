@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jeremyhahn/cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/bcrypt"
 )

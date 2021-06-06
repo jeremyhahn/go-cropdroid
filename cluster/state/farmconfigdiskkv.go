@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	"github.com/tecbot/gorocksdb"
 )

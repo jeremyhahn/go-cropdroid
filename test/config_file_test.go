@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )

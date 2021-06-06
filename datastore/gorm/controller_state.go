@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )

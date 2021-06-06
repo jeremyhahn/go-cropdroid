@@ -1,6 +1,6 @@
 package util
 
-import "github.com/jeremyhahn/cropdroid/common"
+import "github.com/jeremyhahn/go-cropdroid/common"
 
 type SwitchPosition struct {
 	position int

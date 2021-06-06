@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
 type Controller struct {

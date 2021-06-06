@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/common"
-	gormstore "github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/mapper"
-	"github.com/jeremyhahn/cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
 )
 

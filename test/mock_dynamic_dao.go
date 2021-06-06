@@ -5,7 +5,7 @@ package test
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/stretchr/testify/mock"
 )
 

@@ -4,16 +4,16 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/cropdroid/datastore/gorm/cockroach"
-	"github.com/jeremyhahn/cropdroid/mapper"
-	"github.com/jeremyhahn/cropdroid/service"
-	"github.com/jeremyhahn/cropdroid/state"
-	"github.com/jeremyhahn/cropdroid/webservice/rest"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/cockroach"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 )
 
 type GormConfigBuilder struct {

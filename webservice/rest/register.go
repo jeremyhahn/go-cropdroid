@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
 type RegisterResponse struct {

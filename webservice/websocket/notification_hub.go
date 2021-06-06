@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/service"
 	logging "github.com/op/go-logging"
 )
 

@@ -5,7 +5,7 @@ package test
 import (
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/controller"
+	"github.com/jeremyhahn/go-cropdroid/controller"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,6 +1,6 @@
 package state
 
-import "github.com/jeremyhahn/cropdroid/config"
+import "github.com/jeremyhahn/go-cropdroid/config"
 
 type FarmStorer interface {
 	Len() int

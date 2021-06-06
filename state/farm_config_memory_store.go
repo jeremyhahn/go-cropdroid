@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type MemoryConfigStore struct {

@@ -10,8 +10,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/jeremyhahn/cropdroid/config"
-	fs "github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	fs "github.com/jeremyhahn/go-cropdroid/state"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	logging "github.com/op/go-logging"
 )

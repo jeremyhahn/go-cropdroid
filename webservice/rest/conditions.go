@@ -8,11 +8,11 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/mapper"
-	"github.com/jeremyhahn/cropdroid/service"
-	"github.com/jeremyhahn/cropdroid/viewmodel"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
 type ConditionRestService interface {

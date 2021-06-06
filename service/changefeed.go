@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jeremyhahn/cropdroid/app"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/datastore"
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 type DefaultChangefeedService struct {

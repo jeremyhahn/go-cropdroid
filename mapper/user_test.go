@@ -3,7 +3,7 @@ package mapper
 import (
 	"testing"
 
-	"github.com/jeremyhahn/cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
 )
 

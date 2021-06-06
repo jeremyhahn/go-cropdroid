@@ -10,7 +10,7 @@ import (
 	"hash"
 	"io/ioutil"
 
-	"github.com/jeremyhahn/cropdroid/util"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
 
 	jwt "github.com/dgrijalva/jwt-go"

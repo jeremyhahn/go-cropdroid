@@ -8,9 +8,9 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/jeremyhahn/cropdroid/common"
-	"github.com/jeremyhahn/cropdroid/config"
-	"github.com/jeremyhahn/cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
 type ScheduleRestService interface {

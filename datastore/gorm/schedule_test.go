@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeremyhahn/cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -5,7 +5,7 @@ package cluster
 import (
 	"encoding/json"
 
-	"github.com/jeremyhahn/cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/state"
 
 	logging "github.com/op/go-logging"
 )

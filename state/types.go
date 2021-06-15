@@ -6,6 +6,12 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
+const (
+	MEMORY_STORE = iota
+	GORM_STORE
+	RAFT_STORE
+)
+
 var (
 	ErrFarmNotFound = errors.New("farm not found in state store")
 )

@@ -16,17 +16,15 @@ type ChannelService interface {
 }
 
 type DefaultChannelService struct {
-	dao           dao.ChannelDAO
-	mapper        mapper.ChannelMapper
-	configService ConfigService
+	dao    dao.ChannelDAO
+	mapper mapper.ChannelMapper
 	ChannelService
 }
 
-func NewChannelService(dao dao.ChannelDAO, mapper mapper.ChannelMapper, configService ConfigService) ChannelService {
+func NewChannelService(dao dao.ChannelDAO, mapper mapper.ChannelMapper) ChannelService {
 	return &DefaultChannelService{
-		dao:           dao,
-		mapper:        mapper,
-		configService: configService}
+		dao:    dao,
+		mapper: mapper}
 }
 
 func (service *DefaultChannelService) Get(id int) (common.Channel, error) {

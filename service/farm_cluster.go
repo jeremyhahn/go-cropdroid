@@ -5,8 +5,7 @@ package service
 import (
 	"time"
 
-	"github.com/jeremyhahn/go-cropdroid/config/store"
-	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
 func (farm *DefaultFarmService) RunCluster() {
@@ -50,15 +49,10 @@ func (farm *DefaultFarmService) RunCluster() {
 
 func (farm *DefaultFarmService) PollCluster() {
 
-	farmConfig, err := farm.configStore.Get(farm.configClusterID)
+	farmConfig, err := farm.configStore.Get(farm.farmID, common.CONSISTENCY_CACHED)
 	if err != nil {
 		farm.app.Logger.Errorf("Error looking up farm config %d. Error: ",
 			farm.farmID, err.Error())
-		return
-	}
-
-	if farmConfig == nil {
-		farm.app.Logger.Error("farmConfig is null .... Race condition?")
 		return
 	}
 
@@ -82,69 +76,10 @@ func (farm *DefaultFarmService) pollCluster() {
 	farmID := farm.GetFarmID()
 	farm.app.Logger.Debugf("Polling farm: %d", farmID)
 
-	if isLeader := farm.app.RaftCluster.WaitForClusterReady(uint64(farmID)); isLeader == false {
+	if isLeader := farm.app.RaftCluster.WaitForClusterReady(farmID); isLeader == false {
 		// Only the cluster leader polls the farm
 		return
 	}
 
-	deviceServices, err := farm.serviceRegistry.GetDeviceServices(farm.GetFarmID())
-	if err != nil {
-		farm.app.Logger.Errorf("Error: %s", err)
-		return
-	}
-	deltas := make(map[string]state.DeviceStateDeltaMap, len(deviceServices))
-	beforeState := farm.GetState()
-
-	for _, device := range deviceServices {
-
-		deviceType := device.GetDeviceType()
-
-		newDeviceState, err := device.Poll()
-		if err != nil {
-			farm.app.Logger.Errorf("Error polling device state: %s", err)
-			return
-		}
-
-		farm.app.Logger.Errorf("newDeviceState: %+v", newDeviceState)
-
-		newChannelMap := make(map[int]int, len(newDeviceState.GetChannels()))
-		for i, channel := range newDeviceState.GetChannels() {
-			newChannelMap[i] = channel
-		}
-
-		if beforeState == nil {
-			deltas[deviceType] = state.CreateDeviceStateDeltaMap(newDeviceState.GetMetrics(), newChannelMap)
-		} else {
-			delta, err := farm.state.Diff(deviceType, newDeviceState.GetMetrics(), newChannelMap)
-			if err != nil {
-				farm.app.Logger.Errorf("Error diffing device state: %s", err)
-			}
-			if delta != nil {
-				deltas[deviceType] = delta
-			}
-		}
-
-		farm.SetDeviceState(deviceType, newDeviceState)
-
-		if farm.app.MetricDatastore != nil {
-			deviceConfig := device.GetDeviceConfig()
-			if err := farm.app.MetricDatastore.Save(deviceConfig.GetID(), newDeviceState); err != nil {
-				farm.app.Logger.Errorf("Error: %s", err)
-				farm.error("Farm.pollCluster", "Farm.pollCluster", err)
-				return
-			}
-		}
-
-		device.Manage()
-	}
-
-	farm.app.Logger.Errorf("storing farm state: %s", farm.state)
-	if err := farm.stateStore.Put(farmID, farm.state); err != nil {
-		farm.app.Logger.Errorf("Error storing farm state: %s", err)
-		return
-	}
-
-	for deviceType, delta := range deltas {
-		farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta})
-	}
+	farm.poll()
 }

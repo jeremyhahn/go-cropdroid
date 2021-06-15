@@ -26,8 +26,10 @@ func createLogger() *logging.Logger {
 
 func TestFarmStateMachineUpdateLookupEmptyStore(t *testing.T) {
 
+	var farmStateChangeChan chan fs.FarmStateMap
+
 	logger := createLogger()
-	sm := NewFarmStateMachine(logger, 1)
+	sm := NewFarmStateMachine(logger, 1, farmStateChangeChan)
 
 	deviceStateMap := fs.NewDeviceStateMap()
 	deviceStateMap.SetMetrics(map[string]float64{
@@ -75,8 +77,10 @@ func TestFarmStateMachineUpdateLookupEmptyStore(t *testing.T) {
 
 func TestFarmStateMachineUpdateLookupNonEmptyStore(t *testing.T) {
 
+	var farmStateChangeChan chan fs.FarmStateMap
+
 	logger := createLogger()
-	sm := NewFarmStateMachine(logger, 1)
+	sm := NewFarmStateMachine(logger, 1, farmStateChangeChan)
 
 	deviceStateMap := fs.NewDeviceStateMap()
 	deviceStateMap.SetMetrics(map[string]float64{

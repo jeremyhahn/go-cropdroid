@@ -62,6 +62,10 @@ type FarmConfig interface {
 	SetReplicas(count int)
 	SetConsistency(level int)
 	GetConsistency() int
+	SetStateStore(storeType int)
+	GetStateStore() int
+	SetConfigStore(storeType int)
+	GetConfigStore() int
 	SetName(string)
 	GetName() string
 	SetMode(string)

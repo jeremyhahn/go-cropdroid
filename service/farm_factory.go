@@ -18,9 +18,9 @@ type FarmFactory struct {
 	deviceStateStore          state.DeviceStorer
 	deviceDataStore           datastore.DeviceDatastore
 	consistencyLevel          int
-	deviceMapper          mapper.DeviceMapper
+	deviceMapper              mapper.DeviceMapper
 	changefeeders             map[string]datastore.Changefeeder
-	deviceIndexMap        map[uint64]config.DeviceConfig
+	deviceIndexMap            map[uint64]config.DeviceConfig
 	channelIndexMap           map[int]config.ChannelConfig
 	datastoreRegistry         datastore.DatastoreRegistry
 	serviceRegistry           ServiceRegistry
@@ -42,34 +42,14 @@ func NewFarmFactory(app *app.App, datastoreRegistry datastore.DatastoreRegistry,
 		deviceStateStore:          deviceStateStore,
 		deviceConfigStore:         deviceConfigStore,
 		deviceDataStore:           deviceDataStore,
-		deviceMapper:          deviceMapper,
+		deviceMapper:              deviceMapper,
 		changefeeders:             changefeeders,
-		deviceIndexMap:        make(map[uint64]config.DeviceConfig, 0),
+		deviceIndexMap:            make(map[uint64]config.DeviceConfig, 0),
 		channelIndexMap:           make(map[int]config.ChannelConfig, 0),
 		datastoreRegistry:         datastoreRegistry,
 		serviceRegistry:           serviceRegistry,
 		farmProvisionerChan:       farmProvisionerChan,
 		farmTickerProvisionerChan: farmTickerProvisionerChan}
-}
-
-func (fb *FarmFactory) RunProvisionerConsumer() {
-	for {
-		select {
-		case farmConfig := <-fb.farmProvisionerChan:
-			fb.app.Logger.Debugf("Processing provisioner request...")
-			//farmConfigChangeChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
-			//farmStateChangeChan := make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE)
-			//farmService, err := fb.BuildService(farmConfig, farmConfigChangeChan, farmStateChangeChan)
-			farmService, err := fb.BuildService(farmConfig)
-			if err != nil {
-				fb.app.Logger.Errorf("Error: %s", err)
-			}
-			fb.serviceRegistry.AddFarmService(farmService)
-			fb.farmTickerProvisionerChan <- farmConfig.GetID()
-		default:
-			fb.app.Logger.Error("Error: Unable to process provisioner request")
-		}
-	}
 }
 
 func (fb *FarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, error) {

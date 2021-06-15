@@ -16,7 +16,7 @@ import (
 
 type ClusterParams struct {
 	logger                    *logging.Logger             `json:"-"`
-	nodeName                  string                      `json:name`
+	nodeName                  string                      `json:"name"`
 	clusterID                 uint64                      `json:"clusterId`
 	nodeID                    uint64                      `json:"nodeId`
 	provider                  string                      `json:"provider"`

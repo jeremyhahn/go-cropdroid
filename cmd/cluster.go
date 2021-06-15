@@ -129,27 +129,21 @@ var clusterCmd = &cobra.Command{
 		}
 
 		//App.ConfigStore = cluster.NewRaftFarmConfigStore(App.Logger, App.RaftCluster)
-		App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)
-
-		if MetricDatastore == "raft" {
-			App.MetricDatastore = cluster.NewRaftDeviceStateStore(App.Logger, App.RaftCluster)
-		} else if MetricDatastore == "datastore" {
-			// Don't subscribe to device state changefeeds while running Raft cluster!
-			App.MetricDatastore = gorm.NewDeviceStateDAO(App.Logger, App.GORM, App.GORMInitParams.Engine, App.Location)
-		}
+		//App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)
 
 		// TODO: Check device hardware and firmware versions at startup, update devices db table
-		builder := builder.NewClusterConfigBuilder(App, params)
-		serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err := builder.Build()
+		builder := builder.NewClusterConfigBuilder(App, params, DeviceStore, AppStateTTL, AppStateTick)
+		serverConfig, serviceRegistry, restServices, err := builder.Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
-		//farmProvisioner := provisioner.NewFarmProvisioner(App.Logger, App.NewGormDB(), App.Location, datastoreRegistry.GetFarmDAO(), serviceRegistry)
+		// farmProvisioner := provisioner.NewFarmProvisioner(App.Logger, App.NewGormDB(),
+		// 	App.Location, datastoreRegistry.GetFarmDAO(), serviceRegistry)
 
 		App.Config = serverConfig.(*config.Server)
-		App.DeviceIndex = deviceIndex
-		App.ChannelIndex = channelIndex
+		//App.DeviceIndex = deviceIndex
+		//App.ChannelIndex = channelIndex
 
 		for _, farmService := range serviceRegistry.GetFarmServices() {
 			go farmService.RunCluster()

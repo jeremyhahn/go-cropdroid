@@ -61,11 +61,13 @@ var configCmd = &cobra.Command{
 
 		if ShowConfigFlag {
 
-			if DatastoreType == "memory" || DatastoreType == "sqlite" || DatastoreType == "postgres" || DatastoreType == "cockroach" {
+			if DatastoreType == "memory" || DatastoreType == "sqlite" ||
+				DatastoreType == "postgres" || DatastoreType == "cockroach" {
+
 				App.InitLogFile(os.Getuid(), os.Getgid())
 				App.InitGormDB()
-				//serverConfig, _, _, _, _, err := builder.NewGormConfigBuilder(App).Build()
-				serverConfig, _, _, err := builder.NewGormConfigBuilder(App, nil, nil, DeviceStore).Build()
+				serverConfig, _, _, err := builder.NewGormConfigBuilder(App, DeviceStore,
+					AppStateTTL, AppStateTick).Build()
 				if err != nil {
 					App.Logger.Fatal(err)
 				}

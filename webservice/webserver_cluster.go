@@ -23,6 +23,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 	"github.com/jeremyhahn/go-cropdroid/webservice/websocket"
 )
@@ -42,7 +43,7 @@ type Webserver struct {
 	eventType                 string
 	endpointList              []string
 	closeChan                 chan bool
-	farmTickerProvisionerChan chan int
+	farmTickerProvisionerChan chan uint64
 	farmHubs                  map[uint64]*websocket.FarmHub
 	farmHubMutex              sync.Mutex
 	jsonWebTokenService       service.JsonWebTokenService
@@ -53,8 +54,8 @@ type Webserver struct {
 	eventLogService           service.EventLogService
 }
 
-func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry, restServices []rest.RestService,
-	farmTickerProvisionerChan chan int) *Webserver {
+func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
+	restServices []rest.RestService, farmTickerProvisionerChan chan uint64) *Webserver {
 
 	return &Webserver{
 		mutex: sync.Mutex{},
@@ -265,15 +266,14 @@ func (server *Webserver) buildRoutes() {
 	router.Handle(endpoint, negroni.New(
 		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var ok bool
 			params := mux.Vars(r)
 			farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
 			if err != nil {
 				rest.BadRequestError(w, r, err, jsonWriter)
 				return
 			}
-			farmService, ok := server.registry.GetFarmService(farmID)
-			if !ok {
+			farmService := server.registry.GetFarmService(farmID)
+			if farmService == nil {
 				rest.BadRequestError(w, r, ErrFarmNotFound, jsonWriter)
 				return
 			}
@@ -318,8 +318,8 @@ func (server *Webserver) farmTicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	farmService, ok := server.registry.GetFarmService(farmID)
-	if !ok {
+	farmService := server.registry.GetFarmService(farmID)
+	if farmService == nil {
 		server.app.Logger.Error("[Webserver.farmTicker] Can find farm service with farmID %d", farmID)
 		return
 	}
@@ -327,7 +327,7 @@ func (server *Webserver) farmTicker(w http.ResponseWriter, r *http.Request) {
 	farmHub := websocket.NewFarmHub(server.app.Logger, server.notificationService, farmService)
 	go farmHub.Run()
 
-	endpoint := fmt.Sprintf("%s/farmticker/%s", server.baseURI, farmID)
+	endpoint := fmt.Sprintf("%s/farmticker/%d", server.baseURI, farmID)
 	server.router.Handle(endpoint, negroni.New(
 		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -358,7 +358,11 @@ func (server *Webserver) sendNotification(w http.ResponseWriter, r *http.Request
 }
 
 func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.FarmStore.GetAll())
+	states := make([]state.FarmStateMap, 0)
+	for _, farmService := range server.registry.GetFarmServices() {
+		states = append(states, farmService.GetState())
+	}
+	rest.NewJsonWriter().Write(w, http.StatusOK, states)
 }
 
 func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
@@ -382,8 +386,8 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 		NotificationQueueLength: server.registry.GetNotificationService().QueueSize(),
 		Farms:                   len(server.registry.GetFarmServices()),
 		Changefeeds:             changefeedCount,
-		DeviceIndexLength:       server.app.DeviceIndex.Len(),
-		ChannelIndexLength:      server.app.ChannelIndex.Len(),
+		//DeviceIndexLength:       server.app.DeviceIndex.Len(),
+		//ChannelIndexLength:      server.app.ChannelIndex.Len(),
 		Version: &app.AppVersion{
 			Release:   app.Release,
 			BuildDate: app.BuildDate,
@@ -481,8 +485,14 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 			return
 		}*/
 
-	farmState, err := server.app.FarmStore.Get(farmID)
-	if err != nil {
+	farmService := server.registry.GetFarmService(farmID)
+	if farmService == nil {
+		server.app.Logger.Error(ErrFarmNotFound)
+		return
+	}
+
+	farmState := farmService.GetState()
+	if farmState == nil {
 		server.app.Logger.Error(err.Error())
 		server.sendBadRequest(w, r, err)
 		return

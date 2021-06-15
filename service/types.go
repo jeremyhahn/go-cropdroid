@@ -171,6 +171,7 @@ type ChangefeedService interface {
 type FarmService interface {
 	BuildDeviceServices() ([]DeviceService, error) // only used by builder/farm.go
 	GetFarmID() uint64
+	GetChannels() *FarmChannels
 	GetConfig() config.FarmConfig
 	GetConfigClusterID() uint64
 	GetConsistencyLevel() int

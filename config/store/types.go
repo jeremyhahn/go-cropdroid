@@ -2,6 +2,12 @@ package store
 
 import "github.com/jeremyhahn/go-cropdroid/config"
 
+const (
+	MEMORY_STORE = iota
+	GORM_STORE
+	RAFT_STORE
+)
+
 type FarmConfigStorer interface {
 	Cache(farmID uint64, farmConfig config.FarmConfig)
 	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)

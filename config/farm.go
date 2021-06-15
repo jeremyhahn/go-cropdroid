@@ -11,6 +11,8 @@ type Farm struct {
 	OrganizationID int    `yaml:"orgId" json:"orgId"`
 	Replicas       int    `yaml:"replicas" json:"replicas"`
 	Consistency    int    `gorm:"consistency" yaml:"consistency" json:"consistency"`
+	StateStore     int    `gorm:"state_store" yaml:"state_store" json:"state_store"`
+	ConfigStore    int    `gorm:"config_store" yaml:"config_store" json:"config_store"`
 	Mode           string `gorm:"-" yaml:"mode" json:"mode"`
 	Name           string `gorm:"-" yaml:"name" json:"name"`
 	Interval       int    `gorm:"-" yaml:"interval" json:"interval"`
@@ -28,7 +30,9 @@ func NewFarm() *Farm {
 		Users:   make([]User, 0)}
 }
 
-func CreateFarm(name string, orgID, interval int, users []User, devices []Device) FarmConfig {
+func CreateFarm(name string, orgID, interval int, users []User,
+	devices []Device) FarmConfig {
+
 	return &Farm{
 		OrganizationID: orgID,
 		Devices:        devices}
@@ -56,6 +60,22 @@ func (farm *Farm) SetConsistency(level int) {
 
 func (farm *Farm) GetConsistency() int {
 	return farm.Consistency
+}
+
+func (farm *Farm) SetStateStore(storeType int) {
+	farm.StateStore = storeType
+}
+
+func (farm *Farm) GetStateStore() int {
+	return farm.StateStore
+}
+
+func (farm *Farm) SetConfigStore(storeType int) {
+	farm.ConfigStore = storeType
+}
+
+func (farm *Farm) GetConfigStore() int {
+	return farm.ConfigStore
 }
 
 func (farm *Farm) SetName(name string) {

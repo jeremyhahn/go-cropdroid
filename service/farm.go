@@ -93,7 +93,7 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 		notificationService: serviceRegistry.GetNotificationService(),
 		channels:            farmChannels,
 		running:             false,
-		deviceConfigDAO: deviceConfigDAO,
+		deviceConfigDAO:     deviceConfigDAO,
 		backoffTable:        backoffTable}, nil
 }
 
@@ -136,6 +136,10 @@ func (farm *DefaultFarmService) SetConfig(farmConfig config.FarmConfig) error {
 	}
 	farm.PublishConfig(farmConfig)
 	return nil
+}
+
+func (farm *DefaultFarmService) GetChannels() *FarmChannels {
+	return farm.channels
 }
 
 // Publishes the entire farm configuration (all devices)
@@ -521,11 +525,7 @@ func (farm *DefaultFarmService) poll() {
 		return
 	}
 	for _, device := range deviceServices {
-		//deviceType := device.GetDeviceType()
 		go device.Poll(farm.channels.DeviceStateChangeChan)
-		// if err := device.Poll(farm.channels.DeviceStateChangeChan); err != nil {
-		// 	farm.app.Logger.Errorf("Error polling %s device", deviceType)
-		// }
 	}
 }
 
@@ -685,12 +685,12 @@ func (farm *DefaultFarmService) notify(deviceType, eventType, message string) er
 		return err
 	}
 	return farm.notificationService.Enqueue(&model.Notification{
-		Device: farmConfig.GetName(),
-		Priority:   common.NOTIFICATION_PRIORITY_LOW,
-		Title:      deviceType,
-		Type:       eventType,
-		Message:    message,
-		Timestamp:  time.Now()})
+		Device:    farmConfig.GetName(),
+		Priority:  common.NOTIFICATION_PRIORITY_LOW,
+		Title:     deviceType,
+		Type:      eventType,
+		Message:   message,
+		Timestamp: time.Now()})
 }
 
 func (farm *DefaultFarmService) error(method, eventType string, err error) {
@@ -701,10 +701,10 @@ func (farm *DefaultFarmService) error(method, eventType string, err error) {
 		return
 	}
 	farm.notificationService.Enqueue(&model.Notification{
-		Device: farmConfig.GetName(),
-		Priority:   common.NOTIFICATION_PRIORITY_HIGH,
-		Title:      farmConfig.GetName(),
-		Type:       eventType,
-		Message:    err.Error(),
-		Timestamp:  time.Now()})
+		Device:    farmConfig.GetName(),
+		Priority:  common.NOTIFICATION_PRIORITY_HIGH,
+		Title:     farmConfig.GetName(),
+		Type:      eventType,
+		Message:   err.Error(),
+		Timestamp: time.Now()})
 }

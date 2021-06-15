@@ -5,7 +5,6 @@ package service
 import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
-	"github.com/jeremyhahn/go-cropdroid/config/store"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -38,7 +37,7 @@ func (service *DefaultMetricService) Get(id int) (common.Metric, error) {
 }
 
 func (service *DefaultMetricService) GetAll(session Session, deviceID int) ([]common.Metric, error) {
-	orgID := session.GetFarmService().GetConfig(store.READ_COMMITTED).GetOrgID()
+	orgID := session.GetFarmService().GetConfig().GetOrgID()
 	userID := session.GetUser().GetID()
 	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
 	if err != nil {
@@ -54,7 +53,7 @@ func (service *DefaultMetricService) GetAll(session Session, deviceID int) ([]co
 
 func (service *DefaultMetricService) Update(session Session, metric common.Metric) error {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	farmConfig := farmService.GetConfig()
 	metricConfig := service.mapper.MapModelToConfig(metric)
 	for _, device := range farmConfig.GetDevices() {
 		if device.GetID() == metric.GetDeviceID() {

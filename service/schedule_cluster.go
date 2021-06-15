@@ -10,7 +10,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
-	"github.com/jeremyhahn/go-cropdroid/config/store"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -81,7 +80,7 @@ func (service *DefaultScheduleService) GetNow() *time.Time {
 // GetSchedule retrieves a specific schedule entry from the database
 func (service *DefaultScheduleService) GetSchedule(session Session, channelID int) ([]config.Schedule, error) {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == channelID {
@@ -110,7 +109,7 @@ func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, dev
 // Create a new schedule entry
 func (service *DefaultScheduleService) Create(session Session, schedule config.ScheduleConfig) (config.ScheduleConfig, error) {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == schedule.GetChannelID() {
@@ -129,7 +128,7 @@ func (service *DefaultScheduleService) Create(session Session, schedule config.S
 // Update an existing schedule entry in the database
 func (service *DefaultScheduleService) Update(session Session, schedule config.ScheduleConfig) error {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			for i, _ := range channel.GetSchedule() {
@@ -149,7 +148,7 @@ func (service *DefaultScheduleService) Update(session Session, schedule config.S
 // Delete a schedule entry from the database
 func (service *DefaultScheduleService) Delete(session Session, schedule config.ScheduleConfig) error {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			// Android client only sends the schedule id on delete

@@ -2,6 +2,7 @@ package builder
 
 import (
 	"crypto/rsa"
+	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -21,13 +22,17 @@ type GormConfigBuilder struct {
 	farmStateStore   state.FarmStorer
 	deviceStateStore state.DeviceStorer
 	deviceDataStore  datastore.DeviceDatastore
-	consistency      int
+	consistencyLevel int
+	appStateTTL      int
+	appStateTick     int
 	ConfigBuilder
 }
 
-func NewGormConfigBuilder(_app *app.App, farmStateStore state.FarmStorer,
-	deviceStateStore state.DeviceStorer,
-	deviceStore string) ConfigBuilder {
+func NewGormConfigBuilder(_app *app.App, deviceStore string,
+	appStateTTL int, appStateTick int) ConfigBuilder {
+
+	farmStateStore := state.NewMemoryFarmStore(_app.Logger, 1, appStateTTL, time.Duration(appStateTick))
+	deviceStateStore := state.NewMemoryDeviceStore(_app.Logger, 3, appStateTTL, time.Duration(appStateTick))
 
 	var deviceDatastore datastore.DeviceDatastore
 	if deviceStore == "redis" {
@@ -42,7 +47,7 @@ func NewGormConfigBuilder(_app *app.App, farmStateStore state.FarmStorer,
 		farmStateStore:   farmStateStore,
 		deviceStateStore: deviceStateStore,
 		deviceDataStore:  deviceDatastore,
-		consistency:      common.CONSISTENCY_CACHED}
+		consistencyLevel: common.CONSISTENCY_CACHED}
 }
 
 func (builder *GormConfigBuilder) Build() (config.ServerConfig,

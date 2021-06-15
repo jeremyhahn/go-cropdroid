@@ -37,13 +37,10 @@ var standaloneCmd = &cobra.Command{
 		App.Mode = common.MODE_STANDALONE
 		App.InitGormDB()
 
-		farmStateStore := state.NewMemoryFarmStore(App.Logger, 1, AppStateTTL, time.Duration(AppStateTick))
-		deviceStateStore := state.NewMemoryDeviceStore(App.Logger, 3, AppStateTTL, time.Duration(AppStateTick))
-
 		//serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err :=
 		//	builder.NewGormConfigBuilder(App, farmStateStore, deviceStateStore, deviceDatastore).Build()
 		serverConfig, serviceRegistry, restServices, err := builder.NewGormConfigBuilder(
-			App, farmStateStore, deviceStateStore, DeviceStore).Build()
+			App, DeviceStore, AppStateTTL, AppStateTick).Build()
 
 		if err != nil {
 			App.Logger.Fatal(err)

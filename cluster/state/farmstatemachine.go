@@ -37,7 +37,9 @@ type FarmSM struct {
     panic(err)
   }*/
 
-func NewFarmStateMachine(logger *logging.Logger, farmID uint64, farmStateChangeChan chan fs.FarmStateMap) FarmStateMachine {
+func NewFarmStateMachine(logger *logging.Logger, farmID uint64,
+	farmStateChangeChan chan fs.FarmStateMap) FarmStateMachine {
+
 	return &FarmSM{
 		logger:              logger,
 		farmID:              farmID,

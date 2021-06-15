@@ -43,7 +43,7 @@ type Webserver struct {
 	endpointList              []string
 	closeChan                 chan bool
 	farmTickerProvisionerChan chan int
-	farmHubs                  map[int]*websocket.FarmHub
+	farmHubs                  map[uint64]*websocket.FarmHub
 	farmHubMutex              sync.Mutex
 	jsonWebTokenService       service.JsonWebTokenService
 	notificationService       service.NotificationService
@@ -67,7 +67,7 @@ func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry, restSer
 		endpointList:              make([]string, 0),
 		closeChan:                 make(chan bool, 1),
 		farmTickerProvisionerChan: farmTickerProvisionerChan,
-		farmHubs:                  make(map[int]*websocket.FarmHub),
+		farmHubs:                  make(map[uint64]*websocket.FarmHub),
 		farmHubMutex:              sync.Mutex{},
 		jsonWebTokenService:       serviceRegistry.GetJsonWebTokenService(),
 		notificationService:       serviceRegistry.GetNotificationService(),
@@ -224,7 +224,7 @@ func (server *Webserver) buildRoutes() {
 
 	// /virtual
 	/*
-		router.Handle("/api/v1/virtual/{vcontroller}/{metric}/{value}", negroni.New(
+		router.Handle("/api/v1/virtual/{vdevice}/{metric}/{value}", negroni.New(
 			negroni.HandlerFunc(server.jsonWebTokenService.Validate),
 			negroni.Wrap(http.HandlerFunc(server.setVirtualMetric)),
 		)).Methods("GET")
@@ -267,7 +267,7 @@ func (server *Webserver) buildRoutes() {
 		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var ok bool
 			params := mux.Vars(r)
-			farmID, err := strconv.Atoi(params["farmID"])
+			farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
 			if err != nil {
 				rest.BadRequestError(w, r, err, jsonWriter)
 				return
@@ -312,7 +312,7 @@ func (server *Webserver) farmTicker(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 	farmid := params["farmID"]
-	farmID, err := strconv.Atoi(farmid)
+	farmID, err := strconv.ParseUint(farmid, 10, 64)
 	if err != nil {
 		server.app.Logger.Errorf("[Webserver.farmTicker] Error: %s", err)
 		return
@@ -350,11 +350,11 @@ func (server *Webserver) sendNotification(w http.ResponseWriter, r *http.Request
 	}
 
 	server.registry.GetNotificationService().Enqueue(&model.Notification{
-		Controller: "webserver",
-		Priority:   priority,
-		Type:       _type,
-		Message:    message,
-		Timestamp:  time.Now()})
+		Device:    "webserver",
+		Priority:  priority,
+		Type:      _type,
+		Message:   message,
+		Timestamp: time.Now()})
 }
 
 func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
@@ -382,7 +382,7 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 		NotificationQueueLength: server.registry.GetNotificationService().QueueSize(),
 		Farms:                   len(server.registry.GetFarmServices()),
 		Changefeeds:             changefeedCount,
-		ControllerIndexLength:   server.app.ControllerIndex.Len(),
+		DeviceIndexLength:       server.app.DeviceIndex.Len(),
 		ChannelIndexLength:      server.app.ChannelIndex.Len(),
 		Version: &app.AppVersion{
 			Release:   app.Release,
@@ -466,7 +466,7 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 
 	params := mux.Vars(r)
 
-	farmID, err := strconv.Atoi(params["farmID"])
+	farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
 	if err != nil {
 		server.app.Logger.Error(err.Error())
 		server.sendBadRequest(w, r, err)

@@ -5,13 +5,14 @@ package service
 import (
 	"time"
 
+	"github.com/jeremyhahn/go-cropdroid/config/store"
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 func (farm *DefaultFarmService) RunCluster() {
 
 	if farm.running == true {
-		farm.app.Logger.Errorf("[Farm.Run] Farm %d already running!", farm.GetFarmID())
+		farm.app.Logger.Errorf("Farm %d already running!", farm.GetFarmID())
 		return
 	}
 	farm.running = true
@@ -48,8 +49,21 @@ func (farm *DefaultFarmService) RunCluster() {
 }
 
 func (farm *DefaultFarmService) PollCluster() {
-	if farm.config.GetInterval() > 0 {
-		ticker := time.NewTicker(time.Duration(farm.config.GetInterval()) * time.Second)
+
+	farmConfig, err := farm.configStore.Get(farm.configClusterID)
+	if err != nil {
+		farm.app.Logger.Errorf("Error looking up farm config %d. Error: ",
+			farm.farmID, err.Error())
+		return
+	}
+
+	if farmConfig == nil {
+		farm.app.Logger.Error("farmConfig is null .... Race condition?")
+		return
+	}
+
+	if farmConfig.GetInterval() > 0 {
+		ticker := time.NewTicker(time.Duration(farmConfig.GetInterval()) * time.Second)
 		quit := make(chan struct{})
 		for {
 			select {
@@ -69,66 +83,68 @@ func (farm *DefaultFarmService) pollCluster() {
 	farm.app.Logger.Debugf("Polling farm: %d", farmID)
 
 	if isLeader := farm.app.RaftCluster.WaitForClusterReady(uint64(farmID)); isLeader == false {
-		// Farm state polling
+		// Only the cluster leader polls the farm
 		return
 	}
 
-	controllerServices, err := farm.serviceRegistry.GetControllerServices(farm.GetFarmID())
+	deviceServices, err := farm.serviceRegistry.GetDeviceServices(farm.GetFarmID())
 	if err != nil {
-		farm.app.Logger.Errorf("[Farm.pollCluster] Error: %s", err)
+		farm.app.Logger.Errorf("Error: %s", err)
 		return
 	}
-	deltas := make(map[string]state.ControllerStateDeltaMap, len(controllerServices))
+	deltas := make(map[string]state.DeviceStateDeltaMap, len(deviceServices))
 	beforeState := farm.GetState()
 
-	for _, controller := range controllerServices {
+	for _, device := range deviceServices {
 
-		controllerType := controller.GetControllerType()
+		deviceType := device.GetDeviceType()
 
-		newControllerState, err := controller.Poll()
+		newDeviceState, err := device.Poll()
 		if err != nil {
-			farm.app.Logger.Errorf("[Farm.pollCluster] Error polling controller state: %s", err)
+			farm.app.Logger.Errorf("Error polling device state: %s", err)
+			return
 		}
 
-		farm.app.Logger.Errorf("[Farm.pollCluster] newControllerState: %+v", newControllerState)
+		farm.app.Logger.Errorf("newDeviceState: %+v", newDeviceState)
 
-		newChannelMap := make(map[int]int, len(newControllerState.GetChannels()))
-		for i, channel := range newControllerState.GetChannels() {
+		newChannelMap := make(map[int]int, len(newDeviceState.GetChannels()))
+		for i, channel := range newDeviceState.GetChannels() {
 			newChannelMap[i] = channel
 		}
 
 		if beforeState == nil {
-			deltas[controllerType] = state.CreateControllerStateDeltaMap(newControllerState.GetMetrics(), newChannelMap)
+			deltas[deviceType] = state.CreateDeviceStateDeltaMap(newDeviceState.GetMetrics(), newChannelMap)
 		} else {
-			delta, err := farm.state.Diff(controllerType, newControllerState.GetMetrics(), newChannelMap)
+			delta, err := farm.state.Diff(deviceType, newDeviceState.GetMetrics(), newChannelMap)
 			if err != nil {
-				farm.app.Logger.Errorf("[Farm.pollCluster] Error diffing controller state: %s", err)
+				farm.app.Logger.Errorf("Error diffing device state: %s", err)
 			}
 			if delta != nil {
-				deltas[controllerType] = delta
+				deltas[deviceType] = delta
 			}
 		}
 
-		farm.SetControllerState(controllerType, newControllerState)
+		farm.SetDeviceState(deviceType, newDeviceState)
 
 		if farm.app.MetricDatastore != nil {
-			if err := farm.app.MetricDatastore.Save(controller.GetControllerConfig().GetID(), newControllerState); err != nil {
-				farm.app.Logger.Errorf("[FarmService.pollCluster] Error: %s", err)
+			deviceConfig := device.GetDeviceConfig()
+			if err := farm.app.MetricDatastore.Save(deviceConfig.GetID(), newDeviceState); err != nil {
+				farm.app.Logger.Errorf("Error: %s", err)
 				farm.error("Farm.pollCluster", "Farm.pollCluster", err)
 				return
 			}
 		}
 
-		controller.Manage()
+		device.Manage()
 	}
 
-	farm.app.Logger.Errorf("[Farm.pollCluster] storing farm state: %s", farm.state)
+	farm.app.Logger.Errorf("storing farm state: %s", farm.state)
 	if err := farm.stateStore.Put(farmID, farm.state); err != nil {
-		farm.app.Logger.Errorf("[Farm.pollCluster] Error storing farm state: %s", err)
+		farm.app.Logger.Errorf("Error storing farm state: %s", err)
 		return
 	}
 
-	for controllerType, delta := range deltas {
-		farm.PublishControllerDelta(map[string]state.ControllerStateDeltaMap{controllerType: delta})
+	for deviceType, delta := range deltas {
+		farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta})
 	}
 }

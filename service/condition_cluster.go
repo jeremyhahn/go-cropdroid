@@ -45,27 +45,27 @@ func (service *DefaultConditionService) GetListView(session Session, channelID i
 
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	orgID := farmService.GetConfig().GetOrgID()
+	orgID := farmConfig.GetOrgID()
 	userID := session.GetUser().GetID()
 
 	session.GetLogger().Debugf("[ConditionService.GetConditions] orgID=%d, userID=%d, channelID=%d", orgID, userID, channelID)
 
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == channelID {
 				_conditions := channel.GetConditions()
 				conditions := make([]*viewmodel.Condition, len(_conditions))
 				for i, condition := range _conditions {
 					err := func(condition config.Condition) error {
-						for _, controller := range farmConfig.GetControllers() {
-							for _, metric := range controller.GetMetrics() {
+						for _, device := range farmConfig.GetDevices() {
+							for _, metric := range device.GetMetrics() {
 								if metric.GetID() == condition.GetMetricID() {
-									conditions[i] = service.mapper.MapEntityToView(&condition, controller.GetType(), &metric, channelID)
+									conditions[i] = service.mapper.MapEntityToView(&condition, device.GetType(), &metric, channelID)
 									return nil
 								}
 							}
 						}
-						return fmt.Errorf("Controller for channel id %d not found", channelID)
+						return fmt.Errorf("Device for channel id %d not found", channelID)
 					}(condition)
 
 					if err != nil {
@@ -83,11 +83,11 @@ func (service *DefaultConditionService) GetListView(session Session, channelID i
 func (service *DefaultConditionService) GetConditions(session Session, channelID int) ([]config.ConditionConfig, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	orgID := farmService.GetConfig().GetOrgID()
+	orgID := farmConfig.GetOrgID()
 	userID := session.GetUser().GetID()
 	session.GetLogger().Debugf("[ConditionService.GetConditions] orgID=%d, userID=%d, channelID=%d", orgID, userID, channelID)
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == channelID {
 				_conditions := channel.GetConditions()
 				conditions := make([]config.ConditionConfig, len(_conditions))
@@ -106,13 +106,13 @@ func (service *DefaultConditionService) Create(session Session, condition config
 	service.logger.Debugf("Creating condition config: %+v", condition)
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == condition.GetChannelID() {
 				condition.SetID(condition.Hash())
 				channel.AddCondition(condition)
-				controller.SetChannel(&channel)
-				farmConfig.SetController(&controller)
+				device.SetChannel(&channel)
+				farmConfig.SetDevice(&device)
 				return condition, farmService.SetConfig(farmConfig)
 			}
 		}
@@ -124,12 +124,12 @@ func (service *DefaultConditionService) Create(session Session, condition config
 func (service *DefaultConditionService) Update(session Session, condition config.ConditionConfig) error {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == condition.GetChannelID() {
 				channel.SetCondition(condition)
-				controller.SetChannel(&channel)
-				farmConfig.SetController(&controller)
+				device.SetChannel(&channel)
+				farmConfig.SetDevice(&device)
 				farmService.SetConfig(farmConfig)
 				return nil
 			}
@@ -143,13 +143,13 @@ func (service *DefaultConditionService) Delete(session Session, condition config
 	service.logger.Debugf("Deleting condition config: %+v", condition)
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			for i, _condition := range channel.GetConditions() {
 				if _condition.GetID() == condition.GetID() {
 					channel.Conditions = append(channel.Conditions[:i], channel.Conditions[i+1:]...)
-					controller.SetChannel(&channel)
-					farmConfig.SetController(&controller)
+					device.SetChannel(&channel)
+					farmConfig.SetDevice(&device)
 					farmService.SetConfig(farmConfig)
 					return nil
 				}

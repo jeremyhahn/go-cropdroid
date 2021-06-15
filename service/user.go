@@ -130,7 +130,7 @@ func (service *DefaultUserService) GetCurrentUser() (common.UserAccount, error) 
 	//	return nil, err
 	//}
 	//model := service.userMapper.MapUserEntityToModel(userEntity)
-	//model.SetControllerID(common.SERVER_CONTROLLER_ID)
+	//model.SetDeviceID(common.SERVER_CONTROLLER_ID)
 	//model.SetOrganizationID(orgEntity.GetID())
 
 	return model, nil

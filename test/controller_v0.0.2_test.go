@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var controllerDataJSON = `{
+var deviceDataJSON = `{
     "mem": 1200,
 	"sensor1": 12.34,
 	"sensor2": 56,
@@ -30,7 +30,7 @@ type TestChannels struct {
 	Channel4 int `json:"4"`
 }
 
-type TestControllerDataEntity struct {
+type TestDeviceDataEntity struct {
 	FreeMemory int           `gorm:"column:mem" json:"mem"`
 	Sensor1    float64       `gorm:"column:sensor1" json:"sensor1"`
 	Sensor2    float64       `gorm:"column:sensor2" json:"sensor2"`
@@ -38,12 +38,12 @@ type TestControllerDataEntity struct {
 }
 
 func createTestInterfaceEntity() interface{} {
-	return &TestControllerDataEntity{}
+	return &TestDeviceDataEntity{}
 }
 
 func TestUnmarshallEntity(t *testing.T) {
-	var entity TestControllerDataEntity
-	err := json.Unmarshal([]byte(controllerDataJSON), &entity)
+	var entity TestDeviceDataEntity
+	err := json.Unmarshal([]byte(deviceDataJSON), &entity)
 	if err != nil {
 		fmt.Printf("Error: %s", err.Error())
 	}
@@ -59,11 +59,11 @@ func TestUnmarshallEntity(t *testing.T) {
 
 func TestDynamicEntityWithInterface(t *testing.T) {
 	data := createTestInterfaceEntity()
-	err := json.Unmarshal([]byte(controllerDataJSON), data)
+	err := json.Unmarshal([]byte(deviceDataJSON), data)
 	if err != nil {
 		fmt.Printf("Error: %s", err.Error())
 	}
-	var entity = data.(*TestControllerDataEntity)
+	var entity = data.(*TestDeviceDataEntity)
 	assert.Nil(t, err)
 	assert.Equal(t, entity.FreeMemory, 1200)
 	assert.Equal(t, entity.Sensor1, 12.34)
@@ -74,18 +74,18 @@ func TestDynamicEntityWithInterface(t *testing.T) {
 	assert.Equal(t, 1, entity.Channels.Channel4)
 }
 
-func TestDynamicEntityWithOriginalControllerAPI(t *testing.T) {
+func TestDynamicEntityWithOriginalDeviceAPI(t *testing.T) {
 
 	metricMap := make(map[string]float64, 3)
 	channelMap := make(map[int]int, 5)
 
 	data := createTestInterfaceEntity()
-	err := json.Unmarshal([]byte(controllerDataJSON), data)
+	err := json.Unmarshal([]byte(deviceDataJSON), data)
 	if err != nil {
 		fmt.Printf("Error: %s", err.Error())
 	}
 
-	var dataEntity = data.(*TestControllerDataEntity)
+	var dataEntity = data.(*TestDeviceDataEntity)
 
 	reflector := reflect.ValueOf(*dataEntity)
 	typeOf := reflector.Type()

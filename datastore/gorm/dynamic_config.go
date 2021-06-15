@@ -1,4 +1,4 @@
-// +build future
+// +build ignore
 
 package gorm
 
@@ -20,16 +20,16 @@ func NewDynamicConfigDAO(logger *logging.Logger, db *gorm.DB) *DynamicConfigDAO 
 	return &DynamicConfigDAO{logger: logger, db: db}
 }
 
-func (dao *DynamicConfigDAO) Save(config config.ControllerConfigConfig) error {
+func (dao *DynamicConfigDAO) Save(config config.DeviceConfigConfig) error {
 	return nil
 }
 
-func (dao *DynamicConfigDAO) Get(controllerID int, name string) (config.ControllerConfigConfig, error) {
-	return &config.ControllerConfigItem{}, nil
+func (dao *DynamicConfigDAO) Get(deviceID int, name string) (config.DeviceConfigConfig, error) {
+	return &config.DeviceConfigItem{}, nil
 }
 
-func (dao *DynamicConfigDAO) GetAll(controllerID int) ([]config.ControllerConfigConfig, error) {
+func (dao *DynamicConfigDAO) GetAll(deviceID int) ([]config.DeviceConfigConfig, error) {
 	dao.logger.Debugf("%+v", dao.app.Config)
-	entities := make([]config.ControllerConfigConfig, 0)
+	entities := make([]config.DeviceConfigConfig, 0)
 	return entities, nil
 }

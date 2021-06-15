@@ -6,7 +6,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
-// Organization groups users and controllers
+// Organization groups users and devices
 type Organization struct {
 	ID                  int           `yaml:"id" json:"id"`
 	Name                string        `yaml:"name" json:"name"`

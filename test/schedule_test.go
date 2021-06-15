@@ -1,4 +1,4 @@
-// +build broken
+// +build ignore
 
 package test
 

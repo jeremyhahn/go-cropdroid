@@ -6,8 +6,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
-type Controller struct {
-	ID              int               `yaml:"id" json:"id"`
+type Device struct {
+	ID              uint64            `yaml:"id" json:"id"`
 	OrgID           int               `yaml:"orgId" json:"orgId"`
 	Type            string            `yaml:"type" json:"type"`
 	Description     string            `yaml:"description" json:"description"`
@@ -19,83 +19,83 @@ type Controller struct {
 	Configs         map[string]string `yaml:"configs" json:"configs"`
 	Metrics         []common.Metric   `yaml:"metrics" json:"metrics"`
 	Channels        []common.Channel  `yaml:"channels" json:"channels"`
-	common.Controller
+	common.Device   `yaml:"-" json:"-"`
 }
 
-func (controller *Controller) GetID() int {
-	return controller.ID
+func (device *Device) GetID() uint64 {
+	return device.ID
 }
 
-func (controller *Controller) SetID(id int) {
-	controller.ID = id
+func (device *Device) SetID(id uint64) {
+	device.ID = id
 }
 
-func (controller *Controller) GetOrgID() int {
-	return controller.OrgID
+func (device *Device) GetOrgID() int {
+	return device.OrgID
 }
 
-func (controller *Controller) SetOrgID(id int) {
-	controller.OrgID = id
+func (device *Device) SetOrgID(id int) {
+	device.OrgID = id
 }
 
-func (controller *Controller) GetType() string {
-	return controller.Type
+func (device *Device) GetType() string {
+	return device.Type
 }
 
-func (controller *Controller) SetType(controllerType string) {
-	controller.Type = controllerType
+func (device *Device) SetType(deviceType string) {
+	device.Type = deviceType
 }
 
-func (controller *Controller) GetDescription() string {
-	return controller.Description
+func (device *Device) GetDescription() string {
+	return device.Description
 }
 
-func (controller *Controller) SetDescription(description string) {
-	controller.Description = description
+func (device *Device) SetDescription(description string) {
+	device.Description = description
 }
 
-func (controller *Controller) IsEnabled() bool {
-	return controller.Enable
+func (device *Device) IsEnabled() bool {
+	return device.Enable
 }
 
-func (controller *Controller) SetEnabled(enabled bool) {
-	controller.Enable = enabled
+func (device *Device) SetEnabled(enabled bool) {
+	device.Enable = enabled
 }
 
-func (controller *Controller) IsNotify() bool {
-	return controller.Notify
+func (device *Device) IsNotify() bool {
+	return device.Notify
 }
 
-func (controller *Controller) SetNotify(notify bool) {
-	controller.Notify = notify
+func (device *Device) SetNotify(notify bool) {
+	device.Notify = notify
 }
 
-func (controller *Controller) GetURI() string {
-	return controller.URI
+func (device *Device) GetURI() string {
+	return device.URI
 }
 
-func (controller *Controller) SetURI(uri string) {
-	controller.URI = uri
+func (device *Device) SetURI(uri string) {
+	device.URI = uri
 }
 
-func (controller *Controller) GetHardwareVersion() string {
-	return controller.HardwareVersion
+func (device *Device) GetHardwareVersion() string {
+	return device.HardwareVersion
 }
 
-func (controller *Controller) SetHardwareVersion(version string) {
-	controller.HardwareVersion = version
+func (device *Device) SetHardwareVersion(version string) {
+	device.HardwareVersion = version
 }
 
-func (controller *Controller) GetFirmwareVersion() string {
-	return controller.FirmwareVersion
+func (device *Device) GetFirmwareVersion() string {
+	return device.FirmwareVersion
 }
 
-func (controller *Controller) SetFirmwareVersion(version string) {
-	controller.FirmwareVersion = version
+func (device *Device) SetFirmwareVersion(version string) {
+	device.FirmwareVersion = version
 }
 
-func (controller *Controller) GetMetric(key string) (common.Metric, error) {
-	for _, metric := range controller.Metrics {
+func (device *Device) GetMetric(key string) (common.Metric, error) {
+	for _, metric := range device.Metrics {
 		if metric.GetKey() == key {
 			return metric, nil
 		}
@@ -103,33 +103,33 @@ func (controller *Controller) GetMetric(key string) (common.Metric, error) {
 	return nil, fmt.Errorf("Metric key not found: %s", key)
 }
 
-func (controller *Controller) GetMetrics() []common.Metric {
-	return controller.Metrics
+func (device *Device) GetMetrics() []common.Metric {
+	return device.Metrics
 }
 
-func (controller *Controller) SetMetrics(metrics []common.Metric) {
-	controller.Metrics = metrics
+func (device *Device) SetMetrics(metrics []common.Metric) {
+	device.Metrics = metrics
 }
 
-func (controller *Controller) GetChannels() []common.Channel {
-	return controller.Channels
+func (device *Device) GetChannels() []common.Channel {
+	return device.Channels
 }
 
-func (controller *Controller) GetChannel(id int) (common.Channel, error) {
-	if id < 0 || id > len(controller.Channels) {
+func (device *Device) GetChannel(id int) (common.Channel, error) {
+	if id < 0 || id > len(device.Channels) {
 		return nil, fmt.Errorf("Channel ID not found: %d", id)
 	}
-	return controller.Channels[id], nil
+	return device.Channels[id], nil
 }
 
-func (controller *Controller) SetChannels(channels []common.Channel) {
-	controller.Channels = channels
+func (device *Device) SetChannels(channels []common.Channel) {
+	device.Channels = channels
 }
 
-func (controller *Controller) GetConfigs() map[string]string {
-	return controller.Configs
+func (device *Device) GetConfigs() map[string]string {
+	return device.Configs
 }
 
-func (controller *Controller) SetConfigs(configs map[string]string) {
-	controller.Configs = configs
+func (device *Device) SetConfigs(configs map[string]string) {
+	device.Configs = configs
 }

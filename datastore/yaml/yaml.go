@@ -27,7 +27,7 @@ type Organization struct {
 }
 
 type Farm struct {
-	ID       int    `yaml:"id" json:"id"`
+	ID       uint64 `yaml:"id" json:"id"`
 	OrgID    int    `yaml:"orgId" json:"orgId"`
 	Mode     string `yaml:"mode" json:"mode"`
 	Name     string `yaml:"name" json:"name"`
@@ -45,5 +45,5 @@ type User struct {
 type License struct {
 	UserQuota       int `yaml:"userQuota" json:"userQuota"`
 	FarmQuota       int `yaml:"farmQuota" json:"farmQuota"`
-	ControllerQuota int `yaml:"controllerQuota" json:"controllerQuota"`
+	DeviceQuota int `yaml:"deviceQuota" json:"deviceQuota"`
 }

@@ -2,7 +2,6 @@ package builder
 
 import (
 	"crypto/rsa"
-	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -10,6 +9,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/cockroach"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/store"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -17,29 +17,48 @@ import (
 )
 
 type GormConfigBuilder struct {
-	app *app.App
+	app              *app.App
+	farmStateStore   state.FarmStorer
+	deviceStateStore state.DeviceStorer
+	deviceDataStore  datastore.DeviceDatastore
+	consistency      int
 	ConfigBuilder
 }
 
-func NewGormConfigBuilder(_app *app.App) ConfigBuilder {
-	return &GormConfigBuilder{app: _app}
+func NewGormConfigBuilder(_app *app.App, farmStateStore state.FarmStorer,
+	deviceStateStore state.DeviceStorer,
+	deviceStore string) ConfigBuilder {
+
+	var deviceDatastore datastore.DeviceDatastore
+	if deviceStore == "redis" {
+		deviceDatastore = datastore.NewRedisDeviceStore(":6379", "")
+	} else {
+		deviceDatastore = store.NewGormDeviceStore(_app.Logger, _app.GORM,
+			_app.GORMInitParams.Engine, _app.Location)
+	}
+
+	return &GormConfigBuilder{
+		app:              _app,
+		farmStateStore:   farmStateStore,
+		deviceStateStore: deviceStateStore,
+		deviceDataStore:  deviceDatastore,
+		consistency:      common.CONSISTENCY_CACHED}
 }
 
-func (builder *GormConfigBuilder) Build() (config.ServerConfig, service.ServiceRegistry, []rest.RestService,
-	state.ControllerIndex, state.ChannelIndex, error) {
+func (builder *GormConfigBuilder) Build() (config.ServerConfig,
+	service.ServiceRegistry, []rest.RestService, error) {
+
+	var restServices []rest.RestService
 
 	datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GORM)
 	mapperRegistry := mapper.CreateRegistry()
 	serviceRegistry := service.CreateServiceRegistry(builder.app, datastoreRegistry, mapperRegistry)
 
-	controllerIndexMap := make(map[int]config.ControllerConfig, 0)
-	channelIndexMap := make(map[int]config.ChannelConfig, 0)
-
 	changefeeders := make(map[string]datastore.Changefeeder, 0)
 
 	if builder.app.DatastoreCDC && builder.app.DatastoreType == "cockroach" {
-		// Farm and controller config tables
-		changefeeders["_controller_config_items"] = cockroach.NewCockroachChangefeed(builder.app, "controller_config_items")
+		// Farm and device config tables
+		changefeeders["_device_config_items"] = cockroach.NewCockroachChangefeed(builder.app, "device_config_items")
 		changefeeders["_channels"] = cockroach.NewCockroachChangefeed(builder.app, "channels")
 		changefeeders["_metrics"] = cockroach.NewCockroachChangefeed(builder.app, "metrics")
 		changefeeders["_conditions"] = cockroach.NewCockroachChangefeed(builder.app, "conditions")
@@ -65,10 +84,6 @@ func (builder *GormConfigBuilder) Build() (config.ServerConfig, service.ServiceR
 	   }
 	*/
 
-	//builder.app.Config = serverConfig.(*config.Server)
-
-	//builder.app.Logger.Debugf("builder.app.Config: %+v", builder.app.Config)
-
 	farmDAO := gorm.NewFarmDAO(builder.app.Logger, builder.app.GORM)
 
 	farmConfigs, err := farmDAO.GetAll()
@@ -78,68 +93,24 @@ func (builder *GormConfigBuilder) Build() (config.ServerConfig, service.ServiceR
 
 	serverConfig.SetFarms(farmConfigs)
 
-	farmServices := make(map[int]service.FarmService, len(farmConfigs))
-	var restServices []rest.RestService
-
 	for _, farmConfig := range farmConfigs {
 
-		//builder.app.Logger.Debugf("Farm: %+v", farmConfig)
+		// Each farm gets its own DAO / session to the DB
+		deviceDAO := datastoreRegistry.GetDeviceDAO()
 
-		farmID := farmConfig.GetID()
+		gormFarmConfigStore := store.NewGormFarmConfigStore(farmDAO, 1)
+		gormDeviceConfigStore := store.NewGormDeviceConfigStore(deviceDAO, 3)
 
-		// Build farm service
-		farmDAO := datastoreRegistry.GetFarmDAO()
-		controllerConfigDAO := datastoreRegistry.GetControllerConfigDAO()
-		farmConfigChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
-		farmConfigChangeChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
-		farmStateChan := make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE)
-		farmStateChangeChan := make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE)
-		//controllerStateChan := make(chan map[string]state.ControllerStateMap, common.BUFFERED_CHANNEL_SIZE)
-		controllerStateDeltaChan := make(chan map[string]state.ControllerStateDeltaMap, common.BUFFERED_CHANNEL_SIZE)
+		_, err := service.NewFarmFactory(
+			builder.app, datastoreRegistry, serviceRegistry, builder.farmStateStore,
+			gormFarmConfigStore, builder.deviceStateStore, gormDeviceConfigStore,
+			builder.deviceDataStore, mapperRegistry.GetDeviceMapper(),
+			changefeeders, nil, nil).BuildService(&farmConfig)
 
-		farmService, err := service.CreateFarmService(builder.app, farmDAO, controllerConfigDAO, builder.app.FarmStore,
-			builder.app.ConfigStore, &farmConfig, mapperRegistry.GetControllerMapper(), serviceRegistry, farmConfigChan,
-			farmConfigChangeChan, farmStateChan /*controllerStateChan,*/, farmStateChangeChan, controllerStateDeltaChan)
 		if err != nil {
 			builder.app.Logger.Fatal(err)
 		}
-		farmServices[farmID] = farmService
-
-		// Build farm controller and channel indexes
-		controllers := farmConfig.GetControllers()
-		for i, controller := range controllers {
-			//if controller.GetType() == common.CONTROLLER_TYPE_SERVER {
-			//	continue
-			//}
-			controllerIndexMap[controller.GetID()] = &controllers[i]
-			if builder.app.DatastoreCDC && builder.app.DatastoreType == "cockroach" {
-				// Controller metric/channel state
-				if _, ok := changefeeders[controller.GetType()]; !ok {
-					tableName := fmt.Sprintf("state_%d", controller.GetID())
-					changefeeders[controller.GetType()] = cockroach.NewCockroachChangefeed(builder.app, tableName)
-				}
-			}
-			channels := controller.GetChannels()
-			for _, channel := range channels {
-				channelIndexMap[channel.GetID()] = &channels[i]
-			}
-		}
-
-		// Build controllers
-		controllerServices, err := farmService.BuildControllerServices()
-		if err != nil {
-			builder.app.Logger.Fatal(err)
-		}
-		serviceRegistry.SetControllerServices(farmID, controllerServices)
-
-		builder.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
-		builder.app.Logger.Debugf("Mode: %s", serverConfig.GetMode())
-		builder.app.Logger.Debugf("Timezone: %s", serverConfig.GetTimezone())
-		builder.app.Logger.Debugf("Polling interval: %d", serverConfig.GetInterval())
-
-		serviceRegistry.GetEventLogService().Create("System", "Startup")
 	}
-	serviceRegistry.SetFarmServices(farmServices)
 
 	// Build JWT service
 	jsonWriter := rest.NewJsonWriter()
@@ -147,17 +118,15 @@ func (builder *GormConfigBuilder) Build() (config.ServerConfig, service.ServiceR
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetControllerMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
 	serviceRegistry.SetJsonWebTokenService(jwtService)
 
-	controllerIndex := state.CreateControllerIndex(controllerIndexMap)
-	channelIndex := state.CreateChannelIndex(channelIndexMap)
-
 	if builder.app.DatastoreCDC {
-		changefeedService := service.NewChangefeedService(builder.app, serviceRegistry, changefeeders)
+		changefeedService := service.NewChangefeedService(builder.app, serviceRegistry,
+			changefeeders)
 		serviceRegistry.SetChangefeedService(changefeedService)
 	}
 
@@ -166,5 +135,6 @@ func (builder *GormConfigBuilder) Build() (config.ServerConfig, service.ServiceR
 		restServices = restServiceRegistry.GetRestServices()
 	}
 
-	return serverConfig, serviceRegistry, restServices, controllerIndex, channelIndex, err
+	//return serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err
+	return serverConfig, serviceRegistry, restServices, err
 }

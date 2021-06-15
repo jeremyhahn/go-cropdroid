@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -17,13 +18,42 @@ import (
 )
 
 var (
-	ErrFarmConfigNotFound = errors.New("Farm config not found")
-	ErrControllerNotFound = errors.New("Farm controller not found")
-	ErrChannelNotFound    = errors.New("Farm channel not found")
-	ErrMetricNotFound     = errors.New("Farm metric not found")
-	ErrScheduleNotFound   = errors.New("Farm channel schedule not found")
-	ErrConditionNotFound  = errors.New("Farm channel condition not found")
+	ErrFarmConfigNotFound = errors.New("farm config not found")
+	ErrChannelNotFound    = errors.New("channel not found")
+	ErrMetricNotFound     = errors.New("metric not found")
+	ErrScheduleNotFound   = errors.New("channel schedule not found")
+	ErrConditionNotFound  = errors.New("channel condition not found")
+	ErrNoDeviceState      = errors.New("no device state")
+	ErrCreateService      = errors.New("failed to create service")
+	ErrDeviceNotFound     = errors.New("device not found")
+	//ErrDeviceDisabled     = errors.New("Device disabled")
 )
+
+type AlgorithmHandler interface {
+	Handle() (bool, error)
+}
+
+type ScheduleHandler interface {
+	Handle() error
+}
+
+type ConditionHandler interface {
+	Handle() (bool, error)
+}
+
+type FarmChannels struct {
+	FarmConfigChan         chan config.FarmConfig
+	FarmConfigChangeChan   chan config.FarmConfig
+	FarmStateChan          chan state.FarmStateMap
+	FarmStateChangeChan    chan state.FarmStateMap
+	FarmErrorChan          chan common.FarmError
+	FarmNotifyChan         chan common.FarmNotification
+	DeviceConfigChangeChan chan config.DeviceConfig
+	DeviceStateChangeChan  chan common.DeviceStateChange
+	DeviceStateDeltaChan   chan map[string]state.DeviceStateDeltaMap
+	MetricChangedChan      chan common.MetricValueChanged
+	SwitchChangedChan      chan common.SwitchValueChanged
+}
 
 type UserCredentials struct {
 	Email    string `json:"email"`
@@ -83,18 +113,20 @@ type ServiceRegistry interface {
 	GetConditionService() ConditionService
 	SetConfigService(configService ConfigService)
 	GetConfigService() ConfigService
-	SetControllerFactory(ControllerFactory)
-	GetControllerFactory() ControllerFactory
-	SetControllerServices(farmID int, controllerServices []common.ControllerService)
-	GetControllerServices(farmID int) ([]common.ControllerService, error)
+	SetDeviceFactory(DeviceFactory)
+	GetDeviceFactory() DeviceFactory
+	SetDeviceServices(farmID uint64, deviceService []DeviceService)
+	GetDeviceServices(farmID uint64) ([]DeviceService, error)
+	GetDeviceService(farmID uint64, deviceType string) (DeviceService, error)
+	SetDeviceService(farmID uint64, deviceService DeviceService) (DeviceService, error)
 	SetEventLogService(EventLogService)
 	GetEventLogService() EventLogService
 	SetFarmFactory(FarmFactory *FarmFactory)
 	GetFarmFactory() *FarmFactory
 	AddFarmService(farmService FarmService) error
-	SetFarmServices(map[int]FarmService)
-	GetFarmServices() map[int]FarmService
-	GetFarmService(int) (FarmService, bool)
+	SetFarmServices(map[uint64]FarmService)
+	GetFarmServices() map[uint64]FarmService
+	GetFarmService(uint64) FarmService
 	SetGoogleAuthService(googleAuthService AuthService)
 	GetGoogleAuthService() AuthService
 	SetJsonWebTokenService(JsonWebTokenService)
@@ -113,14 +145,14 @@ type ServiceRegistry interface {
 
 type ConfigService interface {
 	GetServerConfig() config.ServerConfig
-	//SetValue(controllerID int, key, value string) error
+	//SetValue(deviceID int, key, value string) error
 	Sync()
-	SetValue(session Session, farmID, controllerID int, key, value string) error
-	SetControllerConfig(controllerConfig config.ControllerConfig)
-	NotifyConfigChange(farmID int)
+	SetValue(session Session, farmID, deviceID uint64, key, value string) error
+	SetDeviceConfig(deviceConfig config.DeviceConfig)
+	NotifyConfigChange(farmID uint64)
 	OnMetricChange(metric config.MetricConfig)
 	OnChannelChange(channel config.ChannelConfig)
-	OnControllerConfigChange(controllerConfig config.ControllerConfigConfig)
+	OnDeviceConfigChange(deviceConfig config.DeviceConfigConfig)
 	OnConditionChange(condition config.ConditionConfig)
 	OnScheduleChange(schedule config.ScheduleConfig)
 }
@@ -128,40 +160,62 @@ type ConfigService interface {
 type ChangefeedService interface {
 	Subscribe()
 	FeedCount() int
-	OnControllerConfigConfigChange(changefeed datastore.Changefeed)
+	OnDeviceConfigConfigChange(changefeed datastore.Changefeed)
 	OnChannelConfigChange(changefeed datastore.Changefeed)
 	OnConditionConfigChange(changefeed datastore.Changefeed)
 	OnScheduleConfigChange(changefeed datastore.Changefeed)
 	OnMetricConfigChange(changefeed datastore.Changefeed)
-	OnControllerStateChange(changefeed datastore.Changefeed)
+	OnDeviceStateChange(changefeed datastore.Changefeed)
 }
 
 type FarmService interface {
-	BuildControllerServices() ([]common.ControllerService, error) // only used by builder/farm.go
-	GetFarmID() int
+	BuildDeviceServices() ([]DeviceService, error) // only used by builder/farm.go
+	GetFarmID() uint64
 	GetConfig() config.FarmConfig
 	GetConfigClusterID() uint64
+	GetConsistencyLevel() int
 	GetState() state.FarmStateMap
 	//OnLeaderUpdated(info raftio.LeaderInfo)
 	Poll()
 	PollCluster()
-	PublishConfig() error
-	PublishState() error
-	PublishControllerState(controllerState map[string]state.ControllerStateMap) error
-	PublishControllerDelta(controllerState map[string]state.ControllerStateDeltaMap) error
+	PublishConfig(farmConfig config.FarmConfig) error
+	//PublishState() error
+	PublishState(farmState state.FarmStateMap) error
+	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error
+	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
 	Run()
 	RunCluster()
 	SetConfig(farmConfig config.FarmConfig) error
-	SetControllerConfig(controllerConfig config.ControllerConfig)
-	SetControllerState(controllerType string, controllerState state.ControllerStateMap)
-	SetConfigValue(session Session, farmID, controllerID int, key, value string) error
-	SetMetricValue(controllerType string, key string, value float64) error
-	SetSwitchValue(controllerType string, channelID int, value int) error
+	//SetDeviceConfig(deviceConfig config.DeviceConfig)
+	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
+	SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error
+	SetMetricValue(deviceType string, key string, value float64) error
+	SetSwitchValue(deviceType string, channelID int, value int) error
 	//SetState(state state.FarmStateMap
 	//Stop()
 	WatchConfig() <-chan config.FarmConfig
 	WatchState() <-chan state.FarmStateMap
-	WatchControllerState() <-chan map[string]state.ControllerStateMap
-	WatchControllerDeltas() <-chan map[string]state.ControllerStateDeltaMap
+	WatchDeviceState() <-chan map[string]state.DeviceStateMap
+	WatchDeviceDeltas() <-chan map[string]state.DeviceStateDeltaMap
 	WatchFarmStateChange()
+}
+
+type DeviceService interface {
+	GetDeviceConfig() config.DeviceConfig
+	SetMetricValue(key string, value float64) error
+	GetDeviceType() string
+	GetConfig() (config.DeviceConfig, error)
+	GetState() (state.DeviceStateMap, error)
+	GetView() (common.DeviceView, error)
+	GetHistory(metric string) ([]float64, error)
+	GetDevice() (common.Device, error)
+	Manage(farmState state.FarmStateMap)
+	Poll(deviceStateChangeChan chan<- common.DeviceStateChange) error
+	SetMode(mode string, device device.SmartSwitcher)
+	Switch(channelID, position int, logMessage string) (*common.Switch, error)
+	TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error)
+	ManageMetrics(config config.DeviceConfig, farmState state.FarmStateMap) []error
+	ManageChannels(deviceConfig config.DeviceConfig,
+		farmState state.FarmStateMap, channels []config.ChannelConfig) []error
+	//RegisterObserver(observer DeviceObserver)
 }

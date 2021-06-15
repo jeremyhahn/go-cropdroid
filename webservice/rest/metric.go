@@ -16,7 +16,7 @@ import (
 
 type MetricRestService interface {
 	SetMetrics(w http.ResponseWriter, r *http.Request)
-	GetMetricsByControllerId(w http.ResponseWriter, r *http.Request)
+	GetMetricsByDeviceId(w http.ResponseWriter, r *http.Request)
 	RestService
 }
 
@@ -47,7 +47,7 @@ func (restService *DefaultMetricRestService) RegisterEndpoints(router *mux.Route
 	)).Methods("PUT")
 	router.Handle(getMetricsEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
-		negroni.Wrap(http.HandlerFunc(restService.GetMetricsByControllerId)),
+		negroni.Wrap(http.HandlerFunc(restService.GetMetricsByDeviceId)),
 	)).Methods("GET")
 	return []string{putMetricsEndpoint, getMetricsEndpoint}
 }
@@ -68,10 +68,10 @@ func (restService *DefaultMetricRestService) SetMetrics(w http.ResponseWriter, r
 		return
 	}
 
-	session.GetLogger().Debugf("[MetricRestService.SetMetric] metric=%+v", metric)
+	session.GetLogger().Debugf("metric=%+v", metric)
 
 	if err = restService.metricService.Update(session, &metric); err != nil {
-		session.GetLogger().Errorf("[MetricRestService.Set] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}
@@ -79,7 +79,7 @@ func (restService *DefaultMetricRestService) SetMetrics(w http.ResponseWriter, r
 	restService.jsonWriter.Write(w, http.StatusOK, nil)
 }
 
-func (restService *DefaultMetricRestService) GetMetricsByControllerId(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultMetricRestService) GetMetricsByDeviceId(w http.ResponseWriter, r *http.Request) {
 
 	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -89,11 +89,11 @@ func (restService *DefaultMetricRestService) GetMetricsByControllerId(w http.Res
 	defer session.Close()
 
 	params := mux.Vars(r)
-	controllerID := params["id"]
+	deviceID := params["id"]
 
-	session.GetLogger().Debugf("[MetricRestService.GetMetricsByControllerId] controllerID=%s", controllerID)
+	session.GetLogger().Debugf("deviceID=%s", deviceID)
 
-	id, err := strconv.ParseInt(controllerID, 0, 64)
+	id, err := strconv.ParseInt(deviceID, 0, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
@@ -105,7 +105,7 @@ func (restService *DefaultMetricRestService) GetMetricsByControllerId(w http.Res
 		return
 	}
 
-	session.GetLogger().Debugf("[MetricRestService.GetMetricsByControllerId] metrics=%+v", metrics)
+	session.GetLogger().Debugf("metrics=%+v", metrics)
 
 	restService.jsonWriter.Write(w, http.StatusOK, metrics)
 

@@ -34,8 +34,8 @@ func (initializer *GormInitializer) Initialize() error {
 	db.AutoMigrate(&config.Permission{})
 	db.AutoMigrate(&config.User{})
 	db.AutoMigrate(&config.Role{})
-	db.AutoMigrate(&config.Controller{})
-	db.AutoMigrate(&config.ControllerConfigItem{})
+	db.AutoMigrate(&config.Device{})
+	db.AutoMigrate(&config.DeviceConfigItem{})
 	db.AutoMigrate(&config.Metric{})
 	db.AutoMigrate(&config.Channel{})
 	db.AutoMigrate(&config.Condition{})
@@ -74,31 +74,31 @@ func (initializer *GormInitializer) Initialize() error {
 	db.Create(&config.Role{Name: "cultivator"})
 	db.Create(&config.Role{Name: "analyst"})
 
-	// common.SERVER_CONTROLLER_ID needs to match the ID of this server controller!!
-	serverController := config.NewController()
-	serverController.SetType(common.CONTROLLER_TYPE_SERVER)
-	serverController.SetDescription("Provides monitoring, real-time notifications, and web services")
-	serverController.SetConfigs([]config.ControllerConfigItem{
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_NAME_KEY, Value: "First Room"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_INTERVAL_KEY, Value: "60"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_TIMEZONE_KEY, Value: defaultTimezone},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_MODE_KEY, Value: "virtual"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_SMTP_ENABLE_KEY, Value: "false"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_SMTP_HOST_KEY, Value: "smtp.gmail.com"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_SMTP_PORT_KEY, Value: "587"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_SMTP_USERNAME_KEY, Value: "myuser@gmail.com"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_SMTP_PASSWORD_KEY, Value: "$ecret!"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: serverController.GetID(), Key: common.CONFIG_SMTP_RECIPIENT_KEY, Value: "1234567890@vtext.com"}})
+	// common.SERVER_CONTROLLER_ID needs to match the ID of this server device!!
+	serverDevice := config.NewDevice()
+	serverDevice.SetType(common.CONTROLLER_TYPE_SERVER)
+	serverDevice.SetDescription("Provides monitoring, real-time notifications, and web services")
+	serverDevice.SetConfigs([]config.DeviceConfigItem{
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_NAME_KEY, Value: "First Room"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_INTERVAL_KEY, Value: "60"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_TIMEZONE_KEY, Value: defaultTimezone},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_MODE_KEY, Value: "virtual"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_ENABLE_KEY, Value: "false"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_HOST_KEY, Value: "smtp.gmail.com"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_PORT_KEY, Value: "587"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_USERNAME_KEY, Value: "myuser@gmail.com"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_PASSWORD_KEY, Value: "$ecret!"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_RECIPIENT_KEY, Value: "1234567890@vtext.com"}})
 
-	roomController := config.NewController()
-	roomController.SetType(common.CONTROLLER_TYPE_ROOM)
-	roomController.SetDescription("Manages and monitors room climate")
-	roomController.SetConfigs([]config.ControllerConfigItem{
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: roomController.GetID(), Key: CONFIG_ROOM_ENABLE_KEY, Value: "true"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: roomController.GetID(), Key: CONFIG_ROOM_NOTIFY_KEY, Value: "true"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: roomController.GetID(), Key: CONFIG_ROOM_URI_KEY},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: roomController.GetID(), Key: CONFIG_ROOM_VIDEO_KEY}})
-	roomController.SetMetrics([]config.Metric{
+	roomDevice := config.NewDevice()
+	roomDevice.SetType(common.CONTROLLER_TYPE_ROOM)
+	roomDevice.SetDescription("Manages and monitors room climate")
+	roomDevice.SetConfigs([]config.DeviceConfigItem{
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: CONFIG_ROOM_ENABLE_KEY, Value: "true"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: CONFIG_ROOM_NOTIFY_KEY, Value: "true"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: CONFIG_ROOM_URI_KEY},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: CONFIG_ROOM_VIDEO_KEY}})
+	roomDevice.SetMetrics([]config.Metric{
 		config.Metric{Key: METRIC_ROOM_MEMORY_KEY, Name: "Available System Memory", DataType: common.DATATYPE_INT, Unit: "bytes", Enable: true, Notify: true, AlarmLow: 500, AlarmHigh: 100000},
 		config.Metric{Key: METRIC_ROOM_TEMPF0_KEY, Name: "Ceiling Air Temperature", DataType: common.DATATYPE_FLOAT, Unit: "°", Enable: true, Notify: true, AlarmLow: 71, AlarmHigh: 85},
 		config.Metric{Key: METRIC_ROOM_HUMIDITY0_KEY, Name: "Ceiling Humidity", DataType: common.DATATYPE_FLOAT, Unit: "%", Enable: true, Notify: true, AlarmLow: 40, AlarmHigh: 70},
@@ -122,7 +122,7 @@ func (initializer *GormInitializer) Initialize() error {
 		ventOn := time.Date(now.Year(), now.Month(), now.Day(), hour, 0, 0, 0, initializer.location)
 		ventSchedules[i] = config.Schedule{StartDate: ventOn, Frequency: common.SCHEDULE_FREQUENCY_DAILY}
 	}
-	roomController.SetChannels([]config.Channel{
+	roomDevice.SetChannels([]config.Channel{
 		config.Channel{ChannelID: 0, Name: CHANNEL_ROOM_LIGHTING, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 64800, AlgorithmID: 0,
 			Schedule: []config.Schedule{config.Schedule{StartDate: sevenPM, Frequency: common.SCHEDULE_FREQUENCY_DAILY}}},
 		config.Channel{ChannelID: 1, Name: CHANNEL_ROOM_AC, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
@@ -132,17 +132,17 @@ func (initializer *GormInitializer) Initialize() error {
 			Schedule: ventSchedules},
 		config.Channel{ChannelID: 5, Name: CHANNEL_ROOM_CO2, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0}})
 
-	reservoirController := config.NewController()
-	reservoirController.SetType(common.CONTROLLER_TYPE_RESERVOIR)
-	reservoirController.SetDescription("Manages and monitors reservoir water and nutrients")
-	reservoirController.SetConfigs([]config.ControllerConfigItem{
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: reservoirController.GetID(), Key: CONFIG_RESERVOIR_ENABLE_KEY, Value: "true"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: reservoirController.GetID(), Key: CONFIG_RESERVOIR_NOTIFY_KEY, Value: "true"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: reservoirController.GetID(), Key: CONFIG_RESERVOIR_URI_KEY},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: reservoirController.GetID(), Key: CONFIG_RESERVOIR_GALLONS_KEY, Value: DEFAULT_GALLONS},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: reservoirController.GetID(), Key: CONFIG_RESERVOIR_WATERCHANGE_ENABLE_KEY, Value: "false"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: reservoirController.GetID(), Key: CONFIG_RESERVOIR_WATERCHANGE_NOTIFY_KEY, Value: "false"}})
-	reservoirController.SetMetrics([]config.Metric{
+	reservoirDevice := config.NewDevice()
+	reservoirDevice.SetType(common.CONTROLLER_TYPE_RESERVOIR)
+	reservoirDevice.SetDescription("Manages and monitors reservoir water and nutrients")
+	reservoirDevice.SetConfigs([]config.DeviceConfigItem{
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: CONFIG_RESERVOIR_ENABLE_KEY, Value: "true"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: CONFIG_RESERVOIR_NOTIFY_KEY, Value: "true"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: CONFIG_RESERVOIR_URI_KEY},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: CONFIG_RESERVOIR_GALLONS_KEY, Value: DEFAULT_GALLONS},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: CONFIG_RESERVOIR_WATERCHANGE_ENABLE_KEY, Value: "false"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: CONFIG_RESERVOIR_WATERCHANGE_NOTIFY_KEY, Value: "false"}})
+	reservoirDevice.SetMetrics([]config.Metric{
 		config.Metric{Key: METRIC_RESERVOIR_MEMORY_KEY, Name: "Available System Memory", DataType: common.DATATYPE_INT, Unit: "bytes", Enable: true, Notify: true, AlarmLow: 500, AlarmHigh: 100000},
 		config.Metric{Key: METRIC_RESERVOIR_TEMP_KEY, Name: "Water Temperature", DataType: common.DATATYPE_FLOAT, Unit: "°", Enable: true, Notify: true, AlarmLow: 61, AlarmHigh: 67},
 		config.Metric{Key: METRIC_RESERVOIR_PH_KEY, Name: "pH", DataType: common.DATATYPE_FLOAT, Unit: "", Enable: true, Notify: true, AlarmLow: 5.4, AlarmHigh: 6.2},
@@ -165,7 +165,7 @@ func (initializer *GormInitializer) Initialize() error {
 	// Top-off schedule
 	nineAM := time.Date(now.Year(), now.Month(), now.Day(), 9, 0, 0, 0, initializer.location)
 	ninePM := time.Date(now.Year(), now.Month(), now.Day(), 21, 0, 0, 0, initializer.location)
-	reservoirController.SetChannels([]config.Channel{
+	reservoirDevice.SetChannels([]config.Channel{
 		config.Channel{ChannelID: 0, Name: CHANNEL_RESERVOIR_DRAIN, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
 		config.Channel{ChannelID: 1, Name: CHANNEL_RESERVOIR_CHILLER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
 		config.Channel{ChannelID: 2, Name: CHANNEL_RESERVOIR_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
@@ -181,22 +181,22 @@ func (initializer *GormInitializer) Initialize() error {
 				config.Schedule{StartDate: ninePM, Frequency: common.SCHEDULE_FREQUENCY_YEARLY}}},
 		config.Channel{ChannelID: 6, Name: CHANNEL_RESERVOIR_FAUCET, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0}})
 
-	doserController := config.NewController()
-	doserController.SetType(common.CONTROLLER_TYPE_DOSER)
-	doserController.SetDescription("Nutrient dosing and expansion I/O controller")
-	doserController.SetConfigs([]config.ControllerConfigItem{
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: doserController.GetID(), Key: CONFIG_DOSER_ENABLE_KEY, Value: "true"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: doserController.GetID(), Key: CONFIG_DOSER_NOTIFY_KEY, Value: "true"},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: doserController.GetID(), Key: CONFIG_DOSER_URI_KEY},
-		config.ControllerConfigItem{UserID: adminUser.GetID(), ControllerID: doserController.GetID(), Key: CONFIG_DOSER_GALLONS_KEY, Value: DEFAULT_GALLONS}})
-	doserController.SetChannels([]config.Channel{
+	doserDevice := config.NewDevice()
+	doserDevice.SetType(common.CONTROLLER_TYPE_DOSER)
+	doserDevice.SetDescription("Nutrient dosing and expansion I/O device")
+	doserDevice.SetConfigs([]config.DeviceConfigItem{
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: CONFIG_DOSER_ENABLE_KEY, Value: "true"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: CONFIG_DOSER_NOTIFY_KEY, Value: "true"},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: CONFIG_DOSER_URI_KEY},
+		config.DeviceConfigItem{UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: CONFIG_DOSER_GALLONS_KEY, Value: DEFAULT_GALLONS}})
+	doserDevice.SetChannels([]config.Channel{
 		config.Channel{ChannelID: 0, Name: CHANNEL_DOSER_PHDOWN, Enable: true, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1},
 		config.Channel{ChannelID: 1, Name: CHANNEL_DOSER_PHUP, Enable: false, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1},
 		config.Channel{ChannelID: 2, Name: CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 2},
 		config.Channel{ChannelID: 3, Name: CHANNEL_DOSER_TOPOFF, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0}})
 
 	farm := config.NewFarm()
-	farm.SetControllers([]config.Controller{*serverController, *roomController, *reservoirController, *doserController})
+	farm.SetDevices([]config.Device{*serverDevice, *roomDevice, *reservoirDevice, *doserDevice})
 	farmDAO.Create(farm)
 
 	db.Create(&config.Permission{
@@ -214,62 +214,62 @@ func (initializer *GormInitializer) Initialize() error {
 		return err
 	}
 
-	controllers := farmConfig.GetControllers()
-	roomChannels := controllers[1].GetChannels()
-	reservoirChannels := controllers[2].GetChannels()
-	doserChannels := controllers[3].GetChannels()
+	devices := farmConfig.GetDevices()
+	roomChannels := devices[1].GetChannels()
+	reservoirChannels := devices[2].GetChannels()
+	doserChannels := devices[3].GetChannels()
 
 	roomChannels[1].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   roomController.GetMetrics()[1].GetID(),
+			MetricID:   roomDevice.GetMetrics()[1].GetID(),
 			Comparator: ">",
 			Threshold:  85.0}})
 
 	roomChannels[2].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   roomController.GetMetrics()[1].GetID(),
+			MetricID:   roomDevice.GetMetrics()[1].GetID(),
 			Comparator: "<",
 			Threshold:  70.0}})
 
 	roomChannels[3].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   roomController.GetMetrics()[3].GetID(),
+			MetricID:   roomDevice.GetMetrics()[3].GetID(),
 			Comparator: ">",
 			Threshold:  55.0}})
 
 	roomChannels[5].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   roomController.GetMetrics()[14].GetID(),
+			MetricID:   roomDevice.GetMetrics()[14].GetID(),
 			Comparator: "<",
 			Threshold:  1200.0}})
 
 	reservoirChannels[1].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   reservoirController.GetMetrics()[2].GetID(),
+			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
 			Comparator: ">",
 			Threshold:  62.0}})
 
 	reservoirChannels[2].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   reservoirController.GetMetrics()[2].GetID(),
+			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
 			Comparator: "<",
 			Threshold:  60.0}})
 
 	doserChannels[0].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   reservoirController.GetMetrics()[2].GetID(),
+			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
 			Comparator: ">",
 			Threshold:  6.1}})
 
 	doserChannels[1].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   reservoirController.GetMetrics()[2].GetID(),
+			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
 			Comparator: "<",
 			Threshold:  5.4}})
 
 	doserChannels[2].SetConditions([]config.Condition{
 		config.Condition{
-			MetricID:   reservoirController.GetMetrics()[5].GetID(),
+			MetricID:   reservoirDevice.GetMetrics()[5].GetID(),
 			Comparator: "<",
 			Threshold:  300.0}})
 

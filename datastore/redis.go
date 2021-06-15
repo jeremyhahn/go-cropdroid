@@ -11,10 +11,10 @@ import (
 
 type RedisClient struct {
 	client *redistimeseries.Client
-	ControllerStateDAO
+	DeviceDatastore
 }
 
-func NewRedisControllerStateDAO(address, password string) ControllerStateDAO {
+func NewRedisDeviceStore(address, password string) DeviceDatastore {
 	/*
 		pool := &redis.Pool{Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", address, redis.DialPassword(password))
@@ -27,16 +27,16 @@ func (r *RedisClient) Client() *redistimeseries.Client {
 	return r.client
 }
 
-func (r *RedisClient) Save(controllerID int, controllerState state.ControllerStateMap) error {
-	for k, v := range controllerState.GetMetrics() {
-		_, err := r.client.AddAutoTs(fmt.Sprintf("%d_%s", controllerID, k), v)
+func (r *RedisClient) Save(deviceID uint64, deviceState state.DeviceStateMap) error {
+	for k, v := range deviceState.GetMetrics() {
+		_, err := r.client.AddAutoTs(fmt.Sprintf("%d_%s", deviceID, k), v)
 		if err != nil {
 			return err
 		}
 		println("Saved redis timestamp record")
 	}
-	for i, v := range controllerState.GetChannels() {
-		_, err := r.client.AddAutoTs(fmt.Sprintf("%d_c%d", controllerID, i), float64(v))
+	for i, v := range deviceState.GetChannels() {
+		_, err := r.client.AddAutoTs(fmt.Sprintf("%d_c%d", deviceID, i), float64(v))
 		if err != nil {
 			return err
 		}
@@ -48,10 +48,10 @@ func (r *RedisClient) Save(controllerID int, controllerState state.ControllerSta
 	return nil
 }
 
-func (r *RedisClient) GetLast30Days(controllerID int, metric string) ([]float64, error) {
+func (r *RedisClient) GetLast30Days(deviceID uint64, metric string) ([]float64, error) {
 	oneMonthAgo := time.Now().AddDate(0, -1, 0).Unix()
 	now := time.Now().Unix()
-	datapoints, err := r.client.Range(fmt.Sprintf("%d_%s", controllerID, metric), oneMonthAgo, now)
+	datapoints, err := r.client.Range(fmt.Sprintf("%d_%s", deviceID, metric), oneMonthAgo, now)
 	floats := make([]float64, len(datapoints))
 	for i, datapoint := range datapoints {
 		floats[i] = datapoint.Value

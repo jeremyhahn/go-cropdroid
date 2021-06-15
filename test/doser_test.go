@@ -1,4 +1,4 @@
-// +build broken
+// +build ignore
 
 package test
 
@@ -103,11 +103,11 @@ func TestDoserChannelLessThanConditionalActivatesSwitch(t *testing.T) {
 	notificationService.AssertExpectations(t)
 }
 
-func createTestDoserService() (common.Context, *MockDoserController, *MockNotificationService, *service.Doser) {
+func createTestDoserService() (common.Context, *MockDoserDevice, *MockNotificationService, *service.Doser) {
 	ctx := NewUnitTestContext()
 	dao := NewMockDoserDAO(ctx)
 	scheduleDAO := NewMockScheduleDAO()
-	client := new(MockDoserController)
+	client := new(MockDoserDevice)
 	mailer := NewMockMailer(ctx)
 	channelMapper := mapper.NewChannelMapper()
 	doserMapper := mapper.NewDoserMapper(channelMapper)

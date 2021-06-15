@@ -8,7 +8,7 @@ import (
 
 type Metric struct {
 	ID            int        `yaml:"id" json:"id"`
-	ControllerID  int        `yaml:"controllerID" json:"controllerId"`
+	DeviceID  uint64     `yaml:"deviceID" json:"deviceId"`
 	DataType      int        `yaml:"datatype" json:"datatype"`
 	Name          string     `yaml:"name" json:"name"`
 	Key           string     `yaml:"key" json:"key"`
@@ -43,12 +43,12 @@ func (metric *Metric) GetID() int {
 	return metric.ID
 }
 
-func (metric *Metric) SetControllerID(id int) {
-	metric.ControllerID = id
+func (metric *Metric) SetDeviceID(id uint64) {
+	metric.DeviceID = id
 }
 
-func (metric *Metric) GetControllerID() int {
-	return metric.ControllerID
+func (metric *Metric) GetDeviceID() uint64 {
+	return metric.DeviceID
 }
 
 func (metric *Metric) SetDataType(datatype int) {

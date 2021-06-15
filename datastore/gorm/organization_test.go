@@ -45,8 +45,8 @@ func TestOrganizationGetByUserID(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
-	currentTest.gorm.AutoMigrate(&config.ControllerConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
+	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Metric{})
@@ -56,38 +56,38 @@ func TestOrganizationGetByUserID(t *testing.T) {
 	testFarmName := "Test Farm"
 
 	farmConfig := config.NewFarm()
-	farmConfig.SetControllers([]config.Controller{
-		config.Controller{
+	farmConfig.SetDevices([]config.Device{
+		config.Device{
 			Type: "server",
-			Configs: []config.ControllerConfigItem{
-				config.ControllerConfigItem{
+			Configs: []config.DeviceConfigItem{
+				config.DeviceConfigItem{
 					Key:   "name",
 					Value: testFarmName},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "interval",
 					Value: "55"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "mode",
 					Value: testMode},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "timezone",
 					Value: "America/New_York"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "smtp.enable",
 					Value: "true"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "smtp.host",
 					Value: "127.0.0.1"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "smtp.port",
 					Value: "587"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "smtp.username",
 					Value: "foo"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "smtp.password",
 					Value: "bar"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "smtp.recipient",
 					Value: "user@domain.com"},
 			}}})
@@ -125,7 +125,7 @@ func TestOrganizationGetAll(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
@@ -177,8 +177,8 @@ func TestOrganizationEnchilada(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
-	currentTest.gorm.AutoMigrate(&config.ControllerConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
+	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
 	currentTest.gorm.AutoMigrate(&config.Metric{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
@@ -231,25 +231,25 @@ func TestOrganizationEnchilada(t *testing.T) {
 	assert.Equal(t, "test", farms[0].GetMode())
 	assert.Equal(t, 58, farms[0].GetInterval())
 
-	controllers := farms[0].GetControllers()
-	assert.Equal(t, 2, len(controllers))
-	assert.Equal(t, 10, len(controllers[0].GetConfigs()))
-	assert.Equal(t, 3, len(controllers[1].GetConfigs()))
+	devices := farms[0].GetDevices()
+	assert.Equal(t, 2, len(devices))
+	assert.Equal(t, 10, len(devices[0].GetConfigs()))
+	assert.Equal(t, 3, len(devices[1].GetConfigs()))
 
-	configEnable := controllers[1].GetConfigs()[0]
-	assert.Equal(t, "fakecontroller.enable", configEnable.GetKey())
+	configEnable := devices[1].GetConfigs()[0]
+	assert.Equal(t, "fakedevice.enable", configEnable.GetKey())
 	assert.Equal(t, "true", configEnable.GetValue())
-	assert.Equal(t, true, controllers[1].IsEnabled())
+	assert.Equal(t, true, devices[1].IsEnabled())
 
-	configNotify := controllers[1].GetConfigs()[1]
-	assert.Equal(t, "fakecontroller.notify", configNotify.GetKey())
+	configNotify := devices[1].GetConfigs()[1]
+	assert.Equal(t, "fakedevice.notify", configNotify.GetKey())
 	assert.Equal(t, "false", configNotify.GetValue())
-	assert.Equal(t, false, controllers[1].IsNotify())
+	assert.Equal(t, false, devices[1].IsNotify())
 
-	configURI := controllers[1].GetConfigs()[2]
-	assert.Equal(t, "fakecontroller.uri", configURI.GetKey())
-	assert.Equal(t, "http://mycontroller.mydomain.com", configURI.GetValue())
-	assert.Equal(t, "http://mycontroller.mydomain.com", controllers[1].GetURI())
+	configURI := devices[1].GetConfigs()[2]
+	assert.Equal(t, "fakedevice.uri", configURI.GetKey())
+	assert.Equal(t, "http://mydevice.mydomain.com", configURI.GetValue())
+	assert.Equal(t, "http://mydevice.mydomain.com", devices[1].GetURI())
 
 	currentTest.Cleanup()
 }
@@ -309,74 +309,74 @@ func createTestOrganization() *config.Organization {
 	channel1.SetBackoff(3)
 	//channel1.SetAlgorithm()
 
-	enableConfigItem := config.NewControllerConfigItem()
-	enableConfigItem.SetKey("fakecontroller.enable")
+	enableConfigItem := config.NewDeviceConfigItem()
+	enableConfigItem.SetKey("fakedevice.enable")
 	enableConfigItem.SetValue("true")
 
-	notifyConfigItem := config.NewControllerConfigItem()
-	notifyConfigItem.SetKey("fakecontroller.notify")
+	notifyConfigItem := config.NewDeviceConfigItem()
+	notifyConfigItem.SetKey("fakedevice.notify")
 	notifyConfigItem.SetValue("false")
 
-	uriConfigItem := config.NewControllerConfigItem()
-	uriConfigItem.SetKey("fakecontroller.uri")
-	uriConfigItem.SetValue("http://mycontroller.mydomain.com")
+	uriConfigItem := config.NewDeviceConfigItem()
+	uriConfigItem.SetKey("fakedevice.uri")
+	uriConfigItem.SetValue("http://mydevice.mydomain.com")
 
-	serverController := config.Controller{
+	serverDevice := config.Device{
 		Type: "server",
-		Configs: []config.ControllerConfigItem{
-			config.ControllerConfigItem{
+		Configs: []config.DeviceConfigItem{
+			config.DeviceConfigItem{
 				Key:   "name",
 				Value: "Fake Farm"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "interval",
 				Value: "58"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "mode",
 				Value: "test"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "timezone",
 				Value: "America/New_York"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "smtp.enable",
 				Value: "true"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "smtp.host",
 				Value: "127.0.0.1"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "smtp.port",
 				Value: "587"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "smtp.username",
 				Value: "foo"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "smtp.password",
 				Value: "bar"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "smtp.recipient",
 				Value: "user@domain.com"},
 		}}
 
-	configs := []config.ControllerConfigItem{*enableConfigItem, *notifyConfigItem, *uriConfigItem}
+	configs := []config.DeviceConfigItem{*enableConfigItem, *notifyConfigItem, *uriConfigItem}
 	metrics := []config.Metric{*metric1, *metric2}
 	channels := []config.Channel{*channel1}
 
-	controller1 := config.NewController()
-	controller1.SetType("fakecontroller")
-	controller1.SetInterval(59)
-	controller1.SetDescription("This is a fake controller used for testing")
-	controller1.SetHardwareVersion("hw-v0.0.1a")
-	controller1.SetFirmwareVersion("fw-v0.0.1a")
-	controller1.SetConfigs(configs)
-	controller1.SetMetrics(metrics)
-	controller1.SetChannels(channels)
+	device1 := config.NewDevice()
+	device1.SetType("fakedevice")
+	device1.SetInterval(59)
+	device1.SetDescription("This is a fake device used for testing")
+	device1.SetHardwareVersion("hw-v0.0.1a")
+	device1.SetFirmwareVersion("fw-v0.0.1a")
+	device1.SetConfigs(configs)
+	device1.SetMetrics(metrics)
+	device1.SetChannels(channels)
 
-	controllers := []config.Controller{serverController, *controller1}
+	devices := []config.Device{serverDevice, *device1}
 
 	farm1 := config.NewFarm()
 	farm1.SetMode("test")
 	farm1.SetName("Fake Farm")
 	farm1.SetInterval(58)
-	farm1.SetControllers(controllers)
+	farm1.SetDevices(devices)
 
 	farms := []config.Farm{*farm1}
 

@@ -11,6 +11,7 @@ import (
 )
 
 type DefaultServiceRegistry struct {
+	app                 *app.App
 	datastoreRegistry   datastore.DatastoreRegistry
 	mapperRegistry      mapper.MapperRegistry
 	algorithmService    AlgorithmService
@@ -19,11 +20,12 @@ type DefaultServiceRegistry struct {
 	channelService      ChannelService
 	configService       ConfigService
 	conditionService    ConditionService
-	controllerFactory   ControllerFactory
-	controllerServices  map[int][]common.ControllerService
+	deviceFactory       DeviceFactory
+	deviceServices      map[uint64][]DeviceService
+	deviceServicesMutex *sync.RWMutex
 	eventLogService     EventLogService
 	farmFactory         *FarmFactory
-	farmServices        map[int]FarmService
+	farmServices        map[uint64]FarmService
 	farmServicesMutex   *sync.RWMutex
 	googleAuthService   AuthService
 	jwtService          JsonWebTokenService
@@ -32,22 +34,26 @@ type DefaultServiceRegistry struct {
 	notificationService NotificationService
 	scheduleService     ScheduleService
 	userService         UserService
+	ServiceRegistry
 }
 
 var (
-	ErrFarmAlreadyExists = errors.New("Farm already exists")
-	ErrFarmNotFound      = errors.New("Farm not found")
+	ErrFarmAlreadyExists   = errors.New("farm already exists")
+	ErrFarmNotFound        = errors.New("farm not found")
+	ErrDeviceAlreadyExists = errors.New("device already exists")
 )
 
-func NewServiceRegistry() ServiceRegistry {
-	return &DefaultServiceRegistry{}
+func NewServiceRegistry(app *app.App) ServiceRegistry {
+	return &DefaultServiceRegistry{
+		app:                 app,
+		deviceServicesMutex: &sync.RWMutex{}}
 }
 
 func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mappers mapper.MapperRegistry) ServiceRegistry {
 
 	algorithmService := NewAlgorithmService(daos.GetAlgorithmDAO())
 	authService := NewLocalAuthService(_app, daos.GetUserDAO(), daos.GetOrganizationDAO(), daos.GetFarmDAO(), mappers.GetUserMapper())
-	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper(), nil) // ConfigService
+	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper()) // ConfigService
 	//configService
 	//eventLogService := NewEventLogService(app, daos.GetEventLogDAO(), common.CONTROLLER_TYPE_SERVER)
 	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper(), nil)               // ConfigService
@@ -58,20 +64,19 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mapp
 	//serviceRegistry.SetMailer(NewMailer(farm.logger, farm.buildSmtp()))
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer
 
-	controllerFactory := NewControllerFactory(daos.GetControllerDAO(), mappers.GetControllerMapper())
-
 	authServices := make(map[int]AuthService, 1)
 	authServices[common.AUTH_TYPE_LOCAL] = authService
 
 	registry := &DefaultServiceRegistry{
+		app:                 _app,
 		algorithmService:    algorithmService,
 		authService:         authService,
 		channelService:      channelService,
 		conditionService:    conditionService,
-		controllerFactory:   controllerFactory,
-		controllerServices:  make(map[int][]common.ControllerService, 0),
+		deviceServices:      make(map[uint64][]DeviceService, 0),
+		deviceServicesMutex: &sync.RWMutex{},
 		farmServicesMutex:   &sync.RWMutex{},
-		farmServices:        make(map[int]FarmService, 0),
+		farmServices:        make(map[uint64]FarmService, 0),
 		metricService:       metricService,
 		notificationService: notificationService,
 		scheduleService:     scheduleService}
@@ -130,21 +135,35 @@ func (registry *DefaultServiceRegistry) GetConfigService() ConfigService {
 	return registry.configService
 }
 
-func (registry *DefaultServiceRegistry) SetControllerFactory(controllerFactory ControllerFactory) {
-	registry.controllerFactory = controllerFactory
+func (registry *DefaultServiceRegistry) SetDeviceFactory(deviceFactory DeviceFactory) {
+	registry.deviceFactory = deviceFactory
 }
 
-func (registry *DefaultServiceRegistry) GetControllerFactory() ControllerFactory {
-	return registry.controllerFactory
+func (registry *DefaultServiceRegistry) GetDeviceFactory() DeviceFactory {
+	return registry.deviceFactory
 }
 
-func (registry *DefaultServiceRegistry) SetControllerServices(farmID int, controllerServices []common.ControllerService) {
-	registry.controllerServices[farmID] = controllerServices
+func (registry *DefaultServiceRegistry) SetDeviceServices(farmID uint64, deviceServices []DeviceService) {
+	registry.deviceServices[farmID] = deviceServices
 }
 
-func (registry *DefaultServiceRegistry) GetControllerServices(farmID int) ([]common.ControllerService, error) {
-	if services, ok := registry.controllerServices[farmID]; ok {
+func (registry *DefaultServiceRegistry) GetDeviceServices(farmID uint64) ([]DeviceService, error) {
+	if services, ok := registry.deviceServices[farmID]; ok {
 		return services, nil
+	}
+	return nil, ErrFarmNotFound
+}
+
+func (registry *DefaultServiceRegistry) GetDeviceService(farmID uint64,
+	deviceType string) (DeviceService, error) {
+
+	if services, ok := registry.deviceServices[farmID]; ok {
+		for _, service := range services {
+			if service.GetDeviceType() == deviceType {
+				return service, nil
+			}
+		}
+		return nil, ErrDeviceNotFound
 	}
 	return nil, ErrFarmNotFound
 }
@@ -175,23 +194,23 @@ func (registry *DefaultServiceRegistry) AddFarmService(farmService FarmService) 
 	return nil
 }
 
-func (registry *DefaultServiceRegistry) SetFarmServices(farmServices map[int]FarmService) {
+func (registry *DefaultServiceRegistry) SetFarmServices(farmServices map[uint64]FarmService) {
 	registry.farmServicesMutex.Lock()
 	defer registry.farmServicesMutex.Unlock()
 	registry.farmServices = farmServices
 }
 
-func (registry *DefaultServiceRegistry) GetFarmServices() map[int]FarmService {
+func (registry *DefaultServiceRegistry) GetFarmServices() map[uint64]FarmService {
 	registry.farmServicesMutex.RLock()
 	defer registry.farmServicesMutex.RUnlock()
 	return registry.farmServices
 }
 
-func (registry *DefaultServiceRegistry) GetFarmService(farmID int) (FarmService, bool) {
+func (registry *DefaultServiceRegistry) GetFarmService(farmID uint64) FarmService {
 	registry.farmServicesMutex.RLock()
 	defer registry.farmServicesMutex.RUnlock()
-	service, ok := registry.farmServices[farmID]
-	return service, ok
+	service, _ := registry.farmServices[farmID]
+	return service
 }
 
 func (registry *DefaultServiceRegistry) SetGoogleAuthService(googleAuthService AuthService) {

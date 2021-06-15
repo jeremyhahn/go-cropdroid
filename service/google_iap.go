@@ -63,7 +63,7 @@ func NewAndroidInAppPurchaseService(app *app.App, session Session) (InAppPurchas
 
 func (iap *AndroidInAppPurchaseService) Verify(session Session, purchasedItem common.InAppPurchase) (bool, error) {
 
-	iap.app.Logger.Debugf("[AndroidInAppPurchaseService.Verify] Verifying purchased item. user=%+v, product=%+v", session.GetUser().GetEmail(), purchasedItem)
+	iap.app.Logger.Debugf("Verifying purchased item. user=%+v, product=%+v", session.GetUser().GetEmail(), purchasedItem)
 
 	purchasesService := androidpublisher.NewPurchasesProductsService(iap.publisherService)
 	productPurchase, err := purchasesService.Get(common.PACKAGE, purchasedItem.GetProductID(), purchasedItem.GetPurchaseToken()).Do()

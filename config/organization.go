@@ -2,12 +2,12 @@ package config
 
 import "fmt"
 
-// Organization groups users and controllers
+// Organization groups users and devices
 type Organization struct {
 	ID    int    `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	Name  string `gorm:"size:255" yaml:"name" json:"name"`
 	Farms []Farm `yaml:"farms" json:"farms"`
-	//Controllers        []Controller `yaml:"controllers" json:"controllers"`
+	//Devices        []Device `yaml:"devices" json:"devices"`
 	Users []User `gorm:"many2many:permissions" yaml:"users" json:"users"`
 	//Users              []User   `yaml:"users" json:"users"`
 	License            *License `yaml:"license" json:"license"`
@@ -57,7 +57,7 @@ func (o *Organization) GetFarms() []Farm {
 }
 
 // GetFarm returns the specified farm from the org
-func (o *Organization) GetFarm(id int) (*Farm, error) {
+func (o *Organization) GetFarm(id uint64) (*Farm, error) {
 	for _, farm := range o.Farms {
 		if farm.GetID() == id {
 			return &farm, nil

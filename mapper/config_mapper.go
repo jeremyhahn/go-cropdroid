@@ -10,7 +10,7 @@ type ConfigMapper interface {
 }
 
 type DefaultConfigMapper struct {
-	controllerMapper ControllerMapper
+	deviceMapper DeviceMapper
 }
 
 func NewConfigMapper() ConfigMapper {
@@ -22,7 +22,7 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 	license := &config.License{
 		UserQuota:       1,
 		FarmQuota:       1,
-		ControllerQuota: 3}
+		DeviceQuota: 3}
 
 	_orgs := make([]config.Organization, len(yamlConfig.Organizations))
 	for i, org := range yamlConfig.Organizations {

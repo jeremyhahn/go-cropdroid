@@ -55,7 +55,7 @@ func (service *LocalAuthService) Get(email string) (common.UserAccount, error) {
 func (service *LocalAuthService) Login(userCredentials *UserCredentials,
 	farmProvisioner provisioner.FarmProvisioner) (common.UserAccount, []config.OrganizationConfig, error) {
 
-	service.app.Logger.Debugf("[LocalAuthService.Login] Authenticating user: %s", userCredentials.Email)
+	service.app.Logger.Debugf("Authenticating user: %s", userCredentials.Email)
 
 	userEntity, err := service.userDAO.GetByEmail(userCredentials.Email)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
@@ -97,7 +97,7 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials,
 
 	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID())
 	if err != nil {
-		service.app.Logger.Errorf("[LocalAuthService.Login] Error looking up organization user: %s", err)
+		service.app.Logger.Errorf("Error looking up organization user: %s", err)
 		return nil, nil, err
 	}
 	if len(organizations) == 0 {
@@ -119,7 +119,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials) (com
 	}
 	_, err := service.userDAO.GetByEmail(userCredentials.Email)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
-		service.app.Logger.Errorf("[LocalAuthService.Register] %s", err.Error())
+		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
 	}
 	encrypted, err := bcrypt.GenerateFromPassword([]byte(userCredentials.Password), bcrypt.DefaultCost)

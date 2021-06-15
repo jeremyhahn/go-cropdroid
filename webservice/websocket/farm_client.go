@@ -15,8 +15,8 @@ type FarmClient struct {
 	conn                 *websocket.Conn
 	send                 chan config.FarmConfig
 	state                chan state.FarmStateMap
-	controllerState      chan map[string]state.ControllerStateMap
-	controllerStateDelta chan map[string]state.ControllerStateDeltaMap
+	deviceState      chan map[string]state.DeviceStateMap
+	deviceStateDelta chan map[string]state.DeviceStateDeltaMap
 }
 
 func (c *FarmClient) disconnect() {
@@ -106,7 +106,7 @@ func (c *FarmClient) writePump() {
 				c.conn.WriteJSON(<-c.state)
 			}
 
-		case message, ok := <-c.controllerState:
+		case message, ok := <-c.deviceState:
 			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
@@ -120,12 +120,12 @@ func (c *FarmClient) writePump() {
 				return
 			}
 			// Add queued messages
-			n := len(c.controllerState)
+			n := len(c.deviceState)
 			for i := 0; i < n; i++ {
-				c.conn.WriteJSON(<-c.controllerState)
+				c.conn.WriteJSON(<-c.deviceState)
 			}
 
-		case message, ok := <-c.controllerStateDelta:
+		case message, ok := <-c.deviceStateDelta:
 			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
@@ -139,9 +139,9 @@ func (c *FarmClient) writePump() {
 				return
 			}
 			// Add queued messages
-			n := len(c.controllerStateDelta)
+			n := len(c.deviceStateDelta)
 			for i := 0; i < n; i++ {
-				c.conn.WriteJSON(<-c.controllerStateDelta)
+				c.conn.WriteJSON(<-c.deviceStateDelta)
 			}
 		}
 

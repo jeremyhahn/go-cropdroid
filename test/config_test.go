@@ -1,4 +1,4 @@
-// +build broken
+// +build ignore
 
 package test
 
@@ -16,175 +16,175 @@ import (
 
 func TestConfigDataStructure(t *testing.T) {
 
-	orgDAO, controllerDAO, configDAO, metricDAO, channelDAO, scheduleDAO, configService := createConfigService()
+	orgDAO, deviceDAO, configDAO, metricDAO, channelDAO, scheduleDAO, configService := createConfigService()
 
 	orgID := 1
-	serverControllerID := 1
-	strServerControllerID := "1"
-	roomControllerID := 2
-	reservoirControllerID := 3
-	doserControllerID := 4
+	serverDeviceID := 1
+	strServerDeviceID := "1"
+	roomDeviceID := 2
+	reservoirDeviceID := 3
+	doserDeviceID := 4
 	testOrg := &entity.Organization{ID: orgID, Name: "Test Org"}
-	testControllers := createTestControllers(orgID, serverControllerID, roomControllerID, reservoirControllerID, doserControllerID)
+	testDevices := createTestDevices(orgID, serverDeviceID, roomDeviceID, reservoirDeviceID, doserDeviceID)
 	testServerName := &entity.Config{
 		ID:           1,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "name",
 		Value:        "Test CropDroid Server"}
 	testServerInterval := &entity.Config{
 		ID:           2,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "interval",
 		Value:        "61"}
 	testServerTimezone := &entity.Config{
 		ID:           3,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "timezone",
 		Value:        "America/New_York"}
 	testServerMode := &entity.Config{
 		ID:           4,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "mode",
 		Value:        "unittest"}
 	testSmtpEnable := &entity.Config{
 		ID:           5,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "smtp.enable",
 		Value:        "false"}
 	testSmtpHost := &entity.Config{
 		ID:           6,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "smtp.host",
 		Value:        "smtp.myhost.com"}
 	testSmtpPort := &entity.Config{
 		ID:           7,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "smtp.port",
 		Value:        "587"}
 	testSmtpUsername := &entity.Config{
 		ID:           8,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "smtp.username",
 		Value:        "test"}
 	testSmtpPassword := &entity.Config{
 		ID:           9,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "smtp.password",
 		Value:        "test"}
 	testSmtpRecipient := &entity.Config{
 		ID:           10,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "smtp.recipient",
 		Value:        "test"}
 	testRoomEnable := &entity.Config{
 		ID:           11,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: roomControllerID,
+		DeviceID: roomDeviceID,
 		Key:          "room.enable",
 		Value:        "true"}
 	testRoomNotify := &entity.Config{
 		ID:           12,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: roomControllerID,
+		DeviceID: roomDeviceID,
 		Key:          "room.notify",
 		Value:        "false"}
 	testRoomURI := &entity.Config{
 		ID:           13,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: serverControllerID,
+		DeviceID: serverDeviceID,
 		Key:          "room.uri",
 		Value:        "http://myroom.local"}
 	testRoomVideo := &entity.Config{
 		ID:           14,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: roomControllerID,
+		DeviceID: roomDeviceID,
 		Key:          "room.video",
 		Value:        "http://mydvr.local/cam1"}
 	testReservoirEnable := &entity.Config{
 		ID:           15,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: reservoirControllerID,
+		DeviceID: reservoirDeviceID,
 		Key:          "reservoir.enable",
 		Value:        "true"}
 	testReservoirNotify := &entity.Config{
 		ID:           16,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: reservoirControllerID,
+		DeviceID: reservoirDeviceID,
 		Key:          "reservoir.notify",
 		Value:        "true"}
 	testReservoirURI := &entity.Config{
 		ID:           17,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: reservoirControllerID,
+		DeviceID: reservoirDeviceID,
 		Key:          "reservoir.uri",
 		Value:        "http://myreservoir.local"}
 	testReservoirGallons := &entity.Config{
 		ID:           18,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: reservoirControllerID,
+		DeviceID: reservoirDeviceID,
 		Key:          "reservoir.gallons",
 		Value:        "50"}
 	testReservoirWaterChangeEnable := &entity.Config{
 		ID:           19,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: reservoirControllerID,
+		DeviceID: reservoirDeviceID,
 		Key:          "reservoir.waterchange.enable",
 		Value:        "false"}
 	testReservoirWaterChangeNotify := &entity.Config{
 		ID:           20,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: reservoirControllerID,
+		DeviceID: reservoirDeviceID,
 		Key:          "reservoir.waterchange.notify",
 		Value:        "false"}
 	testDoserEnable := &entity.Config{
 		ID:           21,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: doserControllerID,
+		DeviceID: doserDeviceID,
 		Key:          "doser.enable",
 		Value:        "true"}
 	testDoserNotify := &entity.Config{
 		ID:           22,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: doserControllerID,
+		DeviceID: doserDeviceID,
 		Key:          "doser.notify",
 		Value:        "true"}
 	testDoserURI := &entity.Config{
 		ID:           23,
 		UserID:       0,
 		OrgID:        orgID,
-		ControllerID: doserControllerID,
+		DeviceID: doserDeviceID,
 		Key:          "doser.uri",
 		Value:        "http://mydoser.local"}
 
@@ -199,42 +199,42 @@ func TestConfigDataStructure(t *testing.T) {
 	testScheduleEntities := createFakeScheduleEntities()
 
 	orgDAO.On("First").Return(testOrg, nil)
-	controllerDAO.On("GetByOrgId", orgID).Return(testControllers, nil)
-	configDAO.On("Get", strServerControllerID, "name").Return(testServerName, nil)
-	configDAO.On("Get", strServerControllerID, "interval").Return(testServerInterval, nil)
-	configDAO.On("Get", strServerControllerID, "timezone").Return(testServerTimezone, nil)
-	configDAO.On("Get", strServerControllerID, "mode").Return(testServerMode, nil)
+	deviceDAO.On("GetByOrgId", orgID).Return(testDevices, nil)
+	configDAO.On("Get", strServerDeviceID, "name").Return(testServerName, nil)
+	configDAO.On("Get", strServerDeviceID, "interval").Return(testServerInterval, nil)
+	configDAO.On("Get", strServerDeviceID, "timezone").Return(testServerTimezone, nil)
+	configDAO.On("Get", strServerDeviceID, "mode").Return(testServerMode, nil)
 
-	configDAO.On("Get", strServerControllerID, "smtp.enable").Return(testSmtpEnable, nil)
-	configDAO.On("Get", strServerControllerID, "smtp.host").Return(testSmtpHost, nil)
-	configDAO.On("Get", strServerControllerID, "smtp.port").Return(testSmtpPort, nil)
-	configDAO.On("Get", strServerControllerID, "smtp.username").Return(testSmtpUsername, nil)
-	configDAO.On("Get", strServerControllerID, "smtp.password").Return(testSmtpPassword, nil)
-	configDAO.On("Get", strServerControllerID, "smtp.recipient").Return(testSmtpRecipient, nil)
+	configDAO.On("Get", strServerDeviceID, "smtp.enable").Return(testSmtpEnable, nil)
+	configDAO.On("Get", strServerDeviceID, "smtp.host").Return(testSmtpHost, nil)
+	configDAO.On("Get", strServerDeviceID, "smtp.port").Return(testSmtpPort, nil)
+	configDAO.On("Get", strServerDeviceID, "smtp.username").Return(testSmtpUsername, nil)
+	configDAO.On("Get", strServerDeviceID, "smtp.password").Return(testSmtpPassword, nil)
+	configDAO.On("Get", strServerDeviceID, "smtp.recipient").Return(testSmtpRecipient, nil)
 
-	configDAO.On("Get", strServerControllerID, "room.enable").Return(testRoomEnable, nil)
-	configDAO.On("Get", strServerControllerID, "room.notify").Return(testRoomNotify, nil)
-	configDAO.On("Get", strServerControllerID, "room.uri").Return(testRoomURI, nil)
-	configDAO.On("Get", strServerControllerID, "room.video").Return(testRoomVideo, nil)
+	configDAO.On("Get", strServerDeviceID, "room.enable").Return(testRoomEnable, nil)
+	configDAO.On("Get", strServerDeviceID, "room.notify").Return(testRoomNotify, nil)
+	configDAO.On("Get", strServerDeviceID, "room.uri").Return(testRoomURI, nil)
+	configDAO.On("Get", strServerDeviceID, "room.video").Return(testRoomVideo, nil)
 
-	configDAO.On("Get", strServerControllerID, "reservoir.enable").Return(testReservoirEnable, nil)
-	configDAO.On("Get", strServerControllerID, "reservoir.notify").Return(testReservoirNotify, nil)
-	configDAO.On("Get", strServerControllerID, "reservoir.uri").Return(testReservoirURI, nil)
-	configDAO.On("Get", strServerControllerID, "reservoir.gallons").Return(testReservoirGallons, nil)
-	configDAO.On("Get", strServerControllerID, "reservoir.waterchange.enable").Return(testReservoirWaterChangeEnable, nil)
-	configDAO.On("Get", strServerControllerID, "reservoir.waterchange.notify").Return(testReservoirWaterChangeNotify, nil)
+	configDAO.On("Get", strServerDeviceID, "reservoir.enable").Return(testReservoirEnable, nil)
+	configDAO.On("Get", strServerDeviceID, "reservoir.notify").Return(testReservoirNotify, nil)
+	configDAO.On("Get", strServerDeviceID, "reservoir.uri").Return(testReservoirURI, nil)
+	configDAO.On("Get", strServerDeviceID, "reservoir.gallons").Return(testReservoirGallons, nil)
+	configDAO.On("Get", strServerDeviceID, "reservoir.waterchange.enable").Return(testReservoirWaterChangeEnable, nil)
+	configDAO.On("Get", strServerDeviceID, "reservoir.waterchange.notify").Return(testReservoirWaterChangeNotify, nil)
 
-	configDAO.On("Get", strServerControllerID, "doser.enable").Return(testDoserEnable, nil)
-	configDAO.On("Get", strServerControllerID, "doser.notify").Return(testDoserNotify, nil)
-	configDAO.On("Get", strServerControllerID, "doser.uri").Return(testDoserURI, nil)
+	configDAO.On("Get", strServerDeviceID, "doser.enable").Return(testDoserEnable, nil)
+	configDAO.On("Get", strServerDeviceID, "doser.notify").Return(testDoserNotify, nil)
+	configDAO.On("Get", strServerDeviceID, "doser.uri").Return(testDoserURI, nil)
 
-	metricDAO.On("GetByControllerID", roomControllerID).Return(testRoomMetricEntities, nil)
-	channelDAO.On("GetByControllerID", roomControllerID).Return(testRoomChannelEntities, nil)
+	metricDAO.On("GetByDeviceID", roomDeviceID).Return(testRoomMetricEntities, nil)
+	channelDAO.On("GetByDeviceID", roomDeviceID).Return(testRoomChannelEntities, nil)
 
-	metricDAO.On("GetByControllerID", reservoirControllerID).Return(testReservoirMetricEntities, nil)
-	channelDAO.On("GetByControllerID", reservoirControllerID).Return(testReservoirChannelEntities, nil)
+	metricDAO.On("GetByDeviceID", reservoirDeviceID).Return(testReservoirMetricEntities, nil)
+	channelDAO.On("GetByDeviceID", reservoirDeviceID).Return(testReservoirChannelEntities, nil)
 
-	channelDAO.On("GetByControllerID", doserControllerID).Return(testDoserChannelEntities, nil)
+	channelDAO.On("GetByDeviceID", doserDeviceID).Return(testDoserChannelEntities, nil)
 
 	scheduleDAO.On("GetByChannelID", 1).Return(testScheduleEntities, nil)
 
@@ -258,7 +258,7 @@ func TestConfigDataStructure(t *testing.T) {
 	assert.Equal(t, testSmtpPassword.GetValue(), config.GetSmtp().GetPassword())
 	assert.Equal(t, testSmtpRecipient.GetValue(), config.GetSmtp().GetRecipient())
 
-	// Room controller configs
+	// Room device configs
 	roomEnabled, _ := strconv.ParseBool(testRoomEnable.GetValue())
 	roomNotify, _ := strconv.ParseBool(testRoomNotify.GetValue())
 	assert.Equal(t, roomEnabled, config.GetRoom().IsEnabled())
@@ -271,7 +271,7 @@ func TestConfigDataStructure(t *testing.T) {
 	roomMetricEntity0 := testRoomMetricEntities[0]
 	roomMetric0 := config.GetRoom().GetMetrics()[0]
 	assert.Equal(t, roomMetricEntity0.GetID(), roomMetric0.GetID())
-	assert.Equal(t, roomMetricEntity0.GetControllerID(), roomMetric0.GetControllerID())
+	assert.Equal(t, roomMetricEntity0.GetDeviceID(), roomMetric0.GetDeviceID())
 	assert.Equal(t, roomMetricEntity0.IsEnabled(), roomMetric0.IsEnabled())
 	assert.Equal(t, roomMetricEntity0.IsNotify(), roomMetric0.IsNotify())
 	assert.Equal(t, roomMetricEntity0.GetKey(), roomMetric0.GetKey())
@@ -284,7 +284,7 @@ func TestConfigDataStructure(t *testing.T) {
 	roomChannelEntity0 := testRoomChannelEntities[0]
 	roomChannel0 := config.GetRoom().GetChannels()[0]
 	assert.Equal(t, roomChannelEntity0.GetID(), roomChannel0.GetID())
-	assert.Equal(t, roomChannelEntity0.GetControllerID(), roomChannel0.GetControllerID())
+	assert.Equal(t, roomChannelEntity0.GetDeviceID(), roomChannel0.GetDeviceID())
 	assert.Equal(t, roomChannelEntity0.GetChannelID(), roomChannel0.GetChannelID())
 	assert.Equal(t, roomChannelEntity0.IsEnabled(), roomChannel0.IsEnabled())
 	assert.Equal(t, roomChannelEntity0.IsNotify(), roomChannel0.IsNotify())
@@ -295,7 +295,7 @@ func TestConfigDataStructure(t *testing.T) {
 	assert.Equal(t, roomChannelEntity0.GetBackoff(), roomChannel0.GetBackoff())
 	assert.Equal(t, 0, roomChannel0.GetValue())
 
-	// Reservoir controller configs
+	// Reservoir device configs
 	reservoirEnabled, _ := strconv.ParseBool(testReservoirEnable.GetValue())
 	reservoirNotify, _ := strconv.ParseBool(testReservoirNotify.GetValue())
 	reservoirGallons, _ := strconv.ParseInt(testReservoirGallons.GetValue(), 0, 64)
@@ -313,7 +313,7 @@ func TestConfigDataStructure(t *testing.T) {
 	assert.NotNil(t, config.GetReservoir().GetWaterChangeConfig())
 	assert.Equal(t, false, config.GetReservoir().GetWaterChangeConfig().IsEnabled())
 
-	// Doser controller configs
+	// Doser device configs
 	doserEnabled, _ := strconv.ParseBool(testDoserEnable.GetValue())
 	doserNotify, _ := strconv.ParseBool(testDoserNotify.GetValue())
 	assert.Equal(t, doserEnabled, config.GetDoser().IsEnabled())
@@ -322,10 +322,10 @@ func TestConfigDataStructure(t *testing.T) {
 	assert.Equal(t, len(testDoserChannelEntities), len(config.GetDoser().GetChannels()))
 }
 
-func createTestControllers(orgID, serverControllerID, roomControllerID, reservoirControllerID, doserControllerID int) []entity.Controller {
-	return []entity.Controller{
+func createTestDevices(orgID, serverDeviceID, roomDeviceID, reservoirDeviceID, doserDeviceID int) []entity.Device {
+	return []entity.Device{
 		{
-			ID:              serverControllerID,
+			ID:              serverDeviceID,
 			OrganizationID:  orgID,
 			Type:            common.CONTROLLER_TYPE_SERVER,
 			Description:     "Test CropDroid Server",
@@ -334,41 +334,41 @@ func createTestControllers(orgID, serverControllerID, roomControllerID, reservoi
 			Metrics:         nil,
 			Channels:        nil},
 		{
-			ID:              roomControllerID,
+			ID:              roomDeviceID,
 			OrganizationID:  orgID,
 			Type:            common.CONTROLLER_TYPE_ROOM,
-			Description:     "Test Room Controller",
+			Description:     "Test Room Device",
 			HardwareVersion: "test-v2",
 			FirmwareVersion: "test-v2",
 			Metrics:         nil,
 			Channels:        nil},
 		{
-			ID:              reservoirControllerID,
+			ID:              reservoirDeviceID,
 			OrganizationID:  orgID,
 			Type:            common.CONTROLLER_TYPE_RESERVOIR,
-			Description:     "Test Reservoir Controller",
+			Description:     "Test Reservoir Device",
 			HardwareVersion: "test-v3",
 			FirmwareVersion: "test-v3",
 			Metrics:         nil,
 			Channels:        nil},
 		{
-			ID:              doserControllerID,
+			ID:              doserDeviceID,
 			OrganizationID:  orgID,
 			Type:            common.CONTROLLER_TYPE_DOSER,
-			Description:     "Test Doser Controller",
+			Description:     "Test Doser Device",
 			HardwareVersion: "test-v4",
 			FirmwareVersion: "test-v4",
 			Metrics:         nil,
 			Channels:        nil}}
 }
 
-func createConfigService() (*MockOrganizationDAO, *MockControllerDAO,
+func createConfigService() (*MockOrganizationDAO, *MockDeviceDAO,
 	*MockConfigDAO, *MockMetricDAO, *MockChannelDAO, *MockScheduleDAO, service.ConfigService) {
 
 	ctx := NewUnitTestContext()
 	organizationDAO := NewMockOrganizationDAO()
 	userDAO := NewMockUserDAO()
-	controllerDAO := NewMockControllerDAO()
+	deviceDAO := NewMockDeviceDAO()
 	configDAO := NewMockConfigDAO()
 	metricDAO := NewMockMetricDAO()
 	channelDAO := NewMockChannelDAO()
@@ -376,8 +376,8 @@ func createConfigService() (*MockOrganizationDAO, *MockControllerDAO,
 	metricMapper := mapper.NewMetricMapper()
 	channelMapper := mapper.NewChannelMapper()
 	scheduleMapper := mapper.NewScheduleMapper()
-	return organizationDAO, controllerDAO, configDAO, metricDAO, channelDAO, scheduleDAO,
-		service.NewConfigService(ctx, organizationDAO, userDAO, controllerDAO,
+	return organizationDAO, deviceDAO, configDAO, metricDAO, channelDAO, scheduleDAO,
+		service.NewConfigService(ctx, organizationDAO, userDAO, deviceDAO,
 			configDAO, metricDAO, channelDAO, scheduleDAO, metricMapper, channelMapper, scheduleMapper)
 }
 
@@ -436,7 +436,7 @@ func createFakeRoomChannels() []common.Channel {
 	return []common.Channel{
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    0,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -447,7 +447,7 @@ func createFakeRoomChannels() []common.Channel {
 			Backoff:      0},
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    1,
 			Name:         "Test Channel 2",
 			Enable:       true,
@@ -458,7 +458,7 @@ func createFakeRoomChannels() []common.Channel {
 			Backoff:      0},
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    2,
 			Name:         "Test Channel 3",
 			Enable:       true,
@@ -525,7 +525,7 @@ func createFakeReservoirChannels() []common.Channel {
 	return []common.Channel{
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    0,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -536,7 +536,7 @@ func createFakeReservoirChannels() []common.Channel {
 			Backoff:      0},
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    1,
 			Name:         "Test Channel 2",
 			Enable:       true,
@@ -547,7 +547,7 @@ func createFakeReservoirChannels() []common.Channel {
 			Backoff:      0},
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    2,
 			Name:         "Test Channel 3",
 			Enable:       true,
@@ -574,7 +574,7 @@ func createFakeDoserChannels() []common.Channel {
 	return []common.Channel{
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    0,
 			Name:         "Doser Channel 1",
 			Enable:       true,
@@ -585,7 +585,7 @@ func createFakeDoserChannels() []common.Channel {
 			Backoff:      0},
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    1,
 			Name:         "Doser Channel 2",
 			Enable:       true,
@@ -596,7 +596,7 @@ func createFakeDoserChannels() []common.Channel {
 			Backoff:      0},
 		&model.Channel{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			ChannelID:    2,
 			Name:         "Doser Channel 3",
 			Enable:       true,

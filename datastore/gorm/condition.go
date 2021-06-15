@@ -50,8 +50,8 @@ func (dao *GormConditionDAO) GetByOrgUserAndChannelID(orgID, userID, channelID i
 	if err := dao.db.Table("conditions").
 		Select("conditions.*").
 		Joins("JOIN channels on conditions.channel_id = channels.id").
-		Joins("JOIN controllers on controllers.id = channels.controller_id").
-		Joins("JOIN farms on farms.id = controllers.farm_id AND farms.organization_id = ?", orgID).
+		Joins("JOIN devices on devices.id = channels.device_id").
+		Joins("JOIN farms on farms.id = devices.farm_id AND farms.organization_id = ?", orgID).
 		Joins("JOIN permissions on farms.id = permissions.farm_id").
 		Where("channels.id = ? and permissions.user_id = ?", channelID, userID).
 		Find(&entities).Error; err != nil {

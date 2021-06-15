@@ -22,7 +22,8 @@ type DefaultChangefeedService struct {
 	ChangefeedService
 }
 
-func NewChangefeedService(app *app.App, serviceRegistry ServiceRegistry, changefeeders map[string]datastore.Changefeeder) ChangefeedService {
+func NewChangefeedService(app *app.App, serviceRegistry ServiceRegistry,
+	changefeeders map[string]datastore.Changefeeder) ChangefeedService {
 
 	service := &DefaultChangefeedService{
 		mutex:           &sync.Mutex{},
@@ -39,7 +40,7 @@ func (service *DefaultChangefeedService) FeedCount() int {
 }
 
 func (service *DefaultChangefeedService) Subscribe() {
-	go service.changefeeders["_controller_config_items"].Subscribe(service.OnControllerConfigConfigChange)
+	go service.changefeeders["_device_config_items"].Subscribe(service.OnDeviceConfigConfigChange)
 	go service.changefeeders["_channels"].Subscribe(service.OnChannelConfigChange)
 	go service.changefeeders["_metrics"].Subscribe(service.OnMetricConfigChange)
 	go service.changefeeders["_conditions"].Subscribe(service.OnConditionConfigChange)
@@ -49,7 +50,7 @@ func (service *DefaultChangefeedService) Subscribe() {
 			if k == "server" {
 				continue
 			}
-			go v.Subscribe(service.OnControllerStateChange)
+			go v.Subscribe(service.OnDeviceStateChange)
 		}
 	}
 }
@@ -59,116 +60,115 @@ func (service *DefaultChangefeedService) Subscribe() {
 //func (service *DefaultChangefeedService) OnFarmStateChange(farmState state.FarmStateMap) {
 //}
 
-// OnControllerStateChange handles use cases where GORM / MetricDatastore is used to update the farm
+// OnDeviceStateChange handles use cases where GORM / MetricDatastore is used to update the farm
 // state when a change is made to the underlying database (without FarmService knowing). The database
 // must support CDC/changefeed style real-time notifications (cockroachdb / rethinkdb).
-func (service *DefaultChangefeedService) OnControllerStateChange(changefeed datastore.Changefeed) {
+func (service *DefaultChangefeedService) OnDeviceStateChange(changefeed datastore.Changefeed) {
 
 	service.mutex.Lock()
 	defer service.mutex.Unlock()
 
 	record := changefeed.GetRawMessage()
 
-	var controllerID int
-	err := json.Unmarshal(*record["controller_id"], &controllerID)
+	var deviceID uint64
+	err := json.Unmarshal(*record["device_id"], &deviceID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error: %s", err)
+		service.app.Logger.Errorf("Error: %s", err)
 		return
 	}
 
-	controller, ok := service.app.ControllerIndex.Get(controllerID)
+	device, ok := service.app.DeviceIndex.Get(deviceID)
 	if !ok {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Controller index missing controller: changefeed=%s, controller_id=%d",
-			changefeed.GetTable(), controllerID)
+		service.app.Logger.Errorf("Device index missing device: changefeed=%s, device_id=%d",
+			changefeed.GetTable(), deviceID)
 
-		service.app.Logger.Warningf("controllerIndex: %+v", service.app.ControllerIndex)
+		service.app.Logger.Warningf("deviceIndex: %+v", service.app.DeviceIndex)
 		return
 	}
 
-	farmID := controller.GetFarmID()
-	controllerType := controller.GetType()
+	farmID := device.GetFarmID()
+	deviceType := device.GetType()
 
-	if farmService, ok := service.serviceRegistry.GetFarmService(farmID); ok {
+	farmService := service.serviceRegistry.GetFarmService(farmID)
+	if farmService == nil {
+		service.app.Logger.Errorf("Service registry missing farm service: farm.id=%d, changefeed=%s, device_id=%f",
+			farmID, changefeed.GetTable(), deviceID)
+	}
 
-		farmState := farmService.GetState()
-		if farmState == nil {
-			return
-		}
+	farmState := farmService.GetState()
+	if farmState == nil {
+		return
+	}
 
-		metricConfigs := controller.GetMetrics()
-		sort.SliceStable(metricConfigs, func(i, j int) bool {
-			return strings.ToLower(metricConfigs[i].GetName()) < strings.ToLower(metricConfigs[j].GetName())
-		})
-		metrics := make(map[string]float64, 0)
-		for _, metric := range metricConfigs {
-			var value float64
-			jsonKey := strings.ToLower(metric.GetKey())
-			err = json.Unmarshal(*record[jsonKey], &value)
-			if err != nil {
-				service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Unmarshal error: %s. changefeed=%s, controllerID=%d",
-					err, changefeed.GetTable(), controllerID)
-				return
-			}
-			metricValue, err := farmState.GetMetricValue(controllerType, metric.GetKey())
-			if err != nil {
-				service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error getting metric value: %s. changefeed=%s, controllerID=%d",
-					err, changefeed.GetTable(), controllerID)
-				return
-			}
-			if value == metricValue {
-				continue
-			}
-			metrics[metric.GetKey()] = value
-		}
-
-		channelConfigs := controller.GetChannels()
-		sort.SliceStable(channelConfigs, func(i, j int) bool {
-			return strings.ToLower(channelConfigs[i].GetName()) < strings.ToLower(channelConfigs[j].GetName())
-		})
-		channels := make(map[int]int, 0)
-		for i := range channelConfigs {
-			var value int
-			channel := fmt.Sprintf("c%d", i)
-			err = json.Unmarshal(*record[channel], &value)
-
-			channelValue, err := farmState.GetChannelValue(controllerType, i)
-			if err != nil {
-				service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error retrieving metric from farm state: changefeed=%s, controller_id=%f, error=%s",
-					changefeed.GetTable(), controllerID, err)
-				return
-			}
-			if value == channelValue {
-				continue
-			}
-
-			channels[channelConfigs[i].GetChannelID()] = value
-		}
-
-		controllerStateDelta, err := farmState.Diff(controllerType, metrics, channels)
+	metricConfigs := device.GetMetrics()
+	sort.SliceStable(metricConfigs, func(i, j int) bool {
+		return strings.ToLower(metricConfigs[i].GetName()) < strings.ToLower(metricConfigs[j].GetName())
+	})
+	metrics := make(map[string]float64, 0)
+	for _, metric := range metricConfigs {
+		var value float64
+		jsonKey := strings.ToLower(metric.GetKey())
+		err = json.Unmarshal(*record[jsonKey], &value)
 		if err != nil {
-			service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error: %s. changefeed=%s, controllerID=%d",
-				err, changefeed.GetTable(), controllerID)
+			service.app.Logger.Errorf("Unmarshal error: %s. changefeed=%s, deviceID=%d",
+				err, changefeed.GetTable(), deviceID)
 			return
 		}
-
-		if controllerStateDelta == nil {
-			service.app.Logger.Debugf("[ChangefeedService.OnControllerStateChange] No state difference, aborting. changefeed=%s, controller_id=%d",
-				changefeed.GetTable(), controllerID)
+		metricValue, err := farmState.GetMetricValue(deviceType, metric.GetKey())
+		if err != nil {
+			service.app.Logger.Errorf("Error getting metric value: %s. changefeed=%s, deviceID=%d",
+				err, changefeed.GetTable(), deviceID)
 			return
 		}
+		if value == metricValue {
+			continue
+		}
+		metrics[metric.GetKey()] = value
+	}
 
-		param := make(map[string]state.ControllerStateDeltaMap, 1)
-		param[controllerType] = controllerStateDelta
+	channelConfigs := device.GetChannels()
+	sort.SliceStable(channelConfigs, func(i, j int) bool {
+		return strings.ToLower(channelConfigs[i].GetName()) < strings.ToLower(channelConfigs[j].GetName())
+	})
+	channels := make(map[int]int, 0)
+	for i := range channelConfigs {
+		var value int
+		channel := fmt.Sprintf("c%d", i)
+		err = json.Unmarshal(*record[channel], &value)
 
-		farmService.PublishControllerDelta(param)
+		channelValue, err := farmState.GetChannelValue(deviceType, i)
+		if err != nil {
+			service.app.Logger.Errorf("Error retrieving metric from farm state: changefeed=%s, device_id=%f, error=%s",
+				changefeed.GetTable(), deviceID, err)
+			return
+		}
+		if value == channelValue {
+			continue
+		}
+
+		channels[channelConfigs[i].GetChannelID()] = value
+	}
+
+	deviceStateDelta, err := farmState.Diff(deviceType, metrics, channels)
+	if err != nil {
+		service.app.Logger.Errorf("Error: %s. changefeed=%s, deviceID=%d",
+			err, changefeed.GetTable(), deviceID)
 		return
 	}
 
-	service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Service registry missing farm service: farm.id=%d, changefeed=%s, controller_id=%f",
-		farmID, changefeed.GetTable(), controllerID)
+	if deviceStateDelta == nil {
+		service.app.Logger.Debugf("No state difference, aborting. changefeed=%s, device_id=%d",
+			changefeed.GetTable(), deviceID)
+		return
+	}
+
+	param := make(map[string]state.DeviceStateDeltaMap, 1)
+	param[deviceType] = deviceStateDelta
+
+	farmService.PublishDeviceDelta(param)
 }
 
-func (service *DefaultChangefeedService) OnControllerConfigConfigChange(changefeed datastore.Changefeed) {
+func (service *DefaultChangefeedService) OnDeviceConfigConfigChange(changefeed datastore.Changefeed) {
 
 	service.mutex.Lock()
 	defer service.mutex.Unlock()
@@ -178,46 +178,47 @@ func (service *DefaultChangefeedService) OnControllerConfigConfigChange(changefe
 	var id int
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.id: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
 		return
 	}
 
-	var controllerID int
-	err = json.Unmarshal(*record["controller_id"], &controllerID)
+	var deviceID uint64
+	err = json.Unmarshal(*record["device_id"], &deviceID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.controllerID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.deviceID: %s", err)
 		return
 	}
 
 	var userID int
 	err = json.Unmarshal(*record["user_id"], &userID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.userID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.userID: %s", err)
 		return
 	}
 
-	var controllerConfigItem config.ControllerConfigItem
-	err = json.Unmarshal(changefeed.GetBytes(), &controllerConfigItem)
+	var deviceConfigItem config.DeviceConfigItem
+	err = json.Unmarshal(changefeed.GetBytes(), &deviceConfigItem)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling changfeed: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling changfeed: %s", err)
 	}
-	controllerConfigItem.SetID(id)
-	controllerConfigItem.SetUserID(userID)
-	controllerConfigItem.SetControllerID(controllerID)
+	deviceConfigItem.SetID(id)
+	deviceConfigItem.SetUserID(userID)
+	deviceConfigItem.SetDeviceID(deviceID)
 
-	service.app.Logger.Errorf("OnControllerConfigConfigChange fired! Received controller config: %+v", &controllerConfigItem)
+	service.app.Logger.Errorf("OnDeviceConfigConfigChange fired! Received device config: %+v", &deviceConfigItem)
 
-	controller, ok := service.app.ControllerIndex.Get(controllerID)
+	device, ok := service.app.DeviceIndex.Get(deviceID)
 	if !ok {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Controller index missing controller: changefeed=%s, controller_id=%d, index=%+v",
-			changefeed.GetTable(), controllerID, service.app.ControllerIndex.GetAll())
+		service.app.Logger.Errorf("Device index missing device: changefeed=%s, device_id=%d, index=%+v",
+			changefeed.GetTable(), deviceID, service.app.DeviceIndex.GetAll())
 		return
 	}
-	controller.SetConfig(&controllerConfigItem)
+	device.SetConfig(&deviceConfigItem)
 
-	if farmService, ok := service.serviceRegistry.GetFarmService(controller.GetFarmID()); ok {
-		farmService.GetConfig().ParseConfigs()
-		farmService.PublishConfig()
+	if farmService := service.serviceRegistry.GetFarmService(device.GetFarmID()); farmService != nil {
+		farmConfig := farmService.GetConfig()
+		farmConfig.ParseConfigs()
+		farmService.PublishConfig(farmConfig)
 	}
 }
 
@@ -228,35 +229,37 @@ func (service *DefaultChangefeedService) OnMetricConfigChange(changefeed datasto
 	var id int
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error unmarshaling channel.id: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
 		return
 	}
 
-	var controllerID int
-	err = json.Unmarshal(*record["controller_id"], &controllerID)
+	var deviceID uint64
+	err = json.Unmarshal(*record["device_id"], &deviceID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error unmarshaling channel.controllerID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.deviceID: %s", err)
 		return
 	}
 
 	var metric config.Metric
 	err = json.Unmarshal(changefeed.GetBytes(), &metric)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnMetricConfigChange] Error unmarshaling changfeed: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling changfeed: %s", err)
 	}
 	metric.SetID(id)
-	metric.SetControllerID(controllerID)
+	metric.SetDeviceID(deviceID)
 
 	service.app.Logger.Errorf("OnMetricChange fired! Received metric config: %+v", metric)
 
-	controller, ok := service.app.ControllerIndex.Get(metric.GetControllerID())
+	device, ok := service.app.DeviceIndex.Get(metric.GetDeviceID())
 	if !ok {
 		return
 	}
-	controller.SetMetric(&metric)
+	device.SetMetric(&metric)
 
-	if farmService, ok := service.serviceRegistry.GetFarmService(controller.GetFarmID()); ok {
-		farmService.PublishConfig()
+	if farmService := service.serviceRegistry.GetFarmService(device.GetFarmID()); farmService != nil {
+		farmConfig := farmService.GetConfig()
+		farmConfig.ParseConfigs()
+		farmService.PublishConfig(farmConfig)
 	}
 }
 
@@ -267,44 +270,46 @@ func (service *DefaultChangefeedService) OnChannelConfigChange(changefeed datast
 	var id int
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error unmarshaling channel.id: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
 		return
 	}
 
-	var controllerID int
-	err = json.Unmarshal(*record["controller_id"], &controllerID)
+	var deviceID uint64
+	err = json.Unmarshal(*record["device_id"], &deviceID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error unmarshaling channel.controllerID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.deviceID: %s", err)
 		return
 	}
 
 	var algorithmID int
-	err = json.Unmarshal(*record["algorithm_id"], &controllerID)
+	err = json.Unmarshal(*record["algorithm_id"], &deviceID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerStateChange] Error unmarshaling channel.algorithmID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.algorithmID: %s", err)
 		return
 	}
 
 	var channel config.Channel
 	err = json.Unmarshal(changefeed.GetBytes(), &channel)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigChange] Error unmarshaling changfeed: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling changfeed: %s", err)
 	}
 	channel.SetID(id)
-	channel.SetControllerID(controllerID)
+	channel.SetDeviceID(deviceID)
 	channel.SetAlgorithmID(algorithmID)
 
 	service.app.Logger.Errorf("OnChannelConfigChange fired! Received channel config: %+v", channel)
 
-	controller, ok := service.app.ControllerIndex.Get(controllerID)
+	device, ok := service.app.DeviceIndex.Get(deviceID)
 	if !ok {
-		service.app.Logger.Errorf("OnChannelConfigChange: Failed to retrieve controller from index: %+v", service.app.ControllerIndex)
+		service.app.Logger.Errorf("OnChannelConfigChange: Failed to retrieve device from index: %+v", service.app.DeviceIndex)
 		return
 	}
-	controller.SetChannel(&channel)
+	device.SetChannel(&channel)
 
-	if farmService, ok := service.serviceRegistry.GetFarmService(controller.GetFarmID()); ok {
-		farmService.PublishConfig()
+	if farmService := service.serviceRegistry.GetFarmService(device.GetFarmID()); farmService != nil {
+		farmConfig := farmService.GetConfig()
+		farmConfig.ParseConfigs()
+		farmService.PublishConfig(farmConfig)
 	}
 }
 
@@ -315,28 +320,28 @@ func (service *DefaultChangefeedService) OnConditionConfigChange(changefeed data
 	var id uint64
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.id: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
 		return
 	}
 
 	var channelID int
 	err = json.Unmarshal(*record["channel_id"], &channelID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.channelID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.channelID: %s", err)
 		return
 	}
 
 	var metricID int
 	err = json.Unmarshal(*record["metric_id"], &metricID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.metricID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.metricID: %s", err)
 		return
 	}
 
 	var condition config.Condition
 	err = json.Unmarshal(changefeed.GetBytes(), &condition)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnChannelConfigChange] Error unmarshaling changfeed: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling changfeed: %s", err)
 	}
 	condition.SetID(id)
 	condition.SetChannelID(channelID)
@@ -351,13 +356,15 @@ func (service *DefaultChangefeedService) OnConditionConfigChange(changefeed data
 
 	channel.SetCondition(&condition)
 
-	controller, ok := service.app.ControllerIndex.Get(channel.GetControllerID())
+	device, ok := service.app.DeviceIndex.Get(channel.GetDeviceID())
 	if !ok {
 		return
 	}
 
-	if farmService, ok := service.serviceRegistry.GetFarmService(controller.GetFarmID()); ok {
-		farmService.PublishConfig()
+	if farmService := service.serviceRegistry.GetFarmService(device.GetFarmID()); farmService != nil {
+		farmConfig := farmService.GetConfig()
+		farmConfig.ParseConfigs()
+		farmService.PublishConfig(farmConfig)
 	}
 }
 
@@ -368,21 +375,21 @@ func (service *DefaultChangefeedService) OnScheduleConfigChange(changefeed datas
 	var id uint64
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.id: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
 		return
 	}
 
 	var channelID int
 	err = json.Unmarshal(*record["channel_id"], &channelID)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnControllerConfigConfigChange] Error unmarshaling channel.channelID: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling channel.channelID: %s", err)
 		return
 	}
 
 	var schedule config.Schedule
 	err = json.Unmarshal(changefeed.GetBytes(), &schedule)
 	if err != nil {
-		service.app.Logger.Errorf("[ChangefeedService.OnChannelConfigChange] Error unmarshaling changfeed: %s", err)
+		service.app.Logger.Errorf("Error unmarshaling changfeed: %s", err)
 	}
 	schedule.SetID(id)
 	schedule.SetChannelID(channelID)
@@ -396,12 +403,14 @@ func (service *DefaultChangefeedService) OnScheduleConfigChange(changefeed datas
 
 	channel.SetScheduleItem(&schedule)
 
-	controller, ok := service.app.ControllerIndex.Get(channel.GetControllerID())
+	device, ok := service.app.DeviceIndex.Get(channel.GetDeviceID())
 	if !ok {
 		return
 	}
 
-	if farmService, ok := service.serviceRegistry.GetFarmService(controller.GetFarmID()); ok {
-		farmService.PublishConfig()
+	if farmService := service.serviceRegistry.GetFarmService(device.GetFarmID()); farmService != nil {
+		farmConfig := farmService.GetConfig()
+		farmConfig.ParseConfigs()
+		farmService.PublishConfig(farmConfig)
 	}
 }

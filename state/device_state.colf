@@ -1,0 +1,17 @@
+package colfer
+
+type deviceState struct {
+    metrics []metric
+    channels []channel
+    text timestamp
+}
+
+type metric struct {
+    key uint64
+    value float64
+}
+
+type channel struct {
+    id uint64
+    value uint8
+}

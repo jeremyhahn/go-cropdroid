@@ -8,37 +8,37 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestControllerMapStateToEntity(t *testing.T) {
+func TestDeviceMapStateToEntity(t *testing.T) {
 
-	mapper := NewControllerMapper(NewMetricMapper(), NewChannelMapper())
+	mapper := NewDeviceMapper(NewMetricMapper(), NewChannelMapper())
 
 	metrics := map[string]float64{
 		"mem":     1200,
 		"sensor1": 12.34}
 	channels := []int{1, 0, 1}
 
-	state := state.NewControllerStateMap()
+	state := state.NewDeviceStateMap()
 	state.SetMetrics(metrics)
 	state.SetChannels(channels)
 
-	config := config.Controller{
+	config := config.Device{
 		ID:          1,
 		Type:        "test",
-		Description: "Fake controller used for unit testing",
-		Configs: []config.ControllerConfigItem{
-			config.ControllerConfigItem{
+		Description: "Fake device used for unit testing",
+		Configs: []config.DeviceConfigItem{
+			config.DeviceConfigItem{
 				Key:   "enable",
 				Value: "true"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "notify",
 				Value: "true"},
-			config.ControllerConfigItem{
+			config.DeviceConfigItem{
 				Key:   "uri",
 				Value: ""}},
 		Metrics: []config.Metric{
 			config.Metric{
 				ID:           1,
-				ControllerID: 2,
+				DeviceID: 2,
 				Name:         "Available Memory",
 				Key:          "mem",
 				Enable:       true,
@@ -48,7 +48,7 @@ func TestControllerMapStateToEntity(t *testing.T) {
 				AlarmHigh:    10000},
 			config.Metric{
 				ID:           2,
-				ControllerID: 2,
+				DeviceID: 2,
 				Name:         "Fake Temp Sensor",
 				Key:          "sensor1",
 				Enable:       true,
@@ -59,7 +59,7 @@ func TestControllerMapStateToEntity(t *testing.T) {
 		Channels: []config.Channel{
 			config.Channel{
 				ID:           1,
-				ControllerID: 2,
+				DeviceID: 2,
 				ChannelID:    0,
 				Name:         "Test Channel 1",
 				Enable:       true,
@@ -72,7 +72,7 @@ func TestControllerMapStateToEntity(t *testing.T) {
 				AlgorithmID:  4},
 			config.Channel{
 				ID:           2,
-				ControllerID: 3,
+				DeviceID: 3,
 				ChannelID:    1,
 				Name:         "Test Channel 2",
 				Enable:       false,
@@ -85,7 +85,7 @@ func TestControllerMapStateToEntity(t *testing.T) {
 				AlgorithmID:  4},
 			config.Channel{
 				ID:           3,
-				ControllerID: 4,
+				DeviceID: 4,
 				ChannelID:    2,
 				Name:         "Test Channel 3",
 				Enable:       false,
@@ -97,77 +97,77 @@ func TestControllerMapStateToEntity(t *testing.T) {
 				Backoff:      3,
 				AlgorithmID:  4}}}
 
-	controller, err := mapper.MapStateToController(state, config)
+	device, err := mapper.MapStateToDevice(state, config)
 	assert.Nil(t, err)
-	assert.Equal(t, config.GetID(), controller.GetID())
-	assert.Equal(t, config.GetType(), controller.GetType())
-	assert.Equal(t, config.GetDescription(), controller.GetDescription())
-	/*assert.Equal(t, config.IsEnabled(), controller.IsEnabled())
-	assert.Equal(t, config.IsNotify(), controller.IsNotify())
-	assert.Equal(t, config.GetURI(), controller.GetURI())*/
-	//assert.Equal(t, config.GetHardwareVersion(), controller.GetHardwareVersion())
-	//assert.Equal(t, config.GetFirmwareVersion(), controller.GetFirmwareVersion())
+	assert.Equal(t, config.GetID(), device.GetID())
+	assert.Equal(t, config.GetType(), device.GetType())
+	assert.Equal(t, config.GetDescription(), device.GetDescription())
+	/*assert.Equal(t, config.IsEnabled(), device.IsEnabled())
+	assert.Equal(t, config.IsNotify(), device.IsNotify())
+	assert.Equal(t, config.GetURI(), device.GetURI())*/
+	//assert.Equal(t, config.GetHardwareVersion(), device.GetHardwareVersion())
+	//assert.Equal(t, config.GetFirmwareVersion(), device.GetFirmwareVersion())
 
-	memMetric, err := controller.GetMetric("mem")
+	memMetric, err := device.GetMetric("mem")
 	assert.Nil(t, err)
 	assert.Equal(t, metrics["mem"], memMetric.GetValue())
 
-	sensor1Metric, err := controller.GetMetric("sensor1")
+	sensor1Metric, err := device.GetMetric("sensor1")
 	assert.Nil(t, err)
 	assert.Equal(t, metrics["sensor1"], sensor1Metric.GetValue())
 
-	channel0, err := controller.GetChannel(0)
+	channel0, err := device.GetChannel(0)
 	assert.Nil(t, err)
 	assert.Equal(t, channels[0], channel0.GetValue())
 
-	channel1, err := controller.GetChannel(1)
+	channel1, err := device.GetChannel(1)
 	assert.Nil(t, err)
 	assert.Equal(t, channels[1], channel1.GetValue())
 
-	channel2, err := controller.GetChannel(2)
+	channel2, err := device.GetChannel(2)
 	assert.Nil(t, err)
 	assert.Equal(t, channels[2], channel2.GetValue())
 }
 
-func TestControllerMapConfigToModel(t *testing.T) {
+func TestDeviceMapConfigToModel(t *testing.T) {
 
-	mapper := NewControllerMapper(NewMetricMapper(), NewChannelMapper())
+	mapper := NewDeviceMapper(NewMetricMapper(), NewChannelMapper())
 
-	controllerEntity := &config.Controller{
+	deviceEntity := &config.Device{
 		ID: 2,
 		//OrganizationID: 2,
 		Type:        "test",
-		Description: "Fake microcontroller used for testing"}
+		Description: "Fake microdevice used for testing"}
 
-	configEntities := []config.ControllerConfigItem{
-		config.ControllerConfigItem{
+	configEntities := []config.DeviceConfigItem{
+		config.DeviceConfigItem{
 			Key:   "test.enable",
 			Value: "true"},
-		config.ControllerConfigItem{
+		config.DeviceConfigItem{
 			Key:   "test.notify",
 			Value: "true"},
-		config.ControllerConfigItem{
+		config.DeviceConfigItem{
 			Key:   "test.uri",
 			Value: "true"},
-		config.ControllerConfigItem{
+		config.DeviceConfigItem{
 			Key:   "key1",
 			Value: "key1.value1"},
-		config.ControllerConfigItem{
+		config.DeviceConfigItem{
 			Key:   "key2",
 			Value: "key2.value"},
-		config.ControllerConfigItem{
+		config.DeviceConfigItem{
 			Key:   "test.key2",
 			Value: "test.key2.value"}}
 
-	controllerModel, err := mapper.MapConfigToModel(controllerEntity, configEntities)
+	deviceModel, err := mapper.MapConfigToModel(deviceEntity, configEntities)
 	assert.Nil(t, err)
-	assert.Equal(t, controllerEntity.GetID(), controllerModel.GetID())
-	assert.Equal(t, controllerEntity.GetType(), controllerModel.GetType())
-	assert.Equal(t, controllerEntity.GetDescription(), controllerModel.GetDescription())
-	//assert.Equal(t, controllerEntity.GetHardwareVersion(), controllerModel.GetHardwareVersion())
-	//assert.Equal(t, controllerEntity.GetFirmwareVersion(), controllerModel.GetFirmwareVersion())
+	assert.Equal(t, deviceEntity.GetID(), deviceModel.GetID())
+	assert.Equal(t, deviceEntity.GetType(), deviceModel.GetType())
+	assert.Equal(t, deviceEntity.GetDescription(), deviceModel.GetDescription())
+	//assert.Equal(t, deviceEntity.GetHardwareVersion(), deviceModel.GetHardwareVersion())
+	//assert.Equal(t, deviceEntity.GetFirmwareVersion(), deviceModel.GetFirmwareVersion())
 
-	configMap := controllerModel.GetConfigs()
+	configMap := deviceModel.GetConfigs()
 	assert.Equal(t, len(configEntities), len(configMap))
 	assert.Equal(t, configMap["key1"], "key1.value1")
 	assert.Equal(t, configMap["key2"], "key2.value")

@@ -29,7 +29,7 @@ func (ns *NotificationServiceImpl) Enqueue(notification common.Notification) err
 	if ns.mailer != nil {
 		ns.mailer.Send(notification.GetTitle(), notification.GetType(), notification.GetMessage())
 	}
-	ns.logger.Debugf("[NotificationService.Enqueue] Enqueuing notification %v+", notification)
+	ns.logger.Debugf("Enqueuing notification %v+", notification)
 	if notification.GetPriority() == common.NOTIFICATION_PRIORITY_HIGH {
 		if ns.mailer != nil {
 			ns.mailer.Send(notification.GetTitle(), notification.GetType(), notification.GetMessage())
@@ -37,7 +37,7 @@ func (ns *NotificationServiceImpl) Enqueue(notification common.Notification) err
 	}
 	select {
 	case ns.notifications <- notification:
-		ns.logger.Debugf("[NotificationService.Enqueue] Queue size: %d", len(ns.notifications))
+		ns.logger.Debugf("Queue size: %d", len(ns.notifications))
 	default:
 		errmsg := "Notification channel full, discarding..."
 		ns.logger.Error(errmsg)

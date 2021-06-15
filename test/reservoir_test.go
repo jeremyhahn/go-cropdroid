@@ -1,4 +1,4 @@
-// +build broken
+// +build ignore
 
 package test
 
@@ -86,11 +86,11 @@ func TestReservoirMetricAlarmLow(t *testing.T) {
 	notificationService.AssertExpectations(t)
 }
 
-func createTestReservoirService() (common.Context, *MockReservoirController, *MockNotificationService, *service.Reservoir) {
+func createTestReservoirService() (common.Context, *MockReservoirDevice, *MockNotificationService, *service.Reservoir) {
 	ctx := NewUnitTestContext()
 	dao := NewMockReservoirDAO(ctx)
 	scheduleDAO := NewMockScheduleDAO()
-	client := NewMockReservoirController()
+	client := NewMockReservoirDevice()
 	mailer := NewMockMailer(ctx)
 	notificationService := NewMockNotificationService(ctx, mailer)
 	eventLogService := NewMockEventLogService(ctx, nil, "test")

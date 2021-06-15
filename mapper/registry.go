@@ -1,7 +1,7 @@
 package mapper
 
 type MapperRegistry interface {
-	GetControllerMapper() ControllerMapper
+	GetDeviceMapper() DeviceMapper
 	GetMetricMapper() MetricMapper
 	GetChannelMapper() ChannelMapper
 	GetConditionMapper() ConditionMapper
@@ -10,7 +10,7 @@ type MapperRegistry interface {
 }
 
 type MemoryMapperRegistry struct {
-	controllerMapper ControllerMapper
+	deviceMapper DeviceMapper
 	metricMapper     MetricMapper
 	channelMapper    ChannelMapper
 	conditionMapper  ConditionMapper
@@ -25,9 +25,9 @@ func CreateRegistry() MapperRegistry {
 	conditionMapper := NewConditionMapper()
 	scheduleMapper := NewScheduleMapper()
 	userMapper := NewUserMapper()
-	controllerMapper := NewControllerMapper(metricMapper, channelMapper)
+	deviceMapper := NewDeviceMapper(metricMapper, channelMapper)
 	return &MemoryMapperRegistry{
-		controllerMapper: controllerMapper,
+		deviceMapper: deviceMapper,
 		metricMapper:     metricMapper,
 		channelMapper:    channelMapper,
 		conditionMapper:  conditionMapper,
@@ -35,8 +35,8 @@ func CreateRegistry() MapperRegistry {
 		userMapper:       userMapper}
 }
 
-func (registry *MemoryMapperRegistry) GetControllerMapper() ControllerMapper {
-	return registry.controllerMapper
+func (registry *MemoryMapperRegistry) GetDeviceMapper() DeviceMapper {
+	return registry.deviceMapper
 }
 
 func (registry *MemoryMapperRegistry) GetMetricMapper() MetricMapper {

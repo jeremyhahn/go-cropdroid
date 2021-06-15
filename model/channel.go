@@ -7,7 +7,7 @@ import (
 
 type Channel struct {
 	ID             int                `yaml:"id" json:"id"`
-	ControllerID   int                `yaml:"controllerID" json:"controllerId"`
+	DeviceID   uint64             `yaml:"deviceID" json:"deviceId"`
 	ChannelID      int                `yaml:"channelId" json:"channelId"`
 	Name           string             `yaml:"name" json:"name"`
 	Enable         bool               `yaml:"enable" json:"enable"`
@@ -34,12 +34,12 @@ func (channel *Channel) GetID() int {
 	return channel.ID
 }
 
-func (channel *Channel) GetControllerID() int {
-	return channel.ControllerID
+func (channel *Channel) GetDeviceID() uint64 {
+	return channel.DeviceID
 }
 
-func (channel *Channel) SetControllerID(id int) {
-	channel.ControllerID = id
+func (channel *Channel) SetDeviceID(id uint64) {
+	channel.DeviceID = id
 }
 
 func (channel *Channel) SetChannelID(id int) {

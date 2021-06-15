@@ -53,7 +53,7 @@ func (restService *DefaultChannelRestService) SetChannel(w http.ResponseWriter, 
 	}
 	defer session.Close()
 
-	session.GetLogger().Debug("[ChannelRestService.SetChannel] Decoding JSON request")
+	session.GetLogger().Debug("Decoding JSON request")
 
 	var channel model.Channel
 	decoder := json.NewDecoder(r.Body)
@@ -62,10 +62,10 @@ func (restService *DefaultChannelRestService) SetChannel(w http.ResponseWriter, 
 		return
 	}
 
-	session.GetLogger().Debugf("[ChannelRestService.SetChannel] channel=%+v", channel)
+	session.GetLogger().Debugf("channel=%+v", channel)
 
 	if err = restService.channelService.Update(session, &channel); err != nil {
-		session.GetLogger().Errorf("[ChannelRestService.Set] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}

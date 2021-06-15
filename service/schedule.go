@@ -25,7 +25,7 @@ const (
 type ScheduleService interface {
 	GetNow() *time.Time
 	GetSchedule(session Session, channelID int) ([]config.Schedule, error)
-	//GetSchedules(user common.UserAccount, controllerID int) ([]config.ScheduleConfig, error)
+	//GetSchedules(user common.UserAccount, deviceID int) ([]config.ScheduleConfig, error)
 	Create(session Session, schedule config.ScheduleConfig) (config.ScheduleConfig, error)
 	Update(session Session, schedule config.ScheduleConfig) error
 	Delete(session Session, schedule config.ScheduleConfig) error
@@ -93,8 +93,8 @@ func (service *DefaultScheduleService) GetSchedule(session Session, channelID in
 
 /*
 // GetSchedules retrieves a list of schedule entries from the database
-func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, controllerID int) ([]config.ScheduleConfig, error) {
-	entities, err := service.dao.GetByUserOrgAndControllerID(user.GetOrganizationID(), controllerID)
+func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, deviceID int) ([]config.ScheduleConfig, error) {
+	entities, err := service.dao.GetByUserOrgAndDeviceID(user.GetOrganizationID(), deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +114,8 @@ func (service *DefaultScheduleService) Create(session Session, schedule config.S
 	}
 	schedule.SetID(schedule.GetID())
 	/*
-		for _, controller := range service.scope.GetConfig().GetControllers() {
-			for _, channel := range controller.GetChannels() {
+		for _, device := range service.scope.GetConfig().GetDevices() {
+			for _, channel := range device.GetChannels() {
 				for _, _schedule := range channel.GetSchedule() {
 					if _schedule.GetID() == schedule.GetID() {
 						channel.Schedule = append(channel.Schedule, schedule)
@@ -126,13 +126,13 @@ func (service *DefaultScheduleService) Create(session Session, schedule config.S
 	//service.configService.Reload() // TODO: etcd
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == schedule.GetChannelID() {
 				s := schedule.(*config.Schedule)
 				channel.Schedule = append(channel.Schedule, *s)
-				controller.SetChannel(&channel)
-				farmConfig.SetController(&controller)
+				device.SetChannel(&channel)
+				farmConfig.SetDevice(&device)
 				return schedule, farmService.SetConfig(farmConfig)
 			}
 		}
@@ -147,8 +147,8 @@ func (service *DefaultScheduleService) Update(session Session, schedule config.S
 		return err
 	}
 	/*
-		for _, controller := range service.scope.GetConfig().GetControllers() {
-			for _, channel := range controller.GetChannels() {
+		for _, device := range service.scope.GetConfig().GetDevices() {
+			for _, channel := range device.GetChannels() {
 				for i, _schedule := range channel.GetSchedule() {
 					if _schedule.GetID() == schedule.GetID() {
 						channel.UpdateSchedule(schedule, i)
@@ -162,14 +162,14 @@ func (service *DefaultScheduleService) Update(session Session, schedule config.S
 	//return nil
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			for i, _ := range channel.GetSchedule() {
 				if channel.GetID() == schedule.GetChannelID() {
 					s := schedule.(*config.Schedule)
 					channel.Schedule[i] = *s
-					controller.SetChannel(&channel)
-					farmConfig.SetController(&controller)
+					device.SetChannel(&channel)
+					farmConfig.SetDevice(&device)
 					return farmService.SetConfig(farmConfig)
 				}
 			}
@@ -185,8 +185,8 @@ func (service *DefaultScheduleService) Delete(session Session, schedule config.S
 		return err
 	}
 	/*
-		for _, controller := range service.scope.GetConfig().GetControllers() {
-			for _, channel := range controller.GetChannels() {
+		for _, device := range service.scope.GetConfig().GetDevices() {
+			for _, channel := range device.GetChannels() {
 				for i, _schedule := range channel.GetSchedule() {
 					if _schedule.GetID() == schedule.GetID() {
 						channel.DeleteSchedule(i)
@@ -199,15 +199,15 @@ func (service *DefaultScheduleService) Delete(session Session, schedule config.S
 	//return nil
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			// Android client only sends the schedule id on delete
 			//if channel.GetChannelID() == schedule.GetChannelID() {
 			for i, _schedule := range channel.GetSchedule() {
 				if _schedule.GetID() == schedule.GetID() {
 					channel.Schedule = append(channel.Schedule[:i], channel.Schedule[i+1:]...)
-					controller.SetChannel(&channel)
-					farmConfig.SetController(&controller)
+					device.SetChannel(&channel)
+					farmConfig.SetDevice(&device)
 					return farmService.SetConfig(farmConfig)
 				}
 			}
@@ -219,7 +219,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule config.S
 
 // IsScheduled takes a Schedule and number of seconds that specify the duration of time the switch should be on
 func (service *DefaultScheduleService) IsScheduled(schedule config.ScheduleConfig, duration int) bool {
-	service.app.Logger.Debugf("[ScheduleService.IsScheduled] schedule=%+v", schedule)
+	service.app.Logger.Debugf("schedule=%+v", schedule)
 	startDate := schedule.GetStartDate()
 	if schedule.GetFrequency() > 0 {
 		now := time.Now().In(service.app.Location)

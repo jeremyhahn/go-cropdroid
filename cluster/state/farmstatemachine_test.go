@@ -29,18 +29,18 @@ func TestFarmStateMachineUpdateLookupEmptyStore(t *testing.T) {
 	logger := createLogger()
 	sm := NewFarmStateMachine(logger, 1)
 
-	controllerStateMap := fs.NewControllerStateMap()
-	controllerStateMap.SetMetrics(map[string]float64{
+	deviceStateMap := fs.NewDeviceStateMap()
+	deviceStateMap.SetMetrics(map[string]float64{
 		"test":  12.34,
 		"test2": 56.7})
-	controllerStateMap.SetChannels([]int{1, 0, 1, 0, 1, 1})
+	deviceStateMap.SetChannels([]int{1, 0, 1, 0, 1, 1})
 
 	farmStateMap := fs.NewFarmStateMap(1)
-	farmStateMap.SetController("testcontroller", controllerStateMap)
+	farmStateMap.SetDevice("testdevice", deviceStateMap)
 
-	state, err := farmStateMap.GetController("testcontroller")
+	state, err := farmStateMap.GetDevice("testdevice")
 	assert.Nil(t, err)
-	assert.Equal(t, controllerStateMap, state)
+	assert.Equal(t, deviceStateMap, state)
 	assert.Equal(t, 12.34, state.GetMetrics()["test"])
 	assert.Equal(t, 56.7, state.GetMetrics()["test2"])
 	assert.Equal(t, 1, state.GetChannels()[0])
@@ -78,18 +78,18 @@ func TestFarmStateMachineUpdateLookupNonEmptyStore(t *testing.T) {
 	logger := createLogger()
 	sm := NewFarmStateMachine(logger, 1)
 
-	controllerStateMap := fs.NewControllerStateMap()
-	controllerStateMap.SetMetrics(map[string]float64{
+	deviceStateMap := fs.NewDeviceStateMap()
+	deviceStateMap.SetMetrics(map[string]float64{
 		"test":  12.34,
 		"test2": 56.7})
-	controllerStateMap.SetChannels([]int{1, 0, 1, 0, 1, 1})
+	deviceStateMap.SetChannels([]int{1, 0, 1, 0, 1, 1})
 
 	farmStateMap := fs.NewFarmStateMap(1)
-	farmStateMap.SetController("testcontroller", controllerStateMap)
+	farmStateMap.SetDevice("testdevice", deviceStateMap)
 
-	state, err := farmStateMap.GetController("testcontroller")
+	state, err := farmStateMap.GetDevice("testdevice")
 	assert.Nil(t, err)
-	assert.Equal(t, controllerStateMap, state)
+	assert.Equal(t, deviceStateMap, state)
 	assert.Equal(t, 12.34, state.GetMetrics()["test"])
 	assert.Equal(t, 56.7, state.GetMetrics()["test2"])
 	assert.Equal(t, 1, state.GetChannels()[0])

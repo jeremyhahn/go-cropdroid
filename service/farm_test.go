@@ -10,14 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFarmSetControllerState(t *testing.T) {
+func TestFarmSetDeviceState(t *testing.T) {
 	farm := mock(DefaultFarmService)
 
-	farm.SetControllerState("test", &state.ControllerState{
+	farm.SetDeviceState("test", &state.DeviceState{
 		Channels: []int{},
 		Metrics:  map[int]float64{}})
 
-	state, err := json.Marshal(controllerState)
+	state, err := json.Marshal(deviceState)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, state)

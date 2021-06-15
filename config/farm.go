@@ -7,30 +7,31 @@ import (
 )
 
 type Farm struct {
-	ID             int    `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID             uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	OrganizationID int    `yaml:"orgId" json:"orgId"`
 	Replicas       int    `yaml:"replicas" json:"replicas"`
+	Consistency    int    `gorm:"consistency" yaml:"consistency" json:"consistency"`
 	Mode           string `gorm:"-" yaml:"mode" json:"mode"`
 	Name           string `gorm:"-" yaml:"name" json:"name"`
 	Interval       int    `gorm:"-" yaml:"interval" json:"interval"`
 	Smtp           *Smtp  `gorm:"-" yaml:"smtp" json:"smtp"`
 	//Timezone       *time.Location `gorm:"-" yaml:"timezone" json:"timezone"`
-	Timezone    string       `gorm:"-" yaml:"timezone" json:"timezone"`
-	Controllers []Controller `yaml:"controllers" json:"controllers"`
-	Users       []User       `gorm:"many2many:permissions" yaml:"users" json:"users"`
-	FarmConfig  `yaml:"-" json:"-"`
+	Timezone   string   `gorm:"-" yaml:"timezone" json:"timezone"`
+	Devices    []Device `yaml:"devices" json:"devices"`
+	Users      []User   `gorm:"many2many:permissions" yaml:"users" json:"users"`
+	FarmConfig `yaml:"-" json:"-"`
 }
 
 func NewFarm() *Farm {
 	return &Farm{
-		Controllers: make([]Controller, 0),
-		Users:       make([]User, 0)}
+		Devices: make([]Device, 0),
+		Users:   make([]User, 0)}
 }
 
-func CreateFarm(name string, orgID, interval int, users []User, controllers []Controller) FarmConfig {
+func CreateFarm(name string, orgID, interval int, users []User, devices []Device) FarmConfig {
 	return &Farm{
 		OrganizationID: orgID,
-		Controllers:    controllers}
+		Devices:        devices}
 }
 
 func (farm *Farm) SetOrganizationID(id int) {
@@ -47,6 +48,14 @@ func (farm *Farm) SetReplicas(count int) {
 
 func (farm *Farm) GetReplicas() int {
 	return farm.Replicas
+}
+
+func (farm *Farm) SetConsistency(level int) {
+	farm.Consistency = level
+}
+
+func (farm *Farm) GetConsistency() int {
+	return farm.Consistency
 }
 
 func (farm *Farm) SetName(name string) {
@@ -93,11 +102,11 @@ func (farm *Farm) GetSmtp() SmtpConfig {
 	return farm.Smtp
 }
 
-func (farm *Farm) SetID(id int) {
+func (farm *Farm) SetID(id uint64) {
 	farm.ID = id
 }
 
-func (farm *Farm) GetID() int {
+func (farm *Farm) GetID() uint64 {
 	return farm.ID
 }
 
@@ -117,50 +126,50 @@ func (farm *Farm) GetUsers() []User {
 	return farm.Users
 }
 
-func (farm *Farm) AddController(controller Controller) {
-	farm.Controllers = append(farm.Controllers, controller)
+func (farm *Farm) AddDevice(device Device) {
+	farm.Devices = append(farm.Devices, device)
 }
 
-func (farm *Farm) GetControllers() []Controller {
-	return farm.Controllers
+func (farm *Farm) GetDevices() []Device {
+	return farm.Devices
 }
 
-func (farm *Farm) SetControllers(controllers []Controller) {
-	farm.Controllers = controllers
+func (farm *Farm) SetDevices(devices []Device) {
+	farm.Devices = devices
 }
 
-func (farm *Farm) SetController(controller ControllerConfig) {
-	for i, c := range farm.Controllers {
-		if c.GetID() == controller.GetID() {
-			farm.Controllers[i] = *controller.(*Controller)
+func (farm *Farm) SetDevice(device DeviceConfig) {
+	for i, c := range farm.Devices {
+		if c.GetID() == device.GetID() {
+			farm.Devices[i] = *device.(*Device)
 			return
 		}
 	}
-	farm.Controllers = append(farm.Controllers, *controller.(*Controller))
+	farm.Devices = append(farm.Devices, *device.(*Device))
 }
 
-func (farm *Farm) GetController(controllerType string) (*Controller, error) {
-	for _, controller := range farm.Controllers {
-		if controller.GetType() == controllerType {
-			return &controller, nil
+func (farm *Farm) GetDevice(deviceType string) (*Device, error) {
+	for _, device := range farm.Devices {
+		if device.GetType() == deviceType {
+			return &device, nil
 		}
 	}
-	return nil, fmt.Errorf("[config.Farm] Controller type not found: %s", controllerType)
+	return nil, fmt.Errorf("[config.Farm] Device type not found: %s", deviceType)
 }
 
-func (farm *Farm) GetControllerById(id int) (*Controller, error) {
-	farmSize := len(farm.Controllers)
+func (farm *Farm) GetDeviceById(id int) (*Device, error) {
+	farmSize := len(farm.Devices)
 	if farmSize < id {
-		return nil, fmt.Errorf("[config.Farm] Controller ID out of bounds: %d. Farm size: %d", id, farmSize)
+		return nil, fmt.Errorf("[config.Farm] Device ID out of bounds: %d. Farm size: %d", id, farmSize)
 	}
-	return &farm.Controllers[id], nil
+	return &farm.Devices[id], nil
 }
 
 func (farm *Farm) ParseConfigs() error {
-	for i, controller := range farm.GetControllers() {
-		if controller.GetType() == "server" {
+	for i, device := range farm.GetDevices() {
+		if device.GetType() == "server" {
 			smtpConfig := NewSmtp()
-			for _, item := range controller.GetConfigs() {
+			for _, item := range device.GetConfigs() {
 				key := item.GetKey()
 				value := item.GetValue()
 				switch key {
@@ -205,24 +214,24 @@ func (farm *Farm) ParseConfigs() error {
 			}
 			farm.Smtp = smtpConfig.(*Smtp)
 		}
-		if err := controller.ParseConfigs(); err != nil {
+		if err := device.ParseConfigs(); err != nil {
 			return err
 		}
-		farm.Controllers[i] = controller
+		farm.Devices[i] = device
 	}
 	//return fmt.Errorf("[config.Farm] Server configuration not found for farm. farm.id=$%d, farm.name: %s", farm.ID, farm.Name)
 	return nil
 }
 
-// HydrateConfigs populates the controller config items from the ConfigMap. This is
-// used when unmarshalling from JSON or YAML since controller.Configs json:"-" and yaml:"-"
+// HydrateConfigs populates the device config items from the ConfigMap. This is
+// used when unmarshalling from JSON or YAML since device.Configs json:"-" and yaml:"-"
 // is set so the results are returned as key/value pairs by the API. Probably best to refactor
-// this so the API returns a dedicated view and controller.Configs doesn't get ignored.
+// this so the API returns a dedicated view and device.Configs doesn't get ignored.
 func (farm *Farm) HydrateConfigs() error {
-	for i, controller := range farm.GetControllers() {
-		if controller.GetType() == "server" {
+	for i, device := range farm.GetDevices() {
+		if device.GetType() == "server" {
 			smtpConfig := NewSmtp()
-			for key, value := range controller.GetConfigMap() {
+			for key, value := range device.GetConfigMap() {
 				switch key {
 				case "name":
 					farm.Name = value
@@ -265,10 +274,10 @@ func (farm *Farm) HydrateConfigs() error {
 			}
 			farm.Smtp = smtpConfig.(*Smtp)
 		}
-		if err := controller.HydrateConfigs(); err != nil {
+		if err := device.HydrateConfigs(); err != nil {
 			return err
 		}
-		farm.Controllers[i] = controller
+		farm.Devices[i] = device
 	}
 	return nil
 }

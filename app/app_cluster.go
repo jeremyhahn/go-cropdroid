@@ -19,7 +19,6 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	datastore "github.com/jeremyhahn/go-cropdroid/datastore"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jinzhu/gorm"
@@ -59,15 +58,13 @@ type App struct {
 	Config              *config.Server
 	ConfigDir           string
 	ConfigFile          string
-	ConfigStore         state.ConfigStorer
-	ControllerIndex     state.ControllerIndex
+	DeviceIndex         state.DeviceIndex
 	DatastoreType       string
 	DatastoreCDC        bool
 	DataDir             string
 	DebugFlag           bool
 	DowngradeUser       string
 	EnableRegistrations bool // WebRegistrations
-	FarmStore           state.FarmStorer
 	GORM                *gorm.DB
 	GORMInitParams      *gormstore.GormInitParams
 	GossipCluster       cluster.GossipCluster
@@ -79,7 +76,6 @@ type App struct {
 	LogDir              string
 	LogFile             string
 	Logger              *logging.Logger
-	MetricDatastore     datastore.ControllerStateDAO
 	Mode                string
 	Name                string
 	NodeID              int

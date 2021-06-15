@@ -2,13 +2,15 @@ package config
 
 import "time"
 
-const CONFIG_KEY_NAME = "name"
-const CONFIG_KEY_MODE = "mode"
-const CONFIG_KEY_INTERVAL = "interval"
-const CONFIG_KEY_TIMEZONE = "timezone"
-const CONFIG_KEY_ENABLE = "enable"
-const CONFIG_KEY_NOTIFY = "notify"
-const CONFIG_KEY_URI = "uri"
+const (
+	CONFIG_KEY_NAME     = "name"
+	CONFIG_KEY_MODE     = "mode"
+	CONFIG_KEY_INTERVAL = "interval"
+	CONFIG_KEY_TIMEZONE = "timezone"
+	CONFIG_KEY_ENABLE   = "enable"
+	CONFIG_KEY_NOTIFY   = "notify"
+	CONFIG_KEY_URI      = "uri"
+)
 
 type ServerConfig interface {
 	GetID() int
@@ -28,7 +30,7 @@ type ServerConfig interface {
 	SetLicense(license *License)
 	GetFarms() []Farm
 	SetFarms(farms []Farm)
-	SetFarm(id int, farm FarmConfig)
+	SetFarm(id uint64, farm FarmConfig)
 }
 
 type OrganizationConfig interface {
@@ -43,7 +45,7 @@ type OrganizationConfig interface {
 	AddFarm(farm Farm)
 	SetFarms(farms []Farm)
 	GetFarms() []Farm
-	GetFarm(id int) (*Farm, error)
+	GetFarm(id uint64) (*Farm, error)
 
 	SetUsers(users []User)
 	GetUsers() []User
@@ -52,12 +54,14 @@ type OrganizationConfig interface {
 }
 
 type FarmConfig interface {
-	SetID(int)
-	GetID() int
+	SetID(uint64)
+	GetID() uint64
 	SetOrganizationID(id int)
 	GetOrganizationID() int
 	GetReplicas() int
 	SetReplicas(count int)
+	SetConsistency(level int)
+	GetConsistency() int
 	SetName(string)
 	GetName() string
 	SetMode(string)
@@ -73,12 +77,12 @@ type FarmConfig interface {
 	GetSmtp() SmtpConfig
 	SetUsers(users []User)
 	GetUsers() []User
-	AddController(Controller)
-	GetControllers() []Controller
-	SetControllers([]Controller)
-	SetController(controller ControllerConfig)
-	GetController(controllerType string) (*Controller, error)
-	GetControllerById(id int) (*Controller, error)
+	AddDevice(Device)
+	GetDevices() []Device
+	SetDevices([]Device)
+	SetDevice(device DeviceConfig)
+	GetDevice(deviceType string) (*Device, error)
+	GetDeviceById(id int) (*Device, error)
 	ParseConfigs() error
 	HydrateConfigs() error
 }
@@ -98,11 +102,11 @@ type SmtpConfig interface {
 	GetRecipient() string
 }
 
-type CommonControllerConfig interface {
-	GetID() int
-	SetID(int)
-	GetFarmID() int
-	SetFarmID(int)
+type CommonDeviceConfig interface {
+	GetID() uint64
+	SetID(uint64)
+	GetFarmID() uint64
+	SetFarmID(uint64)
 	GetType() string
 	SetType(string)
 	GetInterval() int
@@ -113,15 +117,16 @@ type CommonControllerConfig interface {
 	SetHardwareVersion(string)
 	GetFirmwareVersion() string
 	SetFirmwareVersion(string)
-	GetConfigs() []ControllerConfigItem
-	SetConfigs([]ControllerConfigItem)
-	SetConfig(controllerConfig ControllerConfigConfig)
+	GetConfigs() []DeviceConfigItem
+	SetConfigs([]DeviceConfigItem)
+	SetConfig(deviceConfig DeviceConfigConfig)
 	GetConfigMap() map[string]string
 }
 
-type ControllerConfig interface {
-	CommonControllerConfig
+type DeviceConfig interface {
+	CommonDeviceConfig
 	IsEnabled() bool
+	SetEnabled(enabled bool)
 	IsNotify() bool
 	GetURI() string
 	GetMetric(key string) (*Metric, error)
@@ -136,13 +141,13 @@ type ControllerConfig interface {
 	HydrateConfigs() error
 }
 
-type ControllerConfigConfig interface {
+type DeviceConfigConfig interface {
 	SetID(int)
 	GetID() int
 	SetUserID(int)
 	GetUserID() int
-	SetControllerID(int)
-	GetControllerID() int
+	SetDeviceID(uint64)
+	GetDeviceID() uint64
 	SetKey(string)
 	GetKey() string
 	SetValue(string)
@@ -152,8 +157,8 @@ type ControllerConfigConfig interface {
 type MetricConfig interface {
 	GetID() int
 	SetID(int)
-	GetControllerID() int
-	SetControllerID(int)
+	GetDeviceID() uint64
+	SetDeviceID(uint64)
 	GetDataType() int
 	SetDataType(int)
 	GetKey() string
@@ -175,8 +180,8 @@ type MetricConfig interface {
 type ChannelConfig interface {
 	GetID() int
 	SetID(int)
-	GetControllerID() int
-	SetControllerID(int)
+	GetDeviceID() uint64
+	SetDeviceID(uint64)
 	GetChannelID() int
 	SetChannelID(int)
 	GetName() string
@@ -250,7 +255,7 @@ type TriggerConfig interface {
 type LicenseConfig interface {
 	GetUserQuota() int
 	GetFarmQuota() int
-	GetControllerQuota() int
+	GetDeviceQuota() int
 }
 
 type UserConfig interface {

@@ -31,7 +31,7 @@ type FarmSM struct {
 	fs.FarmStore
 }
 
-/*cs := colfer.ControllerState{}
+/*cs := colfer.DeviceState{}
   bytes, err := cs.UnmarshalBinary()
   if err != nil {
     panic(err)

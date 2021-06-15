@@ -34,7 +34,7 @@ type FarmConfigSM struct {
 	fs.FarmStore
 }
 
-/*cs := colfer.ControllerState{}
+/*cs := colfer.DeviceState{}
   bytes, err := cs.UnmarshalBinary()
   if err != nil {
     panic(err)
@@ -56,16 +56,16 @@ func (s *FarmConfigSM) CreateConfigMachine(clusterID, nodeID uint64) sm.IStateMa
 	return s
 }
 
-// TODO config.Controller.Configs is set to json:"-" and yaml:"-" because the API
-// displays controller configs as key/value items. Probably time to create a view
+// TODO config.Device.Configs is set to json:"-" and yaml:"-" because the API
+// displays device configs as key/value items. Probably time to create a view
 // specific model for the API and remove the "-" so this loop is no longer needed.
 func (s *FarmConfigSM) hydrateConfigs(farmConfig config.Farm) config.Farm {
-	for _, controller := range farmConfig.GetControllers() {
-		configs := make([]config.ControllerConfigItem, 0)
-		for k, v := range controller.ConfigMap {
-			configs = append(configs, *config.CreateControllerConfigItem(0, controller.GetID(), k, v))
+	for _, device := range farmConfig.GetDevices() {
+		configs := make([]config.DeviceConfigItem, 0)
+		for k, v := range device.ConfigMap {
+			configs = append(configs, *config.CreateDeviceConfigItem(0, device.GetID(), k, v))
 		}
-		controller.SetConfigs(configs)
+		device.SetConfigs(configs)
 	}
 	return farmConfig
 }

@@ -98,15 +98,15 @@ func (dao *GormScheduleDAO) Get(id int) (config.ScheduleConfig, error) {
 	return &schedule, nil
 }
 
-func (dao *GormScheduleDAO) GetByUserOrgAndControllerID(orgID, controllerID int) ([]config.Schedule, error) {
-	dao.app.Logger.Debugf("Getting schedules for orgID %d and controller %d", orgID, controllerID)
+func (dao *GormScheduleDAO) GetByUserOrgAndDeviceID(orgID, deviceID int) ([]config.Schedule, error) {
+	dao.app.Logger.Debugf("Getting schedules for orgID %d and device %d", orgID, deviceID)
 	var entities []config.Schedule
 	if err := dao.db.Table("schedules").
 		Select("schedules.*").
 		Joins("JOIN channels on schedules.channel_id = channels.id").
-		Joins("JOIN controllers on channels.controller_id = controllers.id AND controllers.organization_id = ?", orgID).
-		Joins("JOIN permissions on controllers.organization_id = permissions.organization_id").
-		Where("channels.controller_id = ?", controllerID).
+		Joins("JOIN devices on channels.device_id = devices.id AND devices.organization_id = ?", orgID).
+		Joins("JOIN permissions on devices.organization_id = permissions.organization_id").
+		Where("channels.device_id = ?", deviceID).
 		Find(&entities).Error; err != nil {
 		return nil, err
 	}

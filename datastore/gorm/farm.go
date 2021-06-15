@@ -39,13 +39,13 @@ func (dao *GormFarmDAO) First() (config.FarmConfig, error) {
 	return &farm, nil
 }
 
-func (dao *GormFarmDAO) Get(farmID int) (config.FarmConfig, error) {
+func (dao *GormFarmDAO) Get(farmID uint64) (config.FarmConfig, error) {
 	dao.logger.Debugf("Getting farm: %d", farmID)
 	var farm config.Farm
-	if err := dao.db.Preload("Controllers").Preload("Users").Preload("Users.Roles").
-		Preload("Controllers.Configs").Preload("Controllers.Metrics").Preload("Controllers.Channels").
-		Preload("Controllers.Channels.Conditions").
-		Preload("Controllers.Channels.Schedule").
+	if err := dao.db.Preload("Devices").Preload("Users").Preload("Users.Roles").
+		Preload("Devices.Configs").Preload("Devices.Metrics").Preload("Devices.Channels").
+		Preload("Devices.Channels.Conditions").
+		Preload("Devices.Channels.Schedule").
 		First(&farm, farmID).Error; err != nil {
 		return nil, err
 	}
@@ -58,10 +58,10 @@ func (dao *GormFarmDAO) Get(farmID int) (config.FarmConfig, error) {
 func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
 	dao.logger.Debug("Getting all farms")
 	var farms []config.Farm
-	if err := dao.db.Preload("Controllers").Preload("Users").Preload("Users.Roles").
-		Preload("Controllers.Configs").Preload("Controllers.Metrics").Preload("Controllers.Channels").
-		Preload("Controllers.Channels.Conditions").
-		Preload("Controllers.Channels.Schedule").
+	if err := dao.db.Preload("Devices").Preload("Users").Preload("Users.Roles").
+		Preload("Devices.Configs").Preload("Devices.Metrics").Preload("Devices.Channels").
+		Preload("Devices.Channels.Conditions").
+		Preload("Devices.Channels.Schedule").
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
@@ -77,10 +77,10 @@ func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
 func (dao *GormFarmDAO) GetByOrgAndUserID(orgID, userID int) ([]config.Farm, error) {
 	dao.logger.Debug("Getting all farms for user: %d", userID)
 	var farms []config.Farm
-	if err := dao.db.Preload("Controllers").Preload("Users").Preload("Users.Roles").
-		Preload("Controllers.Configs").Preload("Controllers.Metrics").Preload("Controllers.Channels").
-		Preload("Controllers.Channels.Conditions").
-		Preload("Controllers.Channels.Schedule").
+	if err := dao.db.Preload("Devices").Preload("Users").Preload("Users.Roles").
+		Preload("Devices.Configs").Preload("Devices.Metrics").Preload("Devices.Channels").
+		Preload("Devices.Channels.Conditions").
+		Preload("Devices.Channels.Schedule").
 		Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
 		Where("permissions.organization_id = ? AND permissions.user_id = ?", orgID, userID).
 		Find(&farms).Error; err != nil {
@@ -93,6 +93,16 @@ func (dao *GormFarmDAO) GetByOrgAndUserID(orgID, userID int) ([]config.Farm, err
 		}
 	}
 	return farms, nil
+}
+
+func (dao *GormFarmDAO) Count() (int64, error) {
+	dao.logger.Debugf("Getting farm count")
+	var farm config.Farm
+	var count int64
+	if err := dao.db.Model(&farm).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 /*

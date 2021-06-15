@@ -10,7 +10,7 @@ import (
 
 type MetricService interface {
 	Get(id int) (common.Metric, error)
-	GetAll(session Session, controllerID int) ([]common.Metric, error)
+	GetAll(session Session, deviceID int) ([]common.Metric, error)
 	Update(session Session, metric common.Metric) error
 }
 
@@ -36,10 +36,10 @@ func (service *DefaultMetricService) Get(id int) (common.Metric, error) {
 	return service.mapper.MapEntityToModel(entity), nil
 }
 
-func (service *DefaultMetricService) GetAll(session Session, controllerID int) ([]common.Metric, error) {
+func (service *DefaultMetricService) GetAll(session Session, deviceID int) ([]common.Metric, error) {
 	orgID := session.GetFarmService().GetConfig().GetOrgID()
 	userID := session.GetUser().GetID()
-	entities, err := service.dao.GetByOrgUserAndControllerID(orgID, userID, controllerID)
+	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,18 +57,18 @@ func (service *DefaultMetricService) Update(session Session, metric common.Metri
 	if err != nil {
 		return err
 	}
-	entity.SetControllerID(persisted.GetControllerID())
+	entity.SetDeviceID(persisted.GetDeviceID())
 	if err = service.dao.Save(&entity); err != nil {
 		return err
 	}
 
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		if controller.GetID() == metric.GetControllerID() {
+	for _, device := range farmConfig.GetDevices() {
+		if device.GetID() == metric.GetDeviceID() {
 			metricConfig := service.mapper.MapModelToConfig(metric)
-			controller.SetMetric(&metricConfig)
-			farmConfig.SetController(&controller)
+			device.SetMetric(&metricConfig)
+			farmConfig.SetDevice(&device)
 			return farmService.SetConfig(farmConfig)
 		}
 	}

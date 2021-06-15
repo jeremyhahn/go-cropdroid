@@ -1,6 +1,5 @@
 {
- "hardwareVersion": "",
- "firmwareVersion": "",
+ "device_id": 0,
  "metrics": {
   "co2": 1200,
   "heatIndex0": 63.2,

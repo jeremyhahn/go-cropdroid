@@ -27,7 +27,7 @@ func NewClusterRestServiceRegistry(mapperRegistry mapper.MapperRegistry, service
 	conditionRestService := NewConditionRestService(serviceRegistry.GetConditionService(), mapperRegistry.GetConditionMapper(), jwtService, jsonWriter)
 	scheduleRestService := NewScheduleRestService(serviceRegistry.GetScheduleService(), jwtService, jsonWriter)
 	algorithmRestService := NewAlgorithmRestService(serviceRegistry.GetAlgorithmService(), jwtService, jsonWriter)
-	controllerFactoryRestService := NewControllerFactoryRestService(serviceRegistry.GetControllerFactory(), jwtService, jsonWriter)
+	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry.GetDeviceFactory(), jwtService, jsonWriter)
 	googleRestService := NewGoogleRestService(serviceRegistry.GetGoogleAuthService(), jwtService, jsonWriter)
 
 	//restServices = append(restServices, configRestService)
@@ -36,23 +36,23 @@ func NewClusterRestServiceRegistry(mapperRegistry mapper.MapperRegistry, service
 	restServices = append(restServices, conditionRestService)
 	restServices = append(restServices, scheduleRestService)
 	restServices = append(restServices, algorithmRestService)
-	restServices = append(restServices, controllerFactoryRestService)
+	restServices = append(restServices, deviceFactoryRestService)
 	restServices = append(restServices, googleRestService)
 	restServices = append(restServices, NewFarmRestService(jwtService, jsonWriter))
-	restServices = append(restServices, NewControllerRestService(serviceRegistry, jwtService, jsonWriter))
+	restServices = append(restServices, NewDeviceRestService(serviceRegistry, jwtService, jsonWriter))
 
-	// Create unique list of controller types
+	// Create unique list of device types
 	/*
-		controllerServices := make(map[string]common.ControllerService, 0)
+		deviceServices := make(map[string]common.DeviceService, 0)
 		for _, farmService := range serviceRegistry.GetFarmServices() {
-			controllers, err := serviceRegistry.GetControllerServices(farmService.GetFarmID())
+			devices, err := serviceRegistry.GetDeviceServices(farmService.GetFarmID())
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, cservice := range controllers {
-				if _, ok := controllerServices[cservice.GetControllerType()]; !ok {
-					controllerServices[cservice.GetControllerType()] = cservice
-					restServices = append(restServices, NewControllerRestService(cservice, jwtService, jsonWriter))
+			for _, cservice := range devices {
+				if _, ok := deviceServices[cservice.GetDeviceType()]; !ok {
+					deviceServices[cservice.GetDeviceType()] = cservice
+					restServices = append(restServices, NewDeviceRestService(cservice, jwtService, jsonWriter))
 				}
 			}
 		}*/

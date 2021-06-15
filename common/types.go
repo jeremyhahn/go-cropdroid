@@ -8,6 +8,12 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
+const (
+	CONSISTENCY_CACHED = iota
+	CONSISTENCY_LOCAL
+	CONSISTENCY_QUORUM
+)
+
 type UserAccount interface {
 	GetID() int
 	GetEmail() string
@@ -31,7 +37,7 @@ type HttpWriter interface {
 }
 
 type Notification interface {
-	GetController() string
+	GetDevice() string
 	GetPriority() int
 	GetType() string
 	GetTitle() string
@@ -44,32 +50,35 @@ type Mailer interface {
 	Send(farmName, subject, message string) error
 }
 
-type ControllerService interface {
-	GetControllerConfig() config.ControllerConfig
-	SetMetricValue(key string, value float64) error
-	GetControllerType() string
-	GetState() (state.ControllerStateMap, error)
-	GetView() (ControllerView, error)
-	GetHistory(metric string) ([]float64, error)
-	GetController() (Controller, error)
-	Manage()
-	Poll() (state.ControllerStateMap, error)
-	Switch(channelID, position int, logMessage string) (*Switch, error)
-	TimerSwitch(channelID, duration int, logMessage string) (TimerEvent, error)
-	ManageMetrics(farmState state.FarmStateMap) []error
-	ManageChannels(farmState state.FarmStateMap, channels []config.ChannelConfig) []error
-	//RegisterObserver(observer ControllerObserver)
-}
+// type DeviceService interface {
+// 	GetDeviceConfig() config.DeviceConfig
+// 	SetMetricValue(key string, value float64) error
+// 	GetDeviceType() string
+// 	GetConfig() (config.DeviceConfig, error)
+// 	GetState() (state.DeviceStateMap, error)
+// 	GetView() (DeviceView, error)
+// 	GetHistory(metric string) ([]float64, error)
+// 	GetDevice() (Device, error)
+// 	Manage(farmState state.FarmStateMap)
+// 	Poll(deviceStateChangeChan chan<- DeviceStateChange) error
+// 	SetMode(mode string, device device.SmartSwitcher)
+// 	Switch(channelID, position int, logMessage string) (*Switch, error)
+// 	TimerSwitch(channelID, duration int, logMessage string) (TimerEvent, error)
+// 	ManageMetrics(config config.DeviceConfig, farmState state.FarmStateMap) []error
+// 	ManageChannels(deviceConfig config.DeviceConfig,
+// 		farmState state.FarmStateMap, channels []config.ChannelConfig) []error
+// 	//RegisterObserver(observer DeviceObserver)
+// }
 
-type ControllerView interface {
+type DeviceView interface {
 	GetMetrics() []Metric
 	GetChannels() []Channel
 	GetTimestamp() time.Time
 }
 
-type CommonController interface {
-	GetID() int
-	SetID(int)
+type CommonDevice interface {
+	GetID() uint64
+	SetID(uint64)
 	GetOrgID() int
 	SetOrgID(int)
 	GetType() string
@@ -124,12 +133,12 @@ type Farm interface {
 	SetMode(string)
 	GetName() string
 	SetName(string)
-	GetControllers() []Controller
-	SetControllers([]Controller)
+	GetDevices() []Device
+	SetDevices([]Device)
 }
 
-type Controller interface {
-	CommonController
+type Device interface {
+	CommonDevice
 	IsEnabled() bool
 	SetEnabled(enabled bool)
 	IsNotify() bool
@@ -164,7 +173,36 @@ type InAppPurchase interface {
 	GetPurchaseTimeMillis() int64
 }
 
+type DeviceStateChange struct {
+	DeviceID   uint64
+	DeviceType string
+	StateMap   state.DeviceStateMap
+}
+
+type MetricValueChanged struct {
+	DeviceType string
+	Key        string
+	Value      float64
+}
+
+type SwitchValueChanged struct {
+	DeviceType string
+	ChannelID  int
+	Value      int
+}
+
+type FarmNotification struct {
+	EventType string
+	Message   string
+}
+
+type FarmError struct {
+	Method    string
+	EventType string
+	Error     error
+}
+
 /*
-type ControllerObserver interface {
-	OnControllerStateChange(diff ControllerState)
+type DeviceObserver interface {
+	OnDeviceStateChange(diff DeviceState)
 }*/

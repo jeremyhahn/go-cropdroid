@@ -7,43 +7,43 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
-type ControllerViewModel struct {
+type DeviceViewModel struct {
 	Metrics               []common.Metric  `json:"metrics"`
 	Channels              []common.Channel `json:"channels"`
 	Timestamp             time.Time        `json:"timestamp"`
-	common.ControllerView `json:"-"`
+	common.DeviceView `json:"-"`
 }
 
-func NewControllerView(app *app.App, metrics []common.Metric, channels []common.Channel) common.ControllerView {
-	return &ControllerViewModel{
+func NewDeviceView(app *app.App, metrics []common.Metric, channels []common.Channel) common.DeviceView {
+	return &DeviceViewModel{
 		Metrics:   metrics,
 		Channels:  channels,
 		Timestamp: time.Now().In(app.Location)}
 }
 
-func CreateControllerView(metrics []common.Metric, channels []common.Channel, timestamp time.Time) common.ControllerView {
-	return &ControllerViewModel{
+func CreateDeviceView(metrics []common.Metric, channels []common.Channel, timestamp time.Time) common.DeviceView {
+	return &DeviceViewModel{
 		Metrics:   metrics,
 		Channels:  channels,
 		Timestamp: timestamp}
 }
 
-func (controller *ControllerViewModel) SetMetrics(metrics []common.Metric) {
-	controller.Metrics = metrics
+func (device *DeviceViewModel) SetMetrics(metrics []common.Metric) {
+	device.Metrics = metrics
 }
 
-func (controller *ControllerViewModel) GetMetrics() []common.Metric {
-	return controller.Metrics
+func (device *DeviceViewModel) GetMetrics() []common.Metric {
+	return device.Metrics
 }
 
-func (controller *ControllerViewModel) SetChannels(channels []common.Channel) {
-	controller.Channels = channels
+func (device *DeviceViewModel) SetChannels(channels []common.Channel) {
+	device.Channels = channels
 }
 
-func (controller *ControllerViewModel) GetChannels() []common.Channel {
-	return controller.Channels
+func (device *DeviceViewModel) GetChannels() []common.Channel {
+	return device.Channels
 }
 
-func (controller *ControllerViewModel) GetTimestamp() time.Time {
-	return controller.Timestamp
+func (device *DeviceViewModel) GetTimestamp() time.Time {
+	return device.Timestamp
 }

@@ -1,3 +1,7 @@
+// +build ignore
+
+// This has been deprecated in favor of config.store.FarmConfigStorer
+
 package state
 
 import (

@@ -1,3 +1,5 @@
+// +build ignore
+
 package observer
 
 import (
@@ -7,8 +9,8 @@ import (
 type FarmConfigObserver interface {
 	GetFarmID() int
 	//OnFarmChange(farm config.FarmConfig)
-	//OnControllerChange(controller config.ControllerConfig)
-	OnControllerConfigChange(config config.ControllerConfigConfig)
+	//OnDeviceChange(device config.DeviceConfig)
+	OnDeviceConfigChange(config config.DeviceConfigConfig)
 	OnMetricChange(metric config.MetricConfig)
 	OnChannelChange(channel config.ChannelConfig)
 	OnConditionChange(condition config.ConditionConfig)

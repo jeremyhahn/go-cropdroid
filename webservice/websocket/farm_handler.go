@@ -66,8 +66,8 @@ func (ph *FarmHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 		conn:                 conn,
 		send:                 make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
 		state:                make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
-		controllerState:      make(chan map[string]state.ControllerStateMap, common.BUFFERED_CHANNEL_SIZE),
-		controllerStateDelta: make(chan map[string]state.ControllerStateDeltaMap, common.BUFFERED_CHANNEL_SIZE),
+		deviceState:      make(chan map[string]state.DeviceStateMap, common.BUFFERED_CHANNEL_SIZE),
+		deviceStateDelta: make(chan map[string]state.DeviceStateDeltaMap, common.BUFFERED_CHANNEL_SIZE),
 		session:              session}
 
 	client.hub.register <- client

@@ -12,7 +12,7 @@ import (
 type ConditionMapper interface {
 	MapModelToEntity(model config.ConditionConfig) *config.Condition
 	MapEntityToModel(entity *config.Condition) *config.Condition
-	MapEntityToView(entity config.ConditionConfig, controllerType string, metric config.MetricConfig, channelID int) *viewmodel.Condition
+	MapEntityToView(entity config.ConditionConfig, deviceType string, metric config.MetricConfig, channelID int) *viewmodel.Condition
 	MapViewToConfig(viewModel viewmodel.Condition) config.ConditionConfig
 }
 
@@ -41,18 +41,18 @@ func (mapper *DefaultConditionMapper) MapEntityToModel(entity *config.Condition)
 		Threshold:  entity.GetThreshold()}
 }
 
-func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionConfig, controllerType string,
+func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionConfig, deviceType string,
 	metric config.MetricConfig, channelID int) *viewmodel.Condition {
 
 	text := fmt.Sprintf("%s %s %s %.2f",
-		strings.Title(controllerType),
+		strings.Title(deviceType),
 		strings.ToLower(metric.GetName()),
 		//mapper.comparatorToText(entity.GetComparator()),
 		entity.GetComparator(),
 		entity.GetThreshold())
 	return &viewmodel.Condition{
 		ID:             fmt.Sprintf("%d", entity.GetID()),
-		ControllerType: controllerType,
+		DeviceType: deviceType,
 		MetricID:       metric.GetID(),
 		MetricName:     metric.GetName(),
 		ChannelID:      channelID,

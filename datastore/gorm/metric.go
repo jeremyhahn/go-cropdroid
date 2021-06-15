@@ -45,24 +45,24 @@ func (metricDAO *GormMetricDAO) Get(metricID int) (config.MetricConfig, error) {
 	return &entity, nil
 }
 
-func (metricDAO *GormMetricDAO) GetByControllerID(controllerID int) ([]config.Metric, error) {
-	metricDAO.logger.Debugf("Getting metric record for controller %d", controllerID)
+func (metricDAO *GormMetricDAO) GetByDeviceID(deviceID int) ([]config.Metric, error) {
+	metricDAO.logger.Debugf("Getting metric record for device %d", deviceID)
 	var entities []config.Metric
-	if err := metricDAO.db.Where("controller_id = ?", controllerID).Find(&entities).Error; err != nil {
+	if err := metricDAO.db.Where("device_id = ?", deviceID).Find(&entities).Error; err != nil {
 		return nil, err
 	}
 	return entities, nil
 }
 
-func (metricDAO *GormMetricDAO) GetByOrgUserAndControllerID(orgID, userID, controllerID int) ([]config.Metric, error) {
+func (metricDAO *GormMetricDAO) GetByOrgUserAndDeviceID(orgID, userID, deviceID int) ([]config.Metric, error) {
 	metricDAO.logger.Debugf("Getting metric record for org '%d'", orgID)
 	var Metrics []config.Metric
 	if err := metricDAO.db.Table("metrics").
 		Select("metrics.*").
-		Joins("JOIN controllers on metrics.controller_id = controllers.id").
-		Joins("JOIN farms on farms.id = controllers.farm_id AND farms.organization_id = ?", orgID).
+		Joins("JOIN devices on metrics.device_id = devices.id").
+		Joins("JOIN farms on farms.id = devices.farm_id AND farms.organization_id = ?", orgID).
 		Joins("JOIN permissions on farms.id = permissions.farm_id").
-		Where("metrics.controller_id = ? and permissions.user_id = ?", controllerID, userID).
+		Where("metrics.device_id = ? and permissions.user_id = ?", deviceID, userID).
 		Find(&Metrics).Error; err != nil {
 		return nil, err
 	}

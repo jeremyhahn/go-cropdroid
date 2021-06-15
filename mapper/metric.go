@@ -23,7 +23,7 @@ func NewMetricMapper() MetricMapper {
 func (mapper *DefaultMetricMapper) MapConfigToModel(config config.MetricConfig) common.Metric {
 	return &model.Metric{
 		ID:           config.GetID(),
-		ControllerID: config.GetControllerID(),
+		DeviceID: config.GetDeviceID(),
 		DataType:     config.GetDataType(),
 		Name:         config.GetName(),
 		Key:          config.GetKey(),
@@ -38,7 +38,7 @@ func (mapper *DefaultMetricMapper) MapConfigToModel(config config.MetricConfig) 
 func (mapper *DefaultMetricMapper) MapEntityToConfig(entity config.MetricConfig) config.MetricConfig {
 	return &model.Metric{
 		ID:           entity.GetID(),
-		ControllerID: entity.GetControllerID(),
+		DeviceID: entity.GetDeviceID(),
 		Name:         entity.GetName(),
 		Key:          entity.GetKey(),
 		Enable:       entity.IsEnabled(),
@@ -51,7 +51,7 @@ func (mapper *DefaultMetricMapper) MapEntityToConfig(entity config.MetricConfig)
 func (mapper *DefaultMetricMapper) MapEntityToModel(entity config.MetricConfig) common.Metric {
 	return &model.Metric{
 		ID:           entity.GetID(),
-		ControllerID: entity.GetControllerID(),
+		DeviceID: entity.GetDeviceID(),
 		DataType:     entity.GetDataType(),
 		Name:         entity.GetName(),
 		Key:          entity.GetKey(),
@@ -65,7 +65,7 @@ func (mapper *DefaultMetricMapper) MapEntityToModel(entity config.MetricConfig) 
 func (mapper *DefaultMetricMapper) MapModelToConfig(model common.Metric) config.Metric {
 	return config.Metric{
 		ID:           model.GetID(),
-		ControllerID: model.GetControllerID(),
+		DeviceID: model.GetDeviceID(),
 		DataType:     model.GetDataType(),
 		Name:         model.GetName(),
 		Key:          model.GetKey(),

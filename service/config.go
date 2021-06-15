@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ErrConfigKeyNotFound = errors.New("Controller config key not found")
+	ErrConfigKeyNotFound = errors.New("Device config key not found")
 )
 
 type ConfigurationService struct {
@@ -23,7 +23,7 @@ type ConfigurationService struct {
 	serviceRegistry ServiceRegistry
 	//farmServices      map[int]FarmService
 	//channelIndex      map[int]config.ChannelConfig
-	//controllerIndex   map[int]config.ControllerConfig
+	//deviceIndex   map[int]config.DeviceConfig
 	mutex                *sync.RWMutex
 	farmConfigChangeChan chan config.FarmConfig
 	ConfigService
@@ -39,45 +39,45 @@ func NewConfigService(app *app.App, datastoreRegistry datastore.DatastoreRegistr
 		serviceRegistry: serviceRegistry,
 		//farmServices:      make(map[int]FarmService, 0),
 		//channelIndex:      make(map[int]config.ChannelConfig, 0),
-		//controllerIndex:   make(map[int]config.ControllerConfig, 0),
+		//deviceIndex:   make(map[int]config.DeviceConfig, 0),
 		mutex:                &sync.RWMutex{},
 		farmConfigChangeChan: farmConfigChangeChan}
 }
 
-func (service *ConfigurationService) SetValue(session Session, farmID, controllerID int, key, value string) error {
-	service.app.Logger.Debugf("[ConfigurationService.Set] Setting config farmID=%d, controllerID=%d, key=%s, value=%s",
-		farmID, controllerID, key, value)
+func (service *ConfigurationService) SetValue(session Session, farmID, deviceID uint64, key, value string) error {
+	service.app.Logger.Debugf("Setting config farmID=%d, deviceID=%d, key=%s, value=%s",
+		farmID, deviceID, key, value)
 
-	configDAO := service.datastoreRegistry.GetControllerConfigDAO()
-	configItem, err := configDAO.Get(controllerID, key)
+	configDAO := service.datastoreRegistry.GetDeviceConfigDAO()
+	configItem, err := configDAO.Get(deviceID, key)
 	if err != nil {
 		return err
 	}
 	configItem.SetValue(value)
 	configDAO.Save(configItem)
-	service.app.Logger.Debugf("[ConfigurationService.Set] Saved configuration item: %+v", configItem)
+	service.app.Logger.Debugf("Saved configuration item: %+v", configItem)
 
-	farmService, ok := service.serviceRegistry.GetFarmService(farmID)
-	if !ok {
+	farmService := service.serviceRegistry.GetFarmService(farmID)
+	if farmService == nil {
 		err := fmt.Errorf("Unable to locate farm service in service registry! farm.id=%d", farmID)
-		service.app.Logger.Errorf("[ConfigurationService.Set] Error: %s", err)
+		service.app.Logger.Errorf("Error: %s", err)
 		return err
 	}
 	/*
-		controllers, err := service.serviceRegistry.GetControllerServices(farmService.GetFarmID())
+		devices, err := service.serviceRegistry.GetDeviceServices(farmService.GetFarmID())
 		if err != nil {
 			return err
 		}
-		for _, controller := range controllers {
-			controllerConfig := controller.GetControllerConfig()
-			if controllerConfig.GetID() == controllerID {
-				if controller.GetControllerType() == common.CONTROLLER_TYPE_SERVER {
+		for _, device := range devices {
+			deviceConfig := device.GetDeviceConfig()
+			if deviceConfig.GetID() == deviceID {
+				if device.GetDeviceType() == common.CONTROLLER_TYPE_SERVER {
 
 				}
-				for _, c := range controllerConfig.GetConfigs() {
+				for _, c := range deviceConfig.GetConfigs() {
 					if c.GetKey() == key {
 						c.SetValue(value)
-						controllerConfig.SetConfig(&c)
+						deviceConfig.SetConfig(&c)
 						farmService.PublishConfig()
 						return nil
 					}
@@ -85,7 +85,7 @@ func (service *ConfigurationService) SetValue(session Session, farmID, controlle
 				return ErrConfigKeyNotFound
 			}
 		}
-		return ErrControllerNotFound
+		return ErrDeviceNotFound
 	*/
 	farmConfig, err := service.datastoreRegistry.GetFarmDAO().Get(farmService.GetFarmID())
 	if err != nil {
@@ -96,19 +96,19 @@ func (service *ConfigurationService) SetValue(session Session, farmID, controlle
 }
 
 /*
-func (service *ConfigurationService) OnControllerConfigChange(controllerConfig config.ControllerConfigConfig) {
+func (service *ConfigurationService) OnDeviceConfigChange(deviceConfig config.DeviceConfigConfig) {
 	service.mutex.Lock()
 	defer service.mutex.Unlock()
 
-	service.app.Logger.Debugf("OnControllerConfigChange fired! Received controller config: %+v", controllerConfig)
+	service.app.Logger.Debugf("OnDeviceConfigChange fired! Received device config: %+v", deviceConfig)
 
-	controller := service.getController(controllerConfig.GetControllerID())
-	if controller == nil {
+	device := service.getDevice(deviceConfig.GetDeviceID())
+	if device == nil {
 		return
 	}
-	controller.SetConfig(controllerConfig)
-	service.farmServices[controller.GetFarmID()].GetConfig().ParseConfigs()
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	device.SetConfig(deviceConfig)
+	service.farmServices[device.GetFarmID()].GetConfig().ParseConfigs()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 */
 
@@ -122,10 +122,10 @@ func (service *ConfigurationService) Sync() {
 	service.app.Logger.Debug("[ConfigurationService.Sync] Syncing configuration")
 	service.farmServices = service.serviceRegistry.GetFarmServices()
 	for _, farmService := range service.farmServices {
-		controllers := farmService.GetConfig().GetControllers()
-		for i, controller := range controllers {
-			service.controllerIndex[controller.GetID()] = &controllers[i]
-			channels := controller.GetChannels()
+		devices := farmService.GetConfig().GetDevices()
+		for i, device := range devices {
+			service.deviceIndex[device.GetID()] = &devices[i]
+			channels := device.GetChannels()
 			for _, channel := range channels {
 				service.channelIndex[channel.GetID()] = &channels[i]
 			}
@@ -133,18 +133,18 @@ func (service *ConfigurationService) Sync() {
 	}
 }
 
-func (service *ConfigurationService) getController(id int) config.ControllerConfig {
-	controller, ok := service.controllerIndex[id]
+func (service *ConfigurationService) getDevice(id int) config.DeviceConfig {
+	device, ok := service.deviceIndex[id]
 	if !ok {
 		service.Sync()
-		controller, ok = service.controllerIndex[id]
+		device, ok = service.deviceIndex[id]
 		if !ok {
-			service.app.Logger.Errorf("[ConfigurationService.getController] Failed to locate controller after syncing indexes! controller.id=%d",
-				controller.GetID())
+			service.app.Logger.Errorf("[ConfigurationService.getDevice] Failed to locate device after syncing indexes! device.id=%d",
+				device.GetID())
 			return nil
 		}
 	}
-	return controller
+	return device
 }
 
 func (service *ConfigurationService) getChannel(id int) config.ChannelConfig {
@@ -160,19 +160,19 @@ func (service *ConfigurationService) getChannel(id int) config.ChannelConfig {
 	return channel
 }
 
-func (service *ConfigurationService) OnControllerConfigChange(controllerConfig config.ControllerConfigConfig) {
+func (service *ConfigurationService) OnDeviceConfigChange(deviceConfig config.DeviceConfigConfig) {
 	service.mutex.Lock()
 	defer service.mutex.Unlock()
 
-	service.app.Logger.Debugf("OnControllerConfigChange fired! Received controller config: %+v", controllerConfig)
+	service.app.Logger.Debugf("OnDeviceConfigChange fired! Received device config: %+v", deviceConfig)
 
-	controller := service.getController(controllerConfig.GetControllerID())
-	if controller == nil {
+	device := service.getDevice(deviceConfig.GetDeviceID())
+	if device == nil {
 		return
 	}
-	controller.SetConfig(controllerConfig)
-	service.farmServices[controller.GetFarmID()].GetConfig().ParseConfigs()
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	device.SetConfig(deviceConfig)
+	service.farmServices[device.GetFarmID()].GetConfig().ParseConfigs()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 
 func (service *ConfigurationService) OnMetricChange(metric config.MetricConfig) {
@@ -181,13 +181,13 @@ func (service *ConfigurationService) OnMetricChange(metric config.MetricConfig) 
 
 	service.app.Logger.Debugf("OnMetricChange fired! Received metric: %+v", metric)
 
-	controller, ok := service.controllerIndex[metric.GetControllerID()]
+	device, ok := service.deviceIndex[metric.GetDeviceID()]
 	if !ok {
-		service.controllerIndex[metric.GetControllerID()] = controller
+		service.deviceIndex[metric.GetDeviceID()] = device
 	}
-	controller.SetMetric(metric)
+	device.SetMetric(metric)
 
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 
 func (service *ConfigurationService) OnChannelChange(channel config.ChannelConfig) {
@@ -196,13 +196,13 @@ func (service *ConfigurationService) OnChannelChange(channel config.ChannelConfi
 
 	service.app.Logger.Debugf("OnChannelChange fired! Received channel: %+v", channel)
 
-	controller := service.getController(channel.GetControllerID())
-	if controller == nil {
+	device := service.getDevice(channel.GetDeviceID())
+	if device == nil {
 		return
 	}
-	controller.SetChannel(channel)
+	device.SetChannel(channel)
 
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 
 func (service *ConfigurationService) OnConditionChange(condition config.ConditionConfig) {
@@ -216,12 +216,12 @@ func (service *ConfigurationService) OnConditionChange(condition config.Conditio
 	}
 	channel.SetCondition(condition)
 
-	controller := service.getController(channel.GetControllerID())
-	if controller == nil {
+	device := service.getDevice(channel.GetDeviceID())
+	if device == nil {
 		return
 	}
 
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 
 func (service *ConfigurationService) OnScheduleChange(schedule config.ScheduleConfig) {
@@ -234,12 +234,12 @@ func (service *ConfigurationService) OnScheduleChange(schedule config.ScheduleCo
 	}
 	channel.SetScheduleItem(schedule)
 
-	controller := service.getController(channel.GetControllerID())
-	if controller == nil {
+	device := service.getDevice(channel.GetDeviceID())
+	if device == nil {
 		return
 	}
 
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 
 func (service *ConfigurationService) GetServerConfig() config.ServerConfig {
@@ -314,25 +314,25 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 
 	service.app.Logger.Debugf("Building config for farmID: %d", farmID)
 
-	controllerEntities, err := service.controllerDAO.GetByFarmId(farmID)
+	deviceEntities, err := service.deviceDAO.GetByFarmId(farmID)
 	if err != nil {
 		return nil, err
 	}
-	if len(controllerEntities) <= 0 {
-		return nil, fmt.Errorf("No controllers found for farmID %d", farmID)
+	if len(deviceEntities) <= 0 {
+		return nil, fmt.Errorf("No devices found for farmID %d", farmID)
 	}
 
 	farm := &config.Farm{
 		ID:             0,
 		OrganizationID: 0,
-		Controllers:    make([]config.Controller, 0)}
+		Devices:    make([]config.Device, 0)}
 
-	for _, controller := range controllerEntities {
+	for _, device := range deviceEntities {
 
-		service.app.Logger.Debugf("Loading controller: %s", controller.GetType())
+		service.app.Logger.Debugf("Loading device: %s", device.GetType())
 
-		if controller.GetID() == common.CONTROLLER_TYPE_ID_SERVER {
-			configEntities, err := service.configDAO.GetAll(controller.GetID())
+		if device.GetID() == common.CONTROLLER_TYPE_ID_SERVER {
+			configEntities, err := service.configDAO.GetAll(device.GetID())
 			if err != nil {
 				return nil, err
 			}
@@ -354,14 +354,14 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 					serverConfig.SetMode(configEntity.GetValue())
 				}
 			}
-			_, err = service.buildSMTP(controller.GetID(), serverConfig)
+			_, err = service.buildSMTP(device.GetID(), serverConfig)
 			if err != nil {
 				return nil, err
 			}
 			continue
 		}
-		service.app.Logger.Debugf("Building microcontroller configuration: %s", controller.GetType())
-		_, err := service.buildController(controller, farm)
+		service.app.Logger.Debugf("Building microdevice configuration: %s", device.GetType())
+		_, err := service.buildDevice(device, farm)
 		if err != nil {
 			return nil, err
 		}
@@ -371,16 +371,16 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 	return serverConfig, nil
 }
 
-func (service *ConfigurationService) buildSMTP(controllerID int, c config.ServerConfig) (config.ServerConfig, error) {
-	smtpEnable, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_ENABLE_KEY)
+func (service *ConfigurationService) buildSMTP(deviceID int, c config.ServerConfig) (config.ServerConfig, error) {
+	smtpEnable, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_ENABLE_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpHost, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_HOST_KEY)
+	smtpHost, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_HOST_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpPort, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_PORT_KEY)
+	smtpPort, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_PORT_KEY)
 	if err != nil {
 		return nil, err
 	}
@@ -388,15 +388,15 @@ func (service *ConfigurationService) buildSMTP(controllerID int, c config.Server
 	if err != nil {
 		return nil, err
 	}
-	smtpUsername, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_USERNAME_KEY)
+	smtpUsername, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_USERNAME_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpPassword, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_PASSWORD_KEY)
+	smtpPassword, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_PASSWORD_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpTo, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_RECIPIENT_KEY)
+	smtpTo, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_RECIPIENT_KEY)
 	if err != nil {
 		return nil, err
 	}
@@ -418,45 +418,45 @@ func (service *ConfigurationService) buildSMTP(controllerID int, c config.Server
 //func (service *ConfigurationService) buildFarm(farm entity.FarmEntity, config config.ServerConfig) (config.ServerConfig, error) {
 //}
 
-func (service *ConfigurationService) buildController(controller config.Controller, farmConfig config.FarmConfig) (config.FarmConfig, error) {
+func (service *ConfigurationService) buildDevice(device config.Device, farmConfig config.FarmConfig) (config.FarmConfig, error) {
 	//configs := make(map[string]string, len(configEntities))
 	//for _, entity := range configEntities {
-	//	service.app.Logger.Debugf("[ConfigService.buildController] Setting config: %+v", entity)
+	//	service.app.Logger.Debugf("[ConfigService.buildDevice] Setting config: %+v", entity)
 	//	configs[entity.GetKey()] = entity.GetValue()
 	//}
 
-	//MapEntityToConfig(controllerEntity entity.ControllerEntity, configEntities []entity.ConfigEntity) (common.ControllerConfig, error)
+	//MapEntityToConfig(deviceEntity entity.DeviceEntity, configEntities []entity.ConfigEntity) (common.DeviceConfig, error)
 
-	//	controllerConfig, err := service.controllerMapper.MapConfigToModel(controller, configEntities)
+	//	deviceConfig, err := service.deviceMapper.MapConfigToModel(device, configEntities)
 	//	if err != nil {
 	//		return nil, err
 	//	}
 
-	metrics, err := service.buildMetrics(controller)
+	metrics, err := service.buildMetrics(device)
 	if err != nil {
 		return nil, err
 	}
-	channels, err := service.buildChannels(controller)
+	channels, err := service.buildChannels(device)
 	if err != nil {
 		return nil, err
 	}
-	//controller.SetConfigs(configEntities)
-	controller.SetMetrics(metrics)
-	controller.SetChannels(channels)
-	farmConfig.AddController(controller)
+	//device.SetConfigs(configEntities)
+	device.SetMetrics(metrics)
+	device.SetChannels(channels)
+	farmConfig.AddDevice(device)
 	return farmConfig, nil
 }
 
-func (service *ConfigurationService) buildMetrics(controller config.Controller) ([]config.Metric, error) {
-	metrics, err := service.metricDAO.GetByControllerID(controller.GetID())
+func (service *ConfigurationService) buildMetrics(device config.Device) ([]config.Metric, error) {
+	metrics, err := service.metricDAO.GetByDeviceID(device.GetID())
 	if err != nil {
 		return nil, err
 	}
 	return metrics, nil
 }
 
-func (service *ConfigurationService) buildChannels(controller config.Controller) ([]config.Channel, error) {
-	channels, err := service.channelDAO.GetByControllerID(controller.GetID())
+func (service *ConfigurationService) buildChannels(device config.Device) ([]config.Channel, error) {
+	channels, err := service.channelDAO.GetByDeviceID(device.GetID())
 	if err != nil {
 		return nil, err
 	}

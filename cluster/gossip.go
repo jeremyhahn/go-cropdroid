@@ -376,7 +376,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 			return
 		}
 
-		farmConfig, err := cluster.farmDAO.Get(int(provisionRequest.StateClusterID))
+		farmConfig, err := cluster.farmDAO.Get(provisionRequest.StateClusterID)
 		if err != nil {
 			cluster.params.logger.Error("[Gossip.handleMessage] provision-request error=%s", err)
 			return

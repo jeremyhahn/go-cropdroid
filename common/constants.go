@@ -29,7 +29,7 @@ const (
 	NOTIFICATION_PRIORITY_MED  = 1
 	NOTIFICATION_PRIORITY_HIGH = 2
 
-	// IDs of controllers as inserted by dao.Initializer
+	// IDs of devices as inserted by dao.Initializer
 	CONTROLLER_TYPE_ID_SERVER    = 1
 	CONTROLLER_TYPE_ID_ROOM      = 2
 	CONTROLLER_TYPE_ID_RESERVOIR = 3

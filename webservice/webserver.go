@@ -20,6 +20,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 	"github.com/jeremyhahn/go-cropdroid/webservice/websocket"
 )
@@ -90,7 +91,7 @@ func (server *Webserver) Run() {
 	for _, restService := range server.restServices {
 		endpoints := restService.RegisterEndpoints(server.router, baseURI, baseFarmURI)
 		for _, endpoint := range endpoints {
-			server.app.Logger.Debugf("[WebServer.Run] Loading REST resource: %s", endpoint)
+			server.app.Logger.Debugf("Loading REST resource: %s", endpoint)
 			server.endpointList = append(server.endpointList, endpoint)
 		}
 	}
@@ -111,7 +112,7 @@ func (server *Webserver) Run() {
 
 	// /virtual
 	/*
-		server.router.Handle("/api/v1/virtual/{vcontroller}/{metric}/{value}", negroni.New(
+		server.router.Handle("/api/v1/virtual/{vdevice}/{metric}/{value}", negroni.New(
 			negroni.HandlerFunc(jsonWebTokenService.Validate),
 			negroni.Wrap(http.HandlerFunc(server.setVirtualMetric)),
 		)).Methods("GET")
@@ -148,7 +149,7 @@ func (server *Webserver) Run() {
 
 	sort.Strings(server.endpointList)
 
-	server.app.Logger.Debugf("[WebServer.Run] Loaded %d REST services", len(server.endpointList))
+	server.app.Logger.Debugf("Loaded %d REST services", len(server.endpointList))
 
 	// Register static content endpoint after REST and websocket to avoid being clobbered
 	server.router.PathPrefix("/").Handler(fs)
@@ -220,15 +221,19 @@ func (server *Webserver) sendNotification(w http.ResponseWriter, r *http.Request
 	}
 
 	server.registry.GetNotificationService().Enqueue(&model.Notification{
-		Controller: "webserver",
-		Priority:   priority,
-		Type:       _type,
-		Message:    message,
-		Timestamp:  time.Now()})
+		Device:    "webserver",
+		Priority:  priority,
+		Type:      _type,
+		Message:   message,
+		Timestamp: time.Now()})
 }
 
 func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.FarmStore.GetAll())
+	states := make([]state.FarmStateMap, 0)
+	for _, farmService := range server.registry.GetFarmServices() {
+		states = append(states, farmService.GetState())
+	}
+	rest.NewJsonWriter().Write(w, http.StatusOK, states)
 }
 
 func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
@@ -251,8 +256,8 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 		NotificationQueueLength: server.registry.GetNotificationService().QueueSize(),
 		Farms:                   len(server.registry.GetFarmServices()),
 		Changefeeds:             changefeedCount,
-		ControllerIndexLength:   server.app.ControllerIndex.Len(),
-		ChannelIndexLength:      server.app.ChannelIndex.Len(),
+		//DeviceIndexLength:   server.app.DeviceIndex.Len(),
+		//ChannelIndexLength:      server.app.ChannelIndex.Len(),
 		Version: &app.AppVersion{
 			Release:   app.Release,
 			BuildDate: app.BuildDate,
@@ -283,7 +288,7 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 
 	params := mux.Vars(r)
 
-	farmID, err := strconv.Atoi(params["farmID"])
+	farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
 	if err != nil {
 		server.app.Logger.Error(err.Error())
 		server.sendBadRequest(w, r, err)
@@ -298,8 +303,15 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 			return
 		}*/
 
-	farmState, err := server.app.FarmStore.Get(farmID)
-	if err != nil {
+	farmService := server.registry.GetFarmService(farmID)
+
+	if farmService == nil {
+		server.sendNotFound(w, r, fmt.Errorf("FarmID %d not found", farmID))
+		return
+	}
+
+	farmState := farmService.GetState()
+	if farmState != nil {
 		server.app.Logger.Error(err.Error())
 		server.sendBadRequest(w, r, err)
 		return
@@ -342,7 +354,7 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 		server.sendBadRequest(w, r, err)
 	}
 
-	server.app.Logger.Debugf("[Webserver.eventsPage] page %s requested", page)
+	server.app.Logger.Debugf("page %s requested", page)
 
 	entities := server.registry.GetEventLogService().GetPage(p)
 	w.Header().Set("Content-Type", "application/json")
@@ -356,6 +368,11 @@ func (server *Webserver) clientIP(req *http.Request) string {
 		server.app.Logger.Error(err.Error())
 	}
 	return ip
+}
+
+func (server *Webserver) sendNotFound(w http.ResponseWriter, r *http.Request, err error) {
+	http.Error(w, "Not Found", http.StatusNotFound)
+	fmt.Fprintln(w, err)
 }
 
 func (server *Webserver) sendBadRequest(w http.ResponseWriter, r *http.Request, err error) {

@@ -39,7 +39,7 @@ func NewConfigRestService(configService service.ConfigService, middleware servic
 
 func (restService *DefaultConfigRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
 	configEndpoint := fmt.Sprintf("%s/config", baseFarmURI)
-	setConfigEndpoint := fmt.Sprintf("%s/{controllerID}/{key}", configEndpoint)
+	setConfigEndpoint := fmt.Sprintf("%s/{deviceID}/{key}", configEndpoint)
 	/*
 		router.Handle(configEndpoint, negroni.New(
 			negroni.HandlerFunc(restService.middleware.Validate),
@@ -70,11 +70,11 @@ func (restService *DefaultConfigRestService) Set(w http.ResponseWriter, r *http.
 
 	params := mux.Vars(r)
 	farmID := params["farmID"]
-	controllerID := params["controllerID"]
+	deviceID := params["deviceID"]
 	key := params["key"]
 	value := r.FormValue("value")
 
-	//restService.session.GetLogger().Debugf("[ConfigRestService.SetServer] controllerID=%s, key=%s, value=%s, params=%+v", controllerID, key, value, params)
+	//restService.session.GetLogger().Debugf("deviceID=%s, key=%s, value=%s, params=%+v", deviceID, key, value, params)
 
 	intFarmID, err := strconv.ParseInt(farmID, 10, 64)
 	if err != nil {
@@ -82,13 +82,13 @@ func (restService *DefaultConfigRestService) Set(w http.ResponseWriter, r *http.
 		return
 	}
 
-	intControllerID, err := strconv.ParseInt(controllerID, 10, 64)
+	intDeviceID, err := strconv.ParseInt(deviceID, 10, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	if err := restService.configService.SetValue(session, int(intFarmID), int(intControllerID), key, value); err != nil {
+	if err := restService.configService.SetValue(session, int(intFarmID), int(intDeviceID), key, value); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}

@@ -8,7 +8,7 @@ import (
 
 type Condition struct {
 	ID             string  `json:"id"`
-	ControllerType string  `json:"controllerType"`
+	DeviceType string  `json:"deviceType"`
 	MetricID       int     `json:"metricId"`
 	MetricName     string  `json:"metricName"`
 	ChannelID      int     `json:"channelId"`
@@ -22,8 +22,8 @@ func (condition *Condition) GetID() string {
 	return condition.ID
 }
 
-func (condition *Condition) GetControllerType() string {
-	return condition.ControllerType
+func (condition *Condition) GetDeviceType() string {
+	return condition.DeviceType
 }
 
 func (condition *Condition) GetMetricID() int {
@@ -51,5 +51,5 @@ func (condition *Condition) GetText() string {
 }
 
 func (condition *Condition) String() string {
-	return fmt.Sprintf("%s %s %s %.2f", condition.ControllerType, condition.MetricName, condition.Comparator, condition.Threshold)
+	return fmt.Sprintf("%s %s %s %.2f", condition.DeviceType, condition.MetricName, condition.Comparator, condition.Threshold)
 }

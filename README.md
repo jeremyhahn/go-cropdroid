@@ -60,9 +60,9 @@ Linux x64 requires the following toolchain:
 1. [RocksDB Tooling](https://github.com/facebook/rocksdb/wiki/Administration-and-Data-Access-Tool)
 
 
-# Controllers
+# Devices
 
-## Room Controller
+## Room Device
 
 ### Networking
 
@@ -106,7 +106,7 @@ Linux x64 requires the following toolchain:
 8. Photo (light)
 9. Smoke
 
-## Reservoir Controller
+## Reservoir Device
 
 ### Networking
 
@@ -149,7 +149,7 @@ Linux x64 requires the following toolchain:
 7. DO
 8. ORP
 
-## Dosing Controller
+## Dosing Device
 
 ### Networking
 
@@ -171,7 +171,7 @@ Linux x64 requires the following toolchain:
     curl http://$CONTROLLER/eeprom/9/53
     curl http://$CONTROLLER/reboot
 
-## CropDroid Main Controller
+## CropDroid Main Device
 
 
 ## Raft

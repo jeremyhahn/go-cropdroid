@@ -1,4 +1,4 @@
-// +build possiblyneveragain
+// +build ignore
 
 package service
 
@@ -15,7 +15,7 @@ import (
 
 type ConfigService interface {
 	GetConfiguration() config.ServerConfig
-	SetValue(controllerID int, key, value string) error
+	SetValue(deviceID int, key, value string) error
 	Build() (config.ServerConfig, error)
 	BuildCloud() (config.ServerConfig, error)
 	BuildOrganization(serverConfig config.ServerConfig, orgID int) (config.ServerConfig, error)
@@ -27,13 +27,13 @@ type ConfigurationService struct {
 	organizationDAO  dao.OrganizationDAO
 	farmDAO          dao.FarmDAO
 	userDAO          dao.UserDAO
-	controllerDAO    dao.ControllerDAO
+	deviceDAO    dao.DeviceDAO
 	configDAO        dao.ConfigDAO
 	metricDAO        dao.MetricDAO
 	channelDAO       dao.ChannelDAO
 	conditionDAO     dao.ConditionDAO
 	scheduleDAO      dao.ScheduleDAO
-	controllerMapper mapper.ControllerMapper
+	deviceMapper mapper.DeviceMapper
 	conditionMapper  mapper.ConditionMapper
 	scheduleMapper   mapper.ScheduleMapper
 	supportsReload   bool
@@ -41,8 +41,8 @@ type ConfigurationService struct {
 }
 
 func NewConfigService(app *app.App, organizationDAO dao.OrganizationDAO, farmDAO dao.FarmDAO, userDAO dao.UserDAO,
-	controllerDAO dao.ControllerDAO, configDAO dao.ConfigDAO, metricDAO dao.MetricDAO, channelDAO dao.ChannelDAO,
-	conditionDAO dao.ConditionDAO, scheduleDAO dao.ScheduleDAO, controllerMapper mapper.ControllerMapper,
+	deviceDAO dao.DeviceDAO, configDAO dao.ConfigDAO, metricDAO dao.MetricDAO, channelDAO dao.ChannelDAO,
+	conditionDAO dao.ConditionDAO, scheduleDAO dao.ScheduleDAO, deviceMapper mapper.DeviceMapper,
 	conditionMapper mapper.ConditionMapper, scheduleMapper mapper.ScheduleMapper, supportsReload bool) ConfigService {
 
 	return &ConfigurationService{
@@ -50,13 +50,13 @@ func NewConfigService(app *app.App, organizationDAO dao.OrganizationDAO, farmDAO
 		organizationDAO:  organizationDAO,
 		farmDAO:          farmDAO,
 		userDAO:          userDAO,
-		controllerDAO:    controllerDAO,
+		deviceDAO:    deviceDAO,
 		configDAO:        configDAO,
 		metricDAO:        metricDAO,
 		channelDAO:       channelDAO,
 		conditionDAO:     conditionDAO,
 		scheduleDAO:      scheduleDAO,
-		controllerMapper: controllerMapper,
+		deviceMapper: deviceMapper,
 		conditionMapper:  conditionMapper,
 		scheduleMapper:   scheduleMapper,
 		supportsReload:   supportsReload}
@@ -76,16 +76,16 @@ func (service *ConfigurationService) GetConfiguration() config.ServerConfig {
 	return serverConfig
 }
 
-func (service *ConfigurationService) SetValue(controllerID int, key, value string) error {
-	service.app.Logger.Debugf("[ConfigurationService.Set] Setting config controllerID=%s, key=%s, value=%s", controllerID, key, value)
-	configItem, err := service.configDAO.Get(controllerID, key)
+func (service *ConfigurationService) SetValue(deviceID int, key, value string) error {
+	service.app.Logger.Debugf("[ConfigurationService.Set] Setting config deviceID=%s, key=%s, value=%s", deviceID, key, value)
+	configItem, err := service.configDAO.Get(deviceID, key)
 	if err != nil {
 		return err
 	}
 	configItem.SetValue(value)
 	service.configDAO.Save(configItem)
 	/*
-		if err := service.scope.GetState().Notify(controllerID, key, value); err != nil {
+		if err := service.scope.GetState().Notify(deviceID, key, value); err != nil {
 			return err
 		}*/
 
@@ -163,25 +163,25 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 
 	service.app.Logger.Debugf("Building config for farmID: %d", farmID)
 
-	controllerEntities, err := service.controllerDAO.GetByFarmId(farmID)
+	deviceEntities, err := service.deviceDAO.GetByFarmId(farmID)
 	if err != nil {
 		return nil, err
 	}
-	if len(controllerEntities) <= 0 {
-		return nil, fmt.Errorf("No controllers found for farmID %d", farmID)
+	if len(deviceEntities) <= 0 {
+		return nil, fmt.Errorf("No devices found for farmID %d", farmID)
 	}
 
 	farm := &config.Farm{
 		ID:             0,
 		OrganizationID: 0,
-		Controllers:    make([]config.Controller, 0)}
+		Devices:    make([]config.Device, 0)}
 
-	for _, controller := range controllerEntities {
+	for _, device := range deviceEntities {
 
-		service.app.Logger.Debugf("Loading controller: %s", controller.GetType())
+		service.app.Logger.Debugf("Loading device: %s", device.GetType())
 
-		if controller.GetID() == common.CONTROLLER_TYPE_ID_SERVER {
-			configEntities, err := service.configDAO.GetAll(controller.GetID())
+		if device.GetID() == common.CONTROLLER_TYPE_ID_SERVER {
+			configEntities, err := service.configDAO.GetAll(device.GetID())
 			if err != nil {
 				return nil, err
 			}
@@ -203,14 +203,14 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 					serverConfig.SetMode(configEntity.GetValue())
 				}
 			}
-			_, err = service.buildSMTP(controller.GetID(), serverConfig)
+			_, err = service.buildSMTP(device.GetID(), serverConfig)
 			if err != nil {
 				return nil, err
 			}
 			continue
 		}
-		service.app.Logger.Debugf("Building microcontroller configuration: %s", controller.GetType())
-		_, err := service.buildController(controller, farm)
+		service.app.Logger.Debugf("Building microdevice configuration: %s", device.GetType())
+		_, err := service.buildDevice(device, farm)
 		if err != nil {
 			return nil, err
 		}
@@ -220,16 +220,16 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 	return serverConfig, nil
 }
 
-func (service *ConfigurationService) buildSMTP(controllerID int, c config.ServerConfig) (config.ServerConfig, error) {
-	smtpEnable, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_ENABLE_KEY)
+func (service *ConfigurationService) buildSMTP(deviceID int, c config.ServerConfig) (config.ServerConfig, error) {
+	smtpEnable, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_ENABLE_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpHost, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_HOST_KEY)
+	smtpHost, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_HOST_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpPort, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_PORT_KEY)
+	smtpPort, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_PORT_KEY)
 	if err != nil {
 		return nil, err
 	}
@@ -237,15 +237,15 @@ func (service *ConfigurationService) buildSMTP(controllerID int, c config.Server
 	if err != nil {
 		return nil, err
 	}
-	smtpUsername, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_USERNAME_KEY)
+	smtpUsername, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_USERNAME_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpPassword, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_PASSWORD_KEY)
+	smtpPassword, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_PASSWORD_KEY)
 	if err != nil {
 		return nil, err
 	}
-	smtpTo, err := service.configDAO.Get(controllerID, common.CONFIG_SMTP_RECIPIENT_KEY)
+	smtpTo, err := service.configDAO.Get(deviceID, common.CONFIG_SMTP_RECIPIENT_KEY)
 	if err != nil {
 		return nil, err
 	}
@@ -267,45 +267,45 @@ func (service *ConfigurationService) buildSMTP(controllerID int, c config.Server
 //func (service *ConfigurationService) buildFarm(farm entity.FarmEntity, config config.ServerConfig) (config.ServerConfig, error) {
 //}
 
-func (service *ConfigurationService) buildController(controller config.Controller, farmConfig config.FarmConfig) (config.FarmConfig, error) {
+func (service *ConfigurationService) buildDevice(device config.Device, farmConfig config.FarmConfig) (config.FarmConfig, error) {
 	//configs := make(map[string]string, len(configEntities))
 	//for _, entity := range configEntities {
-	//	service.app.Logger.Debugf("[ConfigService.buildController] Setting config: %+v", entity)
+	//	service.app.Logger.Debugf("[ConfigService.buildDevice] Setting config: %+v", entity)
 	//	configs[entity.GetKey()] = entity.GetValue()
 	//}
 
-	//MapEntityToConfig(controllerEntity entity.ControllerEntity, configEntities []entity.ConfigEntity) (common.ControllerConfig, error)
+	//MapEntityToConfig(deviceEntity entity.DeviceEntity, configEntities []entity.ConfigEntity) (common.DeviceConfig, error)
 
-	//	controllerConfig, err := service.controllerMapper.MapConfigToModel(controller, configEntities)
+	//	deviceConfig, err := service.deviceMapper.MapConfigToModel(device, configEntities)
 	//	if err != nil {
 	//		return nil, err
 	//	}
 
-	metrics, err := service.buildMetrics(controller)
+	metrics, err := service.buildMetrics(device)
 	if err != nil {
 		return nil, err
 	}
-	channels, err := service.buildChannels(controller)
+	channels, err := service.buildChannels(device)
 	if err != nil {
 		return nil, err
 	}
-	//controller.SetConfigs(configEntities)
-	controller.SetMetrics(metrics)
-	controller.SetChannels(channels)
-	farmConfig.AddController(controller)
+	//device.SetConfigs(configEntities)
+	device.SetMetrics(metrics)
+	device.SetChannels(channels)
+	farmConfig.AddDevice(device)
 	return farmConfig, nil
 }
 
-func (service *ConfigurationService) buildMetrics(controller config.Controller) ([]config.Metric, error) {
-	metrics, err := service.metricDAO.GetByControllerID(controller.GetID())
+func (service *ConfigurationService) buildMetrics(device config.Device) ([]config.Metric, error) {
+	metrics, err := service.metricDAO.GetByDeviceID(device.GetID())
 	if err != nil {
 		return nil, err
 	}
 	return metrics, nil
 }
 
-func (service *ConfigurationService) buildChannels(controller config.Controller) ([]config.Channel, error) {
-	channels, err := service.channelDAO.GetByControllerID(controller.GetID())
+func (service *ConfigurationService) buildChannels(device config.Device) ([]config.Channel, error) {
+	channels, err := service.channelDAO.GetByDeviceID(device.GetID())
 	if err != nil {
 		return nil, err
 	}

@@ -51,6 +51,7 @@ type RaftCluster interface {
 	Hash(key string) uint64
 	IsLeader(clusterID uint64) bool
 	Shutdown() error
+	ReadLocal(clusterID uint64, query interface{}) (interface{}, error)
 	SyncPropose(clusterID uint64, cmd []byte) error
 	SyncRead(clusterID uint64, query interface{}) (interface{}, error)
 	WaitForClusterReady(clusterID uint64) bool
@@ -204,12 +205,19 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 		r.params.logger.Error(err)
 	}
 	for !ready {
-		r.params.logger.Debugf("[Raft.WaitForClusterReady] Waiting for cluster %d to become ready...", clusterID)
+		r.params.logger.Infof("[Raft.WaitForClusterReady] Waiting for cluster %d to become ready...", clusterID)
 		time.Sleep(1 * time.Second)
 		_, ready, _ = getLeaderFunc()
 	}
+	if r.params.raftRequestedLeaderID > 0 {
+		r.params.logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader", r.params.raftRequestedLeaderID)
+		err = r.nodeHost.RequestLeaderTransfer(r.params.clusterID, uint64(r.params.raftRequestedLeaderID))
+		if err != nil {
+			r.params.logger.Error(err)
+		}
+	}
 	for leaderID == 0 {
-		r.params.logger.Debugf("[Raft.WaitForClusterReady] Waiting on cluster %d leader election...", clusterID)
+		r.params.logger.Infof("[Raft.WaitForClusterReady] Waiting on cluster %d leader election...", clusterID)
 		time.Sleep(1 * time.Second)
 		leaderID, _, _ = getLeaderFunc()
 	}
@@ -452,11 +460,11 @@ func (r *Raft) GetLeaderInfo(clusterID uint64) *ClusterInfo {
 }
 
 func (r *Raft) LeaderUpdated(info raftio.LeaderInfo) {
-	/*
-		clusterInfo := r.GetClusterInfo(info.ClusterID)
-		if clusterInfo != nil {
-			r.params.logger.Warningf("Raft cluster membership updated! %+v", info)
-		}*/
+	clusterInfo := r.GetClusterInfo(info.ClusterID)
+	if clusterInfo != nil {
+		r.params.logger.Warningf("Raft cluster membership updated! info=%+v, clusterInfo=%+v",
+			info, clusterInfo)
+	}
 }
 
 func (r *Raft) GetNodeHost() *dragonboat.NodeHost {
@@ -482,6 +490,10 @@ func (r *Raft) SyncRead(clusterID uint64, query interface{}) (interface{}, error
 	result, err := r.nodeHost.SyncRead(ctx, clusterID, query)
 	cancel()
 	return result, err
+}
+
+func (r *Raft) ReadLocal(clusterID uint64, query interface{}) (interface{}, error) {
+	return r.nodeHost.StaleRead(clusterID, query)
 }
 
 func (r *Raft) GetLeaderID(clusterID uint64) (uint64, bool, error) {

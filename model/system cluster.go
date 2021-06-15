@@ -56,7 +56,7 @@ type System struct {
 	Farms                   int             `json:"farms"`
 	Changefeeds             int             `json:"changefeeds"`
 	NotificationQueueLength int             `json:"notificationQueueLength"`
-	ControllerIndexLength   int             `json:"controllerIndexLength"`
+	DeviceIndexLength       int             `json:"deviceIndexLength"`
 	ChannelIndexLength      int             `json:"channelIndexLength"`
 	Runtime                 *SystemRuntime  `json:"runtime"`
 	RaftStats               *RaftStats      `json:"raft"`

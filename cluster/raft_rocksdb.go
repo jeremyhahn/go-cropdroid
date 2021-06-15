@@ -52,6 +52,7 @@ type RaftCluster interface {
 	Hash(key string) uint64
 	IsLeader(clusterID uint64) bool
 	Shutdown() error
+	ReadLocal(clusterID uint64, query interface{}) (interface{}, error)
 	SyncPropose(clusterID uint64, cmd []byte) error
 	SyncRead(clusterID uint64, query interface{}) (interface{}, error)
 	WaitForClusterReady(clusterID uint64) bool
@@ -486,6 +487,10 @@ func (r *Raft) SyncRead(clusterID uint64, query interface{}) (interface{}, error
 	result, err := r.nodeHost.SyncRead(ctx, clusterID, query)
 	cancel()
 	return result, err
+}
+
+func (r *Raft) ReadLocal(clusterID uint64, query interface{}) (interface{}, error) {
+	return r.nodeHost.StaleRead(clusterID, query)
 }
 
 func (r *Raft) GetLeaderID(clusterID uint64) (uint64, bool, error) {

@@ -26,21 +26,21 @@ func (store *RaftFarmStateStore) Len() int {
 	return 1
 }
 
-func (store *RaftFarmStateStore) Put(farmID int, v state.FarmStateMap) error {
+func (store *RaftFarmStateStore) Put(farmID uint64, v state.FarmStateMap) error {
 	data, err := json.Marshal(*v.(*state.FarmState))
 	if err != nil {
 		store.logger.Errorf("[RaftFarmStateStore.Put] Error: %s", err)
 		return err
 	}
-	if err := store.raft.SyncPropose(uint64(farmID), data); err != nil {
+	if err := store.raft.SyncPropose(farmID, data); err != nil {
 		store.logger.Errorf("[RaftFarmStateStore.Put] Error: %s", err)
 		return err
 	}
 	return nil
 }
 
-func (store *RaftFarmStateStore) Get(farmID int) (state.FarmStateMap, error) {
-	result, err := store.raft.SyncRead(uint64(farmID), nil)
+func (store *RaftFarmStateStore) Get(farmID uint64) (state.FarmStateMap, error) {
+	result, err := store.raft.SyncRead(farmID, nil)
 	if err != nil {
 		store.logger.Errorf("[RaftFarmStateStore.Get] Error (clusterID=%d): %s", farmID, err)
 		return nil, err
@@ -59,8 +59,8 @@ func (store *RaftFarmStateStore) Get(farmID int) (state.FarmStateMap, error) {
 					continue
 				}
 				store.logger.Errorf("[RaftFarmStateStore.Get] farm.id=%d, record: %+v", farmID, r)
-				for _, c := range r.GetControllers() {
-					store.logger.Errorf("[RaftFarmStateStore.Get] farm.id=%d, controller: %+v", farmID, c)
+				for _, c := range r.GetDevices() {
+					store.logger.Errorf("[RaftFarmStateStore.Get] farm.id=%d, device: %+v", farmID, c)
 				}
 			}*/
 			return records[0], nil

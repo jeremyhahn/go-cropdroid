@@ -10,54 +10,54 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
-type ControllerFactoryRestService interface {
+type DeviceFactoryRestService interface {
 	GetAll(w http.ResponseWriter, r *http.Request)
 	RestService
 }
 
-type MicroControllerFactoryRestService struct {
-	controllerFactory service.ControllerFactory
-	middleware        service.Middleware
-	jsonWriter        common.HttpWriter
-	ControllerFactoryRestService
+type DefaultMicroFactoryRestService struct {
+	deviceFactory service.DeviceFactory
+	middleware    service.Middleware
+	jsonWriter    common.HttpWriter
+	DeviceFactoryRestService
 }
 
-func NewControllerFactoryRestService(controllerFactory service.ControllerFactory,
-	middleware service.Middleware, jsonWriter common.HttpWriter) ControllerFactoryRestService {
+func NewDeviceFactoryRestService(deviceFactory service.DeviceFactory,
+	middleware service.Middleware, jsonWriter common.HttpWriter) DeviceFactoryRestService {
 
-	return &MicroControllerFactoryRestService{
-		controllerFactory: controllerFactory,
-		middleware:        middleware,
-		jsonWriter:        jsonWriter}
+	return &DefaultMicroFactoryRestService{
+		deviceFactory: deviceFactory,
+		middleware:    middleware,
+		jsonWriter:    jsonWriter}
 }
 
-func (restService *MicroControllerFactoryRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
-	getControllersEndpoint := fmt.Sprintf("%s/devices", baseFarmURI)
-	router.Handle(getControllersEndpoint, negroni.New(
+func (restService *DefaultMicroFactoryRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
+	getDevicesEndpoint := fmt.Sprintf("%s/devices", baseFarmURI)
+	router.Handle(getDevicesEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
 		negroni.Wrap(http.HandlerFunc(restService.GetAll)),
 	)).Methods("GET")
-	return []string{getControllersEndpoint}
+	return []string{getDevicesEndpoint}
 }
 
-func (restService *MicroControllerFactoryRestService) GetAll(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultMicroFactoryRestService) GetAll(w http.ResponseWriter, r *http.Request) {
 
-	scope, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-	defer scope.Close()
+	defer session.Close()
 
-	scope.GetLogger().Debug("[ControllerFactoryRestService.GetAll] getting controllers")
+	session.GetLogger().Debug("getting devices")
 
-	controllers, err := restService.controllerFactory.GetControllers(scope)
+	devices, err := restService.deviceFactory.GetDevices(session)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	scope.GetLogger().Debugf("[ControllerFactoryRestService.Get] controllers=%v+", controllers)
+	session.GetLogger().Debugf("devices=%v+", devices)
 
-	restService.jsonWriter.Write(w, http.StatusOK, controllers)
+	restService.jsonWriter.Write(w, http.StatusOK, devices)
 }

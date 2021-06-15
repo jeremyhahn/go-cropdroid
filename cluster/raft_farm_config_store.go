@@ -4,48 +4,69 @@ package cluster
 
 import (
 	"encoding/json"
+	"sync"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/config/store"
 
 	logging "github.com/op/go-logging"
 )
 
 type RaftFarmConfigStore struct {
-	logger *logging.Logger
-	raft   RaftCluster
-	state.ConfigStorer
+	logger       *logging.Logger
+	raft         RaftCluster
+	cachedConfig config.FarmConfig
+	mutex        *sync.RWMutex
+	store.FarmConfigStorer
 }
 
-func NewRaftFarmConfigStore(logger *logging.Logger, raftCluster RaftCluster) state.ConfigStorer {
+func NewRaftFarmConfigStore(logger *logging.Logger, raftCluster RaftCluster) store.FarmConfigStorer {
 	return &RaftFarmConfigStore{
 		logger: logger,
-		raft:   raftCluster}
+		raft:   raftCluster,
+		mutex:  &sync.RWMutex{}}
 }
 
-func (store *RaftFarmConfigStore) Len() int {
+func (s *RaftFarmConfigStore) Len() int {
 	return 1
 }
 
-func (store *RaftFarmConfigStore) Put(clusterID uint64, v config.FarmConfig) error {
-	store.logger.Debugf("[RaftFarmConfigStore.Put] Setting configuration for cluster %d. config=%+v", clusterID, v)
+func (s *RaftFarmConfigStore) Put(clusterID uint64, v config.FarmConfig) error {
+	s.logger.Debugf("[RaftFarmConfigStore.Put] Setting configuration for cluster %d. config=%+v", clusterID, v)
 	data, err := json.Marshal(*v.(*config.Farm))
 	if err != nil {
-		store.logger.Errorf("[RaftFarmConfigStore.Put] Error: %s", err)
+		s.logger.Errorf("[RaftFarmConfigStore.Put] Error: %s", err)
 		return err
 	}
-	if err := store.raft.SyncPropose(clusterID, data); err != nil {
-		store.logger.Errorf("[RaftFarmConfigStore.Put] Error: %s", err)
+	if err := s.raft.SyncPropose(clusterID, data); err != nil {
+		s.logger.Errorf("[RaftFarmConfigStore.Put] Error: %s", err)
 		return err
 	}
+	s.mutex.RLock()
+	s.cachedConfig = v
+	s.mutex.RUnlock()
 	return nil
 }
 
-func (store *RaftFarmConfigStore) Get(clusterID uint64) (config.FarmConfig, error) {
-	result, err := store.raft.SyncRead(clusterID, nil)
-	if err != nil {
-		store.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
-		return nil, err
+func (s *RaftFarmConfigStore) Get(clusterID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error) {
+
+	var result interface{}
+	var err error
+	if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED {
+		result = []config.FarmConfig{s.cachedConfig}
+	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
+		result, err = s.raft.ReadLocal(clusterID, nil)
+		if err != nil {
+			s.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
+			return nil, err
+		}
+	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
+		result, err = s.raft.SyncRead(clusterID, nil)
+		if err != nil {
+			s.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
+			return nil, err
+		}
 	}
 
 	// Lookup method always returns an array
@@ -61,8 +82,8 @@ func (store *RaftFarmConfigStore) Get(clusterID uint64) (config.FarmConfig, erro
 					continue
 				}
 				store.logger.Errorf("[RaftFarmConfigStore.Get] farm.id=%d, record: %+v", clusterID, r)
-				for _, c := range r.GetControllers() {
-					store.logger.Errorf("[RaftFarmConfigStore.Get] farm.id=%d, controller: %+v", clusterID, c)
+				for _, c := range r.GetDevices() {
+					store.logger.Errorf("[RaftFarmConfigStore.Get] farm.id=%d, device: %+v", clusterID, c)
 				}
 			}*/
 			return records[0], nil

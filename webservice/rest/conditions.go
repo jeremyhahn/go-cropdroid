@@ -82,16 +82,16 @@ func (restService *DefaultConditionRestService) GetListView(w http.ResponseWrite
 	params := mux.Vars(r)
 	channelID, err := strconv.Atoi(params["channelID"])
 	if err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.GetCondition] Error parsing channelID. params=%s, error=%s", params, err)
+		session.GetLogger().Errorf("Error parsing channelID. params=%s, error=%s", params, err)
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	session.GetLogger().Debugf("[ConditionRestService.GetCondition] channelID=%d", channelID)
+	session.GetLogger().Debugf("channelID=%d", channelID)
 
 	condition, err := restService.conditionService.GetListView(session, channelID)
 	if err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.GetCondition] Error: %s", err)
+		session.GetLogger().Errorf("Error: %s", err)
 		restService.jsonWriter.Error500(w, err)
 		return
 	}
@@ -109,17 +109,17 @@ func (restService *DefaultConditionRestService) GetConditions(w http.ResponseWri
 	defer session.Close()
 
 	params := mux.Vars(r)
-	controllerID, err := strconv.Atoi(params["controllerID"])
+	deviceID, err := strconv.Atoi(params["deviceID"])
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	session.GetLogger().Debugf("[ConditionRestService.GetConditions] controllerID=%d", controllerID)
+	session.GetLogger().Debugf("deviceID=%d", deviceID)
 
-	conditions, err := restService.conditionService.GetConditions(session, controllerID)
+	conditions, err := restService.conditionService.GetConditions(session, deviceID)
 	if err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.GetConditions] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error500(w, err)
 		return
 	}
@@ -136,7 +136,7 @@ func (restService *DefaultConditionRestService) Create(w http.ResponseWriter, r 
 	}
 	defer session.Close()
 
-	session.GetLogger().Debug("[ConditionRestService.Create] Decoding JSON request")
+	session.GetLogger().Debug("Decoding JSON request")
 
 	var condition config.Condition
 	decoder := json.NewDecoder(r.Body)
@@ -145,11 +145,11 @@ func (restService *DefaultConditionRestService) Create(w http.ResponseWriter, r 
 		return
 	}
 
-	session.GetLogger().Debugf("[ConditionRestService.Create] condition=%+v", condition)
+	session.GetLogger().Debugf("condition=%+v", condition)
 
 	persisted, err := restService.conditionService.Create(session, &condition)
 	if err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.Create] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}
@@ -166,21 +166,21 @@ func (restService *DefaultConditionRestService) Update(w http.ResponseWriter, r 
 	}
 	defer session.Close()
 
-	session.GetLogger().Debug("[ConditionRestService.Update] Decoding JSON request")
+	session.GetLogger().Debug("Decoding JSON request")
 
 	var condition viewmodel.Condition
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&condition); err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.Update] Error: %s", err)
+		session.GetLogger().Errorf("Error: %s", err)
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	session.GetLogger().Debugf("[ConditionRestService.Update] condition=%+v", condition)
+	session.GetLogger().Debugf("condition=%+v", condition)
 
 	conditionConfig := restService.conditionMapper.MapViewToConfig(condition)
 	if err = restService.conditionService.Update(session, conditionConfig); err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.Update] Error: %s", err)
+		session.GetLogger().Errorf("Error: %s", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}
@@ -204,10 +204,10 @@ func (restService *DefaultConditionRestService) Delete(w http.ResponseWriter, r 
 		return
 	}
 
-	session.GetLogger().Debugf("[ConditionRestService.Delete] condition.id=%d", id)
+	session.GetLogger().Debugf("condition.id=%d", id)
 
 	if err = restService.conditionService.Delete(session, &config.Condition{ID: id}); err != nil {
-		session.GetLogger().Errorf("[ConditionRestService.Delete] Error: %s", err)
+		session.GetLogger().Errorf("Error: %s", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}

@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/controller"
+	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/test"
 	"github.com/stretchr/testify/assert"
 )
 
-var testReservoirController = "http://192.168.0.92"
-var testReservoirControllerType = "reservoir"
+var testReservoirDevice = "http://192.168.0.92"
+var testReservoirDeviceType = "reservoir"
 var testReserviorMetricCount = 15
 var testReserviorChannelCount = 16
 
@@ -21,9 +21,9 @@ func TestState(t *testing.T) {
 
 	ctx := test.NewUnitTestContext()
 
-	httpController := controller.NewHttpController(ctx, testReservoirController, testReservoirControllerType)
+	httpDevice := device.NewHttpDevice(ctx, testReservoirDevice, testReservoirDeviceType)
 
-	state, err := httpController.State()
+	state, err := httpDevice.State()
 	assert.Nil(t, err)
 
 	/*
@@ -42,28 +42,28 @@ func TestChannelSwitch(t *testing.T) {
 
 	ctx := test.NewUnitTestContext()
 
-	reservoirController := controller.NewHttpController(ctx, testReservoirController, testReservoirControllerType)
+	reservoirDevice := device.NewHttpDevice(ctx, testReservoirDevice, testReservoirDeviceType)
 
-	initialState, err := reservoirController.State()
+	initialState, err := reservoirDevice.State()
 	assert.Nil(t, err)
 
 	// Ensure switch state is OFF and turn it on
 	for channelID, channelState := range initialState.Channels {
 		assert.Equal(t, common.SWITCH_OFF, channelState)
-		reservoirController.Switch(channelID, common.SWITCH_ON)
+		reservoirDevice.Switch(channelID, common.SWITCH_ON)
 		//fmt.Printf("channel id=%d, state=%d\n", channelID, channelState)
 	}
 
 	// Ensure switch state is on
-	newState, err := reservoirController.State()
+	newState, err := reservoirDevice.State()
 	assert.Nil(t, err)
 	for channelID, channelState := range newState.Channels {
 		assert.Equal(t, common.SWITCH_ON, channelState)
-		reservoirController.Switch(channelID, common.SWITCH_OFF)
+		reservoirDevice.Switch(channelID, common.SWITCH_OFF)
 	}
 
 	// Cleanup by switching all channels back to OFF
-	finalState, err := reservoirController.State()
+	finalState, err := reservoirDevice.State()
 	assert.Nil(t, err)
 	for _, channelState := range finalState.Channels {
 		assert.Equal(t, common.SWITCH_OFF, channelState)
@@ -74,9 +74,9 @@ func TestChannelTimedSwitch(t *testing.T) {
 
 	ctx := test.NewUnitTestContext()
 
-	reservoirController := controller.NewHttpController(ctx, testReservoirController, testReservoirControllerType)
+	reservoirDevice := device.NewHttpDevice(ctx, testReservoirDevice, testReservoirDeviceType)
 
-	initialState, err := reservoirController.State()
+	initialState, err := reservoirDevice.State()
 	assert.Nil(t, err)
 
 	channelID := 0
@@ -87,10 +87,10 @@ func TestChannelTimedSwitch(t *testing.T) {
 	assert.Equal(t, common.SWITCH_OFF, channelState)
 
 	// Switch on for 2 seconds
-	reservoirController.TimedSwitch(channelID, timer)
+	reservoirDevice.TimedSwitch(channelID, timer)
 
 	// Ensure switch is on
-	newState, err := reservoirController.State()
+	newState, err := reservoirDevice.State()
 	assert.Nil(t, err)
 	assert.Equal(t, common.SWITCH_ON, newState.Channels[channelID])
 
@@ -98,6 +98,6 @@ func TestChannelTimedSwitch(t *testing.T) {
 	time.Sleep(time.Duration(timer) * time.Second)
 
 	// Ensure the switch state is OFF
-	finalChannelState, err := reservoirController.State()
+	finalChannelState, err := reservoirDevice.State()
 	assert.Equal(t, common.SWITCH_OFF, finalChannelState.Channels[channelID])
 }

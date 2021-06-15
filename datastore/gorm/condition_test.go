@@ -58,8 +58,8 @@ func TestConditionGetByUserOrgAndChannelID(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
-	currentTest.gorm.AutoMigrate(&config.ControllerConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
+	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
 
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
@@ -83,7 +83,7 @@ func TestConditionGetByUserOrgAndChannelID(t *testing.T) {
 
 	channel1 := config.NewChannel()
 	channel1.SetID(1)
-	channel1.SetControllerID(1)
+	channel1.SetDeviceID(1)
 	channel1.SetChannelID(3)
 	channel1.SetName("Test Channel 1")
 	channel1.SetEnable(true)
@@ -92,17 +92,17 @@ func TestConditionGetByUserOrgAndChannelID(t *testing.T) {
 	channel1.SetDebounce(3)
 	channel1.SetBackoff(4)
 
-	controller1 := config.NewController()
-	controller1.SetType("fake")
-	controller1.SetDescription("This is a fake controller used for integration testing")
-	controller1.SetInterval(30)
-	controller1.SetChannels([]config.Channel{*channel1})
+	device1 := config.NewDevice()
+	device1.SetType("fake")
+	device1.SetDescription("This is a fake device used for integration testing")
+	device1.SetInterval(30)
+	device1.SetChannels([]config.Channel{*channel1})
 
 	farm := config.NewFarm()
 	farm.SetName("Test Farm")
 	farm.SetMode("test")
 	farm.SetInterval(60)
-	farm.SetControllers([]config.Controller{*controller1})
+	farm.SetDevices([]config.Device{*device1})
 
 	err := farmDAO.Save(farm)
 	assert.Nil(t, err)

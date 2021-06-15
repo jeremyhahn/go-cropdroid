@@ -10,6 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/config/store"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -25,7 +26,7 @@ const (
 type ScheduleService interface {
 	GetNow() *time.Time
 	GetSchedule(session Session, channelID int) ([]config.Schedule, error)
-	//GetSchedules(user common.UserAccount, controllerID int) ([]config.ScheduleConfig, error)
+	//GetSchedules(user common.UserAccount, deviceID int) ([]config.ScheduleConfig, error)
 	Create(session Session, schedule config.ScheduleConfig) (config.ScheduleConfig, error)
 	Update(session Session, schedule config.ScheduleConfig) error
 	Delete(session Session, schedule config.ScheduleConfig) error
@@ -80,9 +81,9 @@ func (service *DefaultScheduleService) GetNow() *time.Time {
 // GetSchedule retrieves a specific schedule entry from the database
 func (service *DefaultScheduleService) GetSchedule(session Session, channelID int) ([]config.Schedule, error) {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == channelID {
 				return channel.GetSchedule(), farmService.SetConfig(farmConfig)
 			}
@@ -93,8 +94,8 @@ func (service *DefaultScheduleService) GetSchedule(session Session, channelID in
 
 /*
 // GetSchedules retrieves a list of schedule entries from the database
-func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, controllerID int) ([]config.ScheduleConfig, error) {
-	entities, err := service.dao.GetByUserOrgAndControllerID(user.GetOrganizationID(), controllerID)
+func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, deviceID int) ([]config.ScheduleConfig, error) {
+	entities, err := service.dao.GetByUserOrgAndDeviceID(user.GetOrganizationID(), deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -109,15 +110,15 @@ func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, con
 // Create a new schedule entry
 func (service *DefaultScheduleService) Create(session Session, schedule config.ScheduleConfig) (config.ScheduleConfig, error) {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			if channel.GetID() == schedule.GetChannelID() {
 				s := schedule.(*config.Schedule)
 				s.SetID(schedule.Hash())
 				channel.Schedule = append(channel.Schedule, *s)
-				controller.SetChannel(&channel)
-				farmConfig.SetController(&controller)
+				device.SetChannel(&channel)
+				farmConfig.SetDevice(&device)
 				return schedule, farmService.SetConfig(farmConfig)
 			}
 		}
@@ -128,15 +129,15 @@ func (service *DefaultScheduleService) Create(session Session, schedule config.S
 // Update an existing schedule entry in the database
 func (service *DefaultScheduleService) Update(session Session, schedule config.ScheduleConfig) error {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			for i, _ := range channel.GetSchedule() {
 				if channel.GetID() == schedule.GetChannelID() {
 					s := schedule.(*config.Schedule)
 					channel.Schedule[i] = *s
-					controller.SetChannel(&channel)
-					farmConfig.SetController(&controller)
+					device.SetChannel(&channel)
+					farmConfig.SetDevice(&device)
 					return farmService.SetConfig(farmConfig)
 				}
 			}
@@ -148,16 +149,16 @@ func (service *DefaultScheduleService) Update(session Session, schedule config.S
 // Delete a schedule entry from the database
 func (service *DefaultScheduleService) Delete(session Session, schedule config.ScheduleConfig) error {
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		for _, channel := range controller.GetChannels() {
+	farmConfig := farmService.GetConfig(store.READ_COMMITTED)
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
 			// Android client only sends the schedule id on delete
 			//if channel.GetChannelID() == schedule.GetChannelID() {
 			for i, _schedule := range channel.GetSchedule() {
 				if _schedule.GetID() == schedule.GetID() {
 					channel.Schedule = append(channel.Schedule[:i], channel.Schedule[i+1:]...)
-					controller.SetChannel(&channel)
-					farmConfig.SetController(&controller)
+					device.SetChannel(&channel)
+					farmConfig.SetDevice(&device)
 					return farmService.SetConfig(farmConfig)
 				}
 			}
@@ -169,7 +170,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule config.S
 
 // IsScheduled takes a Schedule and number of seconds that specify the duration of time the switch should be on
 func (service *DefaultScheduleService) IsScheduled(schedule config.ScheduleConfig, duration int) bool {
-	service.app.Logger.Debugf("[ScheduleService.IsScheduled] schedule=%+v", schedule)
+	service.app.Logger.Debugf("schedule=%+v", schedule)
 	startDate := schedule.GetStartDate()
 	if schedule.GetFrequency() > 0 {
 		now := time.Now().In(service.app.Location)
@@ -253,7 +254,7 @@ func (service *DefaultScheduleService) isTimeBetween(startDate, endDate time.Tim
 	startHr, startMin, _ := startDate.Clock()
 	endHr, endMin, _ := endDate.Clock()
 
-	service.app.Logger.Debugf("[ScheduleService.isTimeBetween] startHr=%d,startMin=%d,endHr=%d,endMin=%d,nowHour=%d,nowMinute=%d",
+	service.app.Logger.Debugf("startHr=%d,startMin=%d,endHr=%d,endMin=%d,nowHour=%d,nowMinute=%d",
 		startHr, startMin, endHr, endMin, nowHr, nowMin)
 
 	if startHr == endHr {
@@ -279,19 +280,19 @@ func (service *DefaultScheduleService) isDateTimeBetween(startDate, endDate time
 	now := service.GetNow()
 	startDate = startDate.In(service.app.Location)
 	endDate = endDate.In(service.app.Location)
-	service.app.Logger.Debugf("[ScheduleService.isNowBetween] Comparing schedule: now=%s, start=%s, stop=%s", now, startDate, endDate)
+	service.app.Logger.Debugf("Comparing schedule: now=%s, start=%s, stop=%s", now, startDate, endDate)
 	return now.After(startDate) && now.Before(endDate) || now.Equal(startDate) // || now.Equal(endDate)
 }
 
 // timeWithDuration returns the specified time with the configured timer duration added
 func (service *DefaultScheduleService) timeWithDuration(t time.Time, duration int) time.Time {
 	timeWithDuration := t.Add(time.Duration(duration) * time.Second)
-	service.app.Logger.Debugf("[ScheduleService.timeWithDuration] time=%s, timeWithDuration=%s, duration=%d", t, timeWithDuration, duration)
+	service.app.Logger.Debugf("time=%s, timeWithDuration=%s, duration=%d", t, timeWithDuration, duration)
 	return timeWithDuration
 }
 
 // IsScheduledMinute returns true if scheduled at the current minute
 func (service *DefaultScheduleService) isScheduledMinute(start, end, nowMin int) bool {
-	service.app.Logger.Debugf("[isScheduledMinute] start=%d,end=%d,nowMin=%d", start, end, nowMin)
+	service.app.Logger.Debugf("start=%d,end=%d,nowMin=%d", start, end, nowMin)
 	return nowMin >= start && nowMin < end
 }

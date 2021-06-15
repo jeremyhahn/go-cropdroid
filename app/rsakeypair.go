@@ -45,25 +45,25 @@ func NewRsaKeyPair(logger *logging.Logger, keydir string) (KeyPair, error) {
 }
 
 func CreateRsaKeyPair(logger *logging.Logger, directory string, saltLen int) (KeyPair, error) {
-	logger.Debugf("[RsaKeyPair] Loading key files from %s", directory)
+	logger.Debugf("Loading key files from %s", directory)
 	privateKeyBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", directory, "rsa.key"))
 	if err != nil {
-		logger.Errorf("[RsaKeyPair] %s", err.Error())
+		logger.Error(err)
 		return nil, err
 	}
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
 	if err != nil {
-		logger.Errorf("[RsaKeyPair] %s", err.Error())
+		logger.Error(err)
 		return nil, err
 	}
 	publicKeyBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", directory, "rsa.pub"))
 	if err != nil {
-		logger.Errorf("[RsaKeyPair] %s", err.Error())
+		logger.Error(err)
 		return nil, err
 	}
 	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyBytes)
 	if err != nil {
-		logger.Errorf("[RsaKeyPair] %s", err.Error())
+		logger.Error(err)
 		return nil, err
 	}
 	return &RsaKeyPair{

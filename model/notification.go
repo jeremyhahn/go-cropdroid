@@ -7,7 +7,7 @@ import (
 )
 
 type Notification struct {
-	Controller          string    `json:"controller"`
+	Device              string    `json:"device"`
 	Priority            int       `json:"priority"`
 	Type                string    `json:"type"`
 	Title               string    `json:"title"`
@@ -16,8 +16,8 @@ type Notification struct {
 	common.Notification `json:"-"`
 }
 
-func (model *Notification) GetController() string {
-	return model.Controller
+func (model *Notification) GetDevice() string {
+	return model.Device
 }
 
 func (model *Notification) GetPriority() int {

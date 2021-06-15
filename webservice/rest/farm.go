@@ -36,8 +36,8 @@ func (restService *DefaultFarmRestService) RegisterEndpoints(router *mux.Router,
 	endpoint := baseFarmURI
 	// /farms/{farmID}/config
 	configEndpoint := fmt.Sprintf("%s/config", endpoint)
-	// /farms/{farmID}/config/{controllerID}/{key}?value=foo
-	setConfigEndpoint := fmt.Sprintf("%s/{controllerID}/{key}", configEndpoint)
+	// /farms/{farmID}/config/{deviceID}/{key}?value=foo
+	setConfigEndpoint := fmt.Sprintf("%s/{deviceID}/{key}", configEndpoint)
 	// /farms/{farmID}/state
 	stateEndpoint := fmt.Sprintf("%s/state", endpoint)
 	router.Handle(configEndpoint, negroni.New(
@@ -64,7 +64,7 @@ func (restService *DefaultFarmRestService) Config(w http.ResponseWriter, r *http
 	}
 	defer session.Close()
 
-	session.GetLogger().Debugf("[DefaultFarmRestService.Config] REST service /config request email=%s", session.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /config request email=%s", session.GetUser().GetEmail())
 
 	restService.jsonWriter.Write(w, http.StatusOK, session.GetFarmService().GetConfig())
 }
@@ -78,7 +78,7 @@ func (restService *DefaultFarmRestService) State(w http.ResponseWriter, r *http.
 	}
 	defer session.Close()
 
-	session.GetLogger().Debugf("[DefaultFarmRestService.State] REST service /state request email=%s", session.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /state request email=%s", session.GetUser().GetEmail())
 
 	restService.jsonWriter.Write(w, http.StatusOK, session.GetFarmService().GetState())
 }
@@ -94,30 +94,30 @@ func (restService *DefaultFarmRestService) Set(w http.ResponseWriter, r *http.Re
 
 	params := mux.Vars(r)
 	farmID := params["farmID"]
-	controllerID := params["controllerID"]
+	deviceID := params["deviceID"]
 	key := params["key"]
 	value := r.FormValue("value")
 
-	//restService.session.GetLogger().Debugf("[ConfDefaultFarmRestServiceigRestService.SetServer] controllerID=%s, key=%s, value=%s, params=%+v", controllerID, key, value, params)
+	//restService.session.GetLogger().Debugf("deviceID=%s, key=%s, value=%s, params=%+v", deviceID, key, value, params)
 
-	intFarmID, err := strconv.ParseInt(farmID, 10, 64)
+	uint64FarmID, err := strconv.ParseUint(farmID, 10, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	intControllerID, err := strconv.ParseInt(controllerID, 10, 64)
+	uint64DeviceID, err := strconv.ParseUint(deviceID, 10, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
 	/*
-		if err := restService.configService.SetValue(session, int(intFarmID), int(intControllerID), key, value); err != nil {
+		if err := restService.configService.SetValue(session, int(intFarmID), int(intDeviceID), key, value); err != nil {
 			BadRequestError(w, r, err, restService.jsonWriter)
 			return
 		}*/
-	if err := session.GetFarmService().SetConfigValue(session, int(intFarmID), int(intControllerID), key, value); err != nil {
+	if err := session.GetFarmService().SetConfigValue(session, uint64FarmID, uint64DeviceID, key, value); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}

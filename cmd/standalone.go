@@ -3,19 +3,21 @@
 package cmd
 
 import (
+	"strings"
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
-	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
 	"github.com/spf13/cobra"
 )
 
 func init() {
+	standaloneCmd.PersistentFlags().StringVarP(&DeviceStore, "device-store", "", "datastore", "Where to store metrics [ datastore | redis ]")
+	DeviceStore = strings.ToLower(DeviceStore)
+
 	rootCmd.AddCommand(standaloneCmd)
 }
 
@@ -25,7 +27,7 @@ var standaloneCmd = &cobra.Command{
 	Long: `Starts the cropdroid real-time protection and notification service
 	in "standalone mode". In standalone mode, data can be stored in a highly available,
 	fauilt-tolerant database but the cropdroid service itself will not be fault-tolerant.
-	Evaluation versions (no license file) are restricted to a single farm, controller and
+	Evaluation versions (no license file) are restricted to a single farm, device and
 	admin user account without database persistence. This means your data will be lost and
 	the system will return to default settings following a reboot. Licensed versions provide
 	support for SQLite, MySQL, PostgreSQL, and CockroachDB (with support for experimental
@@ -34,23 +36,22 @@ var standaloneCmd = &cobra.Command{
 
 		App.Mode = common.MODE_STANDALONE
 		App.InitGormDB()
-		App.FarmStore = state.NewMemoryFarmStore(App.Logger, 1, AppStateTTL, time.Duration(AppStateTick))
-		App.ConfigStore = state.NewMemoryConfigStore(1)
 
-		if MetricDatastore == "datastore" {
-			App.MetricDatastore = gorm.NewControllerStateDAO(App.Logger, App.GORM, App.GORMInitParams.Engine, App.Location)
-		} else if MetricDatastore == "redis" {
-			App.MetricDatastore = datastore.NewRedisControllerStateDAO(":6379", "")
-		}
+		farmStateStore := state.NewMemoryFarmStore(App.Logger, 1, AppStateTTL, time.Duration(AppStateTick))
+		deviceStateStore := state.NewMemoryDeviceStore(App.Logger, 3, AppStateTTL, time.Duration(AppStateTick))
 
-		serverConfig, serviceRegistry, restServices, controllerIndex, channelIndex, err := builder.NewGormConfigBuilder(App).Build()
+		//serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err :=
+		//	builder.NewGormConfigBuilder(App, farmStateStore, deviceStateStore, deviceDatastore).Build()
+		serverConfig, serviceRegistry, restServices, err := builder.NewGormConfigBuilder(
+			App, farmStateStore, deviceStateStore, DeviceStore).Build()
+
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
 		App.Config = serverConfig.(*config.Server)
-		App.ControllerIndex = controllerIndex
-		App.ChannelIndex = channelIndex
+		//App.DeviceIndex = deviceIndex
+		//App.ChannelIndex = channelIndex
 
 		farmServices := serviceRegistry.GetFarmServices()
 		if len(farmServices) != 1 {
@@ -67,6 +68,8 @@ var standaloneCmd = &cobra.Command{
 		if changefeedService := serviceRegistry.GetChangefeedService(); changefeedService != nil {
 			changefeedService.Subscribe()
 		}
+
+		serviceRegistry.GetEventLogService().Create("System", "Startup")
 
 		done := make(chan error, 1)
 		<-done

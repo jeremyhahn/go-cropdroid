@@ -10,35 +10,35 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
-type MicroControllerMapper struct {
+type MicroDeviceMapper struct {
 	metricMapper  MetricMapper
 	channelMapper ChannelMapper
-	ControllerMapper
+	DeviceMapper
 }
 
-type ControllerMapper interface {
+type DeviceMapper interface {
 	GetMetricMapper() MetricMapper
 	GetChannelMapper() ChannelMapper
-	MapStateToController(state state.ControllerStateMap, configuration config.Controller) (common.Controller, error)
-	MapConfigToModel(controllerEntity config.ControllerConfig, configEntities []config.ControllerConfigItem) (common.Controller, error)
+	MapStateToDevice(state state.DeviceStateMap, configuration config.Device) (common.Device, error)
+	MapConfigToModel(deviceEntity config.DeviceConfig, configEntities []config.DeviceConfigItem) (common.Device, error)
 }
 
-func NewControllerMapper(metricMapper MetricMapper, channelMapper ChannelMapper) ControllerMapper {
-	return &MicroControllerMapper{
+func NewDeviceMapper(metricMapper MetricMapper, channelMapper ChannelMapper) DeviceMapper {
+	return &MicroDeviceMapper{
 		metricMapper:  metricMapper,
 		channelMapper: channelMapper}
 }
 
-func (mapper *MicroControllerMapper) GetMetricMapper() MetricMapper {
+func (mapper *MicroDeviceMapper) GetMetricMapper() MetricMapper {
 	return mapper.metricMapper
 }
 
-func (mapper *MicroControllerMapper) GetChannelMapper() ChannelMapper {
+func (mapper *MicroDeviceMapper) GetChannelMapper() ChannelMapper {
 	return mapper.channelMapper
 }
 
-func (mapper *MicroControllerMapper) MapStateToController(state state.ControllerStateMap, controller config.Controller) (common.Controller, error) {
-	configuredMetrics := controller.GetMetrics()
+func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, device config.Device) (common.Device, error) {
+	configuredMetrics := device.GetMetrics()
 	metrics := make([]common.Metric, len(configuredMetrics))
 	for i, metricConfig := range configuredMetrics {
 		if value, ok := state.GetMetrics()[metricConfig.GetKey()]; ok {
@@ -46,13 +46,13 @@ func (mapper *MicroControllerMapper) MapStateToController(state state.Controller
 			metric.SetValue(value)
 			metrics[i] = metric
 		} else {
-			return nil, fmt.Errorf("Unable to locate configured metric in controller state! (controller=%s, metric=%s)", controller.GetType(), metricConfig.GetKey())
+			return nil, fmt.Errorf("Unable to locate configured metric in device state! (device=%s, metric=%s)", device.GetType(), metricConfig.GetKey())
 		}
 	}
 	sort.SliceStable(metrics, func(i, j int) bool {
 		return metrics[i].GetName() < metrics[j].GetName()
 	})
-	configuredChannels := controller.GetChannels()
+	configuredChannels := device.GetChannels()
 	channels := make([]common.Channel, len(configuredChannels))
 	channelState := state.GetChannels()
 	for i, channelConfig := range configuredChannels {
@@ -60,30 +60,30 @@ func (mapper *MicroControllerMapper) MapStateToController(state state.Controller
 		channel.SetValue(channelState[channelConfig.ChannelID])
 		channels[i] = channel
 	}
-	return &model.Controller{
-		ID:          controller.GetID(),
-		Type:        controller.GetType(),
-		Description: controller.GetDescription(),
-		Enable:      controller.IsEnabled(),
-		Notify:      controller.IsNotify(),
-		URI:         controller.GetURI(),
-		Configs:     controller.GetConfigMap(),
+	return &model.Device{
+		ID:          device.GetID(),
+		Type:        device.GetType(),
+		Description: device.GetDescription(),
+		Enable:      device.IsEnabled(),
+		Notify:      device.IsNotify(),
+		URI:         device.GetURI(),
+		Configs:     device.GetConfigMap(),
 		Metrics:     metrics,
 		Channels:    channels}, nil
 }
 
-func (mapper *MicroControllerMapper) MapConfigToModel(controllerEntity config.ControllerConfig,
-	configEntities []config.ControllerConfigItem) (common.Controller, error) {
+func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity config.DeviceConfig,
+	configEntities []config.DeviceConfigItem) (common.Device, error) {
 
 	configs := make(map[string]string, len(configEntities))
 	for _, entity := range configEntities {
 		configs[entity.GetKey()] = entity.GetValue()
 	}
-	return &model.Controller{
-		ID: controllerEntity.GetID(),
-		//FarmID:      controllerEntity.GetFarmID(),
-		Type:        controllerEntity.GetType(),
-		Description: controllerEntity.GetDescription(),
+	return &model.Device{
+		ID: deviceEntity.GetID(),
+		//FarmID:      deviceEntity.GetFarmID(),
+		Type:        deviceEntity.GetType(),
+		Description: deviceEntity.GetDescription(),
 		Configs:     configs,
 		Metrics:     make([]common.Metric, 0),
 		Channels:    make([]common.Channel, 0)}, nil

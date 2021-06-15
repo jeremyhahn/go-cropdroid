@@ -51,7 +51,7 @@ func (service *GoogleAuthService) Get(email string) (common.UserAccount, error) 
 func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
 	farmProvisioner provisioner.FarmProvisioner) (common.UserAccount, []config.OrganizationConfig, error) {
 
-	service.app.Logger.Debugf("[GoogleAuthService.Login] Authenticating user: %+v", userCredentials)
+	service.app.Logger.Debugf("Authenticating user: %+v", userCredentials)
 
 	idToken := userCredentials.Email
 	context := context.Background()
@@ -62,7 +62,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
 	}
 	tokenInfo, err := oauth2Service.Tokeninfo().IdToken(idToken).Do()
 	if err != nil {
-		service.app.Logger.Errorf("[GoogleAuthService.Login] Error: %s", err)
+		service.app.Logger.Errorf("Error: %s", err)
 		return nil, nil, ErrInvalidCredentials
 	}
 
@@ -72,7 +72,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
 	userEntity, err := service.userDAO.GetByEmail(tokenInfo.Email)
 	if err != nil && err.Error() == ErrRecordNotFound.Error() {
 
-		service.app.Logger.Debugf("[UserService.Login] Provisioning new Google account: %s", userCredentials.Email)
+		service.app.Logger.Debugf("Provisioning new Google account: %s", userCredentials.Email)
 
 		userAccount, err := service.Register(&UserCredentials{
 			Email:    tokenInfo.Email,
@@ -129,7 +129,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
 
 	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID())
 	if err != nil {
-		service.app.Logger.Errorf("[LocalAuthService.Login] Database error: %s", err)
+		service.app.Logger.Errorf("Database error: %s", err)
 		return nil, nil, ErrInternalDatabase
 	}
 	if len(organizations) == 0 {
@@ -155,7 +155,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials) (co
 	token := userCredentials.Password
 	_, err := service.userDAO.GetByEmail(email)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
-		service.app.Logger.Errorf("[GoogleAuthService.Register] %s", err.Error())
+		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
 	}
 	encrypted, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)

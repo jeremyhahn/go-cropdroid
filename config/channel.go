@@ -2,7 +2,7 @@ package config
 
 type Channel struct {
 	ID            int         `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	ControllerID  int         `yaml:"controller" json:"controller_id"`
+	DeviceID      uint64      `yaml:"device" json:"device_id"`
 	ChannelID     int         `yaml:"channel" json:"channel_id"`
 	Name          string      `yaml:"name" json:"name"`
 	Enable        bool        `yaml:"enable" json:"enable"`
@@ -30,12 +30,12 @@ func (channel *Channel) GetID() int {
 	return channel.ID
 }
 
-func (channel *Channel) GetControllerID() int {
-	return channel.ControllerID
+func (channel *Channel) GetDeviceID() uint64 {
+	return channel.DeviceID
 }
 
-func (channel *Channel) SetControllerID(id int) {
-	channel.ControllerID = id
+func (channel *Channel) SetDeviceID(id uint64) {
+	channel.DeviceID = id
 }
 
 func (channel *Channel) SetChannelID(id int) {

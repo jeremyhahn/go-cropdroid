@@ -25,7 +25,7 @@ func NewFreewareRestServiceRegistry(mapperRegistry mapper.MapperRegistry, servic
 	conditionRestService := NewConditionRestService(serviceRegistry.GetConditionService(), mapperRegistry.GetConditionMapper(), jwtService, jsonWriter)
 	scheduleRestService := NewScheduleRestService(serviceRegistry.GetScheduleService(), jwtService, jsonWriter)
 	algorithmRestService := NewAlgorithmRestService(serviceRegistry.GetAlgorithmService(), jwtService, jsonWriter)
-	controllerFactoryRestService := NewControllerFactoryRestService(serviceRegistry.GetControllerFactory(), jwtService, jsonWriter)
+	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry.GetDeviceFactory(), jwtService, jsonWriter)
 
 	//restServices = append(restServices, configRestService)
 	restServices = append(restServices, channelRestService)
@@ -33,32 +33,32 @@ func NewFreewareRestServiceRegistry(mapperRegistry mapper.MapperRegistry, servic
 	restServices = append(restServices, conditionRestService)
 	restServices = append(restServices, scheduleRestService)
 	restServices = append(restServices, algorithmRestService)
-	restServices = append(restServices, controllerFactoryRestService)
+	restServices = append(restServices, deviceFactoryRestService)
 	restServices = append(restServices, NewFarmRestService(jwtService, jsonWriter))
-	restServices = append(restServices, NewControllerRestService(serviceRegistry, jwtService, jsonWriter))
+	restServices = append(restServices, NewDeviceRestService(serviceRegistry, jwtService, jsonWriter))
 
 	/*
 		for _, farmService := range serviceRegistry.GetFarmServices() {
-			controllerServices, _ := farmService.BuildControllerServices()
-			for _, controllerService := range controllerServices {
-				restServices = append(restServices, NewControllerRestService(
-					controllerService, controllerService.GetControllerType(), jwtService, jsonWriter))
+			deviceServices, _ := farmService.BuildDeviceServices()
+			for _, deviceService := range deviceServices {
+				restServices = append(restServices, NewDeviceRestService(
+					deviceService, deviceService.GetDeviceType(), jwtService, jsonWriter))
 			}
 		}
 	*/
 
 	/*
-		// Create unique list of controller types
-		controllerServices := make(map[string]common.ControllerService, 0)
+		// Create unique list of device types
+		deviceServices := make(map[string]common.DeviceService, 0)
 		for _, farmService := range serviceRegistry.GetFarmServices() {
-			controllers, err := serviceRegistry.GetControllerServices(farmService.GetFarmID())
+			devices, err := serviceRegistry.GetDeviceServices(farmService.GetFarmID())
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, cservice := range controllers {
-				if _, ok := controllerServices[cservice.GetControllerType()]; !ok {
-					controllerServices[cservice.GetControllerType()] = cservice
-					restServices = append(restServices, NewControllerRestService(cservice, jwtService, jsonWriter))
+			for _, cservice := range devices {
+				if _, ok := deviceServices[cservice.GetDeviceType()]; !ok {
+					deviceServices[cservice.GetDeviceType()] = cservice
+					restServices = append(restServices, NewDeviceRestService(cservice, jwtService, jsonWriter))
 				}
 			}
 		}*/

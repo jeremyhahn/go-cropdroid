@@ -11,7 +11,7 @@ import (
 
 type ChannelService interface {
 	Get(id int) (common.Channel, error)
-	GetAll(session Session, controllerID int) ([]common.Channel, error)
+	GetAll(session Session, deviceID uint64) ([]common.Channel, error)
 	Update(session Session, viewModel common.Channel) error
 }
 
@@ -37,10 +37,10 @@ func (service *DefaultChannelService) Get(id int) (common.Channel, error) {
 	return service.mapper.MapEntityToModel(entity), nil
 }
 
-func (service *DefaultChannelService) GetAll(session Session, controllerID int) ([]common.Channel, error) {
+func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) ([]common.Channel, error) {
 	orgID := session.GetFarmService().GetConfig().GetOrgID()
 	userID := session.GetUser().GetID()
-	entities, err := service.dao.GetByOrgUserAndControllerID(orgID, userID, controllerID)
+	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +56,12 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	channelConfig := service.mapper.MapModelToConfig(viewModel)
-	for _, controller := range farmConfig.GetControllers() {
-		if controller.GetID() == viewModel.GetControllerID() {
-			for i, channel := range controller.GetChannels() {
+	for _, device := range farmConfig.GetDevices() {
+		if device.GetID() == viewModel.GetDeviceID() {
+			for i, channel := range device.GetChannels() {
 				if channel.GetID() == viewModel.GetID() {
 					c := channelConfig.(*config.Channel)
-					controller.Channels[i] = *c
+					device.Channels[i] = *c
 					return farmService.SetConfig(farmConfig)
 				}
 			}

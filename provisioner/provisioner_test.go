@@ -26,7 +26,7 @@ func TestProvisioner(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, farm)
-	assert.Equal(t, 4, len(farm.GetControllers()))
+	assert.Equal(t, 4, len(farm.GetDevices()))
 
 	farms, err := farmDAO.GetAll()
 	assert.Nil(t, err)
@@ -56,9 +56,9 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, farm1)
-	assert.Equal(t, 4, len(farm1.GetControllers()))
-	assert.Equal(t, 4, len(farm2.GetControllers()))
-	assert.Equal(t, 4, len(farm3.GetControllers()))
+	assert.Equal(t, 4, len(farm1.GetDevices()))
+	assert.Equal(t, 4, len(farm2.GetDevices()))
+	assert.Equal(t, 4, len(farm3.GetDevices()))
 
 	farms, err := farmDAO.GetAll()
 	assert.Nil(t, err)

@@ -54,7 +54,7 @@ var DatastoreCACert string
 var DatastoreTlsKey string
 var DatastoreTlsCert string
 
-var MetricDatastore string
+var DeviceStore string
 
 //var supportedDatastoreTypes = []string{"json", "yaml", "sqlite", "postgres", "cockroach"}
 
@@ -84,11 +84,11 @@ var rootCmd = &cobra.Command{
  conditions.
 
  CropDroid requires the use of hardware devices with sensors to monitor and manage your
- crop. A "room" controller is used to control environment parameters for indoor grow
+ crop. A "room" device is used to control environment parameters for indoor grow
  rooms and greenhouses, including lights, temperature, humidity, and Co2. A "reservoir"
- controller is used to manage water quality and flow while the "dosing" controller
+ device is used to manage water quality and flow while the "dosing" device
  allows precise amounts of nutrients and chemicals, and has the ability to act as a
- general purpose switching controller. Custom controllers are also available to meet your
+ general purpose switching device. Custom devices are also available to meet your
  specific requirements.
 
  Complete documentation is available at https://github.com/jeremyhahn/go-cropdroid`,
@@ -125,6 +125,7 @@ func init() {
 	//rootCmd.PersistentFlags().StringVarP(&DowngradeUser, "setuid", "", "www-data", "Root downgrade user/group")
 	rootCmd.PersistentFlags().StringVarP(&DowngradeUser, "setuid", "", "root", "Root downgrade user/group")
 	rootCmd.PersistentFlags().BoolVarP(&EnableRegistrations, "enable-registrations", "", false, "Allows user account registrations via API")
+
 	rootCmd.PersistentFlags().StringVarP(&DatastoreType, "datastore", "", "memory", "Datastore type [ memory | sqlite | mysql | postgres | cockroach ]")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreUser, "datastore-user", "", "root", "Datastore username")
 	rootCmd.PersistentFlags().StringVarP(&DatastorePass, "datastore-pass", "", "", "Datastore password")
@@ -134,10 +135,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DatastoreCACert, "datastore-ca-cert", "", "", "TLS Certificate Authority public key")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreTlsKey, "datastore-tls-key", "", "", "TLS key used to encrypt the database connection")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreTlsCert, "datastore-tls-cert", "", "", "TLS certificate used to encrypt the database connection")
-
-	rootCmd.PersistentFlags().StringVarP(&MetricDatastore, "metric-datastore", "", "datastore", "Where to store metrics [ datastore | redis ]")
-
-	MetricDatastore = strings.ToLower(MetricDatastore)
 
 	if runtime.GOOS == "darwin" {
 		signal.Ignore(syscall.Signal(0xd))

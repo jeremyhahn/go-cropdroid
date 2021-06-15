@@ -1,5 +1,3 @@
-// +build broken
-
 package test
 
 import (
@@ -8,6 +6,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/test/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -86,10 +85,10 @@ func TestIsTrue(t *testing.T) {
 	assert.Equal(t, false, result)
 }
 
-func newConditionService() (*MockConditionDAO, service.ConditionService) {
-	_, scope := NewUnitTestContext()
-	dao := NewMockConditionDAO()
+func newConditionService() (*mocks.MockConditionDAO, service.ConditionService) {
+	app, _ := NewUnitTestSession()
+	dao := mocks.NewMockConditionDAO()
 	mapper := mapper.NewConditionMapper()
-	mockConfigService := NewMockConfigService()
-	return dao, service.NewConditionService(scope, dao, mapper, mockConfigService)
+	mockConfigService := mocks.NewMockConfigService()
+	return dao, service.NewConditionService(app.Logger, dao, mapper, mockConfigService)
 }

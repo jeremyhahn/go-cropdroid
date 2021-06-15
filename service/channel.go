@@ -10,22 +10,21 @@ import (
 
 type ChannelService interface {
 	Get(id int) (common.Channel, error)
-	GetAll(session Session, controllerID int) ([]common.Channel, error)
+	GetAll(session Session, deviceID uint64) ([]common.Channel, error)
 	Update(session Session, viewModel common.Channel) error
 }
 
 type DefaultChannelService struct {
-	dao           dao.ChannelDAO
-	mapper        mapper.ChannelMapper
-	configService ConfigService
+	dao         dao.ChannelDAO
+	mapper      mapper.ChannelMapper
+	consistency int
 	ChannelService
 }
 
-func NewChannelService(dao dao.ChannelDAO, mapper mapper.ChannelMapper, configService ConfigService) ChannelService {
+func NewChannelService(dao dao.ChannelDAO, mapper mapper.ChannelMapper) ChannelService {
 	return &DefaultChannelService{
-		dao:           dao,
-		mapper:        mapper,
-		configService: configService}
+		dao:    dao,
+		mapper: mapper}
 }
 
 func (service *DefaultChannelService) Get(id int) (common.Channel, error) {
@@ -36,10 +35,10 @@ func (service *DefaultChannelService) Get(id int) (common.Channel, error) {
 	return service.mapper.MapEntityToModel(entity), nil
 }
 
-func (service *DefaultChannelService) GetAll(session Session, controllerID int) ([]common.Channel, error) {
+func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) ([]common.Channel, error) {
 	orgID := session.GetFarmService().GetConfig().GetOrgID()
 	userID := session.GetUser().GetID()
-	entities, err := service.dao.GetByOrgUserAndControllerID(orgID, userID, controllerID)
+	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +56,7 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 	if err != nil {
 		return err
 	}
-	channelConfig.SetControllerID(persisted.GetControllerID())
+	channelConfig.SetDeviceID(persisted.GetDeviceID())
 	channelConfig.SetChannelID(persisted.GetChannelID())
 	if err = service.dao.Save(channelConfig); err != nil {
 		return err
@@ -65,10 +64,10 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	for _, controller := range farmConfig.GetControllers() {
-		if controller.GetID() == channelConfig.GetControllerID() {
-			controller.SetChannel(channelConfig)
-			farmConfig.SetController(&controller)
+	for _, device := range farmConfig.GetDevices() {
+		if device.GetID() == channelConfig.GetDeviceID() {
+			device.SetChannel(channelConfig)
+			farmConfig.SetDevice(&device)
 			return farmService.SetConfig(farmConfig)
 		}
 	}

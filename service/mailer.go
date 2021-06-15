@@ -33,11 +33,11 @@ func NewMailer(app *app.App, smtpConfig config.SmtpConfig) common.Mailer {
 
 func (mailer *GMailer) Send(farmName, subject, message string) error {
 	if !mailer.enabled {
-		mailer.app.Logger.Warningf("[Gmailer.Send] Disabled!")
+		mailer.app.Logger.Warningf("Disabled!")
 		return nil
 	}
 
-	mailer.app.Logger.Debugf("[GMailer.Send] subject=[%s] %s, message=%s", farmName, subject, message)
+	mailer.app.Logger.Debugf("subject=[%s] %s, message=%s", farmName, subject, message)
 
 	if mailer.host == "" || mailer.port != 0 || mailer.username == "" || mailer.password == "" || mailer.recipient == "" {
 		err := fmt.Errorf("Invalid SMTP configuration")

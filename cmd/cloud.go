@@ -73,22 +73,22 @@ var cloudCmd = &cobra.Command{
 		App.InitGormDB()
 
 		if MetricDatastore == "raft" {
-			App.MetricDatastore = cluster.NewRaftControllerStateDAO(App.Logger, App.RaftCluster)
+			App.MetricDatastore = cluster.NewRaftDeviceStateDAO(App.Logger, App.RaftCluster)
 		} else if MetricDatastore == "datastore" {
-			// Don't subscribe to controller state changefeeds while running Raft cluster!
-			App.MetricDatastore = gorm.NewControllerStateDAO(App.Logger, App.GORM, App.GORMInitParams.Engine, App.Location)
+			// Don't subscribe to device state changefeeds while running Raft cluster!
+			App.MetricDatastore = gorm.NewDeviceStateDAO(App.Logger, App.GORM, App.GORMInitParams.Engine, App.Location)
 		} else if MetricDatastore == "redis" {
-			App.MetricDatastore = datastore.NewRedisControllerStateDAO(":6379", "")
+			App.MetricDatastore = datastore.NewRedisDeviceStateDAO(":6379", "")
 		}
 
-		// TODO: Check controller hardware and firmware versions at startup, update controllers db table
-		serverConfig, serviceRegistry, restServices, controllerIndex, channelIndex, err := builder.NewCloudConfigBuilder(App, params).Build()
+		// TODO: Check device hardware and firmware versions at startup, update devices db table
+		serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err := builder.NewCloudConfigBuilder(App, params).Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
 		App.Config = serverConfig.(*config.Server)
-		App.ControllerIndex = controllerIndex
+		App.DeviceIndex = deviceIndex
 		App.ChannelIndex = channelIndex
 
 		go cluster.NewGossipCluster(params)

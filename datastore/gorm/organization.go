@@ -27,10 +27,10 @@ func (dao *GormOrganizationDAO) First() (config.OrganizationConfig, error) {
 	var org config.Organization
 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-		Preload("Farms.Controllers").
-		Preload("Farms.Controllers.Configs").Preload("Farms.Controllers.Metrics").Preload("Farms.Controllers.Channels").
-		Preload("Farms.Controllers.Channels.Conditions").
-		Preload("Farms.Controllers.Channels.Schedule").
+		Preload("Farms.Devices").
+		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
+		Preload("Farms.Devices.Channels.Conditions").
+		Preload("Farms.Devices.Channels.Schedule").
 		First(&org).Error; err != nil {
 		return nil, err
 	}
@@ -48,10 +48,10 @@ func (dao *GormOrganizationDAO) Get(orgID int) (config.OrganizationConfig, error
 	var org config.Organization
 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-		Preload("Farms.Controllers").
-		Preload("Farms.Controllers.Configs").Preload("Farms.Controllers.Metrics").Preload("Farms.Controllers.Channels").
-		Preload("Farms.Controllers.Channels.Conditions").
-		Preload("Farms.Controllers.Channels.Schedule").
+		Preload("Farms.Devices").
+		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
+		Preload("Farms.Devices.Channels.Conditions").
+		Preload("Farms.Devices.Channels.Schedule").
 		First(&org, orgID).Error; err != nil {
 		return nil, err
 	}
@@ -68,10 +68,10 @@ func (dao *GormOrganizationDAO) GetAll() ([]config.Organization, error) {
 	var orgs []config.Organization
 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-		Preload("Farms.Controllers").
-		Preload("Farms.Controllers.Configs").Preload("Farms.Controllers.Metrics").Preload("Farms.Controllers.Channels").
-		Preload("Farms.Controllers.Channels.Conditions").
-		Preload("Farms.Controllers.Channels.Schedule").
+		Preload("Farms.Devices").
+		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
+		Preload("Farms.Devices.Channels.Conditions").
+		Preload("Farms.Devices.Channels.Schedule").
 		Find(&orgs).Error; err != nil {
 		return nil, err
 	}

@@ -17,12 +17,12 @@ func (fb *FarmFactory) RunClusterProvisionerConsumer() {
 	for {
 		select {
 		case farmConfig := <-fb.farmProvisionerChan:
-			fb.app.Logger.Debugf("[FarmFactory.RunClusterProvisionerConsumer] Processing provisioner request...")
+			fb.app.Logger.Debugf("Processing provisioner request...")
 			farmConfigChangeChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 			farmStateChangeChan := make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE)
 			farmService, err := fb.BuildClusterService(farmConfig, farmConfigChangeChan, farmStateChangeChan)
 			if err != nil {
-				fb.app.Logger.Errorf("[FarmFactory.RunClusterProvisionerConsumer] Error: %s", err)
+				fb.app.Logger.Errorf("Error: %s", err)
 				break
 			}
 			fb.serviceRegistry.AddFarmService(farmService)
@@ -46,45 +46,47 @@ func (fb *FarmFactory) BuildClusterService(farmConfig config.FarmConfig,
 		return nil, err
 	}
 
-	fb.app.Logger.Errorf("[FarmFactory.BuildClusterService] Creating config cluster %d for farm %d",
+	fb.app.Logger.Debugf("Creating config cluster %d for farm %d",
 		farmService.GetConfigClusterID(), farmID)
 
 	if err := fb.createConfigCluster(farmID, farmService.GetConfigClusterID(), farmConfigChangeChan); err != nil {
-		fb.app.Logger.Errorf("[FarmFactory.BuildClusterService] Cluster config error: %s", err)
+		fb.app.Logger.Errorf("Cluster config error: %s", err)
 	}
 
-	fb.app.Logger.Errorf("[FarmFactory.BuildClusterService] Creating state cluster: %d", farmID)
+	fb.app.Logger.Errorf("Creating state cluster: %d", farmID)
 	if err := fb.createStateCluster(farmID, farmStateChangeChan); err != nil {
-		fb.app.Logger.Errorf("[FarmFactory.BuildClusterService] Cluster state error: %s", err)
+		fb.app.Logger.Errorf("Cluster state error: %s", err)
 	}
 
 	fb.app.RaftCluster.WaitForClusterReady(configClusterID)
-	farmService.SetConfig(farmConfig)
+	if fb.app.RaftCluster.IsLeader(configClusterID) {
+		fb.app.Logger.Debugf("Setting inital clustered farm config for %d from the datastore", configClusterID)
+		farmService.SetConfig(farmConfig)
+	}
 
 	return farmService, nil
 }
 
-func (fb *FarmFactory) createConfigCluster(farmID int, clusterID uint64, farmConfigChangeChan chan config.FarmConfig) error {
+func (fb *FarmFactory) createConfigCluster(farmID, configID uint64, farmConfigChangeChan chan config.FarmConfig) error {
 	if fb.app.RaftCluster != nil {
 		params := fb.app.RaftCluster.GetParams()
-		params.SetClusterID(clusterID)
-		params.SetDataDir(fmt.Sprintf("%s/%d-%d", fb.app.DataDir, farmID, clusterID))
-		sm := statemachine.NewFarmConfigMachine(fb.app.Logger, clusterID, farmConfigChangeChan, common.DEFAULT_FARM_CONFIG_HISTORY_LENGTH)
-		if err := fb.app.RaftCluster.CreateConfigCluster(clusterID, sm); err != nil {
+		params.SetClusterID(farmID)
+		params.SetDataDir(fmt.Sprintf("%s/%d-%d", fb.app.DataDir, farmID, configID))
+		sm := statemachine.NewFarmConfigMachine(fb.app.Logger, configID, farmConfigChangeChan, common.DEFAULT_FARM_CONFIG_HISTORY_LENGTH)
+		if err := fb.app.RaftCluster.CreateConfigCluster(configID, sm); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (fb *FarmFactory) createStateCluster(farmID int, farmStateChangeChan chan state.FarmStateMap) error {
-	clusterID := uint64(farmID)
+func (fb *FarmFactory) createStateCluster(farmID uint64, farmStateChangeChan chan state.FarmStateMap) error {
 	if fb.app.RaftCluster != nil {
 		params := fb.app.RaftCluster.GetParams()
-		params.SetClusterID(clusterID)
+		params.SetClusterID(farmID)
 		params.SetDataDir(fmt.Sprintf("%s/%d", fb.app.DataDir, farmID))
-		sm := statemachine.NewFarmStateMachine(fb.app.Logger, clusterID, farmStateChangeChan)
-		if err := fb.app.RaftCluster.CreateStateCluster(clusterID, sm); err != nil {
+		sm := statemachine.NewFarmStateMachine(fb.app.Logger, farmID, farmStateChangeChan)
+		if err := fb.app.RaftCluster.CreateStateCluster(farmID, sm); err != nil {
 			return err
 		}
 	}

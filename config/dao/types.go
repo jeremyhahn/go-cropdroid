@@ -18,21 +18,24 @@ type FarmDAO interface {
 	Create(farm *config.Farm) error
 	Save(farm *config.Farm) error
 	First() (config.FarmConfig, error)
-	Get(farmID int) (config.FarmConfig, error)
+	Get(farmID uint64) (config.FarmConfig, error)
 	GetAll() ([]config.Farm, error)
 	GetByOrgAndUserID(orgID, userID int) ([]config.Farm, error)
+	Count() (int64, error)
 }
 
-type ControllerDAO interface {
-	Save(controller config.ControllerConfig) error // Used only by integration test
-	//GetByOrgId(orgId int) ([]config.Controller, error)
-	GetByFarmId(orgId int) ([]config.Controller, error)
+type DeviceDAO interface {
+	Save(device config.DeviceConfig) error // Used only by integration test
+	Get(id uint64) (config.DeviceConfig, error)
+	//GetByOrgId(orgId int) ([]config.Device, error)
+	GetByFarmId(orgId uint64) ([]config.Device, error)
+	Count() (int64, error)
 }
 
-type ControllerConfigDAO interface {
-	Save(config config.ControllerConfigConfig) error
-	Get(controllerID int, name string) (*config.ControllerConfigItem, error)
-	GetAll(controllerID int) ([]config.ControllerConfigItem, error)
+type DeviceConfigDAO interface {
+	Save(config config.DeviceConfigConfig) error
+	Get(deviceID uint64, name string) (*config.DeviceConfigItem, error)
+	GetAll(deviceID uint64) ([]config.DeviceConfigItem, error)
 }
 
 type UserDAO interface {
@@ -56,8 +59,8 @@ type AlgorithmDAO interface {
 type ChannelDAO interface {
 	Save(channel config.ChannelConfig) error
 	Get(channelID int) (config.ChannelConfig, error)
-	GetByControllerID(controllerID int) ([]config.Channel, error)
-	GetByOrgUserAndControllerID(orgID, userID, controllerID int) ([]config.Channel, error)
+	GetByDeviceID(deviceID int) ([]config.Channel, error)
+	GetByOrgUserAndDeviceID(orgID, userID int, deviceID uint64) ([]config.Channel, error)
 }
 
 type ConditionDAO interface {
@@ -70,16 +73,16 @@ type ConditionDAO interface {
 }
 
 type ConfigDAO interface {
-	Save(config config.ControllerConfigConfig) error
-	Get(controllerID int, name string) (*config.ControllerConfigItem, error)
-	GetAll(controllerID int) ([]config.ControllerConfigItem, error)
+	Save(config config.DeviceConfigConfig) error
+	Get(deviceID int, name string) (*config.DeviceConfigItem, error)
+	GetAll(deviceID int) ([]config.DeviceConfigItem, error)
 }
 
 type MetricDAO interface {
 	Save(metric config.MetricConfig) error
 	Get(metricID int) (config.MetricConfig, error)
-	GetByControllerID(controllerID int) ([]config.Metric, error) // Used to bootstrap sqlite config (configService.buildMetrics())
-	GetByOrgUserAndControllerID(orgID, userID, controllerID int) ([]config.Metric, error)
+	GetByDeviceID(deviceID int) ([]config.Metric, error) // Used to bootstrap sqlite config (configService.buildMetrics())
+	GetByOrgUserAndDeviceID(orgID, userID, deviceID int) ([]config.Metric, error)
 }
 
 type ScheduleDAO interface {

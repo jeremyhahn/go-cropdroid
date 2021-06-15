@@ -16,7 +16,7 @@ func TestFarmAssociations(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
@@ -76,7 +76,7 @@ func TestGetAll(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
@@ -115,8 +115,8 @@ func TestGet(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
-	currentTest.gorm.AutoMigrate(&config.ControllerConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
+	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
@@ -125,32 +125,32 @@ func TestGet(t *testing.T) {
 
 	farm1 := config.NewFarm()
 	farm1.SetMode("test")
-	farm1.SetControllers([]config.Controller{
-		config.Controller{
+	farm1.SetDevices([]config.Device{
+		config.Device{
 			Type: "server",
-			Configs: []config.ControllerConfigItem{
-				config.ControllerConfigItem{
+			Configs: []config.DeviceConfigItem{
+				config.DeviceConfigItem{
 					Key:   "name",
 					Value: "Test Farm"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "mode",
 					Value: "test"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "interval",
 					Value: "59"}}}})
 
 	farm2 := config.NewFarm()
-	farm2.SetControllers([]config.Controller{
-		config.Controller{
+	farm2.SetDevices([]config.Device{
+		config.Device{
 			Type: "server",
-			Configs: []config.ControllerConfigItem{
-				config.ControllerConfigItem{
+			Configs: []config.DeviceConfigItem{
+				config.DeviceConfigItem{
 					Key:   "name",
 					Value: "Test Farm 2"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "mode",
 					Value: "test2"},
-				config.ControllerConfigItem{
+				config.DeviceConfigItem{
 					Key:   "interval",
 					Value: "60"}}}})
 
@@ -171,6 +171,26 @@ func TestGet(t *testing.T) {
 	assert.Equal(t, "Test Farm 2", persitedFarm2.GetName())
 	assert.Equal(t, "test2", persitedFarm2.GetMode())
 	assert.Equal(t, 60, persitedFarm2.GetInterval())
+
+	currentTest.Cleanup()
+}
+
+func TestCount(t *testing.T) {
+
+	currentTest := NewIntegrationTest()
+	currentTest.gorm.AutoMigrate(&config.Farm{})
+
+	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
+
+	err := farmDAO.Create(config.NewFarm())
+	assert.Nil(t, err)
+
+	err = farmDAO.Create(config.NewFarm())
+	assert.Nil(t, err)
+
+	count, err := farmDAO.Count()
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), count)
 
 	currentTest.Cleanup()
 }

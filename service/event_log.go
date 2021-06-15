@@ -12,20 +12,20 @@ import (
 type EventLog struct {
 	app        *app.App
 	dao        gorm.EventLogDAO
-	controller string
+	device string
 }
 
-func NewEventLogService(app *app.App, dao gorm.EventLogDAO, controller string) EventLogService {
+func NewEventLogService(app *app.App, dao gorm.EventLogDAO, device string) EventLogService {
 	return &EventLog{
 		app:        app,
-		controller: controller,
+		device: device,
 		dao:        dao}
 }
 
 func (eventLog *EventLog) Create(eventType, message string) {
 	eventLog.app.Logger.Debugf("[Create] type=%s, message=%s", eventType, message)
 	err := eventLog.dao.Create(&entity.EventLog{
-		Controller: eventLog.controller,
+		Device: eventLog.device,
 		Type:       eventType,
 		Message:    message,
 		Timestamp:  time.Now()})

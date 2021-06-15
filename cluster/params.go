@@ -30,18 +30,20 @@ type ClusterParams struct {
 	gossipPort                int                         `json:"gossipPort"`
 	raft                      []string                    `json:"raft"`
 	raftPort                  int                         `json:"raftPort"`
+	raftRequestedLeaderID     int                         `json:"raftRequestedLeaderID"`
 	vnodes                    int                         `json:"vnodes"`
 	maxNodes                  int                         `json:"maxNodes"`
 	bootstrap                 int                         `json:"bootstrap"`
 	farmProvisionerChan       chan config.FarmConfig      `json:"-"`
-	farmTickerProvisionerChan chan int                    `json:"-"`
+	farmTickerProvisionerChan chan uint64                 `json:"-"`
 	daoRegistry               datastore.DatastoreRegistry `json:"-"`
 }
 
 func NewClusterParams(logger *logging.Logger, clusterID, nodeID uint64, provider, region,
 	zone, dataDir, localAddress, listen string, gossipPeers []string, raft []string, join bool,
-	gossipPort, raftPort int, vnodes, maxNodes, bootstrap int, daoRegistry datastore.DatastoreRegistry,
-	farmProvisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan int) *ClusterParams {
+	gossipPort, raftPort, raftRequestedLeaderID int, vnodes, maxNodes, bootstrap int,
+	daoRegistry datastore.DatastoreRegistry, farmProvisionerChan chan config.FarmConfig,
+	farmTickerProvisionerChan chan uint64) *ClusterParams {
 
 	var nodeName string
 	hostname, _ := os.Hostname()
@@ -123,6 +125,7 @@ func NewClusterParams(logger *logging.Logger, clusterID, nodeID uint64, provider
 		gossipPort:                gossipPort,
 		raft:                      raft,
 		raftPort:                  raftPort,
+		raftRequestedLeaderID:     raftRequestedLeaderID,
 		vnodes:                    vnodes,
 		maxNodes:                  maxNodes,
 		bootstrap:                 bootstrap,
@@ -159,7 +162,7 @@ func (cp *ClusterParams) GetFarmProvisionerChan() chan config.FarmConfig {
 	return cp.farmProvisionerChan
 }
 
-func (cp *ClusterParams) GetFarmTickerProvisionerChan() chan int {
+func (cp *ClusterParams) GetFarmTickerProvisionerChan() chan uint64 {
 	return cp.farmTickerProvisionerChan
 }
 

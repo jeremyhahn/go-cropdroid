@@ -12,33 +12,33 @@ func TestChannelCRUD(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
 	currentTest.gorm.LogMode(true)
-	currentTest.gorm.AutoMigrate(&config.ControllerConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 
 	channelDAO := NewChannelDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, channelDAO)
 
 	channel1 := &config.Channel{
-		ControllerID: 1,
-		ChannelID:    3,
-		Name:         "Test Channel 1",
-		Enable:       true,
-		Notify:       true,
-		Duration:     2,
-		Debounce:     3,
-		Backoff:      4,
-		AlgorithmID:  1}
+		DeviceID:    1,
+		ChannelID:   3,
+		Name:        "Test Channel 1",
+		Enable:      true,
+		Notify:      true,
+		Duration:    2,
+		Debounce:    3,
+		Backoff:     4,
+		AlgorithmID: 1}
 
 	channel2 := &config.Channel{
-		ControllerID: 3,
-		ChannelID:    4,
-		Name:         "Test Channel 2",
-		Enable:       false,
-		Notify:       false,
-		Duration:     10,
-		Debounce:     20,
-		Backoff:      30,
-		AlgorithmID:  2}
+		DeviceID:    3,
+		ChannelID:   4,
+		Name:        "Test Channel 2",
+		Enable:      false,
+		Notify:      false,
+		Duration:    10,
+		Debounce:    20,
+		Backoff:     30,
+		AlgorithmID: 2}
 
 	err := channelDAO.Save(channel1)
 	assert.Nil(t, err)
@@ -50,7 +50,7 @@ func TestChannelCRUD(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, channel1.ID, persistedChannel1.GetID())
-	assert.Equal(t, channel1.ControllerID, persistedChannel1.GetControllerID())
+	assert.Equal(t, channel1.DeviceID, persistedChannel1.GetDeviceID())
 	assert.Equal(t, channel1.Name, persistedChannel1.GetName())
 	assert.Equal(t, channel1.Enable, persistedChannel1.IsEnabled())
 	assert.Equal(t, channel1.Notify, persistedChannel1.IsNotify())
@@ -59,14 +59,14 @@ func TestChannelCRUD(t *testing.T) {
 	assert.Equal(t, channel1.Backoff, persistedChannel1.GetBackoff())
 	assert.Equal(t, channel1.AlgorithmID, persistedChannel1.GetAlgorithmID())
 
-	persistedChannels, err := channelDAO.GetByControllerID(3)
+	persistedChannels, err := channelDAO.GetByDeviceID(3)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(persistedChannels))
 
 	persistedChannel2 := persistedChannels[0]
 
 	assert.Equal(t, channel2.ID, persistedChannel2.GetID())
-	assert.Equal(t, channel2.ControllerID, persistedChannel2.GetControllerID())
+	assert.Equal(t, channel2.DeviceID, persistedChannel2.GetDeviceID())
 	assert.Equal(t, channel2.Name, persistedChannel2.GetName())
 	assert.Equal(t, channel2.Enable, persistedChannel2.IsEnabled())
 	assert.Equal(t, channel2.Notify, persistedChannel2.IsNotify())
@@ -78,7 +78,7 @@ func TestChannelCRUD(t *testing.T) {
 	currentTest.Cleanup()
 }
 
-func TestChannelGetByUserOrgAndControllerID(t *testing.T) {
+func TestChannelGetByUserOrgAndDeviceID(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
 	currentTest.gorm.AutoMigrate(&config.Permission{})
@@ -86,13 +86,13 @@ func TestChannelGetByUserOrgAndControllerID(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.Metric{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
-	currentTest.gorm.AutoMigrate(&config.ControllerConfigItem{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
+	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 
-	controllerDAO := NewControllerDAO(currentTest.logger, currentTest.gorm)
-	assert.NotNil(t, controllerDAO)
+	deviceDAO := NewDeviceDAO(currentTest.logger, currentTest.gorm)
+	assert.NotNil(t, deviceDAO)
 
 	channelDAO := NewChannelDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, channelDAO)
@@ -115,7 +115,7 @@ func TestChannelGetByUserOrgAndControllerID(t *testing.T) {
 	user.SetRoles([]config.Role{*role})
 
 	channel1 := config.NewChannel()
-	channel1.SetControllerID(1)
+	channel1.SetDeviceID(1)
 	channel1.SetChannelID(3)
 	channel1.SetName("Test Channel 1")
 	channel1.SetEnable(true)
@@ -126,7 +126,7 @@ func TestChannelGetByUserOrgAndControllerID(t *testing.T) {
 	//channel1.SetAlgorithmID(1)
 
 	channel2 := config.NewChannel()
-	channel2.SetControllerID(3)
+	channel2.SetDeviceID(3)
 	channel2.SetChannelID(4)
 	channel2.SetName("Test Channel 2")
 	channel2.SetEnable(false)
@@ -136,17 +136,17 @@ func TestChannelGetByUserOrgAndControllerID(t *testing.T) {
 	channel2.SetBackoff(30)
 	//channel1.SetAlgorithmID(2)
 
-	controller1 := config.NewController()
-	controller1.SetType("fake")
-	controller1.SetDescription("This is a fake controller used for integration testing")
-	controller1.SetInterval(30)
-	controller1.SetChannels([]config.Channel{*channel1})
+	device1 := config.NewDevice()
+	device1.SetType("fake")
+	device1.SetDescription("This is a fake device used for integration testing")
+	device1.SetInterval(30)
+	device1.SetChannels([]config.Channel{*channel1})
 
 	farm := config.NewFarm()
 	farm.SetName("Test Farm")
 	farm.SetMode("test")
 	farm.SetInterval(60)
-	farm.SetControllers([]config.Controller{*controller1})
+	farm.SetDevices([]config.Device{*device1})
 	// gorm doesnt handle multiple many to many relationships in a single entity,
 	// need to manage the relationship manually
 	//farm.SetUsers([]config.User{*user})
@@ -169,18 +169,18 @@ func TestChannelGetByUserOrgAndControllerID(t *testing.T) {
 	err = channelDAO.Save(channel2)
 	assert.Nil(t, err)
 
-	controllers, err := controllerDAO.GetByFarmId(farm.GetID())
+	devices, err := deviceDAO.GetByFarmId(farm.GetID())
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(controllers))
-	assert.Equal(t, true, controllers[0].GetID() > 0)
+	assert.Equal(t, 1, len(devices))
+	assert.Equal(t, true, devices[0].GetID() > 0)
 
-	persistedChannels, err := channelDAO.GetByOrgUserAndControllerID(0, user.GetID(), controllers[0].GetID())
+	persistedChannels, err := channelDAO.GetByOrgUserAndDeviceID(0, user.GetID(), devices[0].GetID())
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(persistedChannels))
 
 	persistedChannel1 := persistedChannels[0]
 	//assert.Equal(t, channel1.ID, persistedChannel1.GetID())
-	//assert.Equal(t, channel1.ControllerID, persistedChannel1.GetControllerID())
+	//assert.Equal(t, channel1.DeviceID, persistedChannel1.GetDeviceID())
 	assert.Equal(t, channel1.Name, persistedChannel1.GetName())
 	assert.Equal(t, channel1.Enable, persistedChannel1.IsEnabled())
 	assert.Equal(t, channel1.Notify, persistedChannel1.IsNotify())

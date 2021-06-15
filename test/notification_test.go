@@ -1,4 +1,4 @@
-// +build integrationpackage test
+package test
 
 import (
 	"testing"
@@ -6,26 +6,28 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/test/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUserService_CreateUser(t *testing.T) {
 
-	ctx := NewUnitTestContext()
-	mailer := mock(Mailer)
+	app, session := NewUnitTestSession()
+
+	mailer := mocks.NewMockMailer(session)
 
 	notification := &model.Notification{
-		Controller: "test",
+		Device: "test",
 		Type:       "T",
 		Message:    "Test message",
 		Timestamp:  time.Now()}
 
-	service := service.NewNotificationService(ctx, mailer)
+	service := service.NewNotificationService(app.Logger, mailer)
 	service.Enqueue(notification)
 
 	dequeued := <-service.Dequeue()
 
-	assert.Equal(t, notification.GetController(), dequeued.GetController())
+	assert.Equal(t, notification.GetDevice(), dequeued.GetDevice())
 	assert.Equal(t, notification.GetType(), dequeued.GetType())
 	assert.Equal(t, notification.GetMessage(), dequeued.GetMessage())
 	assert.Equal(t, notification.GetTimestamp(), dequeued.GetTimestamp())

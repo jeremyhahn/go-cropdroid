@@ -25,7 +25,7 @@ import (
 type JsonWebTokenServiceImpl struct {
 	app              *app.App
 	farmDAO          dao.FarmDAO
-	controllerMapper mapper.ControllerMapper
+	deviceMapper mapper.DeviceMapper
 	serviceRegistry  ServiceRegistry
 	expiration       time.Duration
 	rsaKeyPair       app.KeyPair
@@ -35,11 +35,11 @@ type JsonWebTokenServiceImpl struct {
 }
 
 type farmClaim struct {
-	ID   int    `json:"id"`
+	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 	//Interval int    `json:"interval"`
 	//Mode     string `json:"mode"`
-	//Controllers []string `json:"controllers"`
+	//Devices []string `json:"devices"`
 	Roles []string `json:"roles"`
 }
 
@@ -51,7 +51,7 @@ type organizationClaim struct {
 	License config.LicenseConfig `json:"license"`
 }
 
-type controllerClaim struct {
+type deviceClaim struct {
 	ID   int    `json:"id"`
 	Type string `json:"type"`
 }
@@ -64,23 +64,23 @@ type JsonWebTokenClaims struct {
 	jwt.StandardClaims
 }
 
-func NewJsonWebTokenService(_app *app.App, farmDAO dao.FarmDAO, controllerMapper mapper.ControllerMapper,
+func NewJsonWebTokenService(_app *app.App, farmDAO dao.FarmDAO, deviceMapper mapper.DeviceMapper,
 	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter) (JsonWebTokenService, error) {
 
 	keypair, err := app.NewRsaKeyPair(_app.Logger, _app.KeyDir)
 	if err != nil {
 		return nil, err
 	}
-	return CreateJsonWebTokenService(_app, farmDAO, controllerMapper, serviceRegistry, jsonWriter, 60, keypair), nil // 1 hour expiration
+	return CreateJsonWebTokenService(_app, farmDAO, deviceMapper, serviceRegistry, jsonWriter, 60, keypair), nil // 1 hour expiration
 }
 
-func CreateJsonWebTokenService(_app *app.App, farmDAO dao.FarmDAO, controllerMapper mapper.ControllerMapper,
+func CreateJsonWebTokenService(_app *app.App, farmDAO dao.FarmDAO, deviceMapper mapper.DeviceMapper,
 	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter, expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
 
 	return &JsonWebTokenServiceImpl{
 		app:              _app,
 		farmDAO:          farmDAO,
-		controllerMapper: controllerMapper,
+		deviceMapper: deviceMapper,
 		serviceRegistry:  serviceRegistry,
 		jsonWriter:       jsonWriter,
 		expiration:       time.Duration(expiration),
@@ -93,7 +93,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter, r *
 		//http.Error(w, "Invalid token", http.StatusBadRequest)
 		return nil, err
 	}
-	service.app.Logger.Debugf("[JsonWebTokenService.CreateSession] Claims: %+v", claims)
+	service.app.Logger.Debugf("Claims: %+v", claims)
 
 	var roles []config.Role
 	//var farmConfig *config.Farm
@@ -113,7 +113,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter, r *
 		orgID = organizationID
 	}
 
-	farmID, err := strconv.Atoi(params["farmID"])
+	farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
 	if err != nil {
 		errmsg := fmt.Sprintf("Missing expected farmID HTTP GET parameter: %s", params["farmID"])
 		service.app.Logger.Error(errmsg)
@@ -142,7 +142,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter, r *
 		if farmConfig == nil {
 			farm, err := service.farmDAO.Get(farmID)
 			if err != nil {
-				service.app.Logger.Errorf("[JsonWebTokenService.CreateSession] Error: %s", err)
+				service.app.Logger.Errorf("Error: %s", err)
 				if err.Error() == "record not found" {
 					return nil, errors.New("Farm not found")
 				}
@@ -231,9 +231,9 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter, r *
 	}
 	/*
 		farmService, err := CreateFarmService(service.app, service.farmDAO, service.app.FarmStore,
-			 farmConfig, service.controllerMapper, service.serviceRegistry)
+			 farmConfig, service.deviceMapper, service.serviceRegistry)
 		if err != nil {
-			service.app.Logger.Errorf("[JsonWebTokenService.CreateSession] Error: %s", err)
+			service.app.Logger.Errorf("Error: %s", err)
 			return nil, err
 		}
 		return CreateSession(service.app.Logger, farmService, user), nil
@@ -258,7 +258,7 @@ func (service *JsonWebTokenServiceImpl) parseClaims(r *http.Request, extractor r
 	if err != nil {
 		return nil, nil, err
 	}
-	service.app.Logger.Debugf("[JsonWebTokenService.parseClaims] claims: %+v", claims)
+	service.app.Logger.Debugf("claims: %+v", claims)
 	return token, claims, nil
 }
 
@@ -279,26 +279,26 @@ func (service *JsonWebTokenServiceImpl) parseToken(w http.ResponseWriter, r *htt
 	}
 	if err != nil {
 		errmsg := err.Error()
-		service.app.Logger.Errorf("[JsonWebTokenService.parseToken] Error: %s", errmsg)
+		service.app.Logger.Errorf("Error: %s", errmsg)
 		return nil, nil, errors.New(errmsg)
 	}
-	service.app.Logger.Debugf("[JsonWebTokenService.parseToken] token=%+v", token)
+	service.app.Logger.Debugf("token=%+v", token)
 	return token, claims, err
 }
 
 // GenerateToken parses an authentication HTTP request for UserCredentials and returns a JWT token or error if unsuccessful
 func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req *http.Request) {
 
-	service.app.Logger.Debugf("[JsonWebTokenService.GenerateToken] url: %s, method: %s, remoteAddress: %s, requestUri: %s",
+	service.app.Logger.Debugf("url: %s, method: %s, remoteAddress: %s, requestUri: %s",
 		req.URL.Path, req.Method, req.RemoteAddr, req.RequestURI)
 
 	var user UserCredentials
 	err := json.NewDecoder(req.Body).Decode(&user)
 
-	service.app.Logger.Debugf("[JsonWebTokenService.GenerateToken] Decoded requested user: %v+", user)
+	service.app.Logger.Debugf("Decoded requested user: %v+", user)
 
 	if err != nil {
-		service.app.Logger.Errorf("[JsonWebTokenService.GenerateToken] Error: %s", err)
+		service.app.Logger.Errorf("Error: %s", err)
 		service.jsonWriter.Write(w, http.StatusBadRequest, viewmodel.JsonWebToken{Error: "Bad request"})
 		return
 	}
@@ -383,15 +383,15 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 		if token.Valid {
 			if claims.UserID <= 0 {
 				errmsg := "Invalid request. id claim required."
-				service.app.Logger.Errorf("[JsonWebTokenService.Validate] %s", errmsg)
-				service.app.Logger.Errorf("[JsonWebTokenService.Validate] token: %+v", token.Raw)
+				service.app.Logger.Errorf("%s", errmsg)
+				service.app.Logger.Errorf("token: %+v", token.Raw)
 				http.Error(w, errmsg, http.StatusBadRequest)
 				return
 			}
 			if claims.Email == "" {
 				errmsg := "Invalid request. email claim required"
-				service.app.Logger.Errorf("[JsonWebTokenService.Validate] %s", errmsg)
-				service.app.Logger.Errorf("[JsonWebTokenService.Validate] token: %+v", token.Raw)
+				service.app.Logger.Errorf("%s", errmsg)
+				service.app.Logger.Errorf("token: %+v", token.Raw)
 				http.Error(w, errmsg, http.StatusBadRequest)
 				return
 			}
@@ -404,15 +404,15 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 				}
 				if len(organizations) == 0 {
 					errmsg := "Invalid request. organization claim required"
-					service.app.Logger.Errorf("[JsonWebTokenService.Validate] %s", errmsg)
-					service.app.Logger.Errorf("[JsonWebTokenService.Validate] token: %+v", token.Raw)
+					service.app.Logger.Errorf("%s", errmsg)
+					service.app.Logger.Errorf("token: %+v", token.Raw)
 					http.Error(w, errmsg, http.StatusBadRequest)
 					return
 				}
 			*/
 			next(w, r)
 		} else {
-			service.app.Logger.Errorf("[JsonWebTokenService.Validate] Invalid token: %s", token.Raw)
+			service.app.Logger.Errorf("Invalid token: %s", token.Raw)
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 		}
 	} else {
@@ -420,7 +420,7 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 		if errmsg == "no token present in request" {
 			errmsg = "Authentication required"
 		}
-		service.app.Logger.Errorf("[JsonWebTokenService.Validate] Error: %s", errmsg)
+		service.app.Logger.Errorf("Error: %s", errmsg)
 		http.Error(w, errmsg, http.StatusBadRequest)
 	}
 }

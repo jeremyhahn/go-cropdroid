@@ -50,7 +50,7 @@ func TestPermissions(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Controller{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})

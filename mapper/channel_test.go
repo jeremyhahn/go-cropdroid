@@ -13,7 +13,7 @@ func TestChannelMapperMapEntityToModel(t *testing.T) {
 	mapper := NewChannelMapper()
 	entity := &config.Channel{
 		ID:           1,
-		ControllerID: 2,
+		DeviceID: 2,
 		ChannelID:    3,
 		Name:         "Test Channel",
 		Enable:       true,
@@ -24,7 +24,7 @@ func TestChannelMapperMapEntityToModel(t *testing.T) {
 		AlgorithmID:  4}
 	model := mapper.MapEntityToModel(entity)
 	assert.Equal(t, model.GetID(), entity.GetID())
-	assert.Equal(t, model.GetControllerID(), entity.GetControllerID())
+	assert.Equal(t, model.GetDeviceID(), entity.GetDeviceID())
 	assert.Equal(t, model.GetChannelID(), entity.GetChannelID())
 	assert.Equal(t, model.GetName(), entity.GetName())
 	assert.Equal(t, model.IsEnabled(), entity.IsEnabled())
@@ -41,7 +41,7 @@ func TestChannelMapperMapConfigToModel(t *testing.T) {
 
 	var channelConfig config.ChannelConfig = &model.Channel{}
 	channelConfig.SetID(1)
-	channelConfig.SetControllerID(2)
+	channelConfig.SetDeviceID(2)
 	channelConfig.SetName("Test Channel")
 	channelConfig.SetEnable(true)
 	channelConfig.SetNotify(true)
@@ -55,7 +55,7 @@ func TestChannelMapperMapConfigToModel(t *testing.T) {
 	assert.ObjectsAreEqual(channelConfig, channel)
 
 	assert.Equal(t, channelConfig.GetID(), channel.GetID())
-	assert.Equal(t, channelConfig.GetControllerID(), channel.GetControllerID())
+	assert.Equal(t, channelConfig.GetDeviceID(), channel.GetDeviceID())
 	assert.Equal(t, channelConfig.GetChannelID(), channel.GetChannelID())
 	assert.Equal(t, channelConfig.GetName(), channel.GetName())
 	assert.Equal(t, channelConfig.IsEnabled(), channel.IsEnabled())
@@ -80,7 +80,7 @@ func TestChannelMapperMapModelToEntity(t *testing.T) {
 
 	var channel common.Channel = &model.Channel{}
 	channel.SetID(1)
-	channel.SetControllerID(2)
+	channel.SetDeviceID(2)
 	channel.SetName("Test Channel")
 	channel.SetEnable(true)
 	channel.SetNotify(true)
@@ -89,11 +89,11 @@ func TestChannelMapperMapModelToEntity(t *testing.T) {
 	channel.SetBackoff(3)
 	channel.SetAlgorithmID(4)
 
-	entity := mapper.MapModelToEntity(channel)
+	entity := mapper.MapModelToConfig(channel)
 	assert.ObjectsAreEqual(channel, entity)
 
 	assert.Equal(t, channel.GetID(), entity.GetID())
-	assert.Equal(t, channel.GetControllerID(), entity.GetControllerID())
+	assert.Equal(t, channel.GetDeviceID(), entity.GetDeviceID())
 	assert.Equal(t, channel.GetChannelID(), entity.GetChannelID())
 	assert.Equal(t, channel.GetName(), entity.GetName())
 	assert.Equal(t, channel.IsEnabled(), entity.IsEnabled())
@@ -102,8 +102,8 @@ func TestChannelMapperMapModelToEntity(t *testing.T) {
 	assert.Equal(t, channel.GetDebounce(), entity.GetDebounce())
 	assert.Equal(t, channel.GetBackoff(), entity.GetBackoff())
 
-	channel.SetControllerID(20)
-	assert.NotEqual(t, channel.GetControllerID(), entity.GetControllerID())
+	channel.SetDeviceID(20)
+	assert.NotEqual(t, channel.GetDeviceID(), entity.GetDeviceID())
 }
 
 func TestChannelMapperMapEntityToConfig(t *testing.T) {
@@ -112,7 +112,7 @@ func TestChannelMapperMapEntityToConfig(t *testing.T) {
 
 	entity := &config.Channel{
 		ID:           1,
-		ControllerID: 2,
+		DeviceID: 2,
 		ChannelID:    3,
 		Name:         "Test Channel",
 		Enable:       true,
@@ -124,7 +124,7 @@ func TestChannelMapperMapEntityToConfig(t *testing.T) {
 
 	config := mapper.MapEntityToConfig(entity)
 	assert.Equal(t, entity.GetID(), config.GetID())
-	assert.Equal(t, entity.GetControllerID(), config.GetControllerID())
+	assert.Equal(t, entity.GetDeviceID(), config.GetDeviceID())
 	assert.Equal(t, entity.GetChannelID(), config.GetChannelID())
 	assert.Equal(t, entity.GetName(), config.GetName())
 	assert.Equal(t, entity.IsEnabled(), config.IsEnabled())
@@ -134,6 +134,6 @@ func TestChannelMapperMapEntityToConfig(t *testing.T) {
 	assert.Equal(t, entity.GetBackoff(), config.GetBackoff())
 	assert.Equal(t, entity.GetAlgorithmID(), config.GetAlgorithmID())
 
-	entity.SetControllerID(20)
-	assert.NotEqual(t, entity.GetControllerID(), config.GetControllerID())
+	entity.SetDeviceID(20)
+	assert.NotEqual(t, entity.GetDeviceID(), config.GetDeviceID())
 }

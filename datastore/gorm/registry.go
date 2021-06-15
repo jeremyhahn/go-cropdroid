@@ -10,8 +10,8 @@ import (
 type GormDaoRegistry struct {
 	orgDAO              dao.OrganizationDAO
 	farmDAO             dao.FarmDAO
-	controllerDAO       dao.ControllerDAO
-	controllerConfigDAO dao.ControllerConfigDAO
+	deviceDAO       dao.DeviceDAO
+	deviceConfigDAO dao.DeviceConfigDAO
 	metricDAO           dao.MetricDAO
 	channelDAO          dao.ChannelDAO
 	scheduleDAO         dao.ScheduleDAO
@@ -27,8 +27,8 @@ func NewGormRegistry(logger *logging.Logger, db *gorm.DB) datastore.DatastoreReg
 	return &GormDaoRegistry{
 		orgDAO:              NewOrganizationDAO(logger, db),
 		farmDAO:             NewFarmDAO(logger, db),
-		controllerDAO:       NewControllerDAO(logger, db),
-		controllerConfigDAO: NewControllerConfigDAO(logger, db),
+		deviceDAO:       NewDeviceDAO(logger, db),
+		deviceConfigDAO: NewDeviceConfigDAO(logger, db),
 		metricDAO:           NewMetricDAO(logger, db),
 		channelDAO:          NewChannelDAO(logger, db),
 		scheduleDAO:         NewScheduleDAO(logger, db),
@@ -55,20 +55,20 @@ func (registry *GormDaoRegistry) SetFarmDAO(dao dao.FarmDAO) {
 	registry.farmDAO = dao
 }
 
-func (registry *GormDaoRegistry) GetControllerDAO() dao.ControllerDAO {
-	return registry.controllerDAO
+func (registry *GormDaoRegistry) GetDeviceDAO() dao.DeviceDAO {
+	return registry.deviceDAO
 }
 
-func (registry *GormDaoRegistry) SetControllerDAO(dao dao.ControllerDAO) {
-	registry.controllerDAO = dao
+func (registry *GormDaoRegistry) SetDeviceDAO(dao dao.DeviceDAO) {
+	registry.deviceDAO = dao
 }
 
-func (registry *GormDaoRegistry) GetControllerConfigDAO() dao.ControllerConfigDAO {
-	return registry.controllerConfigDAO
+func (registry *GormDaoRegistry) GetDeviceConfigDAO() dao.DeviceConfigDAO {
+	return registry.deviceConfigDAO
 }
 
-func (registry *GormDaoRegistry) SetControllerConfigDAO(dao dao.ControllerConfigDAO) {
-	registry.controllerConfigDAO = dao
+func (registry *GormDaoRegistry) SetDeviceConfigDAO(dao dao.DeviceConfigDAO) {
+	registry.deviceConfigDAO = dao
 }
 
 func (registry *GormDaoRegistry) GetMetricDAO() dao.MetricDAO {

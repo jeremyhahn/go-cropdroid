@@ -1,11 +1,11 @@
 package config
 
 type License struct {
-	OrganizationID  int `yaml:"organizationId" json:"organizationId"`
-	UserQuota       int `yaml:"userQuota" json:"userQuota"`
-	FarmQuota       int `yaml:"farmQuota" json:"farmQuota"`
-	ControllerQuota int `yaml:"controllerQuota" json:"controllerQuota"`
-	LicenseConfig   `yaml:"-" json:"-"`
+	OrganizationID int `yaml:"organizationId" json:"organizationId"`
+	UserQuota      int `yaml:"userQuota" json:"userQuota"`
+	FarmQuota      int `yaml:"farmQuota" json:"farmQuota"`
+	DeviceQuota    int `yaml:"deviceQuota" json:"deviceQuota"`
+	LicenseConfig  `yaml:"-" json:"-"`
 }
 
 func (license *License) GetUserQuota() int {
@@ -16,6 +16,6 @@ func (license *License) GetFarmQuota() int {
 	return license.FarmQuota
 }
 
-func (license *License) GetControllerQuota() int {
-	return license.ControllerQuota
+func (license *License) GetDeviceQuota() int {
+	return license.DeviceQuota
 }

@@ -27,7 +27,7 @@ func NewCloudConfigBuilder(_app *app.App, params *cluster.ClusterParams) ConfigB
 }
 
 func (builder *CloudConfigBuilder) Build() (config.ServerConfig, service.ServiceRegistry, []rest.RestService,
-	state.ControllerIndex, state.ChannelIndex, error) {
+	state.DeviceIndex, state.ChannelIndex, error) {
 
 	datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GORM)
 	mapperRegistry := mapper.CreateRegistry()
@@ -54,7 +54,7 @@ func (builder *CloudConfigBuilder) Build() (config.ServerConfig, service.Service
 	//builder.app.Config = serverConfig.(*config.Server)
 	//builder.app.Logger.Debugf("builder.app.Config: %+v", builder.app.Config)
 
-	controllerIndexMap := make(map[int]config.ControllerConfig, 0)
+	deviceIndexMap := make(map[int]config.DeviceConfig, 0)
 	channelIndexMap := make(map[int]config.ChannelConfig, 0)
 
 	// Build JWT service
@@ -65,7 +65,7 @@ func (builder *CloudConfigBuilder) Build() (config.ServerConfig, service.Service
 		builder.app.Logger.Fatal(err)
 	}
 
-	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetControllerMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
@@ -74,11 +74,11 @@ func (builder *CloudConfigBuilder) Build() (config.ServerConfig, service.Service
 	configService := service.NewConfigService(builder.app, datastoreRegistry)
 	serviceRegistry.SetConfigService(configService)
 
-	controllerIndex := state.CreateControllerIndex(controllerIndexMap)
+	deviceIndex := state.CreateDeviceIndex(deviceIndexMap)
 	channelIndex := state.CreateChannelIndex(channelIndexMap)
 
 	restServiceRegistry := rest.NewClusterRestServiceRegistry(mapperRegistry, serviceRegistry)
 	restServices := restServiceRegistry.GetRestServices()
 
-	return serverConfig, serviceRegistry, restServices, controllerIndex, channelIndex, nil
+	return serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, nil
 }

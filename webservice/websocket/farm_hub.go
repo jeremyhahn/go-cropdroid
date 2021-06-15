@@ -65,7 +65,7 @@ func (h *FarmHub) Run() {
 				select {
 				case client.state <- farmState:
 					h.logger.Errorf("[FarmHub.Run] Broadcasting farm state update for farm.id=%d", h.farmService.GetFarmID())
-					for k, v := range farmState.GetControllers() {
+					for k, v := range farmState.GetDevices() {
 						h.logger.Errorf("[FarmHub.Run] farm.state.%s=%+v", k, v)
 					}
 				default:
@@ -76,12 +76,12 @@ func (h *FarmHub) Run() {
 			}
 
 		/*
-			case controllerState := <-h.farmService.WatchControllerState():
+			case deviceState := <-h.farmService.WatchDeviceState():
 				for client := range h.clients {
 					select {
-					case client.controllerState <- controllerState:
-						h.logger.Errorf("[FarmHub.Run] Broadcasting controller state update for farm.id=%d", h.farmService.GetFarmID())
-						h.logger.Errorf("[FarmHub.Run] controllerState=%+v", controllerState)
+					case client.deviceState <- deviceState:
+						h.logger.Errorf("[FarmHub.Run] Broadcasting device state update for farm.id=%d", h.farmService.GetFarmID())
+						h.logger.Errorf("[FarmHub.Run] deviceState=%+v", deviceState)
 					default:
 						h.logger.Errorf("[FarmHub.Run] Unable to send state update to client: %s", client.conn.RemoteAddr())
 						close(client.send)
@@ -89,13 +89,13 @@ func (h *FarmHub) Run() {
 					}
 				}*/
 
-		case controllerStateDelta := <-h.farmService.WatchControllerDeltas():
+		case deviceStateDelta := <-h.farmService.WatchDeviceDeltas():
 			for client := range h.clients {
 				select {
-				case client.controllerStateDelta <- controllerStateDelta:
-					h.logger.Errorf("[FarmHub.Run] Broadcasting controller state delta update for farm.id=%d", h.farmService.GetFarmID())
-					for k, v := range controllerStateDelta {
-						h.logger.Errorf("[FarmHub.Run] controllerStateDelta: k=%s, v=%+v", k, v)
+				case client.deviceStateDelta <- deviceStateDelta:
+					h.logger.Errorf("[FarmHub.Run] Broadcasting device state delta update for farm.id=%d", h.farmService.GetFarmID())
+					for k, v := range deviceStateDelta {
+						h.logger.Errorf("[FarmHub.Run] deviceStateDelta: k=%s, v=%+v", k, v)
 					}
 				default:
 					h.logger.Errorf("[FarmHub.Run] Unable to send state update to client: %s", client.conn.RemoteAddr())

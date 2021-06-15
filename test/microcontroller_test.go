@@ -1,4 +1,4 @@
-// +build broken
+// +build ignore
 
 package test
 
@@ -18,21 +18,21 @@ import (
 
 func TestChannelGreaterThanConditionalActivatesSwitch(t *testing.T) {
 
-	scope, client, notificationService, _, _, _, microcontrollerService := createTestMicrocontrollerService()
+	scope, client, notificationService, _, _, _, microdeviceService := createTestMicrodeviceService()
 
 	testFarmID := 0
 	testChannelID := 0
-	controllerType := "testcontroller"
-	farmConfig, _ := createTestFarm(testFarmID, controllerType)
+	deviceType := "testdevice"
+	farmConfig, _ := createTestFarm(testFarmID, deviceType)
 
 	scope.SetConfig(farmConfig)
 
-	client.On("GetType").Return(controllerType, nil)
+	client.On("GetType").Return(deviceType, nil)
 	client.On("Switch", testChannelID, 1).Return(&common.Switch{}, nil)
 	notificationService.On("Enqueue", mock.Anything).Return(nil)
 
-	channels := farmConfig.GetControllers()[0].GetChannels()
-	microcontrollerService.ManageChannels(channels)
+	channels := farmConfig.GetDevices()[0].GetChannels()
+	microdeviceService.ManageChannels(channels)
 
 	client.AssertCalled(t, "Switch", testChannelID, 1)
 	client.AssertNumberOfCalls(t, "Switch", 1)
@@ -44,31 +44,31 @@ func TestChannelGreaterThanConditionalActivatesSwitch(t *testing.T) {
 
 func TestChannelLessThanConditionalDeactivatesSwitch(t *testing.T) {
 
-	scope, client, notificationService, _, _, _, microcontrollerService := createTestMicrocontrollerService()
+	scope, client, notificationService, _, _, _, microdeviceService := createTestMicrodeviceService()
 
 	testChannelID := 0
-	controllerType := "testcontroller"
+	deviceType := "testdevice"
 	fakeValue := 54.0
 
 	metricMap := make(map[string]float64, 0)
 	metricMap["humidity0"] = fakeValue
-	controllerState := common.CreateControllerStateMap(metricMap, []int{1})
+	deviceState := common.CreateDeviceStateMap(metricMap, []int{1})
 
-	scope.GetStateMap().SetController(controllerType, controllerState)
+	scope.GetStateMap().SetDevice(deviceType, deviceState)
 
 	metrics := []config.MetricConfig{
 		&config.Metric{
 			ID:  1,
 			Key: "humidity0"}}
 
-	scope.GetConfig().GetControllers()[0].SetMetrics(metrics)
+	scope.GetConfig().GetDevices()[0].SetMetrics(metrics)
 
-	client.On("GetType").Return(controllerType, nil)
+	client.On("GetType").Return(deviceType, nil)
 	client.On("Switch", testChannelID, 0).Return(&common.Switch{}, nil)
 	notificationService.On("Enqueue", mock.Anything).Return(nil)
 
-	channels := scope.GetConfig().GetControllers()[0].GetChannels()
-	microcontrollerService.ManageChannels(channels)
+	channels := scope.GetConfig().GetDevices()[0].GetChannels()
+	microdeviceService.ManageChannels(channels)
 
 	client.AssertCalled(t, "Switch", testChannelID, 0)
 	client.AssertNumberOfCalls(t, "Switch", 1)
@@ -80,28 +80,28 @@ func TestChannelLessThanConditionalDeactivatesSwitch(t *testing.T) {
 
 func TestChannelLessThanConditionalDeactivatesSwitchOnlyIfAlreadyOn(t *testing.T) {
 
-	scope, client, notificationService, _, _, _, microcontrollerService := createTestMicrocontrollerService()
+	scope, client, notificationService, _, _, _, microdeviceService := createTestMicrodeviceService()
 
-	controllerType := "testcontroller"
+	deviceType := "testdevice"
 	fakeValue := 54.0
 
 	metricMap := make(map[string]float64, 0)
 	metricMap["humidity0"] = fakeValue
-	controllerState := common.CreateControllerStateMap(metricMap, []int{0})
+	deviceState := common.CreateDeviceStateMap(metricMap, []int{0})
 
-	scope.GetStateMap().SetController(controllerType, controllerState)
+	scope.GetStateMap().SetDevice(deviceType, deviceState)
 
 	metrics := []config.MetricConfig{
 		&config.Metric{
 			ID:  1,
 			Key: "humidity0"}}
 
-	scope.GetConfig().GetControllers()[0].SetMetrics(metrics)
-	channels := scope.GetConfig().GetControllers()[0].GetChannels()
+	scope.GetConfig().GetDevices()[0].SetMetrics(metrics)
+	channels := scope.GetConfig().GetDevices()[0].GetChannels()
 
-	client.On("GetType").Return(controllerType, nil)
+	client.On("GetType").Return(deviceType, nil)
 
-	microcontrollerService.ManageChannels(channels)
+	microdeviceService.ManageChannels(channels)
 
 	client.AssertNumberOfCalls(t, "Switch", 0)
 	notificationService.AssertNumberOfCalls(t, "Enqueue", 0)
@@ -112,28 +112,28 @@ func TestChannelLessThanConditionalDeactivatesSwitchOnlyIfAlreadyOn(t *testing.T
 
 func TestChannelLessThanConditionalActivatesSwitchOnlyIfAlreadyOff(t *testing.T) {
 
-	scope, client, notificationService, _, _, _, microcontrollerService := createTestMicrocontrollerService()
+	scope, client, notificationService, _, _, _, microdeviceService := createTestMicrodeviceService()
 
-	controllerType := "testcontroller"
+	deviceType := "testdevice"
 	fakeValue := 56.0
 
 	metricMap := make(map[string]float64, 0)
 	metricMap["humidity0"] = fakeValue
-	controllerState := common.CreateControllerStateMap(metricMap, []int{1})
+	deviceState := common.CreateDeviceStateMap(metricMap, []int{1})
 
-	scope.GetStateMap().SetController(controllerType, controllerState)
+	scope.GetStateMap().SetDevice(deviceType, deviceState)
 
 	metrics := []config.MetricConfig{
 		&config.Metric{
 			ID:  1,
 			Key: "humidity0"}}
 
-	scope.GetConfig().GetControllers()[0].SetMetrics(metrics)
-	channels := scope.GetConfig().GetControllers()[0].GetChannels()
+	scope.GetConfig().GetDevices()[0].SetMetrics(metrics)
+	channels := scope.GetConfig().GetDevices()[0].GetChannels()
 
-	client.On("GetType").Return(controllerType, nil)
+	client.On("GetType").Return(deviceType, nil)
 
-	microcontrollerService.ManageChannels(channels)
+	microdeviceService.ManageChannels(channels)
 
 	client.AssertNumberOfCalls(t, "Switch", 0)
 	notificationService.AssertNumberOfCalls(t, "Enqueue", 0)
@@ -144,22 +144,22 @@ func TestChannelLessThanConditionalActivatesSwitchOnlyIfAlreadyOff(t *testing.T)
 
 func TestPhAlgorithmActivatesSwitch(t *testing.T) {
 
-	scope, client, notificationService, _, _, _, microcontrollerService := createTestMicrocontrollerService()
+	scope, client, notificationService, _, _, _, microdeviceService := createTestMicrodeviceService()
 
 	testChannelID := 0
-	controllerType := "testcontroller"
+	deviceType := "testdevice"
 	fakeValue := 6.1
 	expectedAutoDoseSize := 3
 
 	metricMap := make(map[string]float64, 0)
 	metricMap["ph"] = fakeValue
 
-	controllerState := common.CreateControllerStateMap(metricMap, []int{0})
-	scope.GetStateMap().SetController(controllerType, controllerState)
+	deviceState := common.CreateDeviceStateMap(metricMap, []int{0})
+	scope.GetStateMap().SetDevice(deviceType, deviceState)
 
-	controllerConfigMap := make(map[string]string, 0)
-	controllerConfigMap[fmt.Sprintf("%s.notify", controllerType)] = "true"
-	controllerConfigMap[fmt.Sprintf("%s.gallons", controllerType)] = "60"
+	deviceConfigMap := make(map[string]string, 0)
+	deviceConfigMap[fmt.Sprintf("%s.notify", deviceType)] = "true"
+	deviceConfigMap[fmt.Sprintf("%s.gallons", deviceType)] = "60"
 
 	metrics := []config.MetricConfig{
 		&config.Metric{
@@ -176,7 +176,7 @@ func TestPhAlgorithmActivatesSwitch(t *testing.T) {
 	channels := []config.ChannelConfig{
 		&config.Channel{
 			ID:           1,
-			ControllerID: 1,
+			DeviceID: 1,
 			ChannelID:    testChannelID,
 			Name:         "channel",
 			Enable:       true,
@@ -184,16 +184,16 @@ func TestPhAlgorithmActivatesSwitch(t *testing.T) {
 			Conditions:   []config.ConditionConfig{condition},
 			AlgorithmID:  common.ALGORITHM_PH_ID}}
 
-	controller := scope.GetConfig().GetControllers()[0]
-	controller.SetConfigs(controllerConfigMap)
-	controller.SetMetrics(metrics)
-	controller.SetChannels(channels)
+	device := scope.GetConfig().GetDevices()[0]
+	device.SetConfigs(deviceConfigMap)
+	device.SetMetrics(metrics)
+	device.SetChannels(channels)
 
-	client.On("GetType").Return(controllerType, nil)
+	client.On("GetType").Return(deviceType, nil)
 	client.On("TimerSwitch", testChannelID, expectedAutoDoseSize).Return(&common.ChannelTimerEvent{}, nil)
 	notificationService.On("Enqueue", mock.Anything).Return(nil)
 
-	microcontrollerService.ManageChannels(channels)
+	microdeviceService.ManageChannels(channels)
 
 	client.AssertCalled(t, "TimerSwitch", testChannelID, expectedAutoDoseSize)
 	client.AssertNumberOfCalls(t, "TimerSwitch", 1)
@@ -203,38 +203,38 @@ func TestPhAlgorithmActivatesSwitch(t *testing.T) {
 	notificationService.AssertExpectations(t)
 }
 
-func createTestMicrocontrollerService() (common.Scope, *MockController, *MockNotificationService, *MockChannelService,
-	service.ScheduleService, service.ConditionService, common.ControllerService) {
+func createTestMicrodeviceService() (common.Scope, *MockDevice, *MockNotificationService, *MockChannelService,
+	service.ScheduleService, service.ConditionService, common.DeviceService) {
 
 	app, scope := NewUnitTestContext()
 	dao := NewMockDynamicDAO()
 	conditionDAO := NewMockConditionDAO()
 	scheduleDAO := NewMockScheduleDAO()
-	client := NewMockController()
+	client := NewMockDevice()
 	mailer := NewMockMailer(scope)
 	metricMapper := mapper.NewMetricMapper()
 	channelMapper := mapper.NewChannelMapper()
 	scheduleMapper := mapper.NewScheduleMapper()
 	conditionMapper := mapper.NewConditionMapper()
-	controllerMapper := mapper.NewControllerMapper(metricMapper, channelMapper)
+	deviceMapper := mapper.NewDeviceMapper(metricMapper, channelMapper)
 	notificationService := NewMockNotificationService(scope, mailer)
 	eventLogService := NewMockEventLogService(scope, nil, "test")
 	channelService := NewMockChannelService()
 	configService := NewMockConfigService()
 	conditionService := service.NewConditionService(scope, conditionDAO, conditionMapper, configService)
 	scheduleService := service.NewScheduleService(app, scheduleDAO, scheduleMapper, configService)
-	microcontrollerService, err := service.NewMicroControllerService(app, scope, dao, client, controllerMapper,
+	microdeviceService, err := service.NewMicroDeviceService(app, scope, dao, client, deviceMapper,
 		eventLogService, notificationService, conditionService, scheduleService)
 
 	if err != nil {
-		log.Fatal("[MicroControllerTest.createTestMicrocontrollerService] Error: ", err)
+		log.Fatal("[MicroDeviceTest.createTestMicrodeviceService] Error: ", err)
 	}
 
-	return scope, client, notificationService, channelService, scheduleService, conditionService, microcontrollerService
+	return scope, client, notificationService, channelService, scheduleService, conditionService, microdeviceService
 }
 
-func createTestMicrocontrollerServiceWithSchedule(scope common.Scope, now time.Time) (*MockController, *MockNotificationService,
-	*MockChannelService, service.ScheduleService, service.ConditionService, common.ControllerService) {
+func createTestMicrodeviceServiceWithSchedule(scope common.Scope, now time.Time) (*MockDevice, *MockNotificationService,
+	*MockChannelService, service.ScheduleService, service.ConditionService, common.DeviceService) {
 
 	location, _ := time.LoadLocation("America/New_York")
 	_app := &app.App{
@@ -243,25 +243,25 @@ func createTestMicrocontrollerServiceWithSchedule(scope common.Scope, now time.T
 	dao := NewMockDynamicDAO()
 	conditionDAO := NewMockConditionDAO()
 	scheduleDAO := NewMockScheduleDAO()
-	client := NewMockController()
+	client := NewMockDevice()
 	mailer := NewMockMailer(scope)
 	metricMapper := mapper.NewMetricMapper()
 	channelMapper := mapper.NewChannelMapper()
 	scheduleMapper := mapper.NewScheduleMapper()
 	conditionMapper := mapper.NewConditionMapper()
-	controllerMapper := mapper.NewControllerMapper(metricMapper, channelMapper)
+	deviceMapper := mapper.NewDeviceMapper(metricMapper, channelMapper)
 	notificationService := NewMockNotificationService(scope, mailer)
 	eventLogService := NewMockEventLogService(scope, nil, "test")
 	channelService := NewMockChannelService()
 	configService := NewMockConfigService()
 	conditionService := service.NewConditionService(scope, conditionDAO, conditionMapper, configService)
 	scheduleService, _ := service.CreateScheduleService(_app, scheduleDAO, scheduleMapper, now, configService)
-	microcontrollerService, err := service.NewMicroControllerService(_app, scope, dao, client, controllerMapper, eventLogService,
+	microdeviceService, err := service.NewMicroDeviceService(_app, scope, dao, client, deviceMapper, eventLogService,
 		notificationService, conditionService, scheduleService)
 
 	if err != nil {
-		log.Fatal("[MicroControllerTest.createTestMicrocontrollerServiceWithSchedule] Error: ", err)
+		log.Fatal("[MicroDeviceTest.createTestMicrodeviceServiceWithSchedule] Error: ", err)
 	}
 
-	return client, notificationService, channelService, scheduleService, conditionService, microcontrollerService
+	return client, notificationService, channelService, scheduleService, conditionService, microdeviceService
 }

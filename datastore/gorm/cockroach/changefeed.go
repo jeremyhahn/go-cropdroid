@@ -89,7 +89,7 @@ func (changefeed *CockroachChangefeed) Subscribe(callback datastore.ChangefeedCa
 			}
 			/*
 				if strings.Contains(table, "_state") {
-					// controller state table
+					// device state table
 					var rawMessageWrapper changefeedRawMessageWrapper
 					if err = json.Unmarshal([]byte(value), &rawMessageWrapper); err != nil {
 						changefeed.app.Logger.Errorf("[CockroachChangefeed.Subscribe] Error unmarshaling into changefeedStateWrapper: %s", err)

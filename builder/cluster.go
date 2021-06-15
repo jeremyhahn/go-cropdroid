@@ -30,7 +30,7 @@ func NewClusterConfigBuilder(_app *app.App, params *cluster.ClusterParams) Confi
 }
 
 func (builder *ClusterConfigBuilder) Build() (config.ServerConfig, service.ServiceRegistry, []rest.RestService,
-	state.ControllerIndex, state.ChannelIndex, error) {
+	state.DeviceIndex, state.ChannelIndex, error) {
 
 	//datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GORM)
 	datastoreRegistry := builder.params.GetDatastoreRegistry()
@@ -40,8 +40,8 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig, service.Servi
 	changefeeders := make(map[string]datastore.Changefeeder, 0)
 
 	if builder.app.DatastoreCDC && builder.app.DatastoreType == "cockroach" {
-		// Farm and controller config tables
-		changefeeders["_controller_config_items"] = cockroach.NewCockroachChangefeed(builder.app, "controller_config_items")
+		// Farm and device config tables
+		changefeeders["_device_config_items"] = cockroach.NewCockroachChangefeed(builder.app, "device_config_items")
 		changefeeders["_channels"] = cockroach.NewCockroachChangefeed(builder.app, "channels")
 		changefeeders["_metrics"] = cockroach.NewCockroachChangefeed(builder.app, "metrics")
 		changefeeders["_conditions"] = cockroach.NewCockroachChangefeed(builder.app, "conditions")
@@ -83,8 +83,10 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig, service.Servi
 	//farmServices := make(map[int]service.FarmService, len(farmConfigs))
 	var restServices []rest.RestService
 
+	raftConfigStore := cluster.NewRaftFarmConfigStore(builder.app.Logger, builder.app.RaftCluster)
+
 	farmFactory := service.NewFarmFactory(builder.app, datastoreRegistry, serviceRegistry, builder.app.FarmStore,
-		builder.app.ConfigStore, mapperRegistry.GetControllerMapper(), changefeeders,
+		raftConfigStore, mapperRegistry.GetDeviceMapper(), changefeeders,
 		builder.params.GetFarmProvisionerChan(), builder.params.GetFarmTickerProvisionerChan())
 
 	go farmFactory.RunClusterProvisionerConsumer()
@@ -117,7 +119,7 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig, service.Servi
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetControllerMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
@@ -126,8 +128,8 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig, service.Servi
 	configService := service.NewConfigService(builder.app, datastoreRegistry, serviceRegistry)
 	serviceRegistry.SetConfigService(configService)
 
-	// Build controller and channel cache/indexes (to provide o(n) lookups when searching service registry and farm)
-	controllerIndex := state.CreateControllerIndex(farmFactory.GetControllerIndexMap())
+	// Build device and channel cache/indexes (to provide o(n) lookups when searching service registry and farm)
+	deviceIndex := state.CreateDeviceIndex(farmFactory.GetDeviceIndexMap())
 	channelIndex := state.CreateChannelIndex(farmFactory.GetChannelIndexMap())
 
 	if builder.app.DatastoreCDC {
@@ -140,5 +142,5 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig, service.Servi
 		restServices = restServiceRegistry.GetRestServices()
 	}
 
-	return serverConfig, serviceRegistry, restServices, controllerIndex, channelIndex, err
+	return serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err
 }

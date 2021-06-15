@@ -14,7 +14,7 @@ func TestRoomChannelGreaterThanConditionalActivatesSwitch(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           1,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "test",
 			Enable:       true,
@@ -62,7 +62,7 @@ func TestRoomChannelGreaterThanConditionalDoesntActivateSwitch(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Dehumidifier",
 			Enable:       true,
@@ -106,7 +106,7 @@ func TestRoomChannelLessThanConditionalActivatesSwitch(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Heater",
 			Enable:       true,
@@ -150,7 +150,7 @@ func TestRoomChannelLessThanConditionalDoesntActivateSwitch(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    0,
 			Name:         "Test Heater",
 			Enable:       true,
@@ -193,7 +193,7 @@ func TestRoomChannelGreaterThanOrEqualToConditionalActivatesSwitchWhenEqual(t *t
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Heater",
 			Enable:       true,
@@ -239,7 +239,7 @@ func TestRoomChannelGreaterThanOrEqualToConditionalActivatesSwitchWhenGreaterTha
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -285,7 +285,7 @@ func TestRoomChannelLessThanOrEqualToConditionalActivatesSwitchWhenLessThan(t *t
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -331,7 +331,7 @@ func TestRoomChannelLessThanOrEqualToConditionalActivatesSwitchWhenEqual(t *test
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -377,7 +377,7 @@ func TestRoomChannelEqualsConditionalActivatesSwitch(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -423,7 +423,7 @@ func TestRoomChannelEqualsConditionalDoesntActivateSwitch(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Test Channel",
 			Enable:       true,
@@ -467,7 +467,7 @@ func TestLightsSwitchOnWhenScheduledNow(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Lights",
 			Enable:       true,
@@ -521,7 +521,7 @@ func TestLightsSwitchOffWhenTimerExpires(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Lights",
 			Enable:       true,
@@ -573,7 +573,7 @@ func TestLightsSwitchOffWhenEndDateExpires(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Lights",
 			Enable:       true,
@@ -633,7 +633,7 @@ func TestLightsSwitchStaysOnWhenScheduled(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Lights",
 			Enable:       true,
@@ -683,7 +683,7 @@ func TestLightsSwitchStaysOffWhenTimeBeforeScheduled(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Lights",
 			Enable:       true,
@@ -733,7 +733,7 @@ func TestLightsSwitchStaysOffWhenTimeAfterScheduled(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Lights",
 			Enable:       true,
@@ -778,7 +778,7 @@ func TestChannelDebounceHighWorks(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Dehumidifier",
 			Enable:       true,
@@ -820,7 +820,7 @@ func TestChannelDebounceLowDoesntActivate(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Dehumidifier",
 			Enable:       true,
@@ -862,7 +862,7 @@ func TestChannelDebounceExceededHighActivates(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Dehumidifier",
 			Enable:       true,
@@ -909,7 +909,7 @@ func TestChannelDebounceLowTurnsOffWhenAlreadyOn(t *testing.T) {
 	channels := []common.Channel{
 		&model.Channel{
 			ID:           0,
-			ControllerID: common.CONTROLLER_TYPE_ID_ROOM,
+			DeviceID: common.CONTROLLER_TYPE_ID_ROOM,
 			ChannelID:    testChannelID,
 			Name:         "Fake Dehumidifier",
 			Enable:       true,
@@ -951,7 +951,7 @@ func TestMetric(t *testing.T) {
 	metrics := []common.Metric{
 		&model.Metric{
 			ID:           1,
-			ControllerID: 2,
+			DeviceID: 2,
 			Key:          "photo",
 			Name:         "Light Sensor",
 			Enable:       true,
@@ -1092,49 +1092,49 @@ func TestMetricAlarmNormal(t *testing.T) {
 	notificationService.AssertExpectations(t)
 }
 
-func createTestRoomService() (common.Context, *MockController, *MockNotificationService, *MockChannelService,
-	service.ScheduleService, common.ControllerService) {
+func createTestRoomService() (common.Context, *MockDevice, *MockNotificationService, *MockChannelService,
+	service.ScheduleService, common.DeviceService) {
 
 	ctx := NewUnitTestContext()
 	dao := NewMockDynamicDAO()
 	scheduleDAO := NewMockScheduleDAO()
-	client := NewMockController()
+	client := NewMockDevice()
 	mailer := NewMockMailer(ctx)
 	metricMapper := mapper.NewMetricMapper()
 	channelMapper := mapper.NewChannelMapper()
 	scheduleMapper := mapper.NewScheduleMapper()
-	controllerMapper := mapper.NewControllerMapper(metricMapper, channelMapper)
+	deviceMapper := mapper.NewDeviceMapper(metricMapper, channelMapper)
 	notificationService := NewMockNotificationService(ctx, mailer)
 	eventLogService := NewMockEventLogService(ctx, nil, "test")
 	channelService := NewMockChannelService()
 	configService := NewMockConfigService()
 	conditionService := NewMockConditionService()
 	scheduleService := service.NewScheduleService(ctx, scheduleDAO, scheduleMapper, configService)
-	microcontrollerService, _ := service.NewMicroControllerService(ctx, dao, client, controllerMapper,
+	microdeviceService, _ := service.NewMicroDeviceService(ctx, dao, client, deviceMapper,
 		eventLogService, notificationService, conditionService, scheduleService)
 
-	return ctx, client, notificationService, channelService, scheduleService, microcontrollerService
+	return ctx, client, notificationService, channelService, scheduleService, microdeviceService
 }
 
-func createTestRoomServiceWithSchedule(ctx common.Context, now time.Time) (*MockController, *MockNotificationService,
-	*MockChannelService, service.ScheduleService, common.ControllerService) {
+func createTestRoomServiceWithSchedule(ctx common.Context, now time.Time) (*MockDevice, *MockNotificationService,
+	*MockChannelService, service.ScheduleService, common.DeviceService) {
 
 	dao := NewMockDynamicDAO()
 	scheduleDAO := NewMockScheduleDAO()
-	client := NewMockController()
+	client := NewMockDevice()
 	mailer := NewMockMailer(ctx)
 	metricMapper := mapper.NewMetricMapper()
 	channelMapper := mapper.NewChannelMapper()
 	scheduleMapper := mapper.NewScheduleMapper()
-	controllerMapper := mapper.NewControllerMapper(metricMapper, channelMapper)
+	deviceMapper := mapper.NewDeviceMapper(metricMapper, channelMapper)
 	notificationService := NewMockNotificationService(ctx, mailer)
 	eventLogService := NewMockEventLogService(ctx, nil, "test")
 	channelService := NewMockChannelService()
 	configService := NewMockConfigService()
 	conditionService := NewMockConditionService()
 	scheduleService, _ := service.CreateScheduleService(ctx, scheduleDAO, scheduleMapper, now, configService)
-	microcontrollerService, _ := service.NewMicroControllerService(ctx, dao, client, controllerMapper, eventLogService,
+	microdeviceService, _ := service.NewMicroDeviceService(ctx, dao, client, deviceMapper, eventLogService,
 		notificationService, conditionService, scheduleService)
-	return client, notificationService, channelService, scheduleService, microcontrollerService
+	return client, notificationService, channelService, scheduleService, microdeviceService
 }
 */

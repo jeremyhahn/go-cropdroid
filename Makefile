@@ -173,6 +173,12 @@ clean:
 		db/cluster
 
 unittest:
+	cd app && $(GOBIN)/go test -v
+	cd cluster && $(GOBIN)/go test -v
+	cd datastore/gorm && $(GOBIN)/go test -v
+	cd device && $(GOBIN)/go test -v
+	cd mapper && $(GOBIN)/go test -v
+	cd provisioner && $(GOBIN)/go test -v
 	cd test && $(GOBIN)/go test -v
 
 integrationtest:

@@ -55,7 +55,7 @@ func (restService *DefaultAlgorithmRestService) GetAll(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx.GetLogger().Debugf("[AlgorithmRestService.GetAll] algorithms=%+v", algorithms)
+	ctx.GetLogger().Debugf("algorithms=%+v", algorithms)
 
 	restService.jsonWriter.Write(w, http.StatusOK, algorithms)
 

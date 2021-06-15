@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	ErrControllerNotFound = errors.New("Controller not found")
+	ErrDeviceNotFound = errors.New("device not found")
 )
 
-type ControllerRestService interface {
+type DeviceRestService interface {
 	View(w http.ResponseWriter, r *http.Request)
 	State(w http.ResponseWriter, r *http.Request)
 	Switch(w http.ResponseWriter, r *http.Request)
@@ -25,33 +25,33 @@ type ControllerRestService interface {
 	RestService
 }
 
-type MicroControllerRestService struct {
+type DefaultDeviceRestService struct {
 	serviceRegistry service.ServiceRegistry
 	middleware      service.Middleware
 	jsonWriter      common.HttpWriter
-	ControllerRestService
+	DeviceRestService
 }
 
-func NewControllerRestService(serviceRegistry service.ServiceRegistry,
-	middleware service.Middleware, jsonWriter common.HttpWriter) ControllerRestService {
-	return &MicroControllerRestService{
+func NewDeviceRestService(serviceRegistry service.ServiceRegistry,
+	middleware service.Middleware, jsonWriter common.HttpWriter) DeviceRestService {
+	return &DefaultDeviceRestService{
 		serviceRegistry: serviceRegistry,
 		middleware:      middleware,
 		jsonWriter:      jsonWriter}
 }
 
-func (restService *MicroControllerRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
-	// /farms/{farmID}/devices/{controller_type}
-	endpoint := fmt.Sprintf("%s/devices/{controllerType}", baseFarmURI)
-	// /farms/{farmID}/devices/{controller_type}/view
+func (restService *DefaultDeviceRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
+	// /farms/{farmID}/devices/{device_type}
+	endpoint := fmt.Sprintf("%s/devices/{deviceType}", baseFarmURI)
+	// /farms/{farmID}/devices/{device_type}/view
 	viewEndpoint := fmt.Sprintf("%s/view", endpoint)
-	// /farm/{farmID}/{devices/controller_type}/metrics/{key}/{value}
+	// /farm/{farmID}/{devices/device_type}/metrics/{key}/{value}
 	metricEndpoint := fmt.Sprintf("%s/metrics/{key}/{value}", endpoint)
-	// /farms/{farmID}/devices/{controller_type}/history/metric
+	// /farms/{farmID}/devices/{device_type}/history/metric
 	historyEndpoint := fmt.Sprintf("%s/history/{metric}", endpoint)
-	// /farms/{farmID}/devices/{controller_type}/switch/{channel}/{postion}
+	// /farms/{farmID}/devices/{device_type}/switch/{channel}/{postion}
 	switchEndpoint := fmt.Sprintf("%s/switch/{channel}/{position}", endpoint)
-	// /farms/{farmID}/devices/{controller_type}/timerSwitch/{channel}/{duration}
+	// /farms/{farmID}/devices/{device_type}/timerSwitch/{channel}/{duration}
 	timerSwitchEndpoint := fmt.Sprintf("%s/timerSwitch/{channel}/{duration}", endpoint)
 	router.Handle(viewEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
@@ -80,26 +80,26 @@ func (restService *MicroControllerRestService) RegisterEndpoints(router *mux.Rou
 	return []string{endpoint, viewEndpoint, metricEndpoint, historyEndpoint, switchEndpoint, timerSwitchEndpoint}
 }
 
-func (restService *MicroControllerRestService) getControllerService(r *http.Request) (common.ControllerService, error) {
+func (restService *DefaultDeviceRestService) getDeviceService(r *http.Request) (service.DeviceService, error) {
 	params := mux.Vars(r)
-	controllerType := params["controllerType"]
-	farmID, err := strconv.Atoi(params["farmID"])
+	deviceType := params["deviceType"]
+	farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	services, err := restService.serviceRegistry.GetControllerServices(farmID)
+	services, err := restService.serviceRegistry.GetDeviceServices(farmID)
 	if err != nil {
 		return nil, err
 	}
 	for _, service := range services {
-		if service.GetControllerType() == controllerType {
+		if service.GetDeviceType() == deviceType {
 			return service, nil
 		}
 	}
-	return nil, ErrControllerNotFound
+	return nil, ErrDeviceNotFound
 }
 
-func (restService *MicroControllerRestService) View(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) View(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -108,15 +108,15 @@ func (restService *MicroControllerRestService) View(w http.ResponseWriter, r *ht
 	}
 	defer ctx.Close()
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.Status] REST service /view request email=%s", ctx.GetUser().GetEmail())
+	ctx.GetLogger().Debugf("REST service /view request email=%s", ctx.GetUser().GetEmail())
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	view, err := controllerService.GetView()
+	view, err := deviceService.GetView()
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
@@ -125,7 +125,7 @@ func (restService *MicroControllerRestService) View(w http.ResponseWriter, r *ht
 	restService.jsonWriter.Write(w, http.StatusOK, view)
 }
 
-func (restService *MicroControllerRestService) Metric(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) Metric(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -134,35 +134,35 @@ func (restService *MicroControllerRestService) Metric(w http.ResponseWriter, r *
 	}
 	defer ctx.Close()
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.Metric] REST service /metric request from %s", ctx.GetUser().GetEmail())
+	ctx.GetLogger().Debugf("REST service /metric request from %s", ctx.GetUser().GetEmail())
 
 	params := mux.Vars(r)
 	key := params["key"]
 	value := params["value"]
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.Metric] /%s/%s", key, value)
+	ctx.GetLogger().Debugf("/%s/%s", key, value)
 
 	floatValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		ctx.GetLogger().Errorf("[MicroControllerRestService.Metric] Error: %s", err)
+		ctx.GetLogger().Errorf("Error: %s", err)
 	}
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	if err = controllerService.SetMetricValue(key, floatValue); err != nil {
-		ctx.GetLogger().Errorf("[MicroControllerRestService.Metric] Error: Unable to set metric %s for %s controller",
-			key, controllerService.GetControllerType())
+	if err = deviceService.SetMetricValue(key, floatValue); err != nil {
+		ctx.GetLogger().Errorf("Error: Unable to set metric %s for %s device",
+			key, deviceService.GetDeviceType())
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
 
 	restService.jsonWriter.Write(w, http.StatusOK, floatValue)
 }
 
-func (restService *MicroControllerRestService) State(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) State(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -171,15 +171,15 @@ func (restService *MicroControllerRestService) State(w http.ResponseWriter, r *h
 	}
 	defer ctx.Close()
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.Status] REST service /state request email=%s", ctx.GetUser().GetEmail())
+	ctx.GetLogger().Debugf("REST service /state request email=%s", ctx.GetUser().GetEmail())
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	state, err := controllerService.GetState()
+	state, err := deviceService.GetState()
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
@@ -187,7 +187,7 @@ func (restService *MicroControllerRestService) State(w http.ResponseWriter, r *h
 	restService.jsonWriter.Write(w, http.StatusOK, state)
 }
 
-func (restService *MicroControllerRestService) Switch(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) Switch(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -199,7 +199,7 @@ func (restService *MicroControllerRestService) Switch(w http.ResponseWriter, r *
 	channel := params["channel"]
 	position := params["position"]
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.Switch] REST service /switch request channel=%s, position=%s, user=%s", channel, position, ctx.GetUser().GetEmail())
+	ctx.GetLogger().Debugf("REST service /switch request channel=%s, position=%s, user=%s", channel, position, ctx.GetUser().GetEmail())
 
 	_channel, err := strconv.Atoi(channel)
 	if err != nil {
@@ -213,17 +213,17 @@ func (restService *MicroControllerRestService) Switch(w http.ResponseWriter, r *
 		return
 	}
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	controllerType := controllerService.GetControllerType()
-	message := fmt.Sprintf("User %s switching on %s channel %s", ctx.GetUser().GetEmail(), controllerType, channel)
-	eventEntity, err := controllerService.Switch(_channel, _position, message)
+	deviceType := deviceService.GetDeviceType()
+	message := fmt.Sprintf("User %s switching on %s channel %s", ctx.GetUser().GetEmail(), deviceType, channel)
+	eventEntity, err := deviceService.Switch(_channel, _position, message)
 	if err != nil {
-		ctx.GetLogger().Error("[MicroControllerRestService.Switch] Error: %s", err.Error())
+		ctx.GetLogger().Error("Error: %s", err.Error())
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
@@ -231,7 +231,7 @@ func (restService *MicroControllerRestService) Switch(w http.ResponseWriter, r *
 	restService.jsonWriter.Write(w, http.StatusOK, eventEntity)
 }
 
-func (restService *MicroControllerRestService) TimerSwitch(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) TimerSwitch(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -243,7 +243,7 @@ func (restService *MicroControllerRestService) TimerSwitch(w http.ResponseWriter
 	channel := params["channel"]
 	duration := params["duration"]
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.Switch] REST service /timerSwitch request channel=%s, duration=%s, user=%s", channel, duration, ctx.GetUser().GetEmail())
+	ctx.GetLogger().Debugf("REST service /timerSwitch request channel=%s, duration=%s, user=%s", channel, duration, ctx.GetUser().GetEmail())
 
 	_channel, err := strconv.Atoi(channel)
 	if err != nil {
@@ -257,18 +257,18 @@ func (restService *MicroControllerRestService) TimerSwitch(w http.ResponseWriter
 		return
 	}
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	controllerType := controllerService.GetControllerType()
+	deviceType := deviceService.GetDeviceType()
 	message := fmt.Sprintf("User %s switching on %s channel %s for %s seconds",
-		ctx.GetUser().GetEmail(), controllerType, channel, duration)
-	eventEntity, err := controllerService.TimerSwitch(_channel, _duration, message)
+		ctx.GetUser().GetEmail(), deviceType, channel, duration)
+	eventEntity, err := deviceService.TimerSwitch(_channel, _duration, message)
 	if err != nil {
-		ctx.GetLogger().Error("[MicroControllerRestService.TimerSwitch] Error: %s", err.Error())
+		ctx.GetLogger().Error("Error: %s", err.Error())
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
@@ -276,7 +276,7 @@ func (restService *MicroControllerRestService) TimerSwitch(w http.ResponseWriter
 	restService.jsonWriter.Write(w, http.StatusOK, eventEntity)
 }
 
-func (restService *MicroControllerRestService) History(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) History(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -287,15 +287,15 @@ func (restService *MicroControllerRestService) History(w http.ResponseWriter, r 
 	params := mux.Vars(r)
 	metric := params["metric"]
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.History] REST service /history request. metric=%s", metric)
+	ctx.GetLogger().Debugf("REST service /history request. metric=%s", metric)
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	history, err := controllerService.GetHistory(metric)
+	history, err := deviceService.GetHistory(metric)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
@@ -304,7 +304,7 @@ func (restService *MicroControllerRestService) History(w http.ResponseWriter, r 
 }
 
 /*
-func (restService *MicroControllerRestService) SetMetric(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultDeviceRestService) SetMetric(w http.ResponseWriter, r *http.Request) {
 
 	ctx, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
@@ -318,20 +318,20 @@ func (restService *MicroControllerRestService) SetMetric(w http.ResponseWriter, 
 
 	fvalue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		ctx.GetLogger().Errorf("[MicroControllerRestService.SetMetric] Error: %s", err)
+		ctx.GetLogger().Errorf("Error: %s", err)
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	ctx.GetLogger().Debugf("[MicroControllerRestService.SetMetric] REST service / request. metric=%s, value=%s", metric, value)
+	ctx.GetLogger().Debugf("REST service / request. metric=%s, value=%s", metric, value)
 
-	controllerService, err := restService.getControllerService(r)
+	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	err = controllerService.SetMetricValue(metric, fvalue)
+	err = deviceService.SetMetricValue(metric, fvalue)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

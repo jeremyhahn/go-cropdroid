@@ -47,7 +47,7 @@ func (restService *DefaultScheduleRestService) RegisterEndpoints(router *mux.Rou
 		negroni.Wrap(http.HandlerFunc(restService.GetSchedule)),
 	)).Methods("GET")
 	/*
-		router.Handle("/api/v1/schedule/controller/{controllerID}", negroni.New(
+		router.Handle("/api/v1/schedule/device/{deviceID}", negroni.New(
 			negroni.HandlerFunc(server.middleware.Validate),
 			negroni.Wrap(http.HandlerFunc(scheduleRestService.GetSchedules)),
 		)).Methods("GET")*/
@@ -82,11 +82,11 @@ func (restService *DefaultScheduleRestService) GetSchedule(w http.ResponseWriter
 		return
 	}
 
-	session.GetLogger().Debugf("[ScheduleRestService.GetSchedule] channelID=%d", channelID)
+	session.GetLogger().Debugf("channelID=%d", channelID)
 
 	schedule, err := restService.scheduleService.GetSchedule(session, channelID)
 	if err != nil {
-		session.GetLogger().Errorf("[ScheduleRestService.GetSchedule] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error500(w, err)
 		return
 	}
@@ -105,17 +105,17 @@ func (restService *DefaultScheduleRestService) GetSchedules(w http.ResponseWrite
 	defer session.Close()
 
 	params := mux.Vars(r)
-	controllerID, err := strconv.Atoi(params["controllerID"])
+	deviceID, err := strconv.Atoi(params["deviceID"])
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	session.GetLogger().Debugf("[ScheduleRestService.GetSchedules] controllerID=%d", controllerID)
+	session.GetLogger().Debugf("deviceID=%d", deviceID)
 
-	schedules, err := restService.scheduleService.GetSchedules(session.GetUser(), controllerID)
+	schedules, err := restService.scheduleService.GetSchedules(session.GetUser(), deviceID)
 	if err != nil {
-		session.GetLogger().Errorf("[ScheduleRestService.GetSchedules] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error500(w, err)
 		return
 	}
@@ -133,7 +133,7 @@ func (restService *DefaultScheduleRestService) Create(w http.ResponseWriter, r *
 	}
 	defer session.Close()
 
-	session.GetLogger().Debug("[ScheduleRestService.Create] Decoding JSON request")
+	session.GetLogger().Debug("Decoding JSON request")
 
 	var schedule config.Schedule
 	decoder := json.NewDecoder(r.Body)
@@ -142,11 +142,11 @@ func (restService *DefaultScheduleRestService) Create(w http.ResponseWriter, r *
 		return
 	}
 
-	session.GetLogger().Debugf("[ScheduleRestService.Create] schedule=%+v", schedule)
+	session.GetLogger().Debugf("schedule=%+v", schedule)
 
 	persisted, err := restService.scheduleService.Create(session, &schedule)
 	if err != nil {
-		session.GetLogger().Errorf("[ScheduleRestService.Create] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}
@@ -163,7 +163,7 @@ func (restService *DefaultScheduleRestService) Update(w http.ResponseWriter, r *
 	}
 	defer session.Close()
 
-	session.GetLogger().Debug("[ScheduleRestService.Update] Decoding JSON request")
+	session.GetLogger().Debug("Decoding JSON request")
 
 	var schedule config.Schedule
 	decoder := json.NewDecoder(r.Body)
@@ -172,10 +172,10 @@ func (restService *DefaultScheduleRestService) Update(w http.ResponseWriter, r *
 		return
 	}
 
-	session.GetLogger().Debugf("[ScheduleRestService.Update] schedule=%+v", schedule)
+	session.GetLogger().Debugf("schedule=%+v", schedule)
 
 	if err = restService.scheduleService.Update(session, &schedule); err != nil {
-		session.GetLogger().Errorf("[ScheduleRestService.Update] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}
@@ -199,10 +199,10 @@ func (restService *DefaultScheduleRestService) Delete(w http.ResponseWriter, r *
 		return
 	}
 
-	session.GetLogger().Debugf("[ScheduleRestService.Delete] schedule.id=%d", id)
+	session.GetLogger().Debugf("schedule.id=%d", id)
 
 	if err = restService.scheduleService.Delete(session, &config.Schedule{ID: id}); err != nil {
-		session.GetLogger().Errorf("[ScheduleRestService.Delete] Error: ", err)
+		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return
 	}

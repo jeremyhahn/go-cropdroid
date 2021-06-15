@@ -5,25 +5,37 @@ import (
 )
 
 type Farm struct {
-	ID          int                 `yaml:"id" json:"id"`
-	OrgID       int                 `yaml:"orgId" json:"orgId"`
-	Mode        string              `yaml:"mode" json:"mode"`
-	Name        string              `yaml:"name" json:"name"`
-	Interval    int                 `yaml:"interval" json:"interval"`
-	Controllers []common.Controller `yaml:"controllers" json:"controllers"`
+	ID       int    `yaml:"id" json:"id"`
+	OrgID    int    `yaml:"orgId" json:"orgId"`
+	Mode     string `yaml:"mode" json:"mode"`
+	Name     string `yaml:"name" json:"name"`
+	Interval int    `yaml:"interval" json:"interval"`
+	//Consistency int                 `yaml:"consistency" json:"consistency"`
+	Devices []common.Device `yaml:"devices" json:"devices"`
 	common.Farm `yaml:"-" json:"-"`
 }
 
 func NewFarm() common.Farm {
-	return &Farm{Controllers: make([]common.Controller, 0)}
+	return &Farm{Devices: make([]common.Device, 0)}
 }
 
-func CreateFarm(name string, orgID, interval int, controllers []common.Controller) common.Farm {
+// func CreateFarm(name string, orgID, interval, consistency int,
+// 	devices []common.Device) common.Farm {
+
+// 	return &Farm{
+// 		Name:        name,
+// 		OrgID:       orgID,
+// 		Interval:    interval,
+// 		Consistency: consistency,
+// 		Devices: devices}
+// }
+
+func CreateFarm(name string, orgID, interval int, devices []common.Device) common.Farm {
 	return &Farm{
 		Name:        name,
 		OrgID:       orgID,
 		Interval:    interval,
-		Controllers: controllers}
+		Devices: devices}
 }
 
 func (farm *Farm) SetID(id int) {
@@ -50,6 +62,14 @@ func (farm *Farm) GetMode() string {
 	return farm.Mode
 }
 
+// func (farm *Farm) SetConsistency(level int) {
+// 	farm.Consistency = level
+// }
+
+// func (farm *Farm) GetConsistency() int {
+// 	return farm.Consistency
+// }
+
 func (farm *Farm) SetName(name string) {
 	farm.Name = name
 }
@@ -66,33 +86,33 @@ func (farm *Farm) GetInterval() int {
 	return farm.Interval
 }
 
-func (farm *Farm) GetControllers() []common.Controller {
-	return farm.Controllers
+func (farm *Farm) GetDevices() []common.Device {
+	return farm.Devices
 }
 
-func (farm *Farm) SetControllers(controllers []common.Controller) {
-	farm.Controllers = controllers
+func (farm *Farm) SetDevices(devices []common.Device) {
+	farm.Devices = devices
 }
 
 /*
-func (farm *Farm) AddController(controller common.Controller) {
-	farm.Controllers = append(farm.Controllers, controller)
+func (farm *Farm) AddDevice(device common.Device) {
+	farm.Devices = append(farm.Devices, device)
 }
 
-func (farm *Farm) GetController(controllerType string) (common.Controller, error) {
-	for _, controller := range farm.Controllers {
-		if controller.GetType() == controllerType {
-			return controller, nil
+func (farm *Farm) GetDevice(deviceType string) (common.Device, error) {
+	for _, device := range farm.Devices {
+		if device.GetType() == deviceType {
+			return device, nil
 		}
 	}
-	return nil, fmt.Errorf("Controller type not found: %s", controllerType)
+	return nil, fmt.Errorf("Device type not found: %s", deviceType)
 }
 
-func (farm *Farm) GetControllerById(id int) (common.Controller, error) {
-	farmSize := len(farm.Controllers)
+func (farm *Farm) GetDeviceById(id int) (common.Device, error) {
+	farmSize := len(farm.Devices)
 	if farmSize < id {
-		return nil, fmt.Errorf("Controller ID out of bounds: %d. Farm size: %d", id, farmSize)
+		return nil, fmt.Errorf("Device ID out of bounds: %d. Farm size: %d", id, farmSize)
 	}
-	return farm.Controllers[id], nil
+	return farm.Devices[id], nil
 }
 */

@@ -10,161 +10,166 @@ import (
 )
 
 var (
-	ErrControllerNotFound = errors.New("Controller not found")
+	ErrDeviceNotFound = errors.New("Device not found")
 )
 
-// FarmStateMap stores a map of real-time controller states for a farm
+// FarmStateMap stores real-time metric and channel state for all devices in the farm.
+// Note this structure only holds the current state of the farm and its associated
+// device states. To access historical data, use the metric datastore.
 type FarmStateMap interface {
-	SetController(controllerType string, controllerState ControllerStateMap)
-	GetController(controllerType string) (ControllerStateMap, error)
-	GetControllers() map[string]ControllerStateMap
-	GetMetrics(controller string) (map[string]float64, error)
-	GetMetricValue(controller, key string) (float64, error)
-	SetMetricValue(controller, key string, value float64) error
-	GetChannels(controller string) ([]int, error)
-	GetChannelValue(controller string, channelID int) (int, error)
-	SetChannelValue(controller string, channelID int, value int) error
-	Diff(controller string, metrics map[string]float64, channels map[int]int) (ControllerStateDeltaMap, error)
-	GetFarmID() int
-	SetFarmID(int)
+	SetDevice(deviceType string, deviceState DeviceStateMap)
+	GetDevice(deviceType string) (DeviceStateMap, error)
+	GetDevices() map[string]DeviceStateMap
+	GetMetrics(device string) (map[string]float64, error)
+	GetMetricValue(device, key string) (float64, error)
+	SetMetricValue(device, key string, value float64) error
+	GetChannels(device string) ([]int, error)
+	GetChannelValue(device string, channelID int) (int, error)
+	SetChannelValue(device string, channelID int, value int) error
+	Diff(device string, metrics map[string]float64, channels map[int]int) (DeviceStateDeltaMap, error)
+	GetFarmID() uint64
+	SetFarmID(uint64)
 	GetTimestamp() int64
 	//UnmarshalJSON(data []byte) error
 	String() string
 }
 
 type FarmState struct {
-	mutex        *sync.RWMutex                 `json:"-"`
-	Id           int                           `json:"id"`
-	Controllers  map[string]ControllerStateMap `json:"controllers"`
-	Timestamp    int64                         `json:"timestamp"`
+	mutex        *sync.RWMutex             `json:"-"`
+	Id           uint64                    `json:"id"`
+	Devices      map[string]DeviceStateMap `json:"devices"`
+	Timestamp    int64                     `json:"timestamp"`
 	FarmStateMap `json:"-"`
 }
 
-func NewFarmStateMap(id int) FarmStateMap {
+func NewFarmStateMap(id uint64) FarmStateMap {
 	return &FarmState{
-		mutex:       &sync.RWMutex{},
-		Id:          id,
-		Controllers: make(map[string]ControllerStateMap, 0),
-		Timestamp:   time.Now().Unix()}
+		mutex:     &sync.RWMutex{},
+		Id:        id,
+		Devices:   make(map[string]DeviceStateMap, 0),
+		Timestamp: time.Now().Unix()}
 }
 
-func CreateFarmState(id int, state map[string]ControllerStateMap) FarmStateMap {
+func CreateFarmState(id uint64, state map[string]DeviceStateMap) FarmStateMap {
 	return &FarmState{
-		mutex:       &sync.RWMutex{},
-		Id:          id,
-		Controllers: state,
-		Timestamp:   time.Now().Unix()}
+		mutex:     &sync.RWMutex{},
+		Id:        id,
+		Devices:   state,
+		Timestamp: time.Now().Unix()}
 }
 
-func (farm *FarmState) GetFarmID() int {
+func (farm *FarmState) GetFarmID() uint64 {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
 	return farm.Id
 }
 
-func (farm *FarmState) SetFarmID(id int) {
+func (farm *FarmState) SetFarmID(id uint64) {
 	farm.mutex.Lock()
 	defer farm.mutex.Unlock()
 	farm.Id = id
 }
 
-func (farm *FarmState) SetController(controllerType string, controllerState ControllerStateMap) {
+func (farm *FarmState) SetDevice(deviceType string, deviceState DeviceStateMap) {
 	farm.mutex.Lock()
 	defer farm.mutex.Unlock()
-	farm.Controllers[controllerType] = controllerState
+	farm.Devices[deviceType] = deviceState
 }
 
-func (farm *FarmState) GetController(controllerType string) (ControllerStateMap, error) {
+func (farm *FarmState) GetDevice(deviceType string) (DeviceStateMap, error) {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	if controller, ok := farm.Controllers[controllerType]; ok {
-		return controller, nil
+	if device, ok := farm.Devices[deviceType]; ok {
+		return device, nil
 	}
-	return nil, fmt.Errorf("Controller not found in farm state: %s", controllerType)
+	return nil, fmt.Errorf("Device not found in farm state: %s", deviceType)
 }
 
-func (farm *FarmState) GetControllers() map[string]ControllerStateMap {
+func (farm *FarmState) GetDevices() map[string]DeviceStateMap {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	return farm.Controllers
+	return farm.Devices
 }
 
-func (farm *FarmState) GetMetricValue(controller, key string) (float64, error) {
+func (farm *FarmState) GetMetricValue(device, key string) (float64, error) {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	if _controller, ok := farm.Controllers[controller]; ok {
-		if cachedMetric, ok := _controller.GetMetrics()[key]; ok {
+	if _device, ok := farm.Devices[device]; ok {
+		if cachedMetric, ok := _device.GetMetrics()[key]; ok {
 			return cachedMetric, nil
 		} else {
-			return 0.0, fmt.Errorf("Metric not found in farm state: %s.%s", controller, key)
+			return 0.0, fmt.Errorf("Metric not found in farm state: %s.%s", device, key)
 		}
 	}
-	return 0.0, fmt.Errorf("Controller not found in farm state: %s", controller)
+	return 0.0, fmt.Errorf("Device not found in farm state: %s", device)
 }
 
-func (farm *FarmState) GetMetrics(controller string) (map[string]float64, error) {
+func (farm *FarmState) GetMetrics(device string) (map[string]float64, error) {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	if _controller, ok := farm.Controllers[controller]; ok {
-		return _controller.GetMetrics(), nil
+	if _device, ok := farm.Devices[device]; ok {
+		return _device.GetMetrics(), nil
 	}
-	return nil, fmt.Errorf("Controller not found in farm state: %s", controller)
+	return nil, fmt.Errorf("Device not found in farm state: %s", device)
 }
 
-func (farm *FarmState) SetMetricValue(controller, key string, value float64) error {
+func (farm *FarmState) SetMetricValue(device, key string, value float64) error {
 	farm.mutex.Lock()
 	defer farm.mutex.Unlock()
-	if _controller, ok := farm.Controllers[controller]; ok {
-		_controller.GetMetrics()[key] = value
+	if _device, ok := farm.Devices[device]; ok {
+		_device.GetMetrics()[key] = value
 		return nil
 	}
-	return fmt.Errorf("Controller not found in farm state: %s", controller)
+	return fmt.Errorf("Device not found in farm state: %s", device)
 }
 
-func (farm *FarmState) GetChannelValue(controller string, channelID int) (int, error) {
+func (farm *FarmState) GetChannelValue(device string, channelID int) (int, error) {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	if _controller, ok := farm.Controllers[controller]; ok {
-		//channels := _controller.GetChannels()
+	if _device, ok := farm.Devices[device]; ok {
+		//channels := _device.GetChannels()
 		//if channelID > len(channels) || channelID < 0 {
-		//	return 0, fmt.Errorf("Invalid channel ID %d (%s controller)", channelID, controller)
+		//	return 0, fmt.Errorf("Invalid channel ID %d (%s device)", channelID, device)
 		//}
-		return _controller.GetChannels()[channelID], nil
+		return _device.GetChannels()[channelID], nil
 	}
-	return 0.0, fmt.Errorf("Controller not found in farm state: %s", controller)
+	return 0.0, fmt.Errorf("Device not found in farm state: %s", device)
 }
 
-func (farm *FarmState) SetChannelValue(controller string, channelID int, value int) error {
+func (farm *FarmState) SetChannelValue(device string, channelID int, value int) error {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	if _controller, ok := farm.Controllers[controller]; ok {
-		_controller.GetChannels()[channelID] = value
+	if _device, ok := farm.Devices[device]; ok {
+		_device.GetChannels()[channelID] = value
 		return nil
 	}
-	return fmt.Errorf("Controller not found in farm state: %s", controller)
+	return fmt.Errorf("Device not found in farm state: %s", device)
 }
 
-func (farm *FarmState) GetChannels(controller string) ([]int, error) {
+func (farm *FarmState) GetChannels(device string) ([]int, error) {
 	farm.mutex.RLock()
 	defer farm.mutex.RUnlock()
-	if _controller, ok := farm.Controllers[controller]; ok {
-		return _controller.GetChannels(), nil
+	if _device, ok := farm.Devices[device]; ok {
+		return _device.GetChannels(), nil
 	}
-	return nil, fmt.Errorf("Controller not found in farm state: %s", controller)
+	return nil, fmt.Errorf("Device not found in farm state: %s", device)
 }
 
 // Diff takes a map of metric and channels that represent a proposed state about to be merged into the state store
-// and compares/diffs it against the current stored state. A ControllerStateDeltaMap is returned that contains only the metrics
+// and compares/diffs it against the current stored state. A DeviceStateDeltaMap is returned that contains only the metrics
 // and channels that've changed. Metrics take the form map["metric.key"] = float64 and channels map["channel.channelId"] = int.
-func (farm *FarmState) Diff(controller string, metrics map[string]float64, channels map[int]int) (ControllerStateDeltaMap, error) {
+func (farm *FarmState) Diff(device string, metrics map[string]float64, channels map[int]int) (DeviceStateDeltaMap, error) {
 	farm.mutex.Lock()
 	defer farm.mutex.Unlock()
 	newMetrics := make(map[string]float64, 0)
 	newChannels := make(map[int]int, 0)
-	if _controller, ok := farm.Controllers[controller]; ok {
-		_metrics := _controller.GetMetrics()
-		_channels := _controller.GetChannels()
+	if _device, ok := farm.Devices[device]; ok {
+		_metrics := _device.GetMetrics()
+		_channels := _device.GetChannels()
 		for k, v := range metrics {
+			if _, ok := _metrics[k]; !ok {
+				break
+			}
 			if metrics[k] == _metrics[k] {
 				continue
 			}
@@ -172,6 +177,9 @@ func (farm *FarmState) Diff(controller string, metrics map[string]float64, chann
 			newMetrics[k] = v
 		}
 		for k, v := range channels {
+			if len(_channels) < k+1 {
+				break
+			}
 			if channels[k] == _channels[k] {
 				continue
 			}
@@ -181,11 +189,11 @@ func (farm *FarmState) Diff(controller string, metrics map[string]float64, chann
 		if len(newMetrics) == 0 && len(newChannels) == 0 {
 			return nil, nil
 		}
-		return CreateControllerStateDeltaMap(newMetrics, newChannels), nil
+		return CreateDeviceStateDeltaMap(newMetrics, newChannels), nil
 	}
-	log.Printf("Controller not found in farm state: %s\n", controller)
-	return nil, ErrControllerNotFound
-	//return CreateControllerStateDeltaMap(metrics, channels), nil
+	log.Printf("Device not found in farm state: %s\n", device)
+	return nil, ErrDeviceNotFound
+	//return CreateDeviceStateDeltaMap(metrics, channels), nil
 }
 
 func (farm *FarmState) GetTimestamp() int64 {
@@ -208,23 +216,23 @@ func (farm *FarmState) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	var farmID int
+	var farmID uint64
 	err = json.Unmarshal(*message["id"], &farmID)
 	if err != nil {
 		return err
 	}
 	farm.Id = farmID
 
-	var controllersRawMessage map[string]ControllerState
-	err = json.Unmarshal(*message["controllers"], &controllersRawMessage)
+	var devicesRawMessage map[string]DeviceState
+	err = json.Unmarshal(*message["devices"], &devicesRawMessage)
 	if err != nil {
 		return err
 	}
 
-	farm.Controllers = make(map[string]ControllerStateMap)
-	for k, v := range controllersRawMessage {
-		controllerState := v
-		farm.Controllers[k] = &controllerState
+	farm.Devices = make(map[string]DeviceStateMap)
+	for k, v := range devicesRawMessage {
+		deviceState := v
+		farm.Devices[k] = &deviceState
 	}
 
 	var timestamp int64

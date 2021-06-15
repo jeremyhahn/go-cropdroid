@@ -22,10 +22,10 @@ type Changefeed interface {
 	GetRawMessage() map[string]*json.RawMessage
 }
 
-type ControllerStateDAO interface {
-	//CreateTable(tableName string, controllerState state.ControllerStateMap) error
-	Save(controllerID int, controllerState state.ControllerStateMap) error
-	GetLast30Days(controllerID int, metric string) ([]float64, error)
+type DeviceDatastore interface {
+	//CreateTable(tableName string, deviceState state.DeviceStateMap) error
+	Save(deviceID uint64, deviceState state.DeviceStateMap) error
+	GetLast30Days(deviceID uint64, metric string) ([]float64, error)
 }
 
 type DatastoreRegistry interface {
@@ -33,10 +33,10 @@ type DatastoreRegistry interface {
 	SetOrganizationDAO(dao dao.OrganizationDAO)
 	GetFarmDAO() dao.FarmDAO
 	SetFarmDAO(dao dao.FarmDAO)
-	GetControllerDAO() dao.ControllerDAO
-	SetControllerDAO(dao dao.ControllerDAO)
-	GetControllerConfigDAO() dao.ControllerConfigDAO
-	SetControllerConfigDAO(dao dao.ControllerConfigDAO)
+	GetDeviceDAO() dao.DeviceDAO
+	SetDeviceDAO(dao dao.DeviceDAO)
+	GetDeviceConfigDAO() dao.DeviceConfigDAO
+	SetDeviceConfigDAO(dao dao.DeviceConfigDAO)
 	GetMetricDAO() dao.MetricDAO
 	SetMetricDAO(dao dao.MetricDAO)
 	GetChannelDAO() dao.ChannelDAO

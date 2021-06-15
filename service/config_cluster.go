@@ -18,7 +18,7 @@ type ConfigurationService struct {
 	mutex             *sync.RWMutex
 	farmServices      map[int]FarmService
 	channelIndex      map[int]config.ChannelConfig
-	controllerIndex   map[int]config.ControllerConfig
+	//deviceIndex   map[int]config.DeviceConfig
 	ConfigService
 }
 
@@ -31,19 +31,19 @@ func NewConfigService(app *app.App, datastoreRegistry datastore.DatastoreRegistr
 		serviceRegistry:   serviceRegistry,
 		mutex:             &sync.RWMutex{},
 		farmServices:      make(map[int]FarmService, 0),
-		channelIndex:      make(map[int]config.ChannelConfig, 0),
-		controllerIndex:   make(map[int]config.ControllerConfig, 0)}
+		channelIndex:      make(map[int]config.ChannelConfig, 0)}
+	//deviceIndex:   make(map[int]config.DeviceConfig, 0)}
 }
 
-func (service *ConfigurationService) SetValue(session Session, farmID, controllerID int, key, value string) error {
-	//func (service *ConfigurationService) SetValue(farmID, controllerID int, key, value string) error {
+func (service *ConfigurationService) SetValue(session Session, farmID, deviceID uint64, key, value string) error {
+	//func (service *ConfigurationService) SetValue(farmID, deviceID int, key, value string) error {
 
-	service.app.Logger.Debugf("[ConfigurationService.Set] Setting config farmID=%d, controllerID=%d, key=%s, value=%s",
-		farmID, controllerID, key, value)
+	service.app.Logger.Debugf("[ConfigurationService.Set] Setting config farmID=%d, deviceID=%d, key=%s, value=%s",
+		farmID, deviceID, key, value)
 
 	/*
-		configDAO := service.datastoreRegistry.GetControllerConfigDAO()
-		configItem, err := configDAO.Get(controllerID, key)
+		configDAO := service.datastoreRegistry.GetDeviceConfigDAO()
+		configItem, err := configDAO.Get(deviceID, key)
 		if err != nil {
 			return err
 		}
@@ -52,19 +52,19 @@ func (service *ConfigurationService) SetValue(session Session, farmID, controlle
 		service.app.Logger.Debugf("[ConfigurationService.Set] Saved configuration item: %+v", configItem)
 	*/
 
-	farmService, ok := service.serviceRegistry.GetFarmService(farmID)
-	if !ok {
+	farmService := service.serviceRegistry.GetFarmService(farmID)
+	if farmService == nil {
 		err := fmt.Errorf("Unable to locate farm service in service registry! farm.id=%d", farmID)
 		service.app.Logger.Errorf("[ConfigurationService.Set] Error: %s", err)
 		return err
 	}
 	farmConfig := farmService.GetConfig()
 	configSet := false
-	for _, controller := range farmConfig.GetControllers() {
-		if controller.GetID() == controllerID {
-			for k, _ := range controller.ConfigMap {
+	for _, device := range farmConfig.GetDevices() {
+		if device.GetID() == deviceID {
+			for k, _ := range device.ConfigMap {
 				if k == key {
-					controller.ConfigMap[k] = value
+					device.ConfigMap[k] = value
 					configSet = true
 					break
 				}
@@ -73,7 +73,7 @@ func (service *ConfigurationService) SetValue(session Session, farmID, controlle
 		if configSet {
 			break // TODO clean this up with a function return
 		} else {
-			service.app.Logger.Errorf("unable to set config for controller %d", controllerID)
+			service.app.Logger.Errorf("unable to set config for device %d", deviceID)
 		}
 	}
 	farmConfig.HydrateConfigs()
@@ -94,26 +94,26 @@ func (service *ConfigurationService) OnChannelChange(channel config.ChannelConfi
 
 	service.app.Logger.Debugf("OnChannelChange fired! Received channel: %+v", channel)
 
-	controller := service.getController(channel.GetControllerID())
-	if controller == nil {
+	device := service.getDevice(channel.GetDeviceID())
+	if device == nil {
 		return
 	}
-	controller.SetChannel(channel)
+	device.SetChannel(channel)
 
-	service.farmServices[controller.GetFarmID()].PublishConfig()
+	service.farmServices[device.GetFarmID()].PublishConfig()
 }
 
-func (service *ConfigurationService) getController(id int) config.ControllerConfig {
-	controller, ok := service.controllerIndex[id]
+func (service *ConfigurationService) getDevice(id int) config.DeviceConfig {
+	device, ok := service.deviceIndex[id]
 	if !ok {
 		service.Sync()
-		controller, ok = service.controllerIndex[id]
+		device, ok = service.deviceIndex[id]
 		if !ok {
-			service.app.Logger.Errorf("[ConfigurationService.getController] Failed to locate controller after syncing indexes! controller.id=%d",
-				controller.GetID())
+			service.app.Logger.Errorf("[ConfigurationService.getDevice] Failed to locate device after syncing indexes! device.id=%d",
+				device.GetID())
 			return nil
 		}
 	}
-	return controller
+	return device
 }
 */

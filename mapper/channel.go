@@ -23,7 +23,7 @@ func NewChannelMapper() ChannelMapper {
 func (mapper *DefaultChannelMapper) MapEntityToModel(entity config.ChannelConfig) common.Channel {
 	return &model.Channel{
 		ID:           entity.GetID(),
-		ControllerID: entity.GetControllerID(),
+		DeviceID: entity.GetDeviceID(),
 		ChannelID:    entity.GetChannelID(),
 		Name:         entity.GetName(),
 		Enable:       entity.IsEnabled(),
@@ -37,7 +37,7 @@ func (mapper *DefaultChannelMapper) MapEntityToModel(entity config.ChannelConfig
 func (mapper *DefaultChannelMapper) MapConfigToModel(config config.ChannelConfig) common.Channel {
 	return &model.Channel{
 		ID:           config.GetID(),
-		ControllerID: config.GetControllerID(),
+		DeviceID: config.GetDeviceID(),
 		ChannelID:    config.GetChannelID(),
 		Name:         config.GetName(),
 		Enable:       config.IsEnabled(),
@@ -51,7 +51,7 @@ func (mapper *DefaultChannelMapper) MapConfigToModel(config config.ChannelConfig
 func (mapper *DefaultChannelMapper) MapModelToConfig(model common.Channel) config.ChannelConfig {
 	return &config.Channel{
 		ID:           model.GetID(),
-		ControllerID: model.GetControllerID(),
+		DeviceID: model.GetDeviceID(),
 		ChannelID:    model.GetChannelID(),
 		Name:         model.GetName(),
 		Enable:       model.IsEnabled(),
@@ -65,7 +65,7 @@ func (mapper *DefaultChannelMapper) MapModelToConfig(model common.Channel) confi
 func (mapper *DefaultChannelMapper) MapEntityToConfig(entity config.ChannelConfig) config.ChannelConfig {
 	return &model.Channel{
 		ID:           entity.GetID(),
-		ControllerID: entity.GetControllerID(),
+		DeviceID: entity.GetDeviceID(),
 		ChannelID:    entity.GetChannelID(),
 		Name:         entity.GetName(),
 		Enable:       entity.IsEnabled(),

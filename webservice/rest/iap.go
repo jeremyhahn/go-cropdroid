@@ -66,7 +66,7 @@ func (restService *DefaultInAppPurchaseRestService) Verify(w http.ResponseWriter
 		return
 	}
 
-	scope.GetLogger().Debugf("[InAppPurchaseRestService.Verify] verified=%t", verified)
+	scope.GetLogger().Debugf("verified=%t", verified)
 
 	restService.jsonWriter.Write(w, http.StatusOK, verified)
 }

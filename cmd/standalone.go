@@ -4,12 +4,10 @@ package cmd
 
 import (
 	"strings"
-	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
 	"github.com/spf13/cobra"
 )

@@ -8,9 +8,9 @@ import (
 )
 
 type DeviceViewModel struct {
-	Metrics               []common.Metric  `json:"metrics"`
-	Channels              []common.Channel `json:"channels"`
-	Timestamp             time.Time        `json:"timestamp"`
+	Metrics           []common.Metric  `json:"metrics"`
+	Channels          []common.Channel `json:"channels"`
+	Timestamp         time.Time        `json:"timestamp"`
 	common.DeviceView `json:"-"`
 }
 

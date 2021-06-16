@@ -100,7 +100,7 @@ build-standalone-static-arm:
 	$(GOBIN)/go build --tags="standalone" -v -a -o $(APP) -v --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
 
 build-standalone-debug-arm:
-	GOOS=linux GOARCH=arm GOARM=6 $(GOBIN)/go build -gcflags "all=-N -l" -o $(APP) -ldflags $(LDFLAGS)
+	GOOS=linux GOARCH=arm GOARM=6 $(GOBIN)/go build -gcflags "all=-N -l" -o $(APP) --ldflags="-v $(LDFLAGS)"
 
 
 build-standalone-arm64:

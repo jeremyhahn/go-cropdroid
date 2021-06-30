@@ -89,6 +89,6 @@ func newConditionService() (*mocks.MockConditionDAO, service.ConditionService) {
 	app, _ := NewUnitTestSession()
 	dao := mocks.NewMockConditionDAO()
 	mapper := mapper.NewConditionMapper()
-	mockConfigService := mocks.NewMockConfigService()
-	return dao, service.NewConditionService(app.Logger, dao, mapper, mockConfigService)
+	//mockConfigService := mocks.NewMockConfigService()
+	return dao, service.NewConditionService(app.Logger, dao, mapper)
 }

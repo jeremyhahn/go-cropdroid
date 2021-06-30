@@ -66,9 +66,17 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		if device.GetID() == channelConfig.GetDeviceID() {
+			for _, ch := range device.GetChannels() {
+				if ch.GetID() == channelConfig.GetID() {
+					// conditions and schedules not sent by android client
+					// android ui bug?
+					channelConfig.SetConditions(ch.GetConditions())
+					channelConfig.SetSchedule(ch.GetSchedule())
+					break
+				}
+			}
 			device.SetChannel(channelConfig)
-			farmConfig.SetDevice(&device)
-			return farmService.SetConfig(farmConfig)
+			return farmService.SetDeviceConfig(&device)
 		}
 	}
 	return ErrChannelNotFound

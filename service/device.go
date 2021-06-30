@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -19,7 +20,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
-type SmartSwitcherDeviceService struct {
+type IOSwitcherDeviceService struct {
 	app             *app.App
 	deviceID        uint64
 	farmName        string
@@ -27,7 +28,7 @@ type SmartSwitcherDeviceService struct {
 	stateStore      state.DeviceStorer
 	configStore     store.DeviceConfigStorer
 	deviceStore     datastore.DeviceDatastore
-	device          device.SmartSwitcher
+	device          device.IOSwitcher
 	deviceMutex     *sync.RWMutex
 	mapper          mapper.DeviceMapper
 	eventLogService EventLogService
@@ -38,10 +39,10 @@ type SmartSwitcherDeviceService struct {
 func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 	stateStore state.DeviceStorer, configStore store.DeviceConfigStorer,
 	deviceDatastore datastore.DeviceDatastore, deviceMapper mapper.DeviceMapper,
-	device device.SmartSwitcher, eventLogService EventLogService,
+	device device.IOSwitcher, eventLogService EventLogService,
 	farmChannels *FarmChannels, consistency int) (DeviceService, error) {
 
-	return &SmartSwitcherDeviceService{
+	return &IOSwitcherDeviceService{
 		app:             app,
 		deviceID:        deviceID,
 		farmName:        farmName,
@@ -56,19 +57,23 @@ func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 		consistency:     consistency}, nil
 }
 
-func (service *SmartSwitcherDeviceService) GetDeviceType() string {
+func (service *IOSwitcherDeviceService) GetDeviceType() string {
 	return service.device.GetType()
 }
 
-func (service *SmartSwitcherDeviceService) GetConfig() (config.DeviceConfig, error) {
+func (service *IOSwitcherDeviceService) GetConfig() (config.DeviceConfig, error) {
 	return service.configStore.Get(service.deviceID, service.consistency)
 }
 
-func (service *SmartSwitcherDeviceService) GetState() (state.DeviceStateMap, error) {
+func (service *IOSwitcherDeviceService) SetConfig(config config.DeviceConfig) error {
+	return service.configStore.Put(service.deviceID, config)
+}
+
+func (service *IOSwitcherDeviceService) GetState() (state.DeviceStateMap, error) {
 	return service.stateStore.Get(service.deviceID)
 }
 
-func (service *SmartSwitcherDeviceService) SetMode(mode string, d device.SmartSwitcher) {
+func (service *IOSwitcherDeviceService) SetMode(mode string, d device.IOSwitcher) {
 	//var unsafeDevice = (*unsafe.Pointer)(unsafe.Pointer(&service.device))
 	//atomic.StorePointer(unsafeDevice, unsafe.Pointer(&d))
 	service.deviceMutex.Lock()
@@ -76,7 +81,7 @@ func (service *SmartSwitcherDeviceService) SetMode(mode string, d device.SmartSw
 	service.device = d
 }
 
-func (service *SmartSwitcherDeviceService) GetView() (common.DeviceView, error) {
+func (service *IOSwitcherDeviceService) GetView() (common.DeviceView, error) {
 	device, err := service.GetDevice()
 	if err != nil {
 		return nil, err
@@ -92,7 +97,7 @@ func (service *SmartSwitcherDeviceService) GetView() (common.DeviceView, error) 
 	return viewmodel.NewDeviceView(service.app, metrics, channels), err
 }
 
-func (service *SmartSwitcherDeviceService) GetHistory(metric string) ([]float64, error) {
+func (service *IOSwitcherDeviceService) GetHistory(metric string) ([]float64, error) {
 	values, err := service.deviceStore.GetLast30Days(service.deviceID, metric)
 	if err != nil {
 		return nil, err
@@ -103,7 +108,7 @@ func (service *SmartSwitcherDeviceService) GetHistory(metric string) ([]float64,
 // GetDevice combines DeviceState and Config to return a fully populated domain model
 // Device instance including child Metric and Channel objects with their current values. This
 // operation is more costly than working with the "indexed" maps and functions in FarmState.
-func (service *SmartSwitcherDeviceService) GetDevice() (common.Device, error) {
+func (service *IOSwitcherDeviceService) GetDevice() (common.Device, error) {
 	deviceState, err := service.stateStore.Get(service.deviceID)
 	if err != nil {
 		return nil, err
@@ -123,7 +128,7 @@ func (service *SmartSwitcherDeviceService) GetDevice() (common.Device, error) {
 // on the deviceStateChangeChan channel. The FarmService#WatchDeviceStateChange watches
 // for the DeviceStateChange to update the farm state and publish the new state to connected
 // websocket clients.
-func (service *SmartSwitcherDeviceService) Poll(deviceStateChangeChan chan<- common.DeviceStateChange) error {
+func (service *IOSwitcherDeviceService) Poll() error {
 	deviceID := service.deviceID
 	deviceType := service.device.GetType()
 	eventType := "Poll"
@@ -135,15 +140,16 @@ func (service *SmartSwitcherDeviceService) Poll(deviceStateChangeChan chan<- com
 	}
 	state.SetID(deviceID)
 	service.stateStore.Put(service.deviceID, state)
-	deviceStateChangeChan <- common.DeviceStateChange{
-		DeviceID:   deviceID,
-		DeviceType: deviceType,
-		StateMap:   state}
+	service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
+		DeviceID:    deviceID,
+		DeviceType:  deviceType,
+		StateMap:    state,
+		IsPollEvent: true}
 	return nil
 }
 
-// Sends a command to the device to turn a switch on or off
-func (service *SmartSwitcherDeviceService) Switch(channelID, position int, logMessage string) (*common.Switch, error) {
+// Sends a request to the device to turn a switch on or off
+func (service *IOSwitcherDeviceService) Switch(channelID, position int, logMessage string) (*common.Switch, error) {
 	eventType := "Switch"
 	switchPosition := util.NewSwitchPosition(position)
 	channelConfig, err := service.getChannelConfig(channelID)
@@ -151,27 +157,44 @@ func (service *SmartSwitcherDeviceService) Switch(channelID, position int, logMe
 		service.error(eventType, eventType, err)
 		return nil, err
 	}
+	channelName := channelConfig.GetName()
 	if logMessage == "" {
-		logMessage = fmt.Sprintf("Switching %s %s", strings.ToLower(channelConfig.GetName()), switchPosition.ToString())
+		logMessage = fmt.Sprintf("Switching %s %s", strings.ToLower(channelName),
+			switchPosition.ToString())
 	}
 	service.notify(eventType, logMessage)
 	service.eventLogService.Create(eventType, logMessage)
-	service.app.Logger.Debug(fmt.Sprintf("Switching device %s (channel=%d), %s", channelConfig.GetName(), channelID, switchPosition.ToString()))
+	service.app.Logger.Debug(fmt.Sprintf("Switching %s (channel=%d), %s", channelName, channelID,
+		switchPosition.ToString()))
 	_switch, err := service.device.Switch(channelConfig.GetChannelID(), position)
 	if err != nil {
 		return _switch, err
 	}
-	service.farmChannels.SwitchChangedChan <- common.SwitchValueChanged{
+	deviceStateMap, err := service.stateStore.Get(service.deviceID)
+	if err != nil {
+		return nil, err
+	}
+	channels := deviceStateMap.GetChannels()
+	channels[channelID] = position
+	deviceStateMap.SetChannels(channels)
+	service.stateStore.Put(service.deviceID, deviceStateMap)
+	service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
+		DeviceID:   service.deviceID,
 		DeviceType: service.device.GetType(),
-		ChannelID:  channelID,
-		Value:      position}
+		StateMap:   deviceStateMap}
+	// service.farmChannels.SwitchChangedChan <- common.SwitchValueChanged{
+	// 	DeviceType: "",
+	// 	ChannelID:  1,
+	// 	Value:      common,
+	// }
 	return _switch, nil
 }
 
-// Sends a command to the device to activate a timed switch. The switch will be on for duration
-// specified and then turned off.
-func (service *SmartSwitcherDeviceService) TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error) {
+// Sends a request to the device to activate a timed switch. The switch will be on for the
+// specified duration in seconds and then turned off.
+func (service *IOSwitcherDeviceService) TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error) {
 	eventType := "TimerSwitch"
+	//deviceType := service.device.GetType()
 	channelConfig, err := service.getChannelConfig(channelID)
 	if err != nil {
 		service.error(eventType, eventType, err)
@@ -182,9 +205,43 @@ func (service *SmartSwitcherDeviceService) TimerSwitch(channelID, duration int, 
 		service.error(eventType, eventType, err)
 		return nil, err
 	}
+
+	deviceStateMap, err := service.stateStore.Get(service.deviceID)
+	if err != nil {
+		return nil, err
+	}
+	channels := deviceStateMap.GetChannels()
+	channels[channelID] = common.SWITCH_ON
+	deviceStateMap.SetChannels(channels)
+	service.stateStore.Put(service.deviceID, deviceStateMap)
+	// service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
+	// 	DeviceID:   service.deviceID,
+	// 	DeviceType: deviceType,
+	// 	StateMap:   deviceStateMap}
+
+	timer := time.NewTimer(time.Second * time.Duration(duration))
+	defer timer.Stop()
+	go func() {
+		<-timer.C
+		deviceStateMap, err := service.stateStore.Get(service.deviceID)
+		if err != nil {
+			service.app.Logger.Error(err)
+			return
+		}
+		channels := deviceStateMap.GetChannels()
+		channels[channelID] = common.SWITCH_OFF
+		deviceStateMap.SetChannels(channels)
+		service.stateStore.Put(service.deviceID, deviceStateMap)
+		// service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
+		// 	DeviceID:   service.deviceID,
+		// 	DeviceType: deviceType,
+		// 	StateMap:   deviceStateMap}
+	}()
+
 	service.app.Logger.Debugf("DeviceService timed switch event: %+v", event)
 	if logMessage == "" {
-		logMessage = fmt.Sprintf("Starting %s timer for %d seconds", channelConfig.GetName(), duration)
+		logMessage = fmt.Sprintf("Starting %s timer for %d seconds",
+			channelConfig.GetName(), duration)
 	}
 	service.notify(eventType, logMessage)
 	service.eventLogService.Create(eventType, logMessage)
@@ -193,59 +250,36 @@ func (service *SmartSwitcherDeviceService) TimerSwitch(channelID, duration int, 
 }
 
 // Sets a metric value.
-func (service *SmartSwitcherDeviceService) SetMetricValue(key string, value float64) error {
-
-	/*
-		deviceState, err := service.GetState()
-		if err != nil {
-			return err
-		}
-		service.farmService.SetDeviceState(deviceType, deviceState)
-	*/
-	/*
-		// This works with raft cluster
-		if service.app.MetricDatastore != nil {
-			if err := service.app.MetricDatastore.Save(deviceType, service.config.GetID(), service.GetState()); err != nil {
-				service.app.Logger.Errorf("Error: %s", err)
-				service.error("Farm.poll", "Farm.poll", err)
-				return
-			}
-		}*/
-
+func (service *IOSwitcherDeviceService) SetMetricValue(key string, value float64) error {
 	deviceState, err := service.stateStore.Get(service.deviceID)
 	if err != nil {
 		return err
 	}
-
-	deviceConfig, err := service.configStore.Get(service.deviceID, service.consistency)
-	if err != nil {
-		return err
+	metrics := deviceState.GetMetrics()
+	metrics[key] = value
+	deviceState.SetMetrics(metrics)
+	if err := service.stateStore.Put(service.deviceID, deviceState); err != nil {
+		service.app.Logger.Errorf("Error: %s", err)
+		service.error("Farm.poll", "Farm.poll", err)
 	}
-
-	deviceType := deviceConfig.GetType()
-
-	if service.app.Mode == common.CONFIG_MODE_VIRTUAL || service.app.Mode == common.MODE_STANDALONE { // TODO: consolidate mode
-		//virtualDevice := service.device.NewVirtualDevice(server.app, farmState, "", service.config.GetType())
-		err := service.device.(*device.VirtualSmartSwitch).WriteState(deviceState)
+	if err := service.deviceStore.Save(service.deviceID, deviceState); err != nil {
+		service.app.Logger.Errorf("Error: %s", err)
+		service.error("Farm.poll", "Farm.poll", err)
+	}
+	if service.app.Mode == common.CONFIG_MODE_VIRTUAL || service.app.Mode == common.MODE_STANDALONE {
+		err := service.device.(*device.VirtualIOSwitch).WriteState(deviceState)
 		if err != nil {
 			return err
 		}
-	} else {
-		if err := service.deviceStore.Save(service.deviceID, deviceState); err != nil {
-			service.app.Logger.Errorf("Error: %s", err)
-			service.error("Farm.poll", "Farm.poll", err)
-		}
 	}
-
-	service.farmChannels.MetricChangedChan <- common.MetricValueChanged{
-		DeviceType: deviceType,
-		Key:        key,
-		Value:      value}
-
+	service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
+		DeviceID:   service.deviceID,
+		DeviceType: service.device.GetType(),
+		StateMap:   deviceState}
 	return nil
 }
 
-func (service *SmartSwitcherDeviceService) getChannelConfig(channelID int) (config.ChannelConfig, error) {
+func (service *IOSwitcherDeviceService) getChannelConfig(channelID int) (config.ChannelConfig, error) {
 	deviceConfig, err := service.configStore.Get(service.deviceID, service.consistency)
 	if err != nil {
 		service.app.Logger.Errorf("Error: ", err)
@@ -261,7 +295,7 @@ func (service *SmartSwitcherDeviceService) getChannelConfig(channelID int) (conf
 	return nil, fmt.Errorf("Channel ID not found: %d", channelID)
 }
 
-func (service *SmartSwitcherDeviceService) notify(eventType, message string) {
+func (service *IOSwitcherDeviceService) notify(eventType, message string) {
 	config, err := service.GetConfig()
 	if err != nil {
 		service.error("notify", eventType, err)
@@ -281,7 +315,7 @@ func (service *SmartSwitcherDeviceService) notify(eventType, message string) {
 		Message:   message}
 }
 
-func (service *SmartSwitcherDeviceService) error(method, eventType string, err error) {
+func (service *IOSwitcherDeviceService) error(method, eventType string, err error) {
 	service.app.Logger.Errorf("Error: %s", method, err)
 	service.farmChannels.FarmErrorChan <- common.FarmError{
 		Method:    method,

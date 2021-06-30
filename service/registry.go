@@ -59,7 +59,7 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mapp
 	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper(), nil)               // ConfigService
 	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO(), mappers.GetScheduleMapper(), nil) // ConfigService
 
-	conditionService := NewConditionService(_app.Logger, daos.GetConditionDAO(), mappers.GetConditionMapper(), nil) // ConfigService
+	conditionService := NewConditionService(_app.Logger, daos.GetConditionDAO(), mappers.GetConditionMapper())
 
 	//serviceRegistry.SetMailer(NewMailer(farm.logger, farm.buildSmtp()))
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer

@@ -66,7 +66,8 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 		for _, d := range devices {
 			conf, _ := d.GetConfig()
 			deviceID := conf.GetID()
-			deviceStateMap := state.CreateDeviceStateMapEmpty(deviceID)
+			deviceStateMap := state.CreateDeviceStateMapEmpty(
+				deviceID, len(conf.GetMetrics()), len(conf.GetChannels()))
 			deviceStateMaps = append(deviceStateMaps, deviceStateMap)
 			_state.SetDevice(conf.GetType(), deviceStateMap)
 			backoffTable[deviceID] = make(map[int]time.Time, 0)
@@ -109,6 +110,10 @@ func (farm *DefaultFarmService) GetConsistencyLevel() int {
 	return farm.consistencyLevel
 }
 
+func (farm *DefaultFarmService) GetChannels() *FarmChannels {
+	return farm.channels
+}
+
 func (farm *DefaultFarmService) GetState() state.FarmStateMap {
 	farmState, err := farm.stateStore.Get(farm.farmID)
 	if err != nil {
@@ -138,8 +143,116 @@ func (farm *DefaultFarmService) SetConfig(farmConfig config.FarmConfig) error {
 	return nil
 }
 
-func (farm *DefaultFarmService) GetChannels() *FarmChannels {
-	return farm.channels
+// Stores the device state in the farm state
+func (farm *DefaultFarmService) SetDeviceState(deviceType string, deviceState state.DeviceStateMap) {
+	farm.app.Logger.Debugf("deviceType: %s, deviceState: %+v", deviceType, deviceState)
+	state, err := farm.stateStore.Get(farm.farmID)
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return
+	}
+	state.SetDevice(deviceType, deviceState.Clone())
+	farm.stateStore.Put(farm.farmID, state)
+}
+
+// Stores the specified device config in the farm and device config stores and publishes
+// the whole farm configuration to connected websocket clients.
+func (farm *DefaultFarmService) SetDeviceConfig(deviceConfig config.DeviceConfig) error {
+	farm.app.Logger.Debugf("config: %+v", deviceConfig)
+	deviceService, err := farm.serviceRegistry.GetDeviceService(farm.farmID, deviceConfig.GetType())
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return err
+	}
+	err = deviceService.SetConfig(deviceConfig)
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return err
+	}
+	farmConfig, err := farm.configStore.Get(deviceConfig.GetFarmID(), farm.consistencyLevel)
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return err
+	}
+	farmConfig.SetDevice(deviceConfig)
+	farm.configStore.Put(farm.farmID, farmConfig)
+	farm.PublishConfig(farmConfig)
+	return nil
+}
+
+// Used by android client to set a specific configuration item in the settings menu
+func (farm *DefaultFarmService) SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error {
+
+	farm.app.Logger.Debugf("Setting config farmID=%d, deviceID=%d, key=%s, value=%s",
+		farmID, deviceID, key, value)
+
+	configItem, err := farm.deviceConfigDAO.Get(deviceID, key)
+	if err != nil {
+		return err
+	}
+	configItem.SetValue(value)
+	farm.deviceConfigDAO.Save(configItem)
+	farm.app.Logger.Debugf("Saved configuration item: %+v", configItem)
+
+	farmConfig, err := farm.dao.Get(farm.farmID)
+
+	// This doesnt update raft state in cluster mode
+	farm.channels.FarmConfigChangeChan <- farmConfig
+
+	// This causes an infinite loop
+	//farm.SetConfig(farmConfig)
+
+	return nil
+}
+
+func (farm *DefaultFarmService) SetMetricValue(deviceType string, key string, value float64) error {
+
+	farmState, err := farm.stateStore.Get(farm.farmID)
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return nil
+	}
+
+	if err := farmState.SetMetricValue(deviceType, key, value); err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return err
+	}
+
+	farm.stateStore.Put(farm.farmID, farmState)
+
+	metricDelta := map[string]float64{key: value}
+	channelDelta := make(map[int]int, 0)
+	delta := state.CreateDeviceStateDeltaMap(metricDelta, channelDelta)
+	if err := farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (farm *DefaultFarmService) SetSwitchValue(deviceType string, channelID int, value int) error {
+
+	farmState, err := farm.stateStore.Get(farm.farmID)
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return nil
+	}
+
+	if err := farmState.SetChannelValue(deviceType, channelID, value); err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return err
+	}
+
+	farm.stateStore.Put(farm.farmID, farmState)
+
+	metricDelta := make(map[string]float64, 0)
+	channelDelta := map[int]int{channelID: value}
+	delta := state.CreateDeviceStateDeltaMap(metricDelta, channelDelta)
+	if err := farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Publishes the entire farm configuration (all devices)
@@ -259,7 +372,7 @@ func (farm *DefaultFarmService) WatchFarmConfigChange() {
 				}
 
 				for _, service := range deviceServices {
-					var d device.SmartSwitcher
+					var d device.IOSwitcher
 					deviceType := service.GetDeviceType()
 					deviceConfig, err := newConfig.GetDevice(deviceType)
 					if err != nil {
@@ -269,7 +382,7 @@ func (farm *DefaultFarmService) WatchFarmConfigChange() {
 					switch newMode {
 					case common.CONFIG_MODE_VIRTUAL:
 						farmStateMap := state.NewFarmStateMap(farm.farmID)
-						d = device.NewVirtualSmartSwitch(farm.app, farmStateMap, "", deviceType)
+						d = device.NewVirtualIOSwitch(farm.app, farmStateMap, "", deviceType)
 					case common.CONFIG_MODE_SERVER:
 						d = device.NewSmartSwitch(farm.app, deviceConfig.GetURI(), deviceType)
 					}
@@ -303,8 +416,6 @@ func (farm *DefaultFarmService) WatchDeviceStateChange() {
 		select {
 		case newDeviceState := <-farm.channels.DeviceStateChangeChan:
 
-			farm.app.Logger.Errorf("Newest state: %+v", newDeviceState)
-
 			deviceID := newDeviceState.DeviceID
 			deviceType := newDeviceState.DeviceType
 			stateMap := newDeviceState.StateMap
@@ -335,7 +446,9 @@ func (farm *DefaultFarmService) WatchDeviceStateChange() {
 				continue
 			}
 
-			farm.Manage(deviceConfig, farm.GetState())
+			if newDeviceState.IsPollEvent {
+				farm.Manage(deviceConfig, farm.GetState())
+			}
 		}
 	}
 }
@@ -345,17 +458,19 @@ func (farm *DefaultFarmService) OnDeviceStateChange(deviceType string,
 
 	farm.app.Logger.Debugf("newDeviceState=%+v", newDeviceState)
 
+	var delta state.DeviceStateDeltaMap
+
 	lastState, err := farm.stateStore.Get(farm.farmID)
 	if err != nil && err != state.ErrFarmNotFound {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return nil, err
 	}
 
-	var delta state.DeviceStateDeltaMap
 	newChannelMap := make(map[int]int, len(newDeviceState.GetChannels()))
 	for i, channel := range newDeviceState.GetChannels() {
 		newChannelMap[i] = channel
 	}
+
 	if lastState == nil {
 		delta = state.CreateDeviceStateDeltaMap(newDeviceState.GetMetrics(), newChannelMap)
 	} else {
@@ -373,94 +488,6 @@ func (farm *DefaultFarmService) OnDeviceStateChange(deviceType string,
 		return nil, err
 	}
 	return delta, nil
-}
-
-// Stores the device state in the farm state
-func (farm *DefaultFarmService) SetDeviceState(deviceType string, deviceState state.DeviceStateMap) {
-	farm.app.Logger.Debugf("deviceType: %s, deviceState: %+v",
-		deviceType, deviceState)
-
-	state, err := farm.stateStore.Get(farm.farmID)
-	if err != nil {
-		farm.app.Logger.Errorf("Error: %s", err)
-		return
-	}
-	state.SetDevice(deviceType, deviceState)
-	farm.stateStore.Put(farm.farmID, state)
-}
-
-func (farm *DefaultFarmService) SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error {
-
-	farm.app.Logger.Debugf("Setting config farmID=%d, deviceID=%d, key=%s, value=%s",
-		farmID, deviceID, key, value)
-
-	configItem, err := farm.deviceConfigDAO.Get(deviceID, key)
-	if err != nil {
-		return err
-	}
-	configItem.SetValue(value)
-	farm.deviceConfigDAO.Save(configItem)
-	farm.app.Logger.Debugf("Saved configuration item: %+v", configItem)
-
-	farmConfig, err := farm.dao.Get(farm.farmID)
-
-	// This doesnt update raft state in cluster mode
-	farm.channels.FarmConfigChangeChan <- farmConfig
-
-	// This causes an infinite loop
-	//farm.SetConfig(farmConfig)
-
-	return nil
-}
-
-func (farm *DefaultFarmService) SetMetricValue(deviceType string, key string, value float64) error {
-
-	farmState, err := farm.stateStore.Get(farm.farmID)
-	if err != nil {
-		farm.app.Logger.Errorf("Error: %s", err)
-		return nil
-	}
-
-	if err := farmState.SetMetricValue(deviceType, key, value); err != nil {
-		farm.app.Logger.Errorf("Error: %s", err)
-		return err
-	}
-
-	farm.stateStore.Put(farm.farmID, farmState)
-
-	metricDelta := map[string]float64{key: value}
-	channelDelta := make(map[int]int, 0)
-	delta := state.CreateDeviceStateDeltaMap(metricDelta, channelDelta)
-	if err := farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (farm *DefaultFarmService) SetSwitchValue(deviceType string, channelID int, value int) error {
-
-	farmState, err := farm.stateStore.Get(farm.farmID)
-	if err != nil {
-		farm.app.Logger.Errorf("Error: %s", err)
-		return nil
-	}
-
-	if err := farmState.SetChannelValue(deviceType, channelID, value); err != nil {
-		farm.app.Logger.Errorf("Error: %s", err)
-		return err
-	}
-
-	farm.stateStore.Put(farm.farmID, farmState)
-
-	metricDelta := make(map[string]float64, 0)
-	channelDelta := map[int]int{channelID: value}
-	delta := state.CreateDeviceStateDeltaMap(metricDelta, channelDelta)
-	if err := farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta}); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (farm *DefaultFarmService) Run() {
@@ -525,7 +552,7 @@ func (farm *DefaultFarmService) poll() {
 		return
 	}
 	for _, device := range deviceServices {
-		go device.Poll(farm.channels.DeviceStateChangeChan)
+		device.Poll()
 	}
 }
 

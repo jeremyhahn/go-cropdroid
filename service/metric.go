@@ -68,8 +68,7 @@ func (service *DefaultMetricService) Update(session Session, metric common.Metri
 		if device.GetID() == metric.GetDeviceID() {
 			metricConfig := service.mapper.MapModelToConfig(metric)
 			device.SetMetric(&metricConfig)
-			farmConfig.SetDevice(&device)
-			return farmService.SetConfig(farmConfig)
+			return farmService.SetDeviceConfig(&device)
 		}
 	}
 	return ErrMetricNotFound

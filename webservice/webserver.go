@@ -78,9 +78,9 @@ func (server *Webserver) Run() {
 	server.router.HandleFunc(farmStateURI, server.state)
 	server.endpointList = append(server.endpointList, farmStateURI)
 
-	farmConfigURI := fmt.Sprintf("%s/config", baseURI)
-	server.router.HandleFunc(farmConfigURI, server.config)
-	server.endpointList = append(server.endpointList, farmConfigURI)
+	// farmConfigURI := fmt.Sprintf("%s/config", baseURI)
+	// server.router.HandleFunc(farmConfigURI, server.config)
+	// server.endpointList = append(server.endpointList, farmConfigURI)
 
 	//server.router.HandleFunc("/maint/{mode}", server.MaintenanceMode).Methods("GET")
 	farmMaintModeURI := fmt.Sprintf("%s/maint/{mode}", baseFarmURI)
@@ -236,9 +236,9 @@ func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
 	rest.NewJsonWriter().Write(w, http.StatusOK, states)
 }
 
-func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.Config)
-}
+// func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
+// 	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.Config)
+// }
 
 func (server *Webserver) endpoints(w http.ResponseWriter, r *http.Request) {
 	rest.NewJsonWriter().Write(w, http.StatusOK, server.endpointList)

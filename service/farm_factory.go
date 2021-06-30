@@ -63,14 +63,14 @@ func (fb *FarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, 
 	deviceConfigDAO := fb.datastoreRegistry.GetDeviceConfigDAO()
 
 	farmChannels := FarmChannels{
-		FarmConfigChan:        make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
-		FarmConfigChangeChan:  make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
-		FarmStateChan:         make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
-		FarmStateChangeChan:   make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
-		FarmErrorChan:         make(chan common.FarmError, common.BUFFERED_CHANNEL_SIZE),
-		FarmNotifyChan:        make(chan common.FarmNotification, common.BUFFERED_CHANNEL_SIZE),
-		MetricChangedChan:     make(chan common.MetricValueChanged, common.BUFFERED_CHANNEL_SIZE),
-		SwitchChangedChan:     make(chan common.SwitchValueChanged, common.BUFFERED_CHANNEL_SIZE),
+		FarmConfigChan:       make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
+		FarmConfigChangeChan: make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
+		FarmStateChan:        make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
+		FarmStateChangeChan:  make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
+		FarmErrorChan:        make(chan common.FarmError, common.BUFFERED_CHANNEL_SIZE),
+		FarmNotifyChan:       make(chan common.FarmNotification, common.BUFFERED_CHANNEL_SIZE),
+		//MetricChangedChan:     make(chan common.MetricValueChanged, common.BUFFERED_CHANNEL_SIZE),
+		//SwitchChangedChan:     make(chan common.SwitchValueChanged, common.BUFFERED_CHANNEL_SIZE),
 		DeviceStateChangeChan: make(chan common.DeviceStateChange, common.BUFFERED_CHANNEL_SIZE),
 		DeviceStateDeltaChan:  make(chan map[string]state.DeviceStateDeltaMap, common.BUFFERED_CHANNEL_SIZE)}
 

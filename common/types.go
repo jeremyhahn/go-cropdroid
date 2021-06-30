@@ -174,22 +174,23 @@ type InAppPurchase interface {
 }
 
 type DeviceStateChange struct {
-	DeviceID   uint64
-	DeviceType string
-	StateMap   state.DeviceStateMap
+	DeviceID    uint64
+	DeviceType  string
+	StateMap    state.DeviceStateMap
+	IsPollEvent bool
 }
 
-type MetricValueChanged struct {
-	DeviceType string
-	Key        string
-	Value      float64
-}
+// type MetricValueChanged struct {
+// 	DeviceType string
+// 	Key        string
+// 	Value      float64
+// }
 
-type SwitchValueChanged struct {
-	DeviceType string
-	ChannelID  int
-	Value      int
-}
+// type SwitchValueChanged struct {
+// 	DeviceType string
+// 	ChannelID  int
+// 	Value      int
+// }
 
 type FarmNotification struct {
 	EventType string

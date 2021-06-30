@@ -9,3 +9,6 @@ test/googleplay-oauth2-web.json
 
 # sqlite
 db/
+
+# Visual Studio Code debug binary
+__debug_bin

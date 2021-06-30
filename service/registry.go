@@ -56,7 +56,7 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mapp
 	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper()) // ConfigService
 	//configService
 	//eventLogService := NewEventLogService(app, daos.GetEventLogDAO(), common.CONTROLLER_TYPE_SERVER)
-	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper(), nil)               // ConfigService
+	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper())                    // ConfigService
 	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO(), mappers.GetScheduleMapper(), nil) // ConfigService
 
 	conditionService := NewConditionService(_app.Logger, daos.GetConditionDAO(), mappers.GetConditionMapper())

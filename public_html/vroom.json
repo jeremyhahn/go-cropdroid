@@ -2,10 +2,11 @@
  "device_id": 2,
  "metrics": {
   "co2": 2318.75,
-  "heatIndex0": 84.4,
+  "heatIndex": 99,
+  "heatIndex0": 99,
   "heatIndex1": 24.9,
   "heatIndex2": 24.9,
-  "humidity0": 61,
+  "humidity0": 70,
   "humidity1": 0,
   "humidity2": 0,
   "leak0": 2,
@@ -24,11 +25,11 @@
  },
  "channels": [
   1,
-  0,
+  1,
   0,
   1,
   0,
   1
  ],
- "timestamp": "2021-06-16T09:49:52.606146555-04:00"
+ "timestamp": "2021-06-30T01:41:08.295176572-04:00"
 }

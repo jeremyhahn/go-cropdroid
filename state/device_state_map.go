@@ -20,6 +20,7 @@ type DeviceStateMap interface {
 	SetChannels(channels []int)
 	GetTimestamp() time.Time
 	SetTimestamp(time.Time)
+	Clone() DeviceStateMap
 }
 
 type DeviceState struct {
@@ -44,11 +45,11 @@ func CreateDeviceStateMap(metrics map[string]float64, channels []int) DeviceStat
 		Channels: channels}
 }
 
-func CreateDeviceStateMapEmpty(deviceID uint64) DeviceStateMap {
+func CreateDeviceStateMapEmpty(deviceID uint64, numMetrics, numChannels int) DeviceStateMap {
 	return &DeviceState{
 		DeviceID: deviceID,
-		Metrics:  make(map[string]float64, 0),
-		Channels: make([]int, 0)}
+		Metrics:  make(map[string]float64, numMetrics),
+		Channels: make([]int, numChannels)}
 }
 
 /*
@@ -98,4 +99,20 @@ func (state *DeviceState) GetTimestamp() time.Time {
 
 func (state *DeviceState) SetTimestamp(timestamp time.Time) {
 	state.Timestamp = timestamp
+}
+
+func (state *DeviceState) Clone() DeviceStateMap {
+	metrics := make(map[string]float64, len(state.Metrics))
+	channels := make([]int, len(state.Channels))
+	for i, metric := range state.Metrics {
+		metrics[i] = metric
+	}
+	for i, channel := range state.Channels {
+		channels[i] = channel
+	}
+	return &DeviceState{
+		DeviceID:  state.DeviceID,
+		Metrics:   metrics,
+		Channels:  channels,
+		Timestamp: state.Timestamp}
 }

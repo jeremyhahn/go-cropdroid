@@ -14,29 +14,29 @@ import (
 )
 
 type SmartSwitch struct {
-	app            *app.App
-	baseURL        string
-	httpClient     HttpClient
+	app        *app.App
+	baseURL    string
+	httpClient HttpClient
 	deviceType string
-	SmartSwitcher
+	IOSwitcher
 }
 
 // TODO: Rename to IOSwitch
-func CreateSmartSwitch(httpClient HttpClient, app *app.App, baseURL, deviceType string) SmartSwitcher {
+func CreateSmartSwitch(httpClient HttpClient, app *app.App, baseURL, deviceType string) IOSwitcher {
 	app.Logger.Debugf("[CreateSmartSwitch] Initializing %s device at %s", deviceType, baseURL)
 	return &SmartSwitch{
-		app:            app,
-		baseURL:        baseURL,
-		httpClient:     httpClient,
+		app:        app,
+		baseURL:    baseURL,
+		httpClient: httpClient,
 		deviceType: deviceType}
 }
 
-func NewSmartSwitch(app *app.App, baseURL, deviceType string) SmartSwitcher {
+func NewSmartSwitch(app *app.App, baseURL, deviceType string) IOSwitcher {
 	app.Logger.Debugf("[NewSmartSwitch] Initializing %s device at %s", deviceType, baseURL)
 	return &SmartSwitch{
-		app:            app,
-		baseURL:        baseURL,
-		httpClient:     &http.Client{},
+		app:        app,
+		baseURL:    baseURL,
+		httpClient: &http.Client{},
 		deviceType: deviceType}
 }
 
@@ -110,4 +110,27 @@ func (d *SmartSwitch) TimerSwitch(channel, duration int) (common.TimerEvent, err
 	}
 	event.Timestamp = time.Now().In(d.app.Location)
 	return &event, nil
+}
+
+func (d *SmartSwitch) SystemInfo() (DeviceInfo, error) {
+	endpoint := fmt.Sprintf("%s/%s", d.baseURL, "sys")
+	d.app.Logger.Debugf("endpoint=%s", endpoint)
+	response, err := d.httpClient.Get(endpoint)
+	if err != nil {
+		d.app.Logger.Error(err.Error())
+		return nil, err
+	}
+	responseData, err := ioutil.ReadAll(response.Body)
+	d.app.Logger.Debugf("responseData: %s", responseData)
+	if err != nil {
+		d.app.Logger.Error(err.Error())
+		return nil, err
+	}
+	var info DefaultDeviceInfo
+	err = json.Unmarshal(responseData, &info)
+	if err != nil {
+		d.app.Logger.Error(err.Error())
+		return nil, err
+	}
+	return &info, nil
 }

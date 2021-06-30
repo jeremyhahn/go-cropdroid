@@ -108,32 +108,19 @@ func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, dev
 
 // Create a new schedule entry
 func (service *DefaultScheduleService) Create(session Session, schedule config.ScheduleConfig) (config.ScheduleConfig, error) {
+	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
 	//entity := service.mapper.MapModelToEntity(schedule)
-	if err := service.dao.Create(schedule); err != nil {
-		return nil, err
-	}
-	schedule.SetID(schedule.GetID())
-	/*
-		for _, device := range service.scope.GetConfig().GetDevices() {
-			for _, channel := range device.GetChannels() {
-				for _, _schedule := range channel.GetSchedule() {
-					if _schedule.GetID() == schedule.GetID() {
-						channel.Schedule = append(channel.Schedule, schedule)
-					}
-				}
-			}
-		}*/
-	//service.configService.Reload() // TODO: etcd
+	// if err := service.dao.Create(schedule); err != nil {
+	// 	return nil, err
+	// }
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == schedule.GetChannelID() {
-				s := schedule.(*config.Schedule)
-				channel.Schedule = append(channel.Schedule, *s)
+				channel.Schedule = append(channel.Schedule, *schedule.(*config.Schedule))
 				device.SetChannel(&channel)
-				farmConfig.SetDevice(&device)
-				return schedule, farmService.SetConfig(farmConfig)
+				return schedule, farmService.SetDeviceConfig(&device)
 			}
 		}
 	}
@@ -142,35 +129,19 @@ func (service *DefaultScheduleService) Create(session Session, schedule config.S
 
 // Update an existing schedule entry in the database
 func (service *DefaultScheduleService) Update(session Session, schedule config.ScheduleConfig) error {
-	//entity := service.mapper.MapModelToEntity(schedule)
-	if err := service.dao.Save(schedule); err != nil {
-		return err
-	}
-	/*
-		for _, device := range service.scope.GetConfig().GetDevices() {
-			for _, channel := range device.GetChannels() {
-				for i, _schedule := range channel.GetSchedule() {
-					if _schedule.GetID() == schedule.GetID() {
-						channel.UpdateSchedule(schedule, i)
-					}
-				}
-			}
-		}
-		return nil
-	*/
-	//return service.configService.Reload() // TODO: etcd
-	//return nil
+	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
+	// if err := service.dao.Save(schedule); err != nil {
+	// 	return err
+	// }
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			for i, _ := range channel.GetSchedule() {
 				if channel.GetID() == schedule.GetChannelID() {
-					s := schedule.(*config.Schedule)
-					channel.Schedule[i] = *s
+					channel.Schedule[i] = *schedule.(*config.Schedule)
 					device.SetChannel(&channel)
-					farmConfig.SetDevice(&device)
-					return farmService.SetConfig(farmConfig)
+					return farmService.SetDeviceConfig(&device)
 				}
 			}
 		}
@@ -180,23 +151,10 @@ func (service *DefaultScheduleService) Update(session Session, schedule config.S
 
 // Delete a schedule entry from the database
 func (service *DefaultScheduleService) Delete(session Session, schedule config.ScheduleConfig) error {
-	//entity := service.mapper.MapModelToEntity(schedule)
+	// v0.0.3a: farmService.SetDeviceConfig doesnt delete the schedule :(
 	if err := service.dao.Delete(schedule); err != nil {
 		return err
 	}
-	/*
-		for _, device := range service.scope.GetConfig().GetDevices() {
-			for _, channel := range device.GetChannels() {
-				for i, _schedule := range channel.GetSchedule() {
-					if _schedule.GetID() == schedule.GetID() {
-						channel.DeleteSchedule(i)
-					}
-				}
-			}
-		}
-	*/
-	//return service.configService.Reload() // TODO: etcd
-	//return nil
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
@@ -207,8 +165,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule config.S
 				if _schedule.GetID() == schedule.GetID() {
 					channel.Schedule = append(channel.Schedule[:i], channel.Schedule[i+1:]...)
 					device.SetChannel(&channel)
-					farmConfig.SetDevice(&device)
-					return farmService.SetConfig(farmConfig)
+					return farmService.SetDeviceConfig(&device)
 				}
 			}
 			//}

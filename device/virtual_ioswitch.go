@@ -13,44 +13,44 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
-type VirtualSmartSwitch struct {
+type VirtualIOSwitch struct {
 	SmartSwitch
 	farmState state.FarmStateMap
 	stateFile string
 }
 
-func CreateVirtualSmartSwitch(httpClient HttpClient, app *app.App,
+func CreateVirtualIOSwitch(httpClient HttpClient, app *app.App,
 	farmState state.FarmStateMap, baseURL, deviceType,
-	stateFile string) VirtualSmartSwitcher {
+	stateFile string) VirtualIOSwitcher {
 
 	app.Logger.Debugf("[CreateSmartSwitch] Initializing %s device at %s", deviceType, baseURL)
-	return &VirtualSmartSwitch{
+	return &VirtualIOSwitch{
 		SmartSwitch: SmartSwitch{
-			app:            app,
-			baseURL:        baseURL,
-			httpClient:     httpClient,
+			app:        app,
+			baseURL:    baseURL,
+			httpClient: httpClient,
 			deviceType: deviceType},
 		farmState: farmState,
 		stateFile: stateFile}
 }
 
-func NewVirtualSmartSwitch(app *app.App, farmState state.FarmStateMap,
-	baseURL, deviceType string) VirtualSmartSwitcher {
+func NewVirtualIOSwitch(app *app.App, farmState state.FarmStateMap,
+	baseURL, deviceType string) VirtualIOSwitcher {
 
-	return &VirtualSmartSwitch{
+	return &VirtualIOSwitch{
 		SmartSwitch: SmartSwitch{
-			app:            app,
-			baseURL:        baseURL,
+			app:        app,
+			baseURL:    baseURL,
 			deviceType: deviceType},
 		farmState: farmState,
 		stateFile: fmt.Sprintf("%s/%s/v%s.json", app.HomeDir, common.HTTP_PUBLIC_HTML, deviceType)}
 }
 
-func (c *VirtualSmartSwitch) GetType() string {
+func (c *VirtualIOSwitch) GetType() string {
 	return c.deviceType
 }
 
-func (c *VirtualSmartSwitch) State() (state.DeviceStateMap, error) {
+func (c *VirtualIOSwitch) State() (state.DeviceStateMap, error) {
 	if _, err := os.Stat(c.stateFile); err == nil {
 		state := state.NewDeviceStateMap()
 		data, err := ioutil.ReadFile(c.stateFile)
@@ -70,7 +70,7 @@ func (c *VirtualSmartSwitch) State() (state.DeviceStateMap, error) {
 	return nil, errors.New(fmt.Sprintf("Virtual device data file not found: %s", c.stateFile))
 }
 
-func (c *VirtualSmartSwitch) Switch(channel, position int) (*common.Switch, error) {
+func (c *VirtualIOSwitch) Switch(channel, position int) (*common.Switch, error) {
 	state, err := c.State()
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (c *VirtualSmartSwitch) Switch(channel, position int) (*common.Switch, erro
 		State:   position}, nil
 }
 
-func (c *VirtualSmartSwitch) TimerSwitch(channel, duration int) (common.TimerEvent, error) {
+func (c *VirtualIOSwitch) TimerSwitch(channel, duration int) (common.TimerEvent, error) {
 	state, err := c.State()
 	if err != nil {
 		return nil, err
@@ -116,7 +116,14 @@ func (c *VirtualSmartSwitch) TimerSwitch(channel, duration int) (common.TimerEve
 		Timestamp: time.Now()}, nil
 }
 
-func (c *VirtualSmartSwitch) WriteState(state state.DeviceStateMap) error {
+func (c *VirtualIOSwitch) SystemInfo() (DeviceInfo, error) {
+	return &DefaultDeviceInfo{
+		FirmwareVersion: "v0.0.1a",
+		HardwareVersion: "v0.0.1a",
+		Uptime:          int64(123456)}, nil
+}
+
+func (c *VirtualIOSwitch) WriteState(state state.DeviceStateMap) error {
 	stateJson, err := json.MarshalIndent(state, "", " ")
 	if err != nil {
 		c.app.Logger.Errorf("Error marshalling virtual state: %s", err.Error())

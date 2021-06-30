@@ -197,3 +197,18 @@ As a summary, when -
 ## RPI Touchscreen
 https://www.amazon.com/gp/product/B07NRYPZM1
 http://www.lcdwiki.com/5inch_HDMI_Display 
+
+
+# Stores
+
+## Config store
+
+The config store is responsible for storing desired device configurations and/or settings.
+
+## State Store
+
+The state store is responsible for keeping a single "record" for a device that indicates it's current metric and channel values.
+
+## Device Store
+
+The device store is responsible for keeping historical data for a device - that is, many metric and channel values over time, used for analytics and reporting.

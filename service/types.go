@@ -51,8 +51,8 @@ type FarmChannels struct {
 	DeviceConfigChangeChan chan config.DeviceConfig
 	DeviceStateChangeChan  chan common.DeviceStateChange
 	DeviceStateDeltaChan   chan map[string]state.DeviceStateDeltaMap
-	MetricChangedChan      chan common.MetricValueChanged
-	SwitchChangedChan      chan common.SwitchValueChanged
+	// MetricChangedChan      chan common.MetricValueChanged
+	//SwitchChangedChan chan common.SwitchValueChanged
 }
 
 type UserCredentials struct {
@@ -180,14 +180,13 @@ type FarmService interface {
 	Poll()
 	PollCluster()
 	PublishConfig(farmConfig config.FarmConfig) error
-	//PublishState() error
 	PublishState(farmState state.FarmStateMap) error
 	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error
 	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
 	Run()
 	RunCluster()
 	SetConfig(farmConfig config.FarmConfig) error
-	//SetDeviceConfig(deviceConfig config.DeviceConfig)
+	SetDeviceConfig(deviceConfig config.DeviceConfig) error
 	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
 	SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error
 	SetMetricValue(deviceType string, key string, value float64) error
@@ -211,8 +210,9 @@ type DeviceService interface {
 	GetHistory(metric string) ([]float64, error)
 	GetDevice() (common.Device, error)
 	Manage(farmState state.FarmStateMap)
-	Poll(deviceStateChangeChan chan<- common.DeviceStateChange) error
-	SetMode(mode string, device device.SmartSwitcher)
+	Poll() error
+	SetConfig(config config.DeviceConfig) error
+	SetMode(mode string, device device.IOSwitcher)
 	Switch(channelID, position int, logMessage string) (*common.Switch, error)
 	TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error)
 	ManageMetrics(config config.DeviceConfig, farmState state.FarmStateMap) []error

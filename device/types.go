@@ -12,14 +12,21 @@ type HttpClient interface {
 	Get(url string) (*http.Response, error)
 }
 
-type SmartSwitcher interface {
+type IOSwitcher interface {
 	GetType() string
 	State() (state.DeviceStateMap, error)
 	Switch(channel, position int) (*common.Switch, error)
 	TimerSwitch(channel, duration int) (common.TimerEvent, error)
+	SystemInfo() (DeviceInfo, error)
 }
 
-type VirtualSmartSwitcher interface {
-	SmartSwitcher
+type VirtualIOSwitcher interface {
+	IOSwitcher
 	WriteState(state state.DeviceStateMap) error
+}
+
+type DeviceInfo interface {
+	GetHardwareVersion() string
+	GetFirmwareVersion() string
+	GetUptime() int64
 }

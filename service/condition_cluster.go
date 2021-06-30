@@ -23,21 +23,19 @@ type ConditionService interface {
 }
 
 type DefaultConditionService struct {
-	logger        *logging.Logger
-	dao           dao.ConditionDAO
-	mapper        mapper.ConditionMapper
-	configService ConfigService
+	logger *logging.Logger
+	dao    dao.ConditionDAO
+	mapper mapper.ConditionMapper
 	ConditionService
 }
 
 // NewConditionService creates a new default ConditionService instance using the current time for calculations
 func NewConditionService(logger *logging.Logger, conditionDAO dao.ConditionDAO,
-	conditionMapper mapper.ConditionMapper, configService ConfigService) ConditionService {
+	conditionMapper mapper.ConditionMapper) ConditionService {
 	return &DefaultConditionService{
-		logger:        logger,
-		dao:           conditionDAO,
-		mapper:        conditionMapper,
-		configService: configService}
+		logger: logger,
+		dao:    conditionDAO,
+		mapper: conditionMapper}
 }
 
 // GetConditions retrieves a list of condition entries from the database

@@ -16,7 +16,7 @@ func TestGetType(t *testing.T) {
 
 	deviceType := "unittest"
 	farmStateMap := state.NewFarmStateMap(0)
-	virtDeviceType := NewVirtualSmartSwitch(app, farmStateMap,
+	virtDeviceType := NewVirtualIOSwitch(app, farmStateMap,
 		"http://localtest", deviceType)
 
 	assert.Equal(t, deviceType, virtDeviceType.GetType())
@@ -41,7 +41,7 @@ func TestVirtualState(t *testing.T) {
 	expected.SetChannels(channels)
 	expected.SetTimestamp(timestamp)
 
-	virtualHttpDeviceType := CreateVirtualSmartSwitch(
+	virtualHttpDeviceType := CreateVirtualIOSwitch(
 		nil,
 		app,
 		state.NewFarmStateMap(0),
@@ -81,7 +81,7 @@ func TestVirtualSwitch(t *testing.T) {
 		Channel: 1,
 		State:   1}
 
-	virtualHttpDeviceType := CreateVirtualSmartSwitch(
+	virtualHttpDeviceType := CreateVirtualIOSwitch(
 		nil,
 		app,
 		state.NewFarmStateMap(0),
@@ -108,7 +108,7 @@ func TestVirtualTimerSwitch(t *testing.T) {
 	channel := 1
 	duration := 5
 
-	virtualHttpDeviceType := CreateVirtualSmartSwitch(
+	virtualHttpDeviceType := CreateVirtualIOSwitch(
 		nil,
 		app,
 		state.NewFarmStateMap(0),
@@ -121,4 +121,32 @@ func TestVirtualTimerSwitch(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, channel, timerEvent.GetChannel())
 	assert.Equal(t, duration, timerEvent.GetDuration())
+}
+
+func TestVirtualDeviceInfo(t *testing.T) {
+
+	app := test.NewUnitTestSession()
+
+	deviceType := "unittest"
+	mockURI := "http://localtest"
+	stateFile := "/tmp/cropdroid-state-file"
+
+	hardwareVersion := "v0.0.1a"
+	firmwareVersion := "v0.0.1a"
+	uptime := int64(123456)
+
+	virtualHttpDeviceType := CreateVirtualIOSwitch(
+		nil,
+		app,
+		state.NewFarmStateMap(0),
+		mockURI,
+		deviceType,
+		stateFile)
+
+	deviceInfo, err := virtualHttpDeviceType.SystemInfo()
+
+	assert.Nil(t, err)
+	assert.Equal(t, hardwareVersion, deviceInfo.GetHardwareVersion())
+	assert.Equal(t, firmwareVersion, deviceInfo.GetFirmwareVersion())
+	assert.Equal(t, uptime, deviceInfo.GetUptime())
 }

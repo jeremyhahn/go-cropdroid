@@ -17,7 +17,7 @@ import (
 
 type ConditionRestService interface {
 	GetListView(w http.ResponseWriter, r *http.Request)
-	GetConditions(w http.ResponseWriter, r *http.Request)
+	//GetConditions(w http.ResponseWriter, r *http.Request)
 	Create(w http.ResponseWriter, r *http.Request)
 	Update(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
@@ -99,33 +99,33 @@ func (restService *DefaultConditionRestService) GetListView(w http.ResponseWrite
 	restService.jsonWriter.Write(w, http.StatusOK, condition)
 }
 
-func (restService *DefaultConditionRestService) GetConditions(w http.ResponseWriter, r *http.Request) {
+// func (restService *DefaultConditionRestService) GetConditions(w http.ResponseWriter, r *http.Request) {
 
-	session, err := restService.middleware.CreateSession(w, r)
-	if err != nil {
-		BadRequestError(w, r, err, restService.jsonWriter)
-		return
-	}
-	defer session.Close()
+// 	session, err := restService.middleware.CreateSession(w, r)
+// 	if err != nil {
+// 		BadRequestError(w, r, err, restService.jsonWriter)
+// 		return
+// 	}
+// 	defer session.Close()
 
-	params := mux.Vars(r)
-	deviceID, err := strconv.Atoi(params["deviceID"])
-	if err != nil {
-		BadRequestError(w, r, err, restService.jsonWriter)
-		return
-	}
+// 	params := mux.Vars(r)
+// 	deviceID, err := strconv.Atoi(params["deviceID"])
+// 	if err != nil {
+// 		BadRequestError(w, r, err, restService.jsonWriter)
+// 		return
+// 	}
 
-	session.GetLogger().Debugf("deviceID=%d", deviceID)
+// 	session.GetLogger().Debugf("deviceID=%d", deviceID)
 
-	conditions, err := restService.conditionService.GetConditions(session, deviceID)
-	if err != nil {
-		session.GetLogger().Errorf("Error: ", err)
-		restService.jsonWriter.Error500(w, err)
-		return
-	}
+// 	conditions, err := restService.conditionService.GetConditions(session, deviceID)
+// 	if err != nil {
+// 		session.GetLogger().Errorf("Error: ", err)
+// 		restService.jsonWriter.Error500(w, err)
+// 		return
+// 	}
 
-	restService.jsonWriter.Write(w, http.StatusOK, conditions)
-}
+// 	restService.jsonWriter.Write(w, http.StatusOK, conditions)
+// }
 
 func (restService *DefaultConditionRestService) Create(w http.ResponseWriter, r *http.Request) {
 

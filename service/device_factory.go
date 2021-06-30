@@ -25,16 +25,16 @@ type DeviceFactory interface {
 }
 
 type SmartSwitchFactory struct {
-	app              *app.App
-	farmID           uint64
-	farmName         string
-	stateStore       state.DeviceStorer
-	configStore      store.DeviceConfigStorer
-	consistency      int
-	deviceDAO    dao.DeviceDAO
-	deviceMapper mapper.DeviceMapper
-	serviceRegistry  ServiceRegistry
-	farmChannels     *FarmChannels
+	app             *app.App
+	farmID          uint64
+	farmName        string
+	stateStore      state.DeviceStorer
+	configStore     store.DeviceConfigStorer
+	consistency     int
+	deviceDAO       dao.DeviceDAO
+	deviceMapper    mapper.DeviceMapper
+	serviceRegistry ServiceRegistry
+	farmChannels    *FarmChannels
 	DeviceFactory
 }
 
@@ -44,16 +44,16 @@ func NewDeviceFactory(app *app.App, farmID uint64, farmName string, deviceDAO da
 	farmChannels *FarmChannels) DeviceFactory {
 
 	return &SmartSwitchFactory{
-		app:              app,
-		farmID:           farmID,
-		farmName:         farmName,
-		stateStore:       stateStore,
-		configStore:      configStore,
-		consistency:      consistency,
-		deviceDAO:    deviceDAO,
-		deviceMapper: deviceMapper,
-		serviceRegistry:  serviceRegistry,
-		farmChannels:     farmChannels}
+		app:             app,
+		farmID:          farmID,
+		farmName:        farmName,
+		stateStore:      stateStore,
+		configStore:     configStore,
+		consistency:     consistency,
+		deviceDAO:       deviceDAO,
+		deviceMapper:    deviceMapper,
+		serviceRegistry: serviceRegistry,
+		farmChannels:    farmChannels}
 }
 
 // Builds all device services for a given farm
@@ -79,7 +79,7 @@ func (factory *SmartSwitchFactory) BuildServices(deviceConfigs []config.Device,
 func (factory *SmartSwitchFactory) BuildService(datastore datastore.DeviceDatastore,
 	deviceConfig config.DeviceConfig, mode string) (DeviceService, error) {
 
-	var _device device.SmartSwitcher
+	var _device device.IOSwitcher
 	deviceID := deviceConfig.GetID()
 	deviceType := deviceConfig.GetType()
 
@@ -91,7 +91,7 @@ func (factory *SmartSwitchFactory) BuildService(datastore datastore.DeviceDatast
 
 	if mode == common.CONFIG_MODE_VIRTUAL {
 		farmStateMap := state.NewFarmStateMap(factory.farmID)
-		_device = device.NewVirtualSmartSwitch(factory.app, farmStateMap, "", deviceType)
+		_device = device.NewVirtualIOSwitch(factory.app, farmStateMap, "", deviceType)
 	} else {
 		_device = device.NewSmartSwitch(factory.app, deviceConfig.GetURI(), deviceType)
 	}

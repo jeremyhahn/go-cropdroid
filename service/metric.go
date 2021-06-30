@@ -1,5 +1,3 @@
-// +build !cluster
-
 package service
 
 import (
@@ -15,17 +13,15 @@ type MetricService interface {
 }
 
 type DefaultMetricService struct {
-	dao           dao.MetricDAO
-	mapper        mapper.MetricMapper
-	configService ConfigService
+	dao    dao.MetricDAO
+	mapper mapper.MetricMapper
 	MetricService
 }
 
-func NewMetricService(dao dao.MetricDAO, mapper mapper.MetricMapper, configService ConfigService) MetricService {
+func NewMetricService(dao dao.MetricDAO, mapper mapper.MetricMapper) MetricService {
 	return &DefaultMetricService{
-		dao:           dao,
-		mapper:        mapper,
-		configService: configService}
+		dao:    dao,
+		mapper: mapper}
 }
 
 func (service *DefaultMetricService) Get(id int) (common.Metric, error) {

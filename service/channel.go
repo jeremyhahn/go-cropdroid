@@ -1,5 +1,3 @@
-// +build !cluster
-
 package service
 
 import (

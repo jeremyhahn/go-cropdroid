@@ -187,9 +187,10 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig,
 	}
 	builder.serviceRegistry.SetJsonWebTokenService(jwtService)
 
-	configService := service.NewConfigService(builder.app, builder.datastoreRegistry,
-		builder.serviceRegistry)
-	builder.serviceRegistry.SetConfigService(configService)
+	// v0.0.3a: Removing ConfigService in favor of FarmService
+	// configService := service.NewConfigService(builder.app, builder.datastoreRegistry,
+	// 	builder.serviceRegistry)
+	// builder.serviceRegistry.SetConfigService(configService)
 
 	// Build device and channel cache/indexes (to provide o(n) lookups when searching service registry and farm)
 	// deviceIndex := state.CreateDeviceIndex(farmFactory.GetDeviceIndexMap())

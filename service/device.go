@@ -42,6 +42,20 @@ func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 	device device.IOSwitcher, eventLogService EventLogService,
 	farmChannels *FarmChannels, consistency int) (DeviceService, error) {
 
+	deviceConfig, err := configStore.Get(deviceID, consistency)
+	if err != nil {
+		return nil, err
+	}
+
+	deviceInfo, err := device.SystemInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	deviceConfig.SetHardwareVersion(deviceInfo.GetHardwareVersion())
+	deviceConfig.SetFirmwareVersion(deviceInfo.GetFirmwareVersion())
+	configStore.Put(deviceID, deviceConfig)
+
 	return &IOSwitcherDeviceService{
 		app:             app,
 		deviceID:        deviceID,

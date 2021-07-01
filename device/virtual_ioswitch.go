@@ -17,6 +17,7 @@ type VirtualIOSwitch struct {
 	SmartSwitch
 	farmState state.FarmStateMap
 	stateFile string
+	startTime time.Time
 }
 
 func CreateVirtualIOSwitch(httpClient HttpClient, app *app.App,
@@ -31,7 +32,8 @@ func CreateVirtualIOSwitch(httpClient HttpClient, app *app.App,
 			httpClient: httpClient,
 			deviceType: deviceType},
 		farmState: farmState,
-		stateFile: stateFile}
+		stateFile: stateFile,
+		startTime: time.Now()}
 }
 
 func NewVirtualIOSwitch(app *app.App, farmState state.FarmStateMap,
@@ -118,9 +120,9 @@ func (c *VirtualIOSwitch) TimerSwitch(channel, duration int) (common.TimerEvent,
 
 func (c *VirtualIOSwitch) SystemInfo() (DeviceInfo, error) {
 	return &DefaultDeviceInfo{
-		FirmwareVersion: "v0.0.1a",
-		HardwareVersion: "v0.0.1a",
-		Uptime:          int64(123456)}, nil
+		FirmwareVersion: "virt-v0.0.1a",
+		HardwareVersion: "virt-v0.0.1a",
+		Uptime:          int64(time.Since(c.startTime).Seconds())}, nil
 }
 
 func (c *VirtualIOSwitch) WriteState(state state.DeviceStateMap) error {

@@ -24,7 +24,7 @@ type DeviceFactory interface {
 	GetDevices(session Session) ([]common.Device, error)
 }
 
-type SmartSwitchFactory struct {
+type DefaultDeviceFactory struct {
 	app             *app.App
 	farmID          uint64
 	farmName        string
@@ -43,7 +43,7 @@ func NewDeviceFactory(app *app.App, farmID uint64, farmName string, deviceDAO da
 	deviceMapper mapper.DeviceMapper, serviceRegistry ServiceRegistry,
 	farmChannels *FarmChannels) DeviceFactory {
 
-	return &SmartSwitchFactory{
+	return &DefaultDeviceFactory{
 		app:             app,
 		farmID:          farmID,
 		farmName:        farmName,
@@ -57,7 +57,7 @@ func NewDeviceFactory(app *app.App, farmID uint64, farmName string, deviceDAO da
 }
 
 // Builds all device services for a given farm
-func (factory *SmartSwitchFactory) BuildServices(deviceConfigs []config.Device,
+func (factory *DefaultDeviceFactory) BuildServices(deviceConfigs []config.Device,
 	datastore datastore.DeviceDatastore, mode string) ([]DeviceService, error) {
 
 	services := make([]DeviceService, 0, len(deviceConfigs))
@@ -76,7 +76,7 @@ func (factory *SmartSwitchFactory) BuildServices(deviceConfigs []config.Device,
 }
 
 // Builds a new device service
-func (factory *SmartSwitchFactory) BuildService(datastore datastore.DeviceDatastore,
+func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceDatastore,
 	deviceConfig config.DeviceConfig, mode string) (DeviceService, error) {
 
 	var _device device.IOSwitcher
@@ -96,6 +96,8 @@ func (factory *SmartSwitchFactory) BuildService(datastore datastore.DeviceDatast
 		_device = device.NewSmartSwitch(factory.app, deviceConfig.GetURI(), deviceType)
 	}
 
+	factory.configStore.Put(deviceID, deviceConfig)
+
 	service, err := NewDeviceService(factory.app, deviceID,
 		factory.farmName, factory.stateStore, factory.configStore, datastore,
 		factory.deviceMapper, _device, factory.serviceRegistry.GetEventLogService(),
@@ -106,49 +108,66 @@ func (factory *SmartSwitchFactory) BuildService(datastore datastore.DeviceDatast
 		return nil, ErrCreateService
 	}
 
-	factory.configStore.Cache(deviceID, deviceConfig)
-
 	return service, nil
 }
 
 // Returns all device configs for a given farm session
-func (factory *SmartSwitchFactory) GetAll(session Session) ([]config.Device, error) {
-	deviceEntities, err := factory.deviceDAO.GetByFarmId(
-		session.GetFarmService().GetConfig().GetID())
-	if err != nil {
-		return nil, err
-	}
-	return deviceEntities, nil
+func (factory *DefaultDeviceFactory) GetAll(session Session) ([]config.Device, error) {
+	// deviceEntities, err := factory.deviceDAO.GetByFarmId(
+	// 	session.GetFarmService().GetConfig().GetID())
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//return deviceEntities, nil
+	return session.GetFarmService().GetConfig().GetDevices(), nil
 }
 
 // Returns all common.device objects for a given farm session
-func (factory *SmartSwitchFactory) GetDevices(session Session) ([]common.Device, error) {
+func (factory *DefaultDeviceFactory) GetDevices(session Session) ([]common.Device, error) {
 	var devices []common.Device
 	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	deviceEntities, err := factory.deviceDAO.GetByFarmId(farmConfig.GetID())
-	if err != nil {
-		return nil, err
-	}
-	//devices := make([]common.Device, len(deviceEntities)-1) // -1 for server device
-	for _, entity := range deviceEntities {
-		if entity.GetType() == common.CONTROLLER_TYPE_SERVER {
+	//farmConfig := farmService.GetConfig()
+
+	// deviceEntities, err := factory.deviceDAO.GetByFarmId(farmConfig.GetID())
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// //devices := make([]common.Device, len(deviceEntities)-1) // -1 for server device
+	// for _, entity := range deviceEntities {
+	// 	if entity.GetType() == common.CONTROLLER_TYPE_SERVER {
+	// 		continue
+	// 	}
+	// 	deviceState, err := farmService.GetState().GetDevice(entity.GetType())
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	deviceConfig, err := farmConfig.GetDevice(entity.GetType())
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	device, err := factory.deviceMapper.MapStateToDevice(deviceState, *deviceConfig)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	//devices[i] = device
+	// 	devices = append(devices, device) // dynamically add - not sure how many server devices there will be
+	// }
+
+	deviceConfigs := farmService.GetConfig().GetDevices()
+	for _, deviceConfig := range deviceConfigs {
+		if deviceConfig.GetType() == common.CONTROLLER_TYPE_SERVER {
 			continue
 		}
-		deviceState, err := farmService.GetState().GetDevice(entity.GetType())
+		deviceState, err := factory.stateStore.Get(deviceConfig.GetID())
 		if err != nil {
 			return nil, err
 		}
-		deviceConfig, err := farmConfig.GetDevice(entity.GetType())
+		device, err := factory.deviceMapper.MapStateToDevice(deviceState, deviceConfig)
 		if err != nil {
 			return nil, err
 		}
-		device, err := factory.deviceMapper.MapStateToDevice(deviceState, *deviceConfig)
-		if err != nil {
-			return nil, err
-		}
-		//devices[i] = device
-		devices = append(devices, device) // dynamically add - not sure how many server devices there will be
+		devices = append(devices, device)
 	}
+
 	return devices, nil
 }

@@ -61,15 +61,17 @@ func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, de
 		channels[i] = channel
 	}
 	return &model.Device{
-		ID:          device.GetID(),
-		Type:        device.GetType(),
-		Description: device.GetDescription(),
-		Enable:      device.IsEnabled(),
-		Notify:      device.IsNotify(),
-		URI:         device.GetURI(),
-		Configs:     device.GetConfigMap(),
-		Metrics:     metrics,
-		Channels:    channels}, nil
+		ID:              device.GetID(),
+		Type:            device.GetType(),
+		Description:     device.GetDescription(),
+		Enable:          device.IsEnabled(),
+		Notify:          device.IsNotify(),
+		URI:             device.GetURI(),
+		HardwareVersion: device.GetHardwareVersion(),
+		FirmwareVersion: device.GetFirmwareVersion(),
+		Configs:         device.GetConfigMap(),
+		Metrics:         metrics,
+		Channels:        channels}, nil
 }
 
 func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity config.DeviceConfig,

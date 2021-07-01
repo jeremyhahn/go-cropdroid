@@ -20,6 +20,7 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("Git Tag:\t\t%s\n", app.GitTag)
 		fmt.Printf("Git Hash:\t\t%s\n", app.GitHash)
 		fmt.Printf("Build User:\t\t%s\n", app.BuildUser)
+		fmt.Printf("Build Date:\t\t%s\n", app.BuildDate)
 		fmt.Printf("Release:\t\t%s\n", app.Release)
 		fmt.Printf("Image:\t\t\t%s\n", app.Image)
 	},

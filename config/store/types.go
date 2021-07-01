@@ -19,7 +19,7 @@ type FarmConfigStorer interface {
 type DeviceConfigStorer interface {
 	Cache(deviceID uint64, farmConfig config.DeviceConfig)
 	Get(deviceID uint64, CONSISTENCY_LEVEL int) (config.DeviceConfig, error)
-	GetAll(farmID uint64) []config.DeviceConfig
+	GetAll(deviceID uint64) []config.DeviceConfig
 	Len() int
-	Put(deviceID uint64, farmConfig config.DeviceConfig) error
+	Put(deviceID uint64, deviceConfig config.DeviceConfig) error
 }

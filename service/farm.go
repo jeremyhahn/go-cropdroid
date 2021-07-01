@@ -50,6 +50,11 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 
 	backoffTable := make(map[uint64]map[int]time.Time, 0)
 
+	deviceServices, err := serviceRegistry.GetDeviceServices(farmID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Only used when clustering enabled
 	clusterHash := fnv.New64a()
 	clusterHash.Write([]byte(fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmID)))
@@ -58,12 +63,8 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 	_state, err := stateStore.Get(farmID)
 	if err == state.ErrFarmNotFound {
 		_state = state.NewFarmStateMap(farmID)
-		devices, err := serviceRegistry.GetDeviceServices(farmID)
-		if err != nil {
-			return nil, err
-		}
 		deviceStateMaps := make([]state.DeviceStateMap, 0)
-		for _, d := range devices {
+		for _, d := range deviceServices {
 			conf, _ := d.GetConfig()
 			deviceID := conf.GetID()
 			deviceStateMap := state.CreateDeviceStateMapEmpty(
@@ -77,6 +78,17 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 		app.Logger.Errorf("Fatal farm service error (farmID=%d): %s", farmID, err)
 		return nil, err
 	}
+
+	// Set farmConfig devices with latest configs (populated SystemInfo)
+	// TODO: make this more efficient
+	for _, ds := range deviceServices {
+		deviceConfig, err := ds.GetConfig()
+		if err != nil {
+			return nil, err
+		}
+		farmConfig.SetDevice(deviceConfig)
+	}
+	configStore.Put(farmID, farmConfig)
 
 	return &DefaultFarmService{
 		app:                 app,

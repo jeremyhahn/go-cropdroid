@@ -7,6 +7,7 @@ import (
 
 type Condition struct {
 	ID              uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	WorkflowID      uint64  `yaml:"workflow" json:"workflow_id"`
 	ChannelID       int     `yaml:"channel" json:"channel_id"`
 	MetricID        int     `yaml:"metric" json:"metric_id"`
 	Comparator      string  `yaml:"comparator" json:"comparator"`
@@ -24,6 +25,14 @@ func (condition *Condition) GetID() uint64 {
 
 func (condition *Condition) SetID(id uint64) {
 	condition.ID = id
+}
+
+func (condition *Condition) SetWorkflowID(id uint64) {
+	condition.WorkflowID = id
+}
+
+func (condition *Condition) GetWorkflowID() uint64 {
+	return condition.WorkflowID
 }
 
 func (condition *Condition) SetChannelID(id int) {

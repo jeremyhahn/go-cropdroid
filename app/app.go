@@ -38,12 +38,13 @@ type App struct {
 	DebugFlag           bool
 	DowngradeUser       string
 	EnableRegistrations bool // WebRegistrations
+	GormDB              gormstore.GormDB
 	GORM                *gorm.DB
 	GORMInitParams      *gormstore.GormInitParams
 	HomeDir             string
 	Interval            int
 	KeyDir              string
-	KeyPair             *KeyPair
+	KeyPair             KeyPair
 	Location            *time.Location
 	LogDir              string
 	LogFile             string

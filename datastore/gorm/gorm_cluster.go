@@ -1,4 +1,4 @@
-// +build cluster
+// +build ignore
 
 package gorm
 
@@ -60,7 +60,8 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 		//"file:%s?mode=memory&cache=shared"
 		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory", database.params.DBName))
 		//database.db.LogMode(true)
-		if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
+		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
+		if err := NewGormInitializer(database.logger, database, database.params.Location).Initialize(); err != nil {
 			database.logger.Fatal(err)
 		}
 	case "sqlite":
@@ -106,6 +107,8 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&config.License{})
 	database.db.AutoMigrate(&entity.InventoryType{})
 	database.db.AutoMigrate(&entity.Inventory{})
+	database.db.AutoMigrate(&config.Workflow{})
+	database.db.AutoMigrate(&config.WorkflowStep{})
 	return nil
 }
 

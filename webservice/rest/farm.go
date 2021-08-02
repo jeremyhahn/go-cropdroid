@@ -18,14 +18,16 @@ type FarmRestService interface {
 }
 
 type DefaultFarmRestService struct {
-	farmService service.FarmService
-	middleware  service.Middleware
-	jsonWriter  common.HttpWriter
+	publicKey  string
+	middleware service.Middleware
+	jsonWriter common.HttpWriter
 	FarmRestService
 }
 
-func NewFarmRestService(middleware service.Middleware, jsonWriter common.HttpWriter) FarmRestService {
+func NewFarmRestService(publicKey string, middleware service.Middleware,
+	jsonWriter common.HttpWriter) FarmRestService {
 	return &DefaultFarmRestService{
+		publicKey:  publicKey,
 		middleware: middleware,
 		jsonWriter: jsonWriter}
 }
@@ -40,6 +42,8 @@ func (restService *DefaultFarmRestService) RegisterEndpoints(router *mux.Router,
 	setConfigEndpoint := fmt.Sprintf("%s/{deviceID}/{key}", configEndpoint)
 	// /farms/{farmID}/state
 	stateEndpoint := fmt.Sprintf("%s/state", endpoint)
+	// /farms/{farmID}/pubkey
+	pubKeyEndpoint := fmt.Sprintf("%s/pubkey", endpoint)
 	router.Handle(configEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
 		negroni.Wrap(http.HandlerFunc(restService.Config)),
@@ -52,6 +56,7 @@ func (restService *DefaultFarmRestService) RegisterEndpoints(router *mux.Router,
 		negroni.HandlerFunc(restService.middleware.Validate),
 		negroni.Wrap(http.HandlerFunc(restService.Set)),
 	))
+	router.Handle(pubKeyEndpoint, http.HandlerFunc(restService.PublicKey))
 	return []string{endpoint, configEndpoint, stateEndpoint, setConfigEndpoint}
 }
 
@@ -78,7 +83,7 @@ func (restService *DefaultFarmRestService) State(w http.ResponseWriter, r *http.
 	}
 	defer session.Close()
 
-	session.GetLogger().Debugf("REST service /state request email=%s", session.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /farms/{farmID}/state request email=%s", session.GetUser().GetEmail())
 
 	restService.jsonWriter.Write(w, http.StatusOK, session.GetFarmService().GetState())
 }
@@ -123,4 +128,22 @@ func (restService *DefaultFarmRestService) Set(w http.ResponseWriter, r *http.Re
 	}
 
 	restService.jsonWriter.Write(w, http.StatusOK, nil)
+}
+
+func (restService *DefaultFarmRestService) PublicKey(w http.ResponseWriter, r *http.Request) {
+
+	/*
+		session, err := restService.middleware.CreateSession(w, r)
+		if err != nil {
+			BadRequestError(w, r, err, restService.jsonWriter)
+			return
+		}
+		defer session.Close()
+
+		session.GetLogger().Debugf("REST service /farms/{farmID}/pubkey request email=%s", session.GetUser().GetEmail())
+
+		restService.jsonWriter.Write(w, http.StatusOK, session.GetFarmService().GetPublicKey())
+	*/
+
+	restService.jsonWriter.Write(w, http.StatusOK, restService.publicKey)
 }

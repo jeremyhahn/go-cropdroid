@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/jeremyhahn/go-cropdroid/common"
 	logging "github.com/op/go-logging"
 )
@@ -65,4 +67,8 @@ func (session *DefaultSession) Close() {
 			session.GetLogger().Debugf("[common.Context] Closing session for %s (uid=%d)", session.user.GetEmail(), session.user.GetID())
 		}
 	}
+}
+
+func (session *DefaultSession) String() string {
+	return fmt.Sprintf("user=%s, farmID=%d", session.user, session.farmService.GetFarmID())
 }

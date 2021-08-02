@@ -1,3 +1,5 @@
+// +build ignore
+
 package gorm
 
 type DatabaseInitializer interface {

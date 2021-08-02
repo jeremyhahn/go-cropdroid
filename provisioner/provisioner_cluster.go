@@ -10,44 +10,46 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jinzhu/gorm"
+
 	logging "github.com/op/go-logging"
 )
 
 type RaftFarmProvisioner struct {
-	logger          *logging.Logger
-	gossip          cluster.GossipCluster
-	location        *time.Location
-	gormProvisioner *GormFarmProvisioner
+	logger      *logging.Logger
+	gossip      cluster.GossipCluster
+	location    *time.Location
+	farmDAO     dao.FarmDAO
+	userMapper  mapper.UserMapper
+	initializer datastore.Initializer
 	FarmProvisioner
 }
 
 func NewRaftFarmProvisioner(logger *logging.Logger, db *gorm.DB, gossip cluster.GossipCluster,
-	location *time.Location, farmDAO dao.FarmDAO) FarmProvisioner {
-	return &RaftFarmProvisioner{
-		logger:   logger,
-		gossip:   gossip,
-		location: location,
-		gormProvisioner: &GormFarmProvisioner{
-			logger:   logger,
-			db:       db,
-			location: location,
-			farmDAO:  farmDAO}}
-}
+	location *time.Location, farmDAO dao.FarmDAO, userMapper mapper.UserMapper,
+	initializer datastore.Initializer) FarmProvisioner {
 
-func (provisioner *RaftFarmProvisioner) BuildConfig(adminUser common.UserAccount) (config.FarmConfig, error) {
-	return provisioner.gormProvisioner.BuildConfig(adminUser)
+	return &RaftFarmProvisioner{
+		logger:      logger,
+		gossip:      gossip,
+		location:    location,
+		farmDAO:     farmDAO,
+		userMapper:  userMapper,
+		initializer: initializer}
 }
 
 func (provisioner *RaftFarmProvisioner) Provision(userAccount common.UserAccount) (config.FarmConfig, error) {
-	farmConfig, err := provisioner.BuildConfig(userAccount)
+	userConfig := provisioner.userMapper.MapUserModelToEntity(userAccount)
+	farmConfig, err := provisioner.initializer.BuildConfig(userConfig)
 	if err != nil {
 		return nil, err
 	}
 	if err := provisioner.gossip.Provision(farmConfig); err != nil {
 		return nil, err
 	}
-	if err := provisioner.gormProvisioner.farmDAO.Save(farmConfig.(*config.Farm)); err != nil {
+	if err := provisioner.farmDAO.Save(farmConfig.(*config.Farm)); err != nil {
 		return nil, err
 	}
 	return farmConfig, nil

@@ -77,6 +77,30 @@ func CreateRsaKeyPair(logger *logging.Logger, directory string, saltLen int) (Ke
 		SHA256: sha256.New()}, nil
 }
 
+func CreateUserDefinedRsaKeyPair(logger *logging.Logger, privKey, pubKey string, saltLen int) (KeyPair, error) {
+	logger.Debug("Loading key files from string")
+	privateKeyBytes := []byte(privKey)
+	publicKeyBytes := []byte(pubKey)
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyBytes)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+	return &RsaKeyPair{
+		PrivateKey:   privateKey,
+		PrivateBytes: privateKeyBytes,
+		PublicKey:    publicKey,
+		PublicBytes:  publicKeyBytes,
+		PSSOptions: &rsa.PSSOptions{
+			SaltLength: saltLen},
+		SHA256: sha256.New()}, nil
+}
+
 func (keypair *RsaKeyPair) GetDirectory() string {
 	return keypair.Directory
 }

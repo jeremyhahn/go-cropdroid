@@ -7,14 +7,15 @@ import (
 )
 
 type Condition struct {
-	ID             string  `json:"id"`
+	ID         string  `json:"id"`
 	DeviceType string  `json:"deviceType"`
-	MetricID       int     `json:"metricId"`
-	MetricName     string  `json:"metricName"`
-	ChannelID      int     `json:"channelId"`
-	Comparator     string  `json:"comparator"`
-	Threshold      float64 `json:"threshold"`
-	Text           string  `json:"text"`
+	MetricID   int     `json:"metricId"`
+	MetricName string  `json:"metricName"`
+	WorkflowID uint64  `json:"workflowId"`
+	ChannelID  int     `json:"channelId"`
+	Comparator string  `json:"comparator"`
+	Threshold  float64 `json:"threshold"`
+	Text       string  `json:"text"`
 	config.ConditionConfig
 }
 
@@ -32,6 +33,10 @@ func (condition *Condition) GetMetricID() int {
 
 func (condition *Condition) GetMetricName() string {
 	return condition.MetricName
+}
+
+func (condition *Condition) GetWorkflowID() uint64 {
+	return condition.WorkflowID
 }
 
 func (condition *Condition) GetChannelID() int {

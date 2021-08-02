@@ -8,7 +8,7 @@ import (
 
 type Metric struct {
 	ID            int        `yaml:"id" json:"id"`
-	DeviceID  uint64     `yaml:"deviceID" json:"deviceId"`
+	DeviceID      uint64     `yaml:"deviceID" json:"deviceId"`
 	DataType      int        `yaml:"datatype" json:"datatype"`
 	Name          string     `yaml:"name" json:"name"`
 	Key           string     `yaml:"key" json:"key"`

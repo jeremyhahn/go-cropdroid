@@ -42,10 +42,19 @@ func (dao *GormFarmDAO) First() (config.FarmConfig, error) {
 func (dao *GormFarmDAO) Get(farmID uint64) (config.FarmConfig, error) {
 	dao.logger.Debugf("Getting farm: %d", farmID)
 	var farm config.Farm
-	if err := dao.db.Preload("Devices").Preload("Users").Preload("Users.Roles").
-		Preload("Devices.Configs").Preload("Devices.Metrics").Preload("Devices.Channels").
+	if err := dao.db.
+		Preload("Devices").
+		Preload("Users").
+		Preload("Users.Roles").
+		Preload("Devices.Configs").
+		Preload("Devices.Metrics").
+		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
 		Preload("Devices.Channels.Schedule").
+		Preload("Workflows").
+		Preload("Workflows.Conditions").
+		Preload("Workflows.Schedules").
+		Preload("Workflows.Steps").
 		First(&farm, farmID).Error; err != nil {
 		return nil, err
 	}
@@ -58,10 +67,19 @@ func (dao *GormFarmDAO) Get(farmID uint64) (config.FarmConfig, error) {
 func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
 	dao.logger.Debug("Getting all farms")
 	var farms []config.Farm
-	if err := dao.db.Preload("Devices").Preload("Users").Preload("Users.Roles").
-		Preload("Devices.Configs").Preload("Devices.Metrics").Preload("Devices.Channels").
+	if err := dao.db.
+		Preload("Devices").
+		Preload("Users").
+		Preload("Users.Roles").
+		Preload("Devices.Configs").
+		Preload("Devices.Metrics").
+		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
 		Preload("Devices.Channels.Schedule").
+		Preload("Workflows").
+		Preload("Workflows.Conditions").
+		Preload("Workflows.Schedules").
+		Preload("Workflows.Steps").
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
@@ -77,10 +95,19 @@ func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
 func (dao *GormFarmDAO) GetByOrgAndUserID(orgID, userID int) ([]config.Farm, error) {
 	dao.logger.Debug("Getting all farms for user: %d", userID)
 	var farms []config.Farm
-	if err := dao.db.Preload("Devices").Preload("Users").Preload("Users.Roles").
-		Preload("Devices.Configs").Preload("Devices.Metrics").Preload("Devices.Channels").
+	if err := dao.db.
+		Preload("Devices").
+		Preload("Users").
+		Preload("Users.Roles").
+		Preload("Devices.Configs").
+		Preload("Devices.Metrics").
+		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
 		Preload("Devices.Channels.Schedule").
+		Preload("Workflows").
+		Preload("Workflows.Conditions").
+		Preload("Workflows.Schedules").
+		Preload("Workflows.Steps").
 		Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
 		Where("permissions.organization_id = ? AND permissions.user_id = ?", orgID, userID).
 		Find(&farms).Error; err != nil {

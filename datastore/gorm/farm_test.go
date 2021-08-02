@@ -20,32 +20,26 @@ func TestFarmAssociations(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
+	currentTest.gorm.AutoMigrate(&config.Workflow{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
 
-	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
-	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
 
 	role := config.NewRole()
 	role.SetName("test")
 
-	err := roleDAO.Create(role)
-	assert.Nil(t, err)
-
 	user := config.NewUser()
 	user.SetEmail("root@localhost")
 	user.SetPassword("$ecret")
-	//user.SetRoles([]config.Role{*role})
-
-	err = userDAO.Create(user)
-	assert.Nil(t, err)
+	user.SetRoles([]config.Role{*role})
 
 	farm := config.NewFarm()
 	farm.SetName("Test Farm")
 	farm.SetMode("test")
 	farm.SetInterval(60)
-	//farm.SetUsers([]config.User{*user})
+	farm.SetUsers([]config.User{*user})
 
-	err = farmDAO.Create(farm)
+	err := farmDAO.Create(farm)
 	assert.Nil(t, err)
 
 	currentTest.gorm.Create(&config.Permission{
@@ -80,6 +74,8 @@ func TestGetAll(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
+	currentTest.gorm.AutoMigrate(&config.Workflow{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
 
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
 
@@ -120,6 +116,8 @@ func TestGet(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
+	currentTest.gorm.AutoMigrate(&config.Workflow{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
 
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
 

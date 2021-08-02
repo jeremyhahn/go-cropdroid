@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 const (
 	CONFIG_KEY_NAME     = "name"
@@ -10,6 +13,12 @@ const (
 	CONFIG_KEY_ENABLE   = "enable"
 	CONFIG_KEY_NOTIFY   = "notify"
 	CONFIG_KEY_URI      = "uri"
+)
+
+var (
+	ErrDeviceNotFound       = errors.New("device not found")
+	ErrWorkflowNotFound     = errors.New("workflow not found")
+	ErrWorkflowStepNotFound = errors.New("workflow step not found")
 )
 
 type ServerConfig interface {
@@ -38,15 +47,10 @@ type OrganizationConfig interface {
 	SetID() int
 	GetName() string
 	SetName(string)
-	//SetFarms(farms []Farm)
-	//GetFarms() []Farm
-	//GetFarm(id int) (Farm, error)
-
 	AddFarm(farm Farm)
 	SetFarms(farms []Farm)
 	GetFarms() []Farm
 	GetFarm(id uint64) (*Farm, error)
-
 	SetUsers(users []User)
 	GetUsers() []User
 	GetLicense() *License
@@ -74,10 +78,12 @@ type FarmConfig interface {
 	SetOrgID(id int)
 	GetInterval() int
 	SetInterval(int)
-	//SetTimezone(tz *time.Location)
-	//GetTimezone() *time.Location
 	SetTimezone(tz string)
 	GetTimezone() string
+	SetPrivateKey(key string)
+	GetPrivateKey() string
+	SetPublicKey(key string)
+	GetPublicKey() string
 	GetSmtp() SmtpConfig
 	SetUsers(users []User)
 	GetUsers() []User
@@ -86,7 +92,12 @@ type FarmConfig interface {
 	SetDevices([]Device)
 	SetDevice(device DeviceConfig)
 	GetDevice(deviceType string) (*Device, error)
-	GetDeviceById(id int) (*Device, error)
+	GetDeviceById(id uint64) (*Device, error)
+	AddWorkflow(workflow WorkflowConfig)
+	GetWorkflows() []Workflow
+	RemoveWorkflow(workflow WorkflowConfig) error
+	SetWorkflows(workflows []Workflow)
+	SetWorkflow(workflow WorkflowConfig)
 	ParseConfigs() error
 	HydrateConfigs() error
 }
@@ -214,6 +225,8 @@ type ChannelConfig interface {
 type ConditionConfig interface {
 	SetID(uint64)
 	GetID() uint64
+	SetWorkflowID(id uint64)
+	GetWorkflowID() uint64
 	SetChannelID(int)
 	GetChannelID() int
 	GetMetricID() int
@@ -228,12 +241,13 @@ type ConditionConfig interface {
 type ScheduleConfig interface {
 	GetID() uint64
 	SetID(uint64)
+	SetWorkflowID(id uint64)
+	GetWorkflowID() uint64
 	GetChannelID() int
 	SetStartDate(time.Time)
 	GetStartDate() time.Time
 	SetEndDate(*time.Time)
 	GetEndDate() *time.Time
-	// recurring options
 	SetFrequency(int)
 	GetFrequency() int
 	SetInterval(int)
@@ -247,13 +261,6 @@ type ScheduleConfig interface {
 	SetExecutionCount(int)
 	GetExecutionCount() int
 	Hash() uint64
-}
-
-type TriggerConfig interface {
-	GetChannel() int
-	GetState() int
-	GetTimer() string
-	IsAsync() bool
 }
 
 type LicenseConfig interface {
@@ -272,6 +279,43 @@ type UserConfig interface {
 	GetRoles() []Role
 	AddRole(role Role)
 	RedactPassword()
+}
+
+type WorkflowConfig interface {
+	GetID() uint64
+	SetID(id uint64)
+	GetFarmID() uint64
+	SetFarmID(id uint64)
+	GetName() string
+	SetName(name string)
+	GetConditions() []Condition
+	SetConditions(conditions []Condition)
+	GetSchedules() []Schedule
+	SetSchedules(schedules []Schedule)
+	AddStep(step WorkflowStepConfig)
+	GetSteps() []WorkflowStep
+	RemoveStep(step WorkflowStepConfig) error
+	SetStep(step WorkflowStepConfig) error
+	SetSteps(steps []WorkflowStep)
+}
+
+type WorkflowStepConfig interface {
+	GetID() uint64
+	SetID(id uint64)
+	// GetName() string
+	// SetName(name string)
+	GetWorkflowID() uint64
+	SetWorkflowID(id uint64)
+	GetDeviceID() uint64
+	SetDeviceID(id uint64)
+	GetChannelID() int
+	SetChannelID(id int)
+	GetWebhook() string
+	SetWebhook(url string)
+	GetDuration() int
+	SetDuration(duration int)
+	GetWait() int
+	SetWait(seconds int)
 }
 
 type RoleConfig interface {

@@ -50,8 +50,9 @@ func NewGormConfigBuilder(_app *app.App, deviceStore string,
 		consistencyLevel: common.CONSISTENCY_CACHED}
 }
 
-func (builder *GormConfigBuilder) Build() (config.ServerConfig,
-	service.ServiceRegistry, []rest.RestService, error) {
+func (builder *GormConfigBuilder) Build() (app.KeyPair,
+	config.ServerConfig, service.ServiceRegistry,
+	[]rest.RestService, error) {
 
 	var restServices []rest.RestService
 
@@ -135,11 +136,11 @@ func (builder *GormConfigBuilder) Build() (config.ServerConfig,
 		serviceRegistry.SetChangefeedService(changefeedService)
 	}
 
-	restServiceRegistry := rest.NewFreewareRestServiceRegistry(mapperRegistry, serviceRegistry)
+	publicKey := string(rsaKeyPair.GetPublicBytes())
+	restServiceRegistry := rest.NewFreewareRestServiceRegistry(publicKey, mapperRegistry, serviceRegistry)
 	if restServices == nil {
 		restServices = restServiceRegistry.GetRestServices()
 	}
 
-	//return serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err
-	return serverConfig, serviceRegistry, restServices, err
+	return rsaKeyPair, serverConfig, serviceRegistry, restServices, err
 }

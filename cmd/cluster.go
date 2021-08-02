@@ -133,7 +133,7 @@ var clusterCmd = &cobra.Command{
 
 		// TODO: Check device hardware and firmware versions at startup, update devices db table
 		builder := builder.NewClusterConfigBuilder(App, params, DeviceStore, AppStateTTL, AppStateTick)
-		serverConfig, serviceRegistry, restServices, err := builder.Build()
+		_, serverConfig, serviceRegistry, restServices, err := builder.Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}

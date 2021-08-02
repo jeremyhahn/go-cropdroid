@@ -8,35 +8,39 @@ import (
 )
 
 type GormDaoRegistry struct {
-	orgDAO              dao.OrganizationDAO
-	farmDAO             dao.FarmDAO
+	orgDAO          dao.OrganizationDAO
+	farmDAO         dao.FarmDAO
 	deviceDAO       dao.DeviceDAO
 	deviceConfigDAO dao.DeviceConfigDAO
-	metricDAO           dao.MetricDAO
-	channelDAO          dao.ChannelDAO
-	scheduleDAO         dao.ScheduleDAO
-	conditionDAO        dao.ConditionDAO
-	algorithmDAO        dao.AlgorithmDAO
-	eventLogDAO         EventLogDAO
-	userDAO             dao.UserDAO
-	roleDAO             dao.RoleDAO
+	metricDAO       dao.MetricDAO
+	channelDAO      dao.ChannelDAO
+	scheduleDAO     dao.ScheduleDAO
+	conditionDAO    dao.ConditionDAO
+	algorithmDAO    dao.AlgorithmDAO
+	eventLogDAO     EventLogDAO
+	userDAO         dao.UserDAO
+	roleDAO         dao.RoleDAO
+	workflowDAO     dao.WorkflowDAO
+	workflowStepDAO dao.WorkflowStepDAO
 	datastore.DatastoreRegistry
 }
 
 func NewGormRegistry(logger *logging.Logger, db *gorm.DB) datastore.DatastoreRegistry {
 	return &GormDaoRegistry{
-		orgDAO:              NewOrganizationDAO(logger, db),
-		farmDAO:             NewFarmDAO(logger, db),
+		orgDAO:          NewOrganizationDAO(logger, db),
+		farmDAO:         NewFarmDAO(logger, db),
 		deviceDAO:       NewDeviceDAO(logger, db),
 		deviceConfigDAO: NewDeviceConfigDAO(logger, db),
-		metricDAO:           NewMetricDAO(logger, db),
-		channelDAO:          NewChannelDAO(logger, db),
-		scheduleDAO:         NewScheduleDAO(logger, db),
-		conditionDAO:        NewConditionDAO(logger, db),
-		algorithmDAO:        NewAlgorithmDAO(logger, db),
-		eventLogDAO:         NewEventLogDAO(logger, db),
-		userDAO:             NewUserDAO(logger, db),
-		roleDAO:             NewRoleDAO(logger, db)}
+		metricDAO:       NewMetricDAO(logger, db),
+		channelDAO:      NewChannelDAO(logger, db),
+		scheduleDAO:     NewScheduleDAO(logger, db),
+		conditionDAO:    NewConditionDAO(logger, db),
+		algorithmDAO:    NewAlgorithmDAO(logger, db),
+		eventLogDAO:     NewEventLogDAO(logger, db),
+		userDAO:         NewUserDAO(logger, db),
+		roleDAO:         NewRoleDAO(logger, db),
+		workflowDAO:     NewWorkflowDAO(logger, db),
+		workflowStepDAO: NewWorkflowStepDAO(logger, db)}
 }
 
 func (registry *GormDaoRegistry) GetOrganizationDAO() dao.OrganizationDAO {
@@ -133,4 +137,20 @@ func (registry *GormDaoRegistry) GetRoleDAO() dao.RoleDAO {
 
 func (registry *GormDaoRegistry) SetRoleDAO(dao dao.RoleDAO) {
 	registry.roleDAO = dao
+}
+
+func (registry *GormDaoRegistry) GetWorkflowDAO() dao.WorkflowDAO {
+	return registry.workflowDAO
+}
+
+func (registry *GormDaoRegistry) SetWorkflowDAO(dao dao.WorkflowDAO) {
+	registry.workflowDAO = dao
+}
+
+func (registry *GormDaoRegistry) GetWorkflowStepDAO() dao.WorkflowStepDAO {
+	return registry.workflowStepDAO
+}
+
+func (registry *GormDaoRegistry) SetWorkflowStepDAO(dao dao.WorkflowStepDAO) {
+	registry.workflowStepDAO = dao
 }

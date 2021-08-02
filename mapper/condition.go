@@ -26,6 +26,7 @@ func NewConditionMapper() ConditionMapper {
 func (mapper *DefaultConditionMapper) MapModelToEntity(model config.ConditionConfig) *config.Condition {
 	return &config.Condition{
 		ID:         model.GetID(),
+		WorkflowID: model.GetWorkflowID(),
 		ChannelID:  model.GetChannelID(),
 		MetricID:   model.GetMetricID(),
 		Comparator: model.GetComparator(),
@@ -35,6 +36,7 @@ func (mapper *DefaultConditionMapper) MapModelToEntity(model config.ConditionCon
 func (mapper *DefaultConditionMapper) MapEntityToModel(entity *config.Condition) *config.Condition {
 	return &config.Condition{
 		ID:         entity.GetID(),
+		WorkflowID: entity.GetWorkflowID(),
 		ChannelID:  entity.GetChannelID(),
 		MetricID:   entity.GetMetricID(),
 		Comparator: entity.GetComparator(),
@@ -51,20 +53,22 @@ func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionCon
 		entity.GetComparator(),
 		entity.GetThreshold())
 	return &viewmodel.Condition{
-		ID:             fmt.Sprintf("%d", entity.GetID()),
+		ID:         fmt.Sprintf("%d", entity.GetID()),
 		DeviceType: deviceType,
-		MetricID:       metric.GetID(),
-		MetricName:     metric.GetName(),
-		ChannelID:      channelID,
-		Comparator:     entity.GetComparator(),
-		Threshold:      entity.GetThreshold(),
-		Text:           text}
+		MetricID:   metric.GetID(),
+		MetricName: metric.GetName(),
+		WorkflowID: entity.GetWorkflowID(),
+		ChannelID:  channelID,
+		Comparator: entity.GetComparator(),
+		Threshold:  entity.GetThreshold(),
+		Text:       text}
 }
 
 func (mapper *DefaultConditionMapper) MapViewToConfig(viewModel viewmodel.Condition) config.ConditionConfig {
 	id, _ := strconv.ParseUint(viewModel.GetID(), 10, 64)
 	return &config.Condition{
 		ID:         id,
+		WorkflowID: viewModel.GetWorkflowID(),
 		MetricID:   viewModel.GetMetricID(),
 		ChannelID:  viewModel.GetChannelID(),
 		Comparator: viewModel.GetComparator(),

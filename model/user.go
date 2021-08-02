@@ -25,8 +25,16 @@ func (user *User) GetEmail() string {
 	return user.Email
 }
 
+func (user *User) SetEmail(email string) {
+	user.Email = email
+}
+
 func (user *User) GetPassword() string {
 	return user.Password
+}
+
+func (user *User) SetPassword(password string) {
+	user.Password = password
 }
 
 func (user *User) GetRoles() []common.Role {

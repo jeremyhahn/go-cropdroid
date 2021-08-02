@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeremyhahn/go-cropdroid/app"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
@@ -18,7 +17,6 @@ var TestSuiteName = "cropdroid_service_test"
 
 type ProvisionerTest struct {
 	mutex    *sync.Mutex
-	app      *app.App
 	db       gormstore.GormDB
 	gorm     *gorm.DB
 	logger   *logging.Logger
@@ -49,14 +47,6 @@ func NewIntegrationTest() *ProvisionerTest {
 	gormdb = database.Connect(false)
 	database.Migrate()
 
-	app := &app.App{
-		GORM:           gormdb,
-		GORMInitParams: gormInitParams,
-		KeyDir:         "../keys",
-		Logger:         logger,
-		Location:       Location}
-
-	CurrentTest.app = app
 	CurrentTest.db = database
 	CurrentTest.gorm = gormdb
 	CurrentTest.logger = logger

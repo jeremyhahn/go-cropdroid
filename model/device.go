@@ -14,8 +14,8 @@ type Device struct {
 	Enable          bool              `yaml:"enable" json:"enable"`
 	Notify          bool              `yaml:"notify" json:"notify"`
 	URI             string            `yaml:"uri" json:"uri"`
-	HardwareVersion string            `yaml:"hardwareVersion" json:"hardwareVersion"`
-	FirmwareVersion string            `yaml:"firmwareVersion" json:"firmwareVersion"`
+	HardwareVersion string            `yaml:"hwVersion" json:"hwVersion"`
+	FirmwareVersion string            `yaml:"fwVersion" json:"fwVersion"`
 	Configs         map[string]string `yaml:"configs" json:"configs"`
 	Metrics         []common.Metric   `yaml:"metrics" json:"metrics"`
 	Channels        []common.Channel  `yaml:"channels" json:"channels"`

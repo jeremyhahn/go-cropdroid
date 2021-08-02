@@ -3,9 +3,15 @@ package datastore
 import (
 	"encoding/json"
 
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
+
+type Initializer interface {
+	Initialize() error
+	BuildConfig(config.UserConfig) (config.FarmConfig, error)
+}
 
 type ChangefeedCallback func(Changefeed)
 
@@ -51,4 +57,8 @@ type DatastoreRegistry interface {
 	SetUserDAO(dao.UserDAO)
 	GetRoleDAO() dao.RoleDAO
 	SetRoleDAO(dao.RoleDAO)
+	GetWorkflowDAO() dao.WorkflowDAO
+	SetWorkflowDAO(dao.WorkflowDAO)
+	GetWorkflowStepDAO() dao.WorkflowStepDAO
+	SetWorkflowStepDAO(dao.WorkflowStepDAO)
 }

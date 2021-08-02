@@ -37,13 +37,14 @@ var standaloneCmd = &cobra.Command{
 
 		//serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err :=
 		//	builder.NewGormConfigBuilder(App, farmStateStore, deviceStateStore, deviceDatastore).Build()
-		serverConfig, serviceRegistry, restServices, err := builder.NewGormConfigBuilder(
+		rsaKeyPair, serverConfig, serviceRegistry, restServices, err := builder.NewGormConfigBuilder(
 			App, DeviceStore, AppStateTTL, AppStateTick).Build()
 
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
+		App.KeyPair = rsaKeyPair
 		App.Config = serverConfig.(*config.Server)
 		//App.DeviceIndex = deviceIndex
 		//App.ChannelIndex = channelIndex

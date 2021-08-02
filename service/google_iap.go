@@ -112,7 +112,3 @@ func (iap *AndroidInAppPurchaseService) Verify(session Session, purchasedItem co
 
 	return true, nil
 }
-
-func (iap *AndroidInAppPurchaseService) createEtcdKey(session Session, orderID string) string {
-	return fmt.Sprintf("iap_%d_%s", session.GetUser().GetID(), orderID)
-}

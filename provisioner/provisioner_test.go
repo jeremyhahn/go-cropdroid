@@ -1,10 +1,10 @@
-// +build broken
-
 package provisioner
 
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
 
@@ -13,14 +13,11 @@ import (
 
 func TestProvisioner(t *testing.T) {
 
-	app := NewIntegrationTest().app
+	farmDAO, provisioner := createDefaultProvisioner()
 
 	user := &model.User{
 		Email:    "root@localhost",
 		Password: "dev"}
-
-	farmDAO := gormstore.NewFarmDAO(app.Logger, app.GORM)
-	provisioner := NewGormFarmProvisioner(app.Logger, app.GORM, app.Location, farmDAO)
 
 	farm, err := provisioner.Provision(user)
 	assert.Nil(t, err)
@@ -37,14 +34,11 @@ func TestProvisioner(t *testing.T) {
 
 func TestProvisionerMultipleFarms(t *testing.T) {
 
-	app := NewIntegrationTest().app
+	farmDAO, provisioner := createDefaultProvisioner()
 
 	user := &model.User{
 		Email:    "root@localhost",
 		Password: "dev"}
-
-	farmDAO := gormstore.NewFarmDAO(app.Logger, app.GORM)
-	provisioner := NewGormFarmProvisioner(app.Logger, app.GORM, app.Location, farmDAO)
 
 	farm1, err := provisioner.Provision(user)
 	assert.Nil(t, err)
@@ -65,4 +59,13 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	assert.Equal(t, 3, len(farms))
 
 	CurrentTest.Cleanup()
+}
+
+func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner) {
+	it := NewIntegrationTest()
+	userMapper := mapper.NewUserMapper()
+	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm)
+	initializer := gormstore.NewGormInitializer(it.logger, it.db, it.location)
+	return farmDAO, NewGormFarmProvisioner(it.logger, it.gorm, it.location,
+		farmDAO, nil, userMapper, initializer)
 }

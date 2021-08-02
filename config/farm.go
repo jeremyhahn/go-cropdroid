@@ -7,21 +7,23 @@ import (
 )
 
 type Farm struct {
-	ID             uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	OrganizationID int    `yaml:"orgId" json:"orgId"`
-	Replicas       int    `yaml:"replicas" json:"replicas"`
-	Consistency    int    `gorm:"consistency" yaml:"consistency" json:"consistency"`
-	StateStore     int    `gorm:"state_store" yaml:"state_store" json:"state_store"`
-	ConfigStore    int    `gorm:"config_store" yaml:"config_store" json:"config_store"`
-	Mode           string `gorm:"-" yaml:"mode" json:"mode"`
-	Name           string `gorm:"-" yaml:"name" json:"name"`
-	Interval       int    `gorm:"-" yaml:"interval" json:"interval"`
-	Smtp           *Smtp  `gorm:"-" yaml:"smtp" json:"smtp"`
-	//Timezone       *time.Location `gorm:"-" yaml:"timezone" json:"timezone"`
-	Timezone   string   `gorm:"-" yaml:"timezone" json:"timezone"`
-	Devices    []Device `yaml:"devices" json:"devices"`
-	Users      []User   `gorm:"many2many:permissions" yaml:"users" json:"users"`
-	FarmConfig `yaml:"-" json:"-"`
+	ID             uint64     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	OrganizationID int        `yaml:"orgId" json:"orgId"`
+	Replicas       int        `yaml:"replicas" json:"replicas"`
+	Consistency    int        `gorm:"consistency" yaml:"consistency" json:"consistency"`
+	StateStore     int        `gorm:"state_store" yaml:"state_store" json:"state_store"`
+	ConfigStore    int        `gorm:"config_store" yaml:"config_store" json:"config_store"`
+	Mode           string     `gorm:"-" yaml:"mode" json:"mode"`
+	Name           string     `gorm:"-" yaml:"name" json:"name"`
+	Interval       int        `gorm:"-" yaml:"interval" json:"interval"`
+	Smtp           *Smtp      `gorm:"-" yaml:"smtp" json:"smtp"`
+	Timezone       string     `gorm:"-" yaml:"timezone" json:"timezone"`
+	PrivateKey     string     `gorm:"private_key" yaml:"private_key" json:"private_key"`
+	PublicKey      string     `gorm:"public_key" yaml:"public_key" json:"public_key"`
+	Devices        []Device   `yaml:"devices" json:"devices"`
+	Users          []User     `gorm:"many2many:permissions" yaml:"users" json:"users"`
+	Workflows      []Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
+	FarmConfig     `yaml:"-" json:"-"`
 }
 
 func NewFarm() *Farm {
@@ -118,6 +120,22 @@ func (farm *Farm) GetTimezone() string {
 	return farm.Timezone
 }
 
+func (farm *Farm) SetPrivateKey(key string) {
+	farm.PrivateKey = key
+}
+
+func (farm *Farm) GetPrivateKey() string {
+	return farm.PrivateKey
+}
+
+func (farm *Farm) SetPublicKey(key string) {
+	farm.PublicKey = key
+}
+
+func (farm *Farm) GetPublicKey() string {
+	return farm.PublicKey
+}
+
 func (farm *Farm) GetSmtp() SmtpConfig {
 	return farm.Smtp
 }
@@ -177,12 +195,54 @@ func (farm *Farm) GetDevice(deviceType string) (*Device, error) {
 	return nil, fmt.Errorf("[config.Farm] Device type not found: %s", deviceType)
 }
 
-func (farm *Farm) GetDeviceById(id int) (*Device, error) {
-	farmSize := len(farm.Devices)
-	if farmSize < id {
-		return nil, fmt.Errorf("[config.Farm] Device ID out of bounds: %d. Farm size: %d", id, farmSize)
+func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
+	for _, device := range farm.Devices {
+		if device.GetID() == id {
+			return &device, nil
+		}
 	}
-	return &farm.Devices[id], nil
+	return nil, fmt.Errorf("device not found: %d", id)
+}
+
+// func (farm *Farm) GetDeviceByType(t string) (*Device, error) {
+// 	for _, device := range farm.Devices {
+// 		if device.GetType() == t {
+// 			return &device, nil
+// 		}
+// 	}
+// 	return nil, ErrDeviceNotFound
+// }
+
+func (farm *Farm) SetWorkflows(workflows []Workflow) {
+	farm.Workflows = workflows
+}
+
+func (farm *Farm) GetWorkflows() []Workflow {
+	return farm.Workflows
+}
+
+func (farm *Farm) AddWorkflow(workflow WorkflowConfig) {
+	farm.Workflows = append(farm.Workflows, *workflow.(*Workflow))
+}
+
+func (farm *Farm) SetWorkflow(workflow WorkflowConfig) {
+	for i, w := range farm.Workflows {
+		if w.GetID() == workflow.GetID() {
+			farm.Workflows[i] = *workflow.(*Workflow)
+			return
+		}
+	}
+	farm.Workflows = append(farm.Workflows, *workflow.(*Workflow))
+}
+
+func (farm *Farm) RemoveWorkflow(workflow WorkflowConfig) error {
+	for i, w := range farm.Workflows {
+		if w.GetID() == workflow.GetID() {
+			farm.Workflows = append(farm.Workflows[:i], farm.Workflows[i+1:]...)
+			return nil
+		}
+	}
+	return ErrWorkflowNotFound
 }
 
 func (farm *Farm) ParseConfigs() error {

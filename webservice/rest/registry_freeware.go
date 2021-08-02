@@ -12,7 +12,7 @@ type FreewareRestServiceRegistry struct {
 	RestServiceRegistry
 }
 
-func NewFreewareRestServiceRegistry(mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
+func NewFreewareRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
 
 	jsonWriter := NewJsonWriter()
 	jwtService := serviceRegistry.GetJsonWebTokenService()
@@ -26,6 +26,8 @@ func NewFreewareRestServiceRegistry(mapperRegistry mapper.MapperRegistry, servic
 	scheduleRestService := NewScheduleRestService(serviceRegistry.GetScheduleService(), jwtService, jsonWriter)
 	algorithmRestService := NewAlgorithmRestService(serviceRegistry.GetAlgorithmService(), jwtService, jsonWriter)
 	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry.GetDeviceFactory(), jwtService, jsonWriter)
+	workflowRestService := NewWorkflowRestService(serviceRegistry.GetWorkflowService(), jwtService, jsonWriter)
+	workflowStepRestService := NewWorkflowStepRestService(serviceRegistry.GetWorkflowStepService(), jwtService, jsonWriter)
 
 	//restServices = append(restServices, configRestService)
 	restServices = append(restServices, channelRestService)
@@ -34,8 +36,10 @@ func NewFreewareRestServiceRegistry(mapperRegistry mapper.MapperRegistry, servic
 	restServices = append(restServices, scheduleRestService)
 	restServices = append(restServices, algorithmRestService)
 	restServices = append(restServices, deviceFactoryRestService)
-	restServices = append(restServices, NewFarmRestService(jwtService, jsonWriter))
+	restServices = append(restServices, NewFarmRestService(publicKey, jwtService, jsonWriter))
 	restServices = append(restServices, NewDeviceRestService(serviceRegistry, jwtService, jsonWriter))
+	restServices = append(restServices, workflowRestService)
+	restServices = append(restServices, workflowStepRestService)
 
 	/*
 		for _, farmService := range serviceRegistry.GetFarmServices() {

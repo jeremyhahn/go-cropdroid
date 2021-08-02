@@ -1,5 +1,3 @@
-// +build !cluster
-
 package gorm
 
 import (
@@ -18,6 +16,7 @@ import (
 )
 
 type GormDB interface {
+	GORM() *gorm.DB
 	Create() error
 	Connect(serverConnection bool) *gorm.DB
 	Migrate() error
@@ -61,7 +60,8 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 		//"file:%s?mode=memory&cache=shared"
 		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory", database.params.DBName))
 		//database.db.LogMode(true)
-		if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
+		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
+		if err := NewGormInitializer(database.logger, database, database.params.Location).Initialize(); err != nil {
 			database.logger.Fatal(err)
 		}
 	case "sqlite":
@@ -77,6 +77,11 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 		database.logger.Fatalf("[gorm.Connect] Unsupported GORM engine: %s", database.params.Engine)
 	}
 	database.db.LogMode(database.params.DebugFlag)
+	return database.db
+}
+
+// Returns the underlying GORM handle
+func (database *GormDatabase) GORM() *gorm.DB {
 	return database.db
 }
 
@@ -107,6 +112,8 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&config.License{})
 	database.db.AutoMigrate(&entity.InventoryType{})
 	database.db.AutoMigrate(&entity.Inventory{})
+	database.db.AutoMigrate(&config.Workflow{})
+	database.db.AutoMigrate(&config.WorkflowStep{})
 	return nil
 }
 

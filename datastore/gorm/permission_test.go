@@ -54,6 +54,8 @@ func TestPermissions(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Channel{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
+	currentTest.gorm.AutoMigrate(&config.Workflow{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)

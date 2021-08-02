@@ -57,10 +57,10 @@ type Webserver struct {
 func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
 	restServices []rest.RestService, farmTickerProvisionerChan chan uint64) *Webserver {
 
-	return &Webserver{
-		mutex: sync.Mutex{},
-		app:   app,
-		//router:                    mux.NewRouter().StrictSlash(true),
+	webserver := &Webserver{
+		mutex:                     sync.Mutex{},
+		app:                       app,
+		router:                    mux.NewRouter().StrictSlash(true),
 		baseURI:                   "/api/v1",
 		registry:                  serviceRegistry,
 		restServices:              restServices,
@@ -75,6 +75,13 @@ func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
 		notificationHubs:          make(map[int]*websocket.NotificationHub),
 		notificationHubMutex:      sync.Mutex{},
 		eventLogService:           serviceRegistry.GetEventLogService()}
+	webserver.httpServer = &http.Server{
+		ReadTimeout:  common.HTTP_SERVER_READ_TIMEOUT,
+		WriteTimeout: common.HTTP_SERVER_WRITE_TIMEOUT,
+		IdleTimeout:  common.HTTP_SERVER_IDLE_TIMEOUT,
+		Handler:      webserver.router,
+	}
+	return webserver
 }
 
 func (server *Webserver) RunClusterProvisionerConsumer() {
@@ -124,6 +131,8 @@ func (server *Webserver) Run() {
 		tlsconf.Certificates = make([]tls.Certificate, 1)
 		tlsconf.Certificates[0] = cert
 
+		server.httpServer.TLSConfig = &tlsconf
+
 		listener, err := tls.Listen("tcp4", sPort, &tlsconf)
 		if err != nil {
 			log.Fatalln("Unable to bind to SSL port: ", err)
@@ -139,7 +148,7 @@ func (server *Webserver) Run() {
 		}
 
 		//err = http.Serve(listener, server.router)
-		err = http.Serve(listener, server)
+		err = server.httpServer.Serve(listener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}
@@ -157,7 +166,7 @@ func (server *Webserver) Run() {
 		server.app.DropPrivileges()
 
 		//err = http.Serve(ipv4Listener, server.router)
-		err = http.Serve(ipv4Listener, server)
+		err = server.httpServer.Serve(ipv4Listener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}

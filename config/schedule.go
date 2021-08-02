@@ -8,6 +8,7 @@ import (
 
 type Schedule struct {
 	ID             uint64     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	WorkflowID     uint64     `yaml:"workflow" json:"workflow_id"`
 	ChannelID      int        `yaml:"channelId" json:"channel_id"`
 	StartDate      time.Time  `yaml:"startDate" json:"startDate"`
 	EndDate        *time.Time `yaml:"endDate" json:"endDate"`
@@ -30,6 +31,14 @@ func (schedule *Schedule) GetID() uint64 {
 
 func (schedule *Schedule) SetID(id uint64) {
 	schedule.ID = id
+}
+
+func (schedule *Schedule) SetWorkflowID(id uint64) {
+	schedule.WorkflowID = id
+}
+
+func (schedule *Schedule) GetWorkflowID() uint64 {
+	return schedule.WorkflowID
 }
 
 func (schedule *Schedule) SetChannelID(id int) {

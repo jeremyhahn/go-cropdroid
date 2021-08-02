@@ -18,14 +18,16 @@ import (
 )
 
 var (
-	ErrFarmConfigNotFound = errors.New("farm config not found")
-	ErrChannelNotFound    = errors.New("channel not found")
-	ErrMetricNotFound     = errors.New("metric not found")
-	ErrScheduleNotFound   = errors.New("channel schedule not found")
-	ErrConditionNotFound  = errors.New("channel condition not found")
-	ErrNoDeviceState      = errors.New("no device state")
-	ErrCreateService      = errors.New("failed to create service")
-	ErrDeviceNotFound     = errors.New("device not found")
+	ErrFarmConfigNotFound   = errors.New("farm config not found")
+	ErrChannelNotFound      = errors.New("channel not found")
+	ErrMetricNotFound       = errors.New("metric not found")
+	ErrScheduleNotFound     = errors.New("channel schedule not found")
+	ErrConditionNotFound    = errors.New("channel condition not found")
+	ErrNoDeviceState        = errors.New("no device state")
+	ErrCreateService        = errors.New("failed to create service")
+	ErrDeviceNotFound       = errors.New("device not found")
+	ErrWorkflowNotFound     = errors.New("workflow not found")
+	ErrWorkflowStepNotFound = errors.New("workflow step not found")
 	//ErrDeviceDisabled     = errors.New("Device disabled")
 )
 
@@ -141,6 +143,10 @@ type ServiceRegistry interface {
 	GetScheduleService() ScheduleService
 	SetUserService(UserService)
 	GetUserService() UserService
+	SetWorkflowService(WorkflowService)
+	GetWorkflowService() WorkflowService
+	SetWorkflowStepService(WorkflowStepService)
+	GetWorkflowStepService() WorkflowStepService
 }
 
 type ConfigService interface {
@@ -175,6 +181,7 @@ type FarmService interface {
 	GetConfig() config.FarmConfig
 	GetConfigClusterID() uint64
 	GetConsistencyLevel() int
+	GetPublicKey() string
 	GetState() state.FarmStateMap
 	//OnLeaderUpdated(info raftio.LeaderInfo)
 	Poll()

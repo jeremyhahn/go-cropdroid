@@ -69,7 +69,7 @@ func NewClusterConfigBuilder(_app *app.App, params *cluster.ClusterParams,
 		consistencyLevel: common.CONSISTENCY_CACHED}
 }
 
-func (builder *ClusterConfigBuilder) Build() (config.ServerConfig,
+func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 	service.ServiceRegistry, []rest.RestService, error) {
 
 	builder.mapperRegistry = mapper.CreateRegistry()
@@ -202,13 +202,14 @@ func (builder *ClusterConfigBuilder) Build() (config.ServerConfig,
 		builder.serviceRegistry.SetChangefeedService(changefeedService)
 	}
 
-	restServiceRegistry := rest.NewClusterRestServiceRegistry(builder.mapperRegistry,
+	publicKey := string(rsaKeyPair.GetPublicBytes())
+	restServiceRegistry := rest.NewClusterRestServiceRegistry(publicKey, builder.mapperRegistry,
 		builder.serviceRegistry)
 	if restServices == nil {
 		restServices = restServiceRegistry.GetRestServices()
 	}
 
-	return serverConfig, builder.serviceRegistry, restServices, err
+	return rsaKeyPair, serverConfig, builder.serviceRegistry, restServices, err
 }
 
 // Creates and new FarmFactory and FarmService initialized based on farmConfig

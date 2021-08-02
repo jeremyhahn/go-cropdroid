@@ -17,7 +17,9 @@ const (
 type UserAccount interface {
 	GetID() int
 	GetEmail() string
+	SetEmail(string)
 	GetPassword() string
+	SetPassword(string)
 	GetToken() string
 	GetRoles() []Role
 	SetRoles([]Role)

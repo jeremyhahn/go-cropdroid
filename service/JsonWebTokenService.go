@@ -23,13 +23,13 @@ import (
 // https://gist.github.com/soulmachine/b368ce7292ddd7f91c15accccc02b8df
 
 type JsonWebTokenServiceImpl struct {
-	app              *app.App
-	farmDAO          dao.FarmDAO
-	deviceMapper mapper.DeviceMapper
-	serviceRegistry  ServiceRegistry
-	expiration       time.Duration
-	rsaKeyPair       app.KeyPair
-	jsonWriter       common.HttpWriter
+	app             *app.App
+	farmDAO         dao.FarmDAO
+	deviceMapper    mapper.DeviceMapper
+	serviceRegistry ServiceRegistry
+	expiration      time.Duration
+	rsaKeyPair      app.KeyPair
+	jsonWriter      common.HttpWriter
 	JsonWebTokenService
 	Middleware
 }
@@ -78,13 +78,13 @@ func CreateJsonWebTokenService(_app *app.App, farmDAO dao.FarmDAO, deviceMapper 
 	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter, expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
 
 	return &JsonWebTokenServiceImpl{
-		app:              _app,
-		farmDAO:          farmDAO,
-		deviceMapper: deviceMapper,
-		serviceRegistry:  serviceRegistry,
-		jsonWriter:       jsonWriter,
-		expiration:       time.Duration(expiration),
-		rsaKeyPair:       rsaKeyPair}
+		app:             _app,
+		farmDAO:         farmDAO,
+		deviceMapper:    deviceMapper,
+		serviceRegistry: serviceRegistry,
+		jsonWriter:      jsonWriter,
+		expiration:      time.Duration(expiration),
+		rsaKeyPair:      rsaKeyPair}
 }
 
 func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter, r *http.Request) (Session, error) {
@@ -343,10 +343,6 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 			// Running in unlicensed / free mode
 		}
 	*/
-
-	//service.app.Logger.Debugf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	//service.app.Logger.Debugf("%+v", service.app.Config)
-	//service.app.Logger.Debugf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 	orgClaimsJson, err := json.Marshal(orgClaims)
 	if err != nil {

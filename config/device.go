@@ -11,9 +11,9 @@ type Device struct {
 	Type            string             `yaml:"type" json:"type"`
 	Interval        int                `yaml:"interval" json:"interval"`
 	Description     string             `yaml:"description" json:"description"`
-	Enable          bool               `gorm:"-" yaml:"-" json:"enable"`
-	Notify          bool               `gorm:"-" yaml:"-" json:"notify"`
-	URI             string             `gorm:"-" yaml:"-" json:"uri"`
+	Enable          bool               `gorm:"-" yaml:"enable" json:"enable"`
+	Notify          bool               `gorm:"-" yaml:"notify" json:"notify"`
+	URI             string             `gorm:"-" yaml:"uri" json:"uri"`
 	HardwareVersion string             `gorm:"hw_version" yaml:"hwVersion" json:"hwVersion"`
 	FirmwareVersion string             `gorm:"fw_version" yaml:"fwVersion" json:"fwVersion"`
 	ConfigMap       map[string]string  `gorm:"-" yaml:"configs" json:"configs"`

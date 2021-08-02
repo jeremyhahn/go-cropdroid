@@ -126,6 +126,11 @@ func (farm *DefaultFarmService) GetChannels() *FarmChannels {
 	return farm.channels
 }
 
+func (farm *DefaultFarmService) GetPublicKey() string {
+	// TODO: Replace w/ key defined in FarmConfig
+	return string(farm.app.KeyPair.GetPublicBytes())
+}
+
 func (farm *DefaultFarmService) GetState() state.FarmStateMap {
 	farmState, err := farm.stateStore.Get(farm.farmID)
 	if err != nil {

@@ -4,6 +4,7 @@ package webservice
 
 import (
 	"crypto/tls"
+	// "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,6 +29,7 @@ import (
 type Webserver struct {
 	app          *app.App
 	router       *mux.Router
+	httpServer   *http.Server
 	registry     service.ServiceRegistry
 	restServices []rest.RestService
 	eventType    string
@@ -36,9 +38,16 @@ type Webserver struct {
 }
 
 func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry, restServices []rest.RestService) *Webserver {
+	router := mux.NewRouter().StrictSlash(true)
 	return &Webserver{
-		app:          app,
-		router:       mux.NewRouter().StrictSlash(true),
+		app:    app,
+		router: router,
+		httpServer: &http.Server{
+			ReadTimeout:  common.HTTP_SERVER_READ_TIMEOUT,
+			WriteTimeout: common.HTTP_SERVER_WRITE_TIMEOUT,
+			IdleTimeout:  common.HTTP_SERVER_IDLE_TIMEOUT,
+			Handler:      router,
+		},
 		registry:     serviceRegistry,
 		restServices: restServices,
 		eventType:    "WebServer",
@@ -66,6 +75,7 @@ func (server *Webserver) Run() {
 	// REST Handlers - Public Access
 	server.router.HandleFunc("/endpoints", server.endpoints)
 	server.router.HandleFunc("/system", server.systemStatus)
+	server.router.HandleFunc("/api/v1/pubkey", server.publicKey)
 	server.router.HandleFunc("/api/v1/register", registrationService.Register)
 	server.router.HandleFunc("/api/v1/login", jsonWebTokenService.GenerateToken)
 	server.endpointList = append(server.endpointList, "/api/v1/register")
@@ -171,6 +181,8 @@ func (server *Webserver) Run() {
 		tlsconf.Certificates = make([]tls.Certificate, 1)
 		tlsconf.Certificates[0] = cert
 
+		server.httpServer.TLSConfig = &tlsconf
+
 		listener, err := tls.Listen("tcp4", sPort, &tlsconf)
 		if err != nil {
 			log.Fatalln("Unable to bind to SSL port: ", err)
@@ -185,7 +197,7 @@ func (server *Webserver) Run() {
 			}))
 		}
 
-		err = http.Serve(listener, server.router)
+		err = server.httpServer.Serve(listener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}
@@ -202,7 +214,7 @@ func (server *Webserver) Run() {
 
 		server.app.DropPrivileges()
 
-		err = http.Serve(ipv4Listener, server.router)
+		err = server.httpServer.Serve(ipv4Listener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}
@@ -329,6 +341,15 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	json, _ := json.MarshalIndent(farmState, "", " ")
 	fmt.Fprintln(w, string(json))
+}
+
+func (server *Webserver) publicKey(w http.ResponseWriter, r *http.Request) {
+	pubkey := server.app.KeyPair.GetPublicBytes()
+
+	//encoded := base64.StdEncoding.EncodeToString(pubkey)
+	//rest.NewJsonWriter().Write(w, http.StatusOK, encoded)
+
+	rest.NewJsonWriter().Write(w, http.StatusOK, string(pubkey))
 }
 
 func (server *Webserver) events(w http.ResponseWriter, r *http.Request) {

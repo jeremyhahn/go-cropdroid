@@ -14,7 +14,7 @@ type ClusterRestServiceRegistry struct {
 	RestServiceRegistry
 }
 
-func NewClusterRestServiceRegistry(mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
+func NewClusterRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
 
 	jsonWriter := NewJsonWriter()
 	jwtService := serviceRegistry.GetJsonWebTokenService()
@@ -28,6 +28,8 @@ func NewClusterRestServiceRegistry(mapperRegistry mapper.MapperRegistry, service
 	scheduleRestService := NewScheduleRestService(serviceRegistry.GetScheduleService(), jwtService, jsonWriter)
 	algorithmRestService := NewAlgorithmRestService(serviceRegistry.GetAlgorithmService(), jwtService, jsonWriter)
 	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry.GetDeviceFactory(), jwtService, jsonWriter)
+	workflowRestService := NewWorkflowRestService(serviceRegistry.GetWorkflowService(), jwtService, jsonWriter)
+	workflowStepRestService := NewWorkflowStepRestService(serviceRegistry.GetWorkflowStepService(), jwtService, jsonWriter)
 	googleRestService := NewGoogleRestService(serviceRegistry.GetGoogleAuthService(), jwtService, jsonWriter)
 
 	//restServices = append(restServices, configRestService)
@@ -38,8 +40,10 @@ func NewClusterRestServiceRegistry(mapperRegistry mapper.MapperRegistry, service
 	restServices = append(restServices, algorithmRestService)
 	restServices = append(restServices, deviceFactoryRestService)
 	restServices = append(restServices, googleRestService)
-	restServices = append(restServices, NewFarmRestService(jwtService, jsonWriter))
+	restServices = append(restServices, NewFarmRestService(publicKey, jwtService, jsonWriter))
 	restServices = append(restServices, NewDeviceRestService(serviceRegistry, jwtService, jsonWriter))
+	restServices = append(restServices, workflowRestService)
+	restServices = append(restServices, workflowStepRestService)
 
 	// Create unique list of device types
 	/*

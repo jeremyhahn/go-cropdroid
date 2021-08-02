@@ -9,6 +9,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
 )
@@ -70,8 +71,12 @@ func (service *DefaultUserService) Login(userCredentials *UserCredentials,
 		//farmProvisioner = provisioner.NewGormFarmProvisioner(service.app.Logger, service.app.NewGormDB(),
 		//service.app.Location, service.farmDAO, farmFactory.GetFarmProvisionerChan())
 
+		initializer := gorm.NewGormInitializer(service.app.Logger,
+			service.app.GormDB, service.app.Location)
+
 		farmProvisioner = provisioner.NewRaftFarmProvisioner(service.app.Logger, service.app.NewGormDB(),
-			service.app.GossipCluster, service.app.Location, service.farmDAO)
+			service.app.GossipCluster, service.app.Location, service.farmDAO, service.userMapper,
+			initializer)
 	}
 
 	if authService, ok := service.authServices[userCredentials.AuthType]; ok {

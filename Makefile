@@ -90,7 +90,7 @@ build-standalone-debug-static:
 
 
 build-standalone-arm:
-	CC=$(ARM_CC) GOOS=linux GOARCH=arm GOARM=6 \
+	CC=$(ARM_CC) CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 \
 	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-arm-static:

@@ -10,6 +10,7 @@ import (
 type GormConditionDAO struct {
 	logger *logging.Logger
 	db     *gorm.DB
+	dao.ConditionDAO
 }
 
 func NewConditionDAO(logger *logging.Logger, db *gorm.DB) dao.ConditionDAO {

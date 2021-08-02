@@ -91,3 +91,20 @@ type ScheduleDAO interface {
 	Delete(schedule config.ScheduleConfig) error
 	GetByChannelID(id int) ([]config.Schedule, error)
 }
+
+type WorkflowDAO interface {
+	Create(condition config.WorkflowConfig) error
+	Save(condition config.WorkflowConfig) error
+	Delete(condition config.WorkflowConfig) error
+	Get(id uint64) (config.WorkflowConfig, error)
+	//GetAll(farmID uint64) ([]config.Workflow, error)
+	GetByFarmID(id uint64) ([]config.Workflow, error)
+}
+
+type WorkflowStepDAO interface {
+	Create(condition config.WorkflowStepConfig) error
+	Save(condition config.WorkflowStepConfig) error
+	Delete(condition config.WorkflowStepConfig) error
+	Get(id uint64) (config.WorkflowStepConfig, error)
+	GetByWorkflowID(id uint64) ([]config.WorkflowStep, error)
+}

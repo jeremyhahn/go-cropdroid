@@ -34,6 +34,8 @@ type DefaultServiceRegistry struct {
 	notificationService NotificationService
 	scheduleService     ScheduleService
 	userService         UserService
+	workflowService     WorkflowService
+	workflowStepService WorkflowStepService
 	ServiceRegistry
 }
 
@@ -60,6 +62,8 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mapp
 	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO(), mappers.GetScheduleMapper(), nil) // ConfigService
 
 	conditionService := NewConditionService(_app.Logger, daos.GetConditionDAO(), mappers.GetConditionMapper())
+	workflowService := NewWorkflowService(_app, daos.GetWorkflowDAO(), mappers.GetWorkflowMapper())
+	workflowStepService := NewWorkflowStepService(_app, daos.GetWorkflowStepDAO())
 
 	//serviceRegistry.SetMailer(NewMailer(farm.logger, farm.buildSmtp()))
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer
@@ -79,7 +83,9 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mapp
 		farmServices:        make(map[uint64]FarmService, 0),
 		metricService:       metricService,
 		notificationService: notificationService,
-		scheduleService:     scheduleService}
+		scheduleService:     scheduleService,
+		workflowService:     workflowService,
+		workflowStepService: workflowStepService}
 
 	registry.SetUserService(NewUserService(_app, daos.GetUserDAO(), daos.GetOrganizationDAO(), daos.GetRoleDAO(),
 		daos.GetFarmDAO(), mappers.GetUserMapper(), authServices, registry))
@@ -267,4 +273,20 @@ func (registry *DefaultServiceRegistry) SetUserService(userService UserService) 
 
 func (registry *DefaultServiceRegistry) GetUserService() UserService {
 	return registry.userService
+}
+
+func (registry *DefaultServiceRegistry) SetWorkflowService(workflowService WorkflowService) {
+	registry.workflowService = workflowService
+}
+
+func (registry *DefaultServiceRegistry) GetWorkflowService() WorkflowService {
+	return registry.workflowService
+}
+
+func (registry *DefaultServiceRegistry) SetWorkflowStepService(workflowStepService WorkflowStepService) {
+	registry.workflowStepService = workflowStepService
+}
+
+func (registry *DefaultServiceRegistry) GetWorkflowStepService() WorkflowStepService {
+	return registry.workflowStepService
 }

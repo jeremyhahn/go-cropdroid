@@ -38,19 +38,19 @@ var configCmd = &cobra.Command{
 
 		if InitDB {
 
-			gormDB := gorm.NewGormDB(App.Logger, App.GORMInitParams)
-			db := gormDB.Connect(true)
-			gormDB.Create()
+			App.GormDB = gorm.NewGormDB(App.Logger, App.GORMInitParams)
+			App.GORM = App.GormDB.Connect(true)
+			App.GORM.LogMode(App.DebugFlag)
 
 			switch App.Mode {
 			case common.MODE_STANDALONE, "virtual":
-				if err := gorm.NewGormInitializer(App.Logger, db, App.Location).Initialize(); err != nil {
+				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, App.Location).Initialize(); err != nil {
 					log.Fatal(err)
 				}
-			case common.MODE_CLOUD:
-				if err := gorm.NewGormCloudInitializer(App.Logger, db, App.Location).Initialize(); err != nil {
-					log.Fatal(err)
-				}
+			// case common.MODE_CLOUD:
+			// 	if err := gorm.NewGormCloudInitializer(App.Logger, App.GORM, App.Location).Initialize(); err != nil {
+			// 		log.Fatal(err)
+			// 	}
 			default:
 				App.Logger.Fatalf("Unsupported mode: %s", App.Mode)
 			}
@@ -66,7 +66,7 @@ var configCmd = &cobra.Command{
 
 				App.InitLogFile(os.Getuid(), os.Getgid())
 				App.InitGormDB()
-				serverConfig, _, _, err := builder.NewGormConfigBuilder(App, DeviceStore,
+				_, serverConfig, _, _, err := builder.NewGormConfigBuilder(App, DeviceStore,
 					AppStateTTL, AppStateTick).Build()
 				if err != nil {
 					App.Logger.Fatal(err)

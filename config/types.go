@@ -297,6 +297,8 @@ type WorkflowConfig interface {
 	RemoveStep(step WorkflowStepConfig) error
 	SetStep(step WorkflowStepConfig) error
 	SetSteps(steps []WorkflowStep)
+	GetLastCompleted() *time.Time
+	SetLastCompleted(t *time.Time)
 }
 
 type WorkflowStepConfig interface {
@@ -316,6 +318,8 @@ type WorkflowStepConfig interface {
 	SetDuration(duration int)
 	GetWait() int
 	SetWait(seconds int)
+	GetState() int
+	SetState(state int)
 }
 
 type RoleConfig interface {

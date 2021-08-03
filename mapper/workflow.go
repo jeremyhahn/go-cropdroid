@@ -27,13 +27,15 @@ func (mapper *DefaultWorkflowMapper) MapConfigToView(config config.WorkflowConfi
 			ChannelID:  step.GetChannelID(),
 			Webhook:    step.GetWebhook(),
 			Duration:   step.GetDuration(),
-			Wait:       step.GetWait()}
+			Wait:       step.GetWait(),
+			State:      step.GetState()}
 	}
 	return &viewmodel.Workflow{
-		ID:     config.GetID(),
-		FarmID: config.GetFarmID(),
-		Name:   config.GetName(),
-		Steps:  steps}
+		ID:            config.GetID(),
+		FarmID:        config.GetFarmID(),
+		Name:          config.GetName(),
+		LastCompleted: config.GetLastCompleted(),
+		Steps:         steps}
 }
 
 func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflow) config.WorkflowConfig {
@@ -46,11 +48,13 @@ func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflo
 			ChannelID:  step.GetChannelID(),
 			Webhook:    step.GetWebhook(),
 			Duration:   step.GetDuration(),
-			Wait:       step.GetWait()}
+			Wait:       step.GetWait(),
+			State:      step.GetState()}
 	}
 	return &config.Workflow{
-		ID:     workflow.GetID(),
-		FarmID: workflow.GetFarmID(),
-		Name:   workflow.GetName(),
-		Steps:  steps}
+		ID:            workflow.GetID(),
+		FarmID:        workflow.GetFarmID(),
+		Name:          workflow.GetName(),
+		LastCompleted: workflow.GetLastCompleted(),
+		Steps:         steps}
 }

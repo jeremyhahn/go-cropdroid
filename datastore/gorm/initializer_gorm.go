@@ -287,36 +287,48 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig) (co
 	drainStep.SetChannelID(7)  // CHANNEL_RESERVOIR_DRAIN
 	drainStep.SetDuration(300) // seconds; 5 minutes
 	drainStep.SetWait(300)     // seconds; 5 minutes
+	// drainStep.SetDuration(5)
+	// drainStep.SetWait(10)
 
 	fillStep := config.NewWorkflowStep()
 	fillStep.SetDeviceID(persistedReservoir.GetID())
 	fillStep.SetChannelID(13) // CHANNEL_RESERVOIR_FAUCET
 	fillStep.SetDuration(300) // seconds; 5 minutes
 	fillStep.SetWait(300)     // seconds; 5 minutes
+	// fillStep.SetDuration(5)
+	// fillStep.SetWait(10)
 
 	phDownStep := config.NewWorkflowStep()
 	phDownStep.SetDeviceID(persistedDoser.GetID())
 	phDownStep.SetChannelID(14) // CHANNEL_DOSER_PHDOWN
 	phDownStep.SetDuration(60)  // seconds
 	phDownStep.SetWait(300)     // seconds; 5 minutes
+	// phDownStep.SetDuration(5)
+	// phDownStep.SetWait(10)
 
 	nutePart1Step := config.NewWorkflowStep()
 	nutePart1Step.SetDeviceID(persistedDoser.GetID())
 	nutePart1Step.SetChannelID(18) // CHANNEL_DOSER_NUTE1
 	nutePart1Step.SetDuration(30)  // seconds
 	nutePart1Step.SetWait(300)     // seconds; 5 minutes
+	// nutePart1Step.SetDuration(5)
+	// nutePart1Step.SetWait(10)
 
 	nutePart2Step := config.NewWorkflowStep()
 	nutePart2Step.SetDeviceID(persistedDoser.GetID())
 	nutePart2Step.SetChannelID(19) // CHANNEL_DOSER_NUTE2
 	nutePart2Step.SetDuration(30)  // seconds
 	nutePart2Step.SetWait(300)     // seconds; 5 minutes
+	// nutePart2Step.SetDuration(5)
+	// nutePart2Step.SetWait(10)
 
 	nutePart3Step := config.NewWorkflowStep()
 	nutePart3Step.SetDeviceID(persistedDoser.GetID())
 	nutePart3Step.SetChannelID(20) // CHANNEL_DOSER_NUTE3
 	nutePart3Step.SetDuration(30)  // seconds
 	nutePart3Step.SetWait(300)     // seconds; 5 minutes
+	// nutePart3Step.SetDuration(5)
+	// nutePart3Step.SetWait(10)
 
 	workflow1 := config.NewWorkflow()
 	workflow1.SetName("Automated Water Changes")

@@ -174,6 +174,18 @@ func (registry *DefaultServiceRegistry) GetDeviceService(farmID uint64,
 	return nil, ErrFarmNotFound
 }
 
+func (registry *DefaultServiceRegistry) GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceService, error) {
+	if services, ok := registry.deviceServices[farmID]; ok {
+		for _, service := range services {
+			if service.GetID() == deviceID {
+				return service, nil
+			}
+		}
+		return nil, ErrDeviceNotFound
+	}
+	return nil, ErrFarmNotFound
+}
+
 func (registry *DefaultServiceRegistry) SetEventLogService(eventLogService EventLogService) {
 	registry.eventLogService = eventLogService
 }

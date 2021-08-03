@@ -120,6 +120,7 @@ type ServiceRegistry interface {
 	SetDeviceServices(farmID uint64, deviceService []DeviceService)
 	GetDeviceServices(farmID uint64) ([]DeviceService, error)
 	GetDeviceService(farmID uint64, deviceType string) (DeviceService, error)
+	GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceService, error)
 	SetDeviceService(farmID uint64, deviceService DeviceService) (DeviceService, error)
 	SetEventLogService(EventLogService)
 	GetEventLogService() EventLogService
@@ -192,6 +193,7 @@ type FarmService interface {
 	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
 	Run()
 	RunCluster()
+	RunWorkflow(workflow config.WorkflowConfig)
 	SetConfig(farmConfig config.FarmConfig) error
 	SetDeviceConfig(deviceConfig config.DeviceConfig) error
 	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
@@ -212,6 +214,7 @@ type DeviceService interface {
 	SetMetricValue(key string, value float64) error
 	GetDeviceType() string
 	GetConfig() (config.DeviceConfig, error)
+	GetID() uint64
 	GetState() (state.DeviceStateMap, error)
 	GetView() (common.DeviceView, error)
 	GetHistory(metric string) ([]float64, error)

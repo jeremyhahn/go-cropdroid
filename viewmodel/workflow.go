@@ -1,6 +1,8 @@
 package viewmodel
 
 import (
+	"time"
+
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/model"
 )
@@ -9,6 +11,7 @@ type Workflow struct {
 	ID                    uint64           `yaml:"id" json:"id"`
 	FarmID                uint64           `yaml:"farm" json:"farmId"`
 	Name                  string           `yaml:"name" json:"name"`
+	LastCompleted         *time.Time       `yaml:"lastCompleted" json:"lastCompleted"`
 	Conditions            []Condition      `yaml:"conditions" json:"conditions"`
 	Schedules             []model.Schedule `yaml:"schedules" json:"schedules"`
 	Steps                 []WorkflowStep   `yaml:"steps" json:"steps"`
@@ -50,6 +53,18 @@ func (w *Workflow) GetName() string {
 // SetName sets the workflow name
 func (w *Workflow) SetName(name string) {
 	w.Name = name
+}
+
+// GetLastCompleted returns the time the workflow was last
+// successfully completed.
+func (w *Workflow) GetLastCompleted() *time.Time {
+	return w.LastCompleted
+}
+
+// SetLastCompleted sets the time the workflow was last
+// successfully completed.
+func (w *Workflow) SetLastCompleted(t *time.Time) {
+	w.LastCompleted = t
 }
 
 // // GetConditions gets the workflow conditions

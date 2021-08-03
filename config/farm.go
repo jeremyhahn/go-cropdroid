@@ -28,6 +28,7 @@ type Farm struct {
 
 func NewFarm() *Farm {
 	return &Farm{
+		//Interval: 60,
 		Devices: make([]Device, 0),
 		Users:   make([]User, 0)}
 }
@@ -36,6 +37,7 @@ func CreateFarm(name string, orgID, interval int, users []User,
 	devices []Device) FarmConfig {
 
 	return &Farm{
+		//Interval:       60,
 		OrganizationID: orgID,
 		Devices:        devices}
 }

@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 // Workflow defines an object responsible for executing a series
 // of WorkflowStep, which can be triggered manually or based on a
 // Schedule or Condition.
@@ -10,6 +12,7 @@ type Workflow struct {
 	Conditions     []Condition    `gorm:"conditions" yaml:"conditions" json:"conditions"`
 	Schedules      []Schedule     `gorm:"schedules" yaml:"schedules" json:"schedules"`
 	Steps          []WorkflowStep `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"steps" json:"steps"`
+	LastCompleted  *time.Time     `gorm:"type:timestamp" yaml:"lastCompleted" json:"lastCompleted"`
 	WorkflowConfig `yaml:"-" json:"-"`
 }
 
@@ -105,4 +108,16 @@ func (w *Workflow) RemoveStep(step WorkflowStepConfig) error {
 		}
 	}
 	return ErrWorkflowStepNotFound
+}
+
+// GetLastCompleted returns the time the workflow was last
+// successfully completed.
+func (w *Workflow) GetLastCompleted() *time.Time {
+	return w.LastCompleted
+}
+
+// SetLastCompleted sets the time the workflow was last
+// successfully completed.
+func (w *Workflow) SetLastCompleted(t *time.Time) {
+	w.LastCompleted = t
 }

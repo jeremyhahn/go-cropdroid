@@ -18,6 +18,7 @@ type WorkflowService interface {
 	Create(session Session, workflow config.WorkflowConfig) (config.WorkflowConfig, error)
 	Update(session Session, workflow config.WorkflowConfig) error
 	Delete(session Session, workflow config.WorkflowConfig) error
+	Run(session Session, workflowID uint64) error
 }
 
 type DefaultWorkflowService struct {
@@ -65,6 +66,7 @@ func (service *DefaultWorkflowService) Create(session Session, workflow config.W
 	return workflow, err
 }
 
+// Returns a list of workflow viewmodels intended for consumption by a user interface
 func (service *DefaultWorkflowService) GetListView(session Session, farmID uint64) ([]*viewmodel.Workflow, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
@@ -75,7 +77,6 @@ func (service *DefaultWorkflowService) GetListView(session Session, farmID uint6
 				service.mapper.MapConfigToView(&workflow))
 		}
 	}
-
 	// Set workflow steps device name and channel name
 	for _, viewWorkflow := range viewWorkflows {
 		for _, step := range viewWorkflow.GetSteps() {
@@ -100,30 +101,6 @@ func (service *DefaultWorkflowService) GetListView(session Session, farmID uint6
 		}
 	}
 	return viewWorkflows, nil
-
-	// for _, device := range farmConfig.GetDevices() {
-	// 	for _, channel := range device.GetChannels() {
-	// 		if channel.GetID() == channelID {
-	// 			channelConditions := channel.GetConditions()
-	// 			viewConditions := make([]*viewmodel.Condition, 0, len(channelConditions))
-	// 			for _, condition := range channelConditions {
-	// 				// Look up the metric for this condition
-	// 				for _, metric := range device.GetMetrics() {
-	// 					if metric.GetID() == condition.GetMetricID() {
-	// 						viewConditions = append(viewConditions,
-	// 							service.mapper.MapEntityToView(
-	// 								&condition, device.GetType(), &metric, channelID))
-	// 						break
-	// 					}
-	// 				}
-
-	// 			}
-	// 			return viewConditions, nil
-	// 		}
-	// 	}
-	// }
-
-	return nil, ErrChannelNotFound
 }
 
 // Update an existing workflow entry in the FarmConfig and datastore and publish
@@ -155,4 +132,17 @@ func (service *DefaultWorkflowService) Delete(session Session, workflow config.W
 		service.app.Logger.Errorf("sesion: %+v, error: %s", session, err)
 	}
 	return err
+}
+
+// Executes a workflow
+func (service *DefaultWorkflowService) Run(session Session, workflowID uint64) error {
+	farmService := session.GetFarmService()
+	farmConfig := farmService.GetConfig()
+	for _, workflow := range farmConfig.GetWorkflows() {
+		if workflow.GetID() == workflowID {
+			session.GetFarmService().RunWorkflow(&workflow)
+			return nil
+		}
+	}
+	return ErrWorkflowNotFound
 }

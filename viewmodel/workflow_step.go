@@ -13,6 +13,7 @@ type WorkflowStep struct {
 	Duration                  int    `yaml:"duration" json:"duration"`
 	Wait                      int    `yaml:"wait" json:"wait"`
 	Text                      string `yaml:"text" json:"text"`
+	State                     int    `yaml:"state" json:"state"`
 	config.WorkflowStepConfig `yaml:"-" json:"-"`
 }
 
@@ -98,4 +99,16 @@ func (ws *WorkflowStep) SetText(text string) {
 
 func (ws *WorkflowStep) GetText() string {
 	return ws.Text
+}
+
+// GetStatus returns the current state of the workflow step.
+// See common.Constants.WORKFLOW_STATE_* for possible states.
+func (ws *WorkflowStep) GetState() int {
+	return ws.State
+}
+
+// SetStatus sets the current state of the workflow step.
+// See common.Constants.WORKFLOW_STATE_* for possible states.
+func (ws *WorkflowStep) SetState(state int) {
+	ws.State = state
 }

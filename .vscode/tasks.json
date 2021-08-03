@@ -1,9 +1,14 @@
 {
     "version": "2.0.0",
     "tasks": [{
+        "type": "shell",
+        "label": "buildStandalone",
+        "command": "make",
+        "args": ["build-standalone"]
+    }, {
+        "type": "shell",
         "label": "initsqlite",
         "command": "rm",
-        "args": ["-f", "db/cropdroid.db", "&&", "./cropdroid", "config", "--init", "--datastore", "sqlite"],
-        "type": "shell"
+        "args": ["-f", "db/cropdroid.db", "&&", "./cropdroid", "config", "--init", "--datastore", "sqlite"]
     }]
 }

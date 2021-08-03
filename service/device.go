@@ -71,6 +71,10 @@ func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 		consistency:     consistency}, nil
 }
 
+func (service *IOSwitcherDeviceService) GetID() uint64 {
+	return service.deviceID
+}
+
 func (service *IOSwitcherDeviceService) GetDeviceType() string {
 	return service.device.GetType()
 }

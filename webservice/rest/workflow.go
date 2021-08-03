@@ -20,6 +20,7 @@ type WorkflowRestService interface {
 	Create(w http.ResponseWriter, r *http.Request)
 	Update(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
+	RunWorkflow(w http.ResponseWriter, r *http.Request)
 	View(w http.ResponseWriter, r *http.Request)
 	RestService
 }
@@ -44,6 +45,7 @@ func (restService *DefaultWorkflowRestService) RegisterEndpoints(router *mux.Rou
 	endpoint := fmt.Sprintf("%s/workflows", baseFarmURI)
 	workflowEndpoint := fmt.Sprintf("%s/{id}", endpoint)
 	workflowViewEndpoint := fmt.Sprintf("%s/view", endpoint)
+	workflowRunEndpoint := fmt.Sprintf("%s/run", workflowEndpoint)
 	router.Handle(workflowViewEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
 		negroni.Wrap(http.HandlerFunc(restService.View)),
@@ -55,6 +57,10 @@ func (restService *DefaultWorkflowRestService) RegisterEndpoints(router *mux.Rou
 	router.Handle(workflowEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
 		negroni.Wrap(http.HandlerFunc(restService.GetWorkflow)),
+	)).Methods("GET")
+	router.Handle(workflowRunEndpoint, negroni.New(
+		negroni.HandlerFunc(restService.middleware.Validate),
+		negroni.Wrap(http.HandlerFunc(restService.RunWorkflow)),
 	)).Methods("GET")
 	router.Handle(endpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),
@@ -231,6 +237,36 @@ func (restService *DefaultWorkflowRestService) Delete(w http.ResponseWriter, r *
 	logger.Debugf("workflow.id=%d", id)
 
 	if err = restService.workflowService.Delete(session, &config.Workflow{ID: id}); err != nil {
+		logger.Errorf("session: %s, error: %s", session, err)
+		restService.jsonWriter.Error200(w, err)
+		return
+	}
+
+	restService.jsonWriter.Write(w, http.StatusOK, nil)
+}
+
+func (restService *DefaultWorkflowRestService) RunWorkflow(w http.ResponseWriter, r *http.Request) {
+
+	session, err := restService.middleware.CreateSession(w, r)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+	defer session.Close()
+
+	logger := session.GetLogger()
+
+	params := mux.Vars(r)
+	id, err := strconv.ParseUint(params["id"], 10, 64)
+	if err != nil {
+		logger.Errorf("session: %s, error: %s", session, err)
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	logger.Debugf("workflow.id=%d", id)
+
+	if err = restService.workflowService.Run(session, id); err != nil {
 		logger.Errorf("session: %s, error: %s", session, err)
 		restService.jsonWriter.Error200(w, err)
 		return

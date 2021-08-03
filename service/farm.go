@@ -34,8 +34,8 @@ type DefaultFarmService struct {
 	channels            *FarmChannels
 	running             bool
 	backoffTable        map[uint64]map[int]time.Time
+	deviceConfigDAO     dao.DeviceConfigDAO
 	FarmService
-	deviceConfigDAO dao.DeviceConfigDAO
 	//observer.FarmConfigObserver
 }
 
@@ -620,7 +620,7 @@ func (farm *DefaultFarmService) ManageMetrics(config config.DeviceConfig, farmSt
 	eventType := "ALARM"
 	deviceType := config.GetType()
 
-	farm.app.Logger.Debugf("Processing configured %s metrics...", deviceType)
+	farm.app.Logger.Debugf("Managing configured %s metrics...", deviceType)
 
 	metricConfigs := config.GetMetrics()
 
@@ -655,7 +655,7 @@ func (farm *DefaultFarmService) ManageMetrics(config config.DeviceConfig, farmSt
 func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 	farmState state.FarmStateMap, channels []config.ChannelConfig) []error {
 
-	farm.app.Logger.Debugf("Processing configured %s channels...",
+	farm.app.Logger.Debugf("Managing configured %s channels...",
 		deviceConfig.GetType())
 
 	var errors []error
@@ -676,7 +676,7 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 			continue
 		}
 
-		farm.app.Logger.Debugf("Processing channel %+v", channel)
+		farm.app.Logger.Debugf("Managing channel %+v", channel)
 
 		backoff := channel.GetBackoff()
 		if backoff > 0 {
@@ -719,6 +719,93 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 
 	}
 	return errors
+}
+
+// func (farm *DefaultFarmService) ManageWorkflows() error {
+// 	farmConfig := farm.GetConfig()
+// 	farm.app.Logger.Debugf("Managing %s workflows...", farmConfig.GetName())
+// 	for _, workflow := range farmConfig.GetWorkflows() {
+// 		if err := farm.RunWorkflow(&workflow); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
+
+func (farm *DefaultFarmService) RunWorkflow(workflow config.WorkflowConfig) {
+	farmConfig := farm.GetConfig()
+	farm.app.Logger.Debugf("Managing %s workflow: %s", farmConfig.GetName(), workflow.GetName())
+	go func() {
+		for i, step := range workflow.GetSteps() {
+			deviceService, err := farm.serviceRegistry.GetDeviceServiceByID(farm.farmID, step.GetDeviceID())
+			if err != nil {
+				farm.app.Logger.Error(err)
+			}
+			deviceConfig, err := deviceService.GetConfig()
+			if err != nil {
+				farm.app.Logger.Error(err)
+			}
+			for _, channel := range deviceConfig.GetChannels() {
+				if channel.GetID() == step.GetChannelID() {
+					duration := step.GetDuration()
+					boardID := channel.GetChannelID()
+					_, err := deviceService.TimerSwitch(boardID,
+						duration,
+						fmt.Sprintf("%s workflow step #%d switching on %s for %d seconds",
+							workflow.GetName(), i+1, channel.GetName(), duration))
+					if err != nil {
+						farm.app.Logger.Error(err)
+						step.SetState(common.WORKFLOW_STATE_ERROR)
+						workflow.SetStep(&step)
+						farmConfig.SetWorkflow(workflow)
+						farm.SetConfig(farmConfig)
+						return
+					}
+
+					step.SetState(common.WORKFLOW_STATE_EXECUTING)
+					workflow.SetStep(&step)
+					farmConfig.SetWorkflow(workflow)
+					farm.SetConfig(farmConfig)
+
+					totalDuration := time.Duration(duration + step.GetWait())
+					timeDuration := time.Duration(time.Second * totalDuration)
+					time.Sleep(timeDuration)
+
+					state, err := farm.GetState().GetChannelValue(deviceConfig.GetType(), boardID)
+					if err != nil {
+						farm.app.Logger.Error(err)
+						step.SetState(common.WORKFLOW_STATE_ERROR)
+						workflow.SetStep(&step)
+						farmConfig.SetWorkflow(workflow)
+						farm.SetConfig(farmConfig)
+						return
+					}
+					for state != common.SWITCH_OFF {
+						farm.app.Logger.Errorf("Workflow %s waiting for channel %s timer to expire, expected OFF state...",
+							workflow.GetName(), channel.GetName())
+
+						time.Sleep(5 * time.Second)
+						state, _ = farm.GetState().GetChannelValue(deviceConfig.GetType(), boardID)
+					}
+
+					step.SetState(common.WORKFLOW_STATE_COMPLETED)
+					workflow.SetStep(&step)
+					farmConfig.SetWorkflow(workflow)
+					farm.SetConfig(farmConfig)
+				}
+			}
+		}
+		now := time.Now().In(farm.app.Location)
+		nowHr, nowMin, nowSec := now.Clock()
+		nowDateTime := time.Date(now.Year(), now.Month(), now.Day(), nowHr, nowMin, nowSec, 0, farm.app.Location)
+		workflow.SetLastCompleted(&nowDateTime)
+		for _, step := range workflow.GetSteps() {
+			step.SetState(common.WORKFLOW_STATE_READY)
+			workflow.SetStep(&step)
+		}
+		farmConfig.SetWorkflow(workflow)
+		farm.SetConfig(farmConfig)
+	}()
 }
 
 // TODO: replace device service notify with this

@@ -10,6 +10,7 @@ type WorkflowStep struct {
 	//AlgorithmID        int    `yaml:"algorithm" json:"algorithm_id"`
 	Duration           int `yaml:"duration" json:"duration"`
 	Wait               int `yaml:"wait" json:"wait"`
+	State              int `yaml:"state" json:"state"`
 	WorkflowStepConfig `yaml:"-" json:"-"`
 }
 
@@ -97,4 +98,16 @@ func (ws *WorkflowStep) GetWait() int {
 // before proceeding to the next step.
 func (ws *WorkflowStep) SetWait(seconds int) {
 	ws.Wait = seconds
+}
+
+// GetStatus returns the current state of the workflow step.
+// See common.Constants.WORKFLOW_STATE_* for possible states.
+func (ws *WorkflowStep) GetState() int {
+	return ws.State
+}
+
+// SetStatus sets the current state of the workflow step.
+// See common.Constants.WORKFLOW_STATE_* for possible states.
+func (ws *WorkflowStep) SetState(state int) {
+	ws.State = state
 }

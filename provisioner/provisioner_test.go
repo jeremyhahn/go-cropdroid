@@ -3,9 +3,12 @@ package provisioner
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/stretchr/testify/assert"
 
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
@@ -13,13 +16,13 @@ import (
 
 func TestProvisioner(t *testing.T) {
 
-	farmDAO, provisioner := createDefaultProvisioner()
+	farmDAO, provisioner, params := createDefaultProvisioner()
 
 	user := &model.User{
 		Email:    "root@localhost",
 		Password: "dev"}
 
-	farm, err := provisioner.Provision(user)
+	farm, err := provisioner.Provision(user, params)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, farm)
@@ -34,19 +37,19 @@ func TestProvisioner(t *testing.T) {
 
 func TestProvisionerMultipleFarms(t *testing.T) {
 
-	farmDAO, provisioner := createDefaultProvisioner()
+	farmDAO, provisioner, params := createDefaultProvisioner()
 
 	user := &model.User{
 		Email:    "root@localhost",
 		Password: "dev"}
 
-	farm1, err := provisioner.Provision(user)
+	farm1, err := provisioner.Provision(user, params)
 	assert.Nil(t, err)
 
-	farm2, err := provisioner.Provision(user)
+	farm2, err := provisioner.Provision(user, params)
 	assert.Nil(t, err)
 
-	farm3, err := provisioner.Provision(user)
+	farm3, err := provisioner.Provision(user, params)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, farm1)
@@ -61,11 +64,16 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	CurrentTest.Cleanup()
 }
 
-func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner) {
+func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *ProvisionerParams) {
 	it := NewIntegrationTest()
 	userMapper := mapper.NewUserMapper()
 	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm)
 	initializer := gormstore.NewGormInitializer(it.logger, it.db, it.location)
+	params := &ProvisionerParams{
+		ConfigStore: config.MEMORY_STORE,
+		StateStore:  state.MEMORY_STORE,
+		DataStore:   datastore.GORM_STORE,
+	}
 	return farmDAO, NewGormFarmProvisioner(it.logger, it.gorm, it.location,
-		farmDAO, nil, userMapper, initializer)
+		farmDAO, nil, nil, userMapper, initializer), params
 }

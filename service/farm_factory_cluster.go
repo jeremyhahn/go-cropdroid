@@ -4,94 +4,115 @@ package service
 
 import (
 	"fmt"
-	"hash/fnv"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/state"
 
-	statemachine "github.com/jeremyhahn/go-cropdroid/cluster/state"
+	"github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
 )
 
-func (fb *FarmFactory) RunClusterProvisionerConsumer() {
-	for {
-		select {
-		case farmConfig := <-fb.farmProvisionerChan:
-			fb.app.Logger.Debugf("Processing provisioner request...")
-			farmService, err := fb.BuildClusterService(farmConfig)
-			if err != nil {
-				fb.app.Logger.Errorf("Error: %s", err)
-				break
-			}
-			fb.serviceRegistry.AddFarmService(farmService)
-			fb.farmTickerProvisionerChan <- farmConfig.GetID()
-			go farmService.RunCluster()
-		}
-	}
-}
+func (ff *DefaultFarmFactory) BuildClusterService(farmConfig config.FarmConfig) (FarmService, error) {
 
-func (fb *FarmFactory) BuildClusterService(farmConfig config.FarmConfig) (FarmService, error) {
-
-	// TODO DRY this up with gossip.Provision
-	clusterHash := fnv.New64a()
-	clusterHash.Write([]byte(fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmConfig.GetID())))
-	configClusterID := clusterHash.Sum64()
+	//configClusterID := util.ClusterHash(farmConfig.GetOrganizationID(), farmConfig.GetID())
 
 	farmID := farmConfig.GetID()
-	farmService, err := fb.BuildService(farmConfig)
+	farmService, err := ff.BuildService(farmConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	fb.app.Logger.Debugf("Creating config cluster %d for farm %d",
-		farmService.GetConfigClusterID(), farmID)
+	configClusterID := farmService.GetConfigClusterID()
+
+	ff.app.Logger.Debugf("Creating farm config cluster %d for farm %d",
+		configClusterID, farmID)
 
 	farmChannels := farmService.GetChannels()
 	farmConfigChangeChan := farmChannels.FarmConfigChangeChan
 	farmStateChangeChan := farmChannels.FarmStateChangeChan
+	//deviceStateChangeChan := farmChannels.DeviceStateChangeChan
 
-	if err := fb.createConfigCluster(farmID, farmService.GetConfigClusterID(), farmConfigChangeChan); err != nil {
-		fb.app.Logger.Errorf("Cluster config error: %s", err)
+	// Create config cluster and set initial configuration
+	if err := ff.createFarmConfigCluster(farmID, configClusterID, farmConfigChangeChan); err != nil {
+		ff.app.Logger.Errorf("Cluster config error: %s", err)
 	}
-
-	fb.app.Logger.Errorf("Creating state cluster: %d", farmID)
-	if err := fb.createStateCluster(farmID, farmStateChangeChan); err != nil {
-		fb.app.Logger.Errorf("Cluster state error: %s", err)
-	}
-
-	fb.app.RaftCluster.WaitForClusterReady(configClusterID)
-	if fb.app.RaftCluster.IsLeader(configClusterID) {
-		fb.app.Logger.Debugf("Setting inital clustered farm config for %d from the datastore", configClusterID)
+	ff.app.RaftCluster.WaitForClusterReady(configClusterID)
+	if ff.app.RaftCluster.IsLeader(configClusterID) {
+		ff.app.Logger.Debugf("Setting inital clustered farm config for farm %d, configClusterID=%d", farmID, configClusterID)
 		farmService.SetConfig(farmConfig)
+	}
+
+	// Create device state clusters first so farmService.InitializeState()
+	// is able to look up the controllers
+	for _, deviceConfig := range farmConfig.GetDevices() {
+		deviceID := deviceConfig.GetID()
+		deviceType := deviceConfig.GetType()
+		if deviceType == common.CONTROLLER_TYPE_SERVER {
+			continue
+		}
+		ff.app.Logger.Errorf("Creating device state cluster for deviceID: %d, farmID: %d",
+			deviceConfig.GetID(), deviceID)
+		if err := ff.createDeviceStateCluster(deviceID, deviceType, farmChannels.DeviceStateChangeChan); err != nil {
+			ff.app.Logger.Errorf("Device state cluster error: %s", err)
+		}
+		ff.app.RaftCluster.WaitForClusterReady(deviceID)
+	}
+
+	// Create state cluster and set initial state
+	ff.app.Logger.Errorf("Creating farm state cluster: %d", farmID)
+	if err := ff.createFarmStateCluster(farmID, farmStateChangeChan); err != nil {
+		ff.app.Logger.Errorf("Cluster state error: %s", err)
+	}
+	ff.app.RaftCluster.WaitForClusterReady(farmID)
+	if ff.app.RaftCluster.IsLeader(farmID) {
+		ff.app.Logger.Debugf("Setting inital farm state for farm %d, configClusterID=%d", farmID, configClusterID)
+		farmService.InitializeState(true)
+	} else {
+		farmService.InitializeState(false)
 	}
 
 	return farmService, nil
 }
 
-func (fb *FarmFactory) createConfigCluster(farmID, configID uint64,
+func (ff *DefaultFarmFactory) createFarmConfigCluster(farmID, configID uint64,
 	farmConfigChangeChan chan config.FarmConfig) error {
 
-	if fb.app.RaftCluster != nil {
-		params := fb.app.RaftCluster.GetParams()
-		params.SetClusterID(farmID)
-		params.SetDataDir(fmt.Sprintf("%s/%d-%d", fb.app.DataDir, farmID, configID))
-		sm := statemachine.NewFarmConfigMachine(fb.app.Logger, configID, farmConfigChangeChan, common.DEFAULT_FARM_CONFIG_HISTORY_LENGTH)
-		if err := fb.app.RaftCluster.CreateConfigCluster(configID, sm); err != nil {
+	if ff.app.RaftCluster != nil {
+		params := ff.app.RaftCluster.GetParams()
+		params.SetClusterID(configID)
+		params.SetDataDir(fmt.Sprintf("%s/%d-%d", ff.app.DataDir, farmID, configID))
+		sm := statemachine.NewFarmConfigMachine(ff.app.Logger, configID, farmConfigChangeChan, common.DEFAULT_FARM_CONFIG_HISTORY_LENGTH)
+		if err := ff.app.RaftCluster.CreateFarmConfigCluster(configID, sm); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (fb *FarmFactory) createStateCluster(farmID uint64,
+func (ff *DefaultFarmFactory) createFarmStateCluster(farmID uint64,
 	farmStateChangeChan chan state.FarmStateMap) error {
 
-	if fb.app.RaftCluster != nil {
-		params := fb.app.RaftCluster.GetParams()
+	if ff.app.RaftCluster != nil {
+		params := ff.app.RaftCluster.GetParams()
 		params.SetClusterID(farmID)
-		params.SetDataDir(fmt.Sprintf("%s/%d", fb.app.DataDir, farmID))
-		sm := statemachine.NewFarmStateMachine(fb.app.Logger, farmID, farmStateChangeChan)
-		if err := fb.app.RaftCluster.CreateStateCluster(farmID, sm); err != nil {
+		params.SetDataDir(fmt.Sprintf("%s/%d", ff.app.DataDir, farmID))
+		sm := statemachine.NewFarmStateMachine(ff.app.Logger, farmID, farmStateChangeChan)
+		if err := ff.app.RaftCluster.CreateFarmStateCluster(farmID, sm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ff *DefaultFarmFactory) createDeviceStateCluster(deviceID uint64,
+	deviceType string, deviceStateChangeChan chan common.DeviceStateChange) error {
+
+	if ff.app.RaftCluster != nil {
+		params := ff.app.RaftCluster.GetParams()
+		params.SetClusterID(deviceID)
+		params.SetDataDir(fmt.Sprintf("%s/%d", ff.app.DataDir, deviceID))
+		sm := statemachine.NewDeviceStateMachine(ff.app.Logger, deviceID, deviceType, deviceStateChangeChan)
+		if err := ff.app.RaftCluster.CreateDeviceStateCluster(deviceID, sm); err != nil {
 			return err
 		}
 	}

@@ -93,13 +93,13 @@ func (restService *DefaultMetricRestService) GetMetricsByDeviceId(w http.Respons
 
 	session.GetLogger().Debugf("deviceID=%s", deviceID)
 
-	id, err := strconv.ParseInt(deviceID, 0, 64)
+	id, err := strconv.ParseUint(deviceID, 0, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	metrics, err := restService.metricService.GetAll(session, int(id))
+	metrics, err := restService.metricService.GetAll(session, id)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

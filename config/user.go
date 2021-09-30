@@ -2,7 +2,7 @@ package config
 
 // User represents a user account in the app
 type User struct {
-	ID int `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	//Farms    []Farm `gorm:"many2many:permissions" yaml:"farmId" json:"farmId"`
 	Email    string `yaml:"email" json:"email"`
 	Password string `yaml:"password" json:"password"`
@@ -16,7 +16,7 @@ func NewUser() *User {
 }
 
 // GetID gets the users ID
-func (entity *User) GetID() int {
+func (entity *User) GetID() uint64 {
 	return entity.ID
 }
 

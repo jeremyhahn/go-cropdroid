@@ -80,7 +80,7 @@ func (restService *DefaultConditionRestService) GetListView(w http.ResponseWrite
 	defer session.Close()
 
 	params := mux.Vars(r)
-	channelID, err := strconv.Atoi(params["channelID"])
+	channelID, err := strconv.ParseUint(params["channelID"], 10, 64)
 	if err != nil {
 		session.GetLogger().Errorf("Error parsing channelID. params=%s, error=%s", params, err)
 		BadRequestError(w, r, err, restService.jsonWriter)

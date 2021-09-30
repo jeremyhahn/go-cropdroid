@@ -57,37 +57,37 @@ func TestOrganizationGetByUserID(t *testing.T) {
 
 	farmConfig := config.NewFarm()
 	farmConfig.SetDevices([]config.Device{
-		config.Device{
+		{
 			Type: "server",
 			Configs: []config.DeviceConfigItem{
-				config.DeviceConfigItem{
+				{
 					Key:   "name",
 					Value: testFarmName},
-				config.DeviceConfigItem{
+				{
 					Key:   "interval",
 					Value: "55"},
-				config.DeviceConfigItem{
+				{
 					Key:   "mode",
 					Value: testMode},
-				config.DeviceConfigItem{
+				{
 					Key:   "timezone",
 					Value: "America/New_York"},
-				config.DeviceConfigItem{
+				{
 					Key:   "smtp.enable",
 					Value: "true"},
-				config.DeviceConfigItem{
+				{
 					Key:   "smtp.host",
 					Value: "127.0.0.1"},
-				config.DeviceConfigItem{
+				{
 					Key:   "smtp.port",
 					Value: "587"},
-				config.DeviceConfigItem{
+				{
 					Key:   "smtp.username",
 					Value: "foo"},
-				config.DeviceConfigItem{
+				{
 					Key:   "smtp.password",
 					Value: "bar"},
-				config.DeviceConfigItem{
+				{
 					Key:   "smtp.recipient",
 					Value: "user@domain.com"},
 			}}})
@@ -324,34 +324,34 @@ func createTestOrganization() *config.Organization {
 	serverDevice := config.Device{
 		Type: "server",
 		Configs: []config.DeviceConfigItem{
-			config.DeviceConfigItem{
+			{
 				Key:   "name",
 				Value: "Fake Farm"},
-			config.DeviceConfigItem{
+			{
 				Key:   "interval",
 				Value: "58"},
-			config.DeviceConfigItem{
+			{
 				Key:   "mode",
 				Value: "test"},
-			config.DeviceConfigItem{
+			{
 				Key:   "timezone",
 				Value: "America/New_York"},
-			config.DeviceConfigItem{
+			{
 				Key:   "smtp.enable",
 				Value: "true"},
-			config.DeviceConfigItem{
+			{
 				Key:   "smtp.host",
 				Value: "127.0.0.1"},
-			config.DeviceConfigItem{
+			{
 				Key:   "smtp.port",
 				Value: "587"},
-			config.DeviceConfigItem{
+			{
 				Key:   "smtp.username",
 				Value: "foo"},
-			config.DeviceConfigItem{
+			{
 				Key:   "smtp.password",
 				Value: "bar"},
-			config.DeviceConfigItem{
+			{
 				Key:   "smtp.recipient",
 				Value: "user@domain.com"},
 		}}

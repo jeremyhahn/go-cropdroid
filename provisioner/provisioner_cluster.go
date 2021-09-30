@@ -12,7 +12,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
-	"github.com/jinzhu/gorm"
 
 	logging "github.com/op/go-logging"
 )
@@ -27,7 +26,7 @@ type RaftFarmProvisioner struct {
 	FarmProvisioner
 }
 
-func NewRaftFarmProvisioner(logger *logging.Logger, db *gorm.DB, gossip cluster.GossipCluster,
+func NewRaftFarmProvisioner(logger *logging.Logger, gossip cluster.GossipCluster,
 	location *time.Location, farmDAO dao.FarmDAO, userMapper mapper.UserMapper,
 	initializer datastore.Initializer) FarmProvisioner {
 
@@ -40,21 +39,21 @@ func NewRaftFarmProvisioner(logger *logging.Logger, db *gorm.DB, gossip cluster.
 		initializer: initializer}
 }
 
-func (provisioner *RaftFarmProvisioner) Provision(userAccount common.UserAccount) (config.FarmConfig, error) {
+func (provisioner *RaftFarmProvisioner) Provision(userAccount common.UserAccount, params *ProvisionerParams) (config.FarmConfig, error) {
 	userConfig := provisioner.userMapper.MapUserModelToEntity(userAccount)
 	farmConfig, err := provisioner.initializer.BuildConfig(userConfig)
 	if err != nil {
 		return nil, err
 	}
-	if err := provisioner.gossip.Provision(farmConfig); err != nil {
+	if err := provisioner.farmDAO.Save(farmConfig.(*config.Farm)); err != nil {
 		return nil, err
 	}
-	if err := provisioner.farmDAO.Save(farmConfig.(*config.Farm)); err != nil {
+	if err := provisioner.gossip.Provision(farmConfig); err != nil {
 		return nil, err
 	}
 	return farmConfig, nil
 }
 
-func (provisioner *RaftFarmProvisioner) Deprovision(userAccount common.UserAccount) error {
+func (provisioner *RaftFarmProvisioner) Deprovision(userAccount common.UserAccount, farmID uint64) error {
 	return errors.New("Not implemented")
 }

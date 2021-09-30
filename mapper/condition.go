@@ -12,7 +12,7 @@ import (
 type ConditionMapper interface {
 	MapModelToEntity(model config.ConditionConfig) *config.Condition
 	MapEntityToModel(entity *config.Condition) *config.Condition
-	MapEntityToView(entity config.ConditionConfig, deviceType string, metric config.MetricConfig, channelID int) *viewmodel.Condition
+	MapEntityToView(entity config.ConditionConfig, deviceType string, metric config.MetricConfig, channelID uint64) *viewmodel.Condition
 	MapViewToConfig(viewModel viewmodel.Condition) config.ConditionConfig
 }
 
@@ -44,7 +44,7 @@ func (mapper *DefaultConditionMapper) MapEntityToModel(entity *config.Condition)
 }
 
 func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionConfig, deviceType string,
-	metric config.MetricConfig, channelID int) *viewmodel.Condition {
+	metric config.MetricConfig, channelID uint64) *viewmodel.Condition {
 
 	text := fmt.Sprintf("%s %s %s %.2f",
 		strings.Title(deviceType),

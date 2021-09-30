@@ -19,32 +19,35 @@ type GormDB interface {
 	GORM() *gorm.DB
 	Create() error
 	Connect(serverConnection bool) *gorm.DB
+	CloneConnection() *gorm.DB
 	Migrate() error
 	Drop()
 	Close()
 }
 
 type GormInitParams struct {
-	DebugFlag bool
-	DataDir   string
-	Engine    string
-	Path      string
-	Host      string
-	Port      int
-	Username  string
-	Password  string
-	CACert    string
-	TLSKey    string
-	TLSCert   string
+	DebugFlag         bool
+	EnableDefaultFarm bool
+	DataDir           string
+	Engine            string
+	Path              string
+	Host              string
+	Port              int
+	Username          string
+	Password          string
+	CACert            string
+	TLSKey            string
+	TLSCert           string
 
 	DBName   string
 	Location *time.Location
 }
 
 type GormDatabase struct {
-	logger *logging.Logger
-	params *GormInitParams
-	db     *gorm.DB
+	logger             *logging.Logger
+	params             *GormInitParams
+	db                 *gorm.DB
+	isServerConnection bool
 	GormDB
 }
 
@@ -55,18 +58,21 @@ func NewGormDB(logger *logging.Logger, params *GormInitParams) GormDB {
 // Connect creates and returns a new connection to the database
 func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	//database.logger.Debug(fmt.Sprintf("Datastore: %s", database.params.Engine))
+	database.isServerConnection = serverConnection
 	switch database.params.Engine {
 	case "memory":
 		//"file:%s?mode=memory&cache=shared"
 		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory", database.params.DBName))
+		database.db.Exec("PRAGMA foreign_keys = ON;")
 		//database.db.LogMode(true)
 		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
-		if err := NewGormInitializer(database.logger, database, database.params.Location).Initialize(); err != nil {
+		if err := NewGormInitializer(database.logger, database, database.params.Location).Initialize(database.params.EnableDefaultFarm); err != nil {
 			database.logger.Fatal(err)
 		}
 	case "sqlite":
 		sqlite := fmt.Sprintf("%s/%s.db", database.params.DataDir, database.params.DBName)
 		database.db = database.newSQLite(sqlite)
+		database.db.Exec("PRAGMA foreign_keys = ON;")
 	case "cockroach":
 		database.db = database.newCockroachDB()
 	case "postgres":
@@ -80,6 +86,12 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	return database.db
 }
 
+// Uses the connection parameters and credentials from the current
+// database session to establish a new connection.
+func (database *GormDatabase) CloneConnection() *gorm.DB {
+	return database.Connect(database.isServerConnection)
+}
+
 // Returns the underlying GORM handle
 func (database *GormDatabase) GORM() *gorm.DB {
 	return database.db
@@ -87,7 +99,7 @@ func (database *GormDatabase) GORM() *gorm.DB {
 
 // Create a new database
 func (database *GormDatabase) Create() error {
-	if database.params.Engine != "sqlite" {
+	if database.params.Engine != "sqlite" && database.params.Engine != "memory" {
 		query := fmt.Sprintf("CREATE DATABASE %s;", database.params.DBName)
 		return database.db.Exec(query).Error
 	}
@@ -144,6 +156,7 @@ func (database *GormDatabase) newSQLite(dbname string) *gorm.DB {
 	if err != nil {
 		database.logger.Fatalf("SQLite Error: %s", err)
 	}
+	db.Exec("PRAGMA foreign_keys = ON;")
 	return db
 }
 

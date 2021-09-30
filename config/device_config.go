@@ -3,8 +3,8 @@ package config
 // Config represents a configuration value for a given user within a
 // a specific organization for a specific device
 type DeviceConfigItem struct {
-	ID                 int    `gorm:"primary_key:auto_increment" json:"id"`
-	UserID             int    `gorm:"index:user_id" json:"user_id"`
+	ID                 uint64 `gorm:"primary_key:auto_increment" json:"id"`
+	UserID             uint64 `gorm:"index:user_id" json:"user_id"`
 	DeviceID           uint64 `gorm:"index:config_device_id" json:"device_id"`
 	Key                string `gorm:"size:255;index:key" json:"key"`
 	Value              string `gorm:"size:255" json:"value"`
@@ -15,7 +15,7 @@ func NewDeviceConfigItem() *DeviceConfigItem {
 	return &DeviceConfigItem{}
 }
 
-func CreateDeviceConfigItem(userID int, deviceID uint64, key, value string) *DeviceConfigItem {
+func CreateDeviceConfigItem(userID, deviceID uint64, key, value string) *DeviceConfigItem {
 	return &DeviceConfigItem{
 		UserID:   userID,
 		DeviceID: deviceID,
@@ -24,22 +24,22 @@ func CreateDeviceConfigItem(userID int, deviceID uint64, key, value string) *Dev
 }
 
 // SetID sets the config unique identifier
-func (c *DeviceConfigItem) SetID(id int) {
+func (c *DeviceConfigItem) SetID(id uint64) {
 	c.ID = id
 }
 
 // GetID returns the config unique identifier
-func (c *DeviceConfigItem) GetID() int {
+func (c *DeviceConfigItem) GetID() uint64 {
 	return c.ID
 }
 
 // SetUserID returns the users unique identifier
-func (c *DeviceConfigItem) SetUserID(id int) {
+func (c *DeviceConfigItem) SetUserID(id uint64) {
 	c.UserID = id
 }
 
 // GetUserID returns the users unique identifier
-func (c *DeviceConfigItem) GetUserID() int {
+func (c *DeviceConfigItem) GetUserID() uint64 {
 	return c.UserID
 }
 

@@ -8,6 +8,56 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
+// Watches the DeviceStateChangeChan for real-time incoming device updates.
+func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
+
+	farm.app.Logger.Debugf("Farm %d watching for incoming device state changes", farm.farmID)
+
+	for {
+		select {
+		case newDeviceState := <-farm.channels.DeviceStateChangeChan:
+
+			deviceID := newDeviceState.DeviceID
+			deviceType := newDeviceState.DeviceType
+			stateMap := newDeviceState.StateMap
+
+			_, err := farm.OnDeviceStateChange(deviceType, stateMap)
+			if err != nil {
+				farm.error("WatchDeviceStateChangeCluster", "WatchDeviceStateChangeCluster", err)
+				continue
+			}
+
+			if !farm.app.RaftCluster.IsLeader(farm.farmID) {
+				continue
+			}
+
+			farm.SetDeviceState(deviceType, stateMap)
+
+			if err := farm.deviceDataStore.Save(deviceID, stateMap); err != nil {
+				farm.app.Logger.Errorf("Error storing device data: %s", err)
+				farm.error("WatchDeviceStateChangeCluster", "WatchDeviceStateChangeCluster", err)
+				continue
+			}
+
+			deviceService, err := farm.serviceRegistry.GetDeviceService(farm.farmID, deviceType)
+			if err != nil {
+				farm.app.Logger.Errorf("Error getting device service: %s", err)
+				continue
+			}
+
+			deviceConfig, err := deviceService.GetConfig()
+			if err != nil {
+				farm.app.Logger.Errorf("Error getting device config: %s", err)
+				continue
+			}
+
+			if newDeviceState.IsPollEvent {
+				farm.Manage(deviceConfig, farm.GetState())
+			}
+		}
+	}
+}
+
 func (farm *DefaultFarmService) RunCluster() {
 
 	if farm.running == true {
@@ -25,6 +75,7 @@ func (farm *DefaultFarmService) RunCluster() {
 
 	go farm.WatchFarmStateChange()
 	go farm.WatchFarmConfigChange()
+	go farm.WatchDeviceStateChangeCluster()
 
 	// Wait for top of the minute
 	/*
@@ -49,10 +100,10 @@ func (farm *DefaultFarmService) RunCluster() {
 
 func (farm *DefaultFarmService) PollCluster() {
 
-	farmConfig, err := farm.configStore.Get(farm.farmID, common.CONSISTENCY_CACHED)
-	if err != nil {
-		farm.app.Logger.Errorf("Error looking up farm config %d. Error: ",
-			farm.farmID, err.Error())
+	farmConfig, err := farm.configStore.Get(farm.configClusterID, common.CONSISTENCY_CACHED)
+	if err != nil || farmConfig == nil {
+		farm.app.Logger.Errorf("Farm config not found: configClusterID: %d, farmID: %d",
+			farm.configClusterID, farm.farmID)
 		return
 	}
 
@@ -73,10 +124,10 @@ func (farm *DefaultFarmService) PollCluster() {
 
 func (farm *DefaultFarmService) pollCluster() {
 
-	farmID := farm.GetFarmID()
-	farm.app.Logger.Debugf("Polling farm: %d", farmID)
+	farm.app.Logger.Debugf("Polling farm, configClusterID=%d, farmID=%d",
+		farm.configClusterID, farm.farmID)
 
-	if isLeader := farm.app.RaftCluster.WaitForClusterReady(farmID); isLeader == false {
+	if isLeader := farm.app.RaftCluster.WaitForClusterReady(farm.configClusterID); isLeader == false {
 		// Only the cluster leader polls the farm
 		return
 	}

@@ -12,7 +12,7 @@ type Condition struct {
 	MetricID   int     `json:"metricId"`
 	MetricName string  `json:"metricName"`
 	WorkflowID uint64  `json:"workflowId"`
-	ChannelID  int     `json:"channelId"`
+	ChannelID  uint64  `json:"channelId"`
 	Comparator string  `json:"comparator"`
 	Threshold  float64 `json:"threshold"`
 	Text       string  `json:"text"`
@@ -39,7 +39,7 @@ func (condition *Condition) GetWorkflowID() uint64 {
 	return condition.WorkflowID
 }
 
-func (condition *Condition) GetChannelID() int {
+func (condition *Condition) GetChannelID() uint64 {
 	return condition.ChannelID
 }
 

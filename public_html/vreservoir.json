@@ -1,20 +1,20 @@
 {
  "device_id": 3,
  "metrics": {
-  "DO_PER": 25,
-  "DO_mgL": 10,
-  "EC": 900,
-  "ORP": 19,
-  "PH": 6,
-  "SAL": 0.42,
-  "SG": 1,
-  "TDS": 466,
+  "do_mgL": 10,
+  "do_per": 25,
+  "ec": 900,
   "envHeatIndex": 8,
   "envHumidity": 2,
   "envTemp": 60.78,
   "lowerFloat": 273,
   "mem": 1500,
+  "orp": 19,
+  "ph": 8.5,
   "resTemp": 63,
+  "sal": 0.42,
+  "sg": 1,
+  "tds": 466,
   "upperFloat": 315
  },
  "channels": [
@@ -35,5 +35,5 @@
   0,
   0
  ],
- "timestamp": "2021-08-03T02:11:51.348817058-04:00"
+ "timestamp": "2021-09-29T15:11:21.147812167-04:00"
 }

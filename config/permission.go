@@ -1,15 +1,15 @@
 package config
 
 type Permission struct {
-	ID             int    `gorm:"primary_key:auto_increment"`
-	OrganizationID int    `yaml:"orgId" json:"orgId"`
+	ID             uint64 `gorm:"primary_key:auto_increment"`
+	OrganizationID uint64 `yaml:"orgId" json:"orgId"`
 	FarmID         uint64 `yaml:"farmId" json:"farmId"`
-	UserID         int    `yaml:"userId" json:"userId"`
-	RoleID         int    `yaml:"roleId" json:"roleId"`
+	UserID         uint64 `yaml:"userId" json:"userId"`
+	RoleID         uint64 `yaml:"roleId" json:"roleId"`
 	//RoleID         int `gorm:"primary_key;auto_increment:false" yaml:"roleId" json:"roleId"`
 }
 
-func NewPermission(orgID int, farmID uint64, userID, roleID int) *Permission {
+func NewPermission(orgID, farmID, userID, roleID uint64) *Permission {
 	return &Permission{
 		OrganizationID: orgID,
 		FarmID:         farmID,
@@ -17,11 +17,11 @@ func NewPermission(orgID int, farmID uint64, userID, roleID int) *Permission {
 		RoleID:         roleID}
 }
 
-func (perms *Permission) GetID() int {
+func (perms *Permission) GetID() uint64 {
 	return perms.ID
 }
 
-func (perms *Permission) GetOrgID() int {
+func (perms *Permission) GetOrgID() uint64 {
 	return perms.OrganizationID
 }
 
@@ -29,10 +29,10 @@ func (perms *Permission) GetFarmID() uint64 {
 	return perms.FarmID
 }
 
-func (perms *Permission) GetUserID() int {
+func (perms *Permission) GetUserID() uint64 {
 	return perms.UserID
 }
 
-func (perms *Permission) GetRoleID() int {
+func (perms *Permission) GetRoleID() uint64 {
 	return perms.RoleID
 }

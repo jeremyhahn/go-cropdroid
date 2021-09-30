@@ -53,16 +53,18 @@ func (s *RaftFarmConfigStore) Get(clusterID uint64, CONSISTENCY_LEVEL int) (conf
 
 	var result interface{}
 	var err error
-	if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED {
-		result = []config.FarmConfig{s.cachedConfig}
-	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
-		result, err = s.raft.ReadLocal(clusterID, nil)
+	if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED && s.cachedConfig != nil {
+		return s.cachedConfig, nil
+	}
+	if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
+		result, err = s.raft.SyncRead(clusterID, nil)
 		if err != nil {
 			s.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
 			return nil, err
 		}
-	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
-		result, err = s.raft.SyncRead(clusterID, nil)
+	} else {
+		// CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL
+		result, err = s.raft.ReadLocal(clusterID, nil)
 		if err != nil {
 			s.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
 			return nil, err

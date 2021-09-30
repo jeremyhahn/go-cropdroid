@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
@@ -15,6 +14,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
 type DefaultFarmService struct {
@@ -22,7 +22,7 @@ type DefaultFarmService struct {
 	dao                 dao.FarmDAO
 	stateStore          state.FarmStorer
 	configStore         store.FarmConfigStorer
-	deviceStore         datastore.DeviceDatastore
+	deviceDataStore     datastore.DeviceDataStore
 	farmID              uint64
 	configClusterID     uint64
 	mode                string
@@ -33,49 +33,29 @@ type DefaultFarmService struct {
 	notificationService NotificationService
 	channels            *FarmChannels
 	running             bool
-	backoffTable        map[uint64]map[int]time.Time
+	backoffTable        map[uint64]map[uint64]time.Time
 	deviceConfigDAO     dao.DeviceConfigDAO
+	farmStateQuitChan   chan int
+	farmConfigQuitChan  chan int
+	deviceStateQuitChan chan int
+	pollTickerQuitChan  chan int
 	FarmService
 	//observer.FarmConfigObserver
 }
 
 func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmStorer,
 	configStore store.FarmConfigStorer, deviceConfigStore store.DeviceConfigStorer,
-	deviceStore datastore.DeviceDatastore, farmConfig config.FarmConfig, consistencyLevel int,
+	deviceDataStore datastore.DeviceDataStore, farmConfig config.FarmConfig, consistencyLevel int,
 	serviceRegistry ServiceRegistry, farmChannels *FarmChannels,
 	deviceConfigDAO dao.DeviceConfigDAO) (FarmService, error) {
 
 	farmID := farmConfig.GetID()
 	mode := farmConfig.GetMode()
 
-	backoffTable := make(map[uint64]map[int]time.Time, 0)
+	backoffTable := make(map[uint64]map[uint64]time.Time, 0)
 
 	deviceServices, err := serviceRegistry.GetDeviceServices(farmID)
 	if err != nil {
-		return nil, err
-	}
-
-	// Only used when clustering enabled
-	clusterHash := fnv.New64a()
-	clusterHash.Write([]byte(fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmID)))
-	configClusterID := clusterHash.Sum64()
-
-	_state, err := stateStore.Get(farmID)
-	if err == state.ErrFarmNotFound {
-		_state = state.NewFarmStateMap(farmID)
-		deviceStateMaps := make([]state.DeviceStateMap, 0)
-		for _, d := range deviceServices {
-			conf, _ := d.GetConfig()
-			deviceID := conf.GetID()
-			deviceStateMap := state.CreateDeviceStateMapEmpty(
-				deviceID, len(conf.GetMetrics()), len(conf.GetChannels()))
-			deviceStateMaps = append(deviceStateMaps, deviceStateMap)
-			_state.SetDevice(conf.GetType(), deviceStateMap)
-			backoffTable[deviceID] = make(map[int]time.Time, 0)
-		}
-		stateStore.Put(farmID, _state)
-	} else if err != nil {
-		app.Logger.Errorf("Fatal farm service error (farmID=%d): %s", farmID, err)
 		return nil, err
 	}
 
@@ -88,26 +68,82 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 		}
 		farmConfig.SetDevice(deviceConfig)
 	}
-	configStore.Put(farmID, farmConfig)
 
-	return &DefaultFarmService{
+	farmService := &DefaultFarmService{
 		app:                 app,
 		dao:                 farmDAO,
 		stateStore:          stateStore,
 		configStore:         configStore,
-		deviceStore:         deviceStore,
+		deviceDataStore:     deviceDataStore,
 		farmID:              farmID,
 		mode:                mode,
 		consistencyLevel:    consistencyLevel,
-		configClusterID:     configClusterID,
 		serviceRegistry:     serviceRegistry,
 		conditionService:    serviceRegistry.GetConditionService(),
 		scheduleService:     serviceRegistry.GetScheduleService(),
 		notificationService: serviceRegistry.GetNotificationService(),
 		channels:            farmChannels,
 		running:             false,
+		farmStateQuitChan:   make(chan int),
+		farmConfigQuitChan:  make(chan int),
+		deviceStateQuitChan: make(chan int),
+		pollTickerQuitChan:  make(chan int),
 		deviceConfigDAO:     deviceConfigDAO,
-		backoffTable:        backoffTable}, nil
+		backoffTable:        backoffTable}
+
+	var configClusterID uint64
+	if farmService.isRaftConfigStore(farmConfig) {
+		configClusterID = util.ClusterHash(farmConfig.GetOrganizationID(), farmID)
+	} else {
+		configClusterID = farmConfig.GetID()
+
+		err = farmService.configStore.Put(configClusterID, farmConfig)
+		//if err == state.ErrFarmNotFound {
+		err = farmService.InitializeState(true)
+		if err != nil {
+			return nil, err
+		}
+		// } else if err != nil {
+		// 	app.Logger.Errorf("Fatal farm service error (farmID=%d): %s", farmID, err)
+		// 	return nil, err
+		// }
+	}
+
+	farmService.configClusterID = configClusterID
+
+	return farmService, nil
+}
+
+func (farm *DefaultFarmService) IsRunning() bool {
+	return farm.running
+}
+
+func (farm *DefaultFarmService) isRaftConfigStore(farmConfig config.FarmConfig) bool {
+	return farmConfig.GetConfigStore() == config.RAFT_MEMORY_STORE ||
+		farmConfig.GetConfigStore() == config.RAFT_DISK_STORE
+}
+
+func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
+	deviceServices, err := farm.serviceRegistry.GetDeviceServices(farm.farmID)
+	if err != nil {
+		return err
+	}
+	_state := state.NewFarmStateMap(farm.farmID)
+	deviceStateMaps := make([]state.DeviceStateMap, 0)
+	for _, d := range deviceServices {
+		conf, _ := d.GetConfig()
+		deviceID := conf.GetID()
+		deviceStateMap := state.CreateEmptyDeviceStateMap(
+			deviceID, len(conf.GetMetrics()), len(conf.GetChannels()))
+		deviceStateMaps = append(deviceStateMaps, deviceStateMap)
+		_state.SetDevice(conf.GetType(), deviceStateMap)
+		//farm.backoffTable[deviceID] = make(map[int]time.Time, 0)
+		farm.backoffTable[farm.farmID] = make(map[uint64]time.Time, 0)
+	}
+	if saveToStateStore {
+		farm.stateStore.Put(farm.farmID, _state)
+	}
+	return nil
 }
 
 func (farm *DefaultFarmService) GetFarmID() uint64 {
@@ -143,7 +179,13 @@ func (farm *DefaultFarmService) GetState() state.FarmStateMap {
 func (farm *DefaultFarmService) GetConfig() config.FarmConfig {
 	farm.app.Logger.Debugf("Getting farm configuration. farm.id=%d, farm.configClusterID=%d",
 		farm.GetFarmID(), farm.configClusterID)
-	conf, err := farm.configStore.Get(farm.farmID, farm.consistencyLevel)
+
+	farmConfigID := farm.farmID
+	if farm.app.Mode == common.MODE_CLUSTER {
+		farmConfigID = farm.configClusterID
+	}
+
+	conf, err := farm.configStore.Get(farmConfigID, farm.consistencyLevel)
 	if err != nil {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return nil
@@ -152,7 +194,7 @@ func (farm *DefaultFarmService) GetConfig() config.FarmConfig {
 }
 
 func (farm *DefaultFarmService) SetConfig(farmConfig config.FarmConfig) error {
-	if err := farm.configStore.Put(farm.farmID, farmConfig); err != nil {
+	if err := farm.configStore.Put(farm.configClusterID, farmConfig); err != nil {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return err
 	}
@@ -166,6 +208,12 @@ func (farm *DefaultFarmService) SetDeviceState(deviceType string, deviceState st
 	state, err := farm.stateStore.Get(farm.farmID)
 	if err != nil {
 		farm.app.Logger.Errorf("Error: %s", err)
+		return
+	}
+	if state == nil {
+		// When running in cluster mode, the device state
+		// may not have propagated to all nodes yet
+		farm.app.Logger.Error("Farm state not found in state store! farm.farmID=%d", farm.farmID)
 		return
 	}
 	state.SetDevice(deviceType, deviceState.Clone())
@@ -192,7 +240,7 @@ func (farm *DefaultFarmService) SetDeviceConfig(deviceConfig config.DeviceConfig
 		return err
 	}
 	farmConfig.SetDevice(deviceConfig)
-	farm.configStore.Put(farm.farmID, farmConfig)
+	farm.configStore.Put(farm.configClusterID, farmConfig)
 	farm.PublishConfig(farmConfig)
 	return nil
 }
@@ -211,7 +259,7 @@ func (farm *DefaultFarmService) SetConfigValue(session Session, farmID, deviceID
 	farm.deviceConfigDAO.Save(configItem)
 	farm.app.Logger.Debugf("Saved configuration item: %+v", configItem)
 
-	farmConfig, err := farm.dao.Get(farm.farmID)
+	farmConfig, err := farm.dao.Get(farm.farmID, common.CONSISTENCY_CACHED)
 
 	// This doesnt update raft state in cluster mode
 	farm.channels.FarmConfigChangeChan <- farmConfig
@@ -354,7 +402,11 @@ func (farm *DefaultFarmService) WatchFarmStateChange() {
 					farm.app.Logger.Errorf("Error: %s", err)
 				}
 			}
+		case <-farm.farmStateQuitChan:
+			farm.app.Logger.Debugf("Closing farm state channel. farmID=%d", farm.farmID)
+			return
 		}
+
 	}
 }
 
@@ -406,8 +458,11 @@ func (farm *DefaultFarmService) WatchFarmConfigChange() {
 					service.SetMode(newMode, d)
 				}
 			}
-
 			farm.PublishConfig(newConfig)
+
+		case <-farm.farmConfigQuitChan:
+			farm.app.Logger.Debugf("Closing farm config channel. farmID=%d", farm.farmID)
+			return
 		}
 	}
 }
@@ -445,7 +500,7 @@ func (farm *DefaultFarmService) WatchDeviceStateChange() {
 
 			farm.SetDeviceState(deviceType, stateMap)
 
-			if err := farm.deviceStore.Save(deviceID, stateMap); err != nil {
+			if err := farm.deviceDataStore.Save(deviceID, stateMap); err != nil {
 				farm.app.Logger.Errorf("Error storing device data: %s", err)
 				farm.error("WatchDeviceStateChange", "WatchDeviceStateChange", err)
 				continue
@@ -466,6 +521,9 @@ func (farm *DefaultFarmService) WatchDeviceStateChange() {
 			if newDeviceState.IsPollEvent {
 				farm.Manage(deviceConfig, farm.GetState())
 			}
+		case <-farm.deviceStateQuitChan:
+			farm.app.Logger.Debugf("Closing device state channel. farmID=%d", farm.farmID)
+			return
 		}
 	}
 }
@@ -474,7 +532,6 @@ func (farm *DefaultFarmService) OnDeviceStateChange(deviceType string,
 	newDeviceState state.DeviceStateMap) (state.DeviceStateDeltaMap, error) {
 
 	farm.app.Logger.Debugf("newDeviceState=%+v", newDeviceState)
-
 	var delta state.DeviceStateDeltaMap
 
 	lastState, err := farm.stateStore.Get(farm.farmID)
@@ -538,22 +595,39 @@ func (farm *DefaultFarmService) Run() {
 	farm.Poll()
 }
 
+func (farm *DefaultFarmService) Stop() {
+	farm.app.Logger.Debugf("Stopping farm %d", farm.farmID)
+	farm.farmStateQuitChan <- 0
+	farm.farmConfigQuitChan <- 0
+	farm.deviceStateQuitChan <- 0
+	farm.pollTickerQuitChan <- 0
+	farm.stateStore.Close()
+	deviceServices, err := farm.serviceRegistry.GetDeviceServices(farm.farmID)
+	if err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+	}
+	for _, deviceService := range deviceServices {
+		deviceService.Stop()
+	}
+	farm.running = false
+	farm.serviceRegistry.RemoveFarmService(farm.farmID)
+}
+
 func (farm *DefaultFarmService) Poll() {
 
-	farmConfig, err := farm.configStore.Get(farm.farmID, common.CONSISTENCY_CACHED)
+	farmConfig, err := farm.configStore.Get(farm.configClusterID, common.CONSISTENCY_CACHED)
 	if err != nil || farmConfig == nil {
-		farm.app.Logger.Errorf("Farm config not found: %d", farm.farmID)
+		farm.app.Logger.Errorf("Farm config not found: %d", farm.configClusterID)
 		return
 	}
 
 	if farmConfig.GetInterval() > 0 {
 		ticker := time.NewTicker(time.Duration(farmConfig.GetInterval()) * time.Second)
-		quit := make(chan struct{})
 		for {
 			select {
 			case <-ticker.C:
 				farm.poll()
-			case <-quit:
+			case <-farm.pollTickerQuitChan:
 				ticker.Stop()
 				return
 			}
@@ -578,9 +652,9 @@ func (farm *DefaultFarmService) Manage(deviceConfig config.DeviceConfig,
 
 	//eventType := "Manage"
 
-	farmConfig, err := farm.configStore.Get(farm.farmID, farm.consistencyLevel)
+	farmConfig, err := farm.configStore.Get(farm.configClusterID, farm.consistencyLevel)
 	if err != nil {
-		farm.app.Logger.Errorf("Farm config not found: %d", farm.farmID)
+		farm.app.Logger.Errorf("Farm config not found: %d", farm.configClusterID)
 		return
 	}
 
@@ -655,8 +729,7 @@ func (farm *DefaultFarmService) ManageMetrics(config config.DeviceConfig, farmSt
 func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 	farmState state.FarmStateMap, channels []config.ChannelConfig) []error {
 
-	farm.app.Logger.Debugf("Managing configured %s channels...",
-		deviceConfig.GetType())
+	farm.app.Logger.Debugf("Managing configured %s channels...", deviceConfig.GetType())
 
 	var errors []error
 
@@ -680,7 +753,14 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 
 		backoff := channel.GetBackoff()
 		if backoff > 0 {
+
+			farm.app.Logger.Debugf("farm.backoffTable=%+v", farm.backoffTable)
+
 			if timer, ok := farm.backoffTable[farm.farmID][channel.GetID()]; ok {
+
+				farm.app.Logger.Debugf("timer=%s, backoff=%d, channel=%+v",
+					timer.String(), backoff, channel)
+
 				if time.Since(timer).Minutes() < float64(backoff) {
 					elapsed := time.Since(timer).Minutes()
 					farm.app.Logger.Debugf("Waiting for %s backoff timer to expire. timer=%s, now=%s, elapsed=%.2f, backoff=%d",
@@ -693,16 +773,24 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 		}
 
 		if len(channel.GetConditions()) > 0 {
-			handled, err := NewChannelConditionHandler(farm.app.Logger,
+
+			// When running in cluster mode
+			// if farm.backoffTable[farm.farmID] == nil {
+			// 	farm.app.Logger.Error("farm.backoffTable[%d] is nil")
+			// 	continue
+			// }
+
+			handler := NewChannelConditionHandler(farm.app.Logger,
 				deviceConfig, channel, farmState, farm, deviceService,
-				farm.conditionService, farm.backoffTable[deviceConfig.GetID()]).Handle()
+				farm.conditionService, farm.backoffTable[farm.farmID])
+			handled, err := handler.Handle()
 			if err != nil {
 				farm.app.Logger.Debugf("Error processing %s conditions: %s", channel.GetName(), err)
 				errors = append(errors, err)
 				continue
 			}
 			if handled {
-				farm.app.Logger.Debugf("Channel already handled by conditional, aborting schedule processing...")
+				farm.app.Logger.Debugf("Channel %s already handled by conditional, aborting schedule processing...", channel.GetName())
 				continue
 			}
 		}
@@ -810,7 +898,7 @@ func (farm *DefaultFarmService) RunWorkflow(workflow config.WorkflowConfig) {
 
 // TODO: replace device service notify with this
 func (farm *DefaultFarmService) notify(deviceType, eventType, message string) error {
-	farmConfig, err := farm.configStore.Get(farm.farmID, farm.consistencyLevel)
+	farmConfig, err := farm.configStore.Get(farm.configClusterID, farm.consistencyLevel)
 	if err != nil {
 		farm.app.Logger.Errorf("Farm config not found: %d", farm.farmID)
 		return err
@@ -826,7 +914,7 @@ func (farm *DefaultFarmService) notify(deviceType, eventType, message string) er
 
 func (farm *DefaultFarmService) error(method, eventType string, err error) {
 	farm.app.Logger.Errorf("Error: %s", method, err)
-	farmConfig, _err := farm.configStore.Get(farm.farmID, farm.consistencyLevel)
+	farmConfig, _err := farm.configStore.Get(farm.configClusterID, farm.consistencyLevel)
 	if _err != nil {
 		farm.app.Logger.Errorf("Farm config not found: %d", farm.farmID)
 		return

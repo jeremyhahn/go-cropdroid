@@ -8,6 +8,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/provisioner"
 )
 
 type DefaultServiceRegistry struct {
@@ -24,9 +25,10 @@ type DefaultServiceRegistry struct {
 	deviceServices      map[uint64][]DeviceService
 	deviceServicesMutex *sync.RWMutex
 	eventLogService     EventLogService
-	farmFactory         *FarmFactory
+	//farmFactory         FarmFactory
 	farmServices        map[uint64]FarmService
 	farmServicesMutex   *sync.RWMutex
+	farmProvisioner     provisioner.FarmProvisioner
 	googleAuthService   AuthService
 	jwtService          JsonWebTokenService
 	mailer              common.Mailer
@@ -51,10 +53,10 @@ func NewServiceRegistry(app *app.App) ServiceRegistry {
 		deviceServicesMutex: &sync.RWMutex{}}
 }
 
-func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mappers mapper.MapperRegistry) ServiceRegistry {
+func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
+	mappers mapper.MapperRegistry) ServiceRegistry {
 
 	algorithmService := NewAlgorithmService(daos.GetAlgorithmDAO())
-	authService := NewLocalAuthService(_app, daos.GetUserDAO(), daos.GetOrganizationDAO(), daos.GetFarmDAO(), mappers.GetUserMapper())
 	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper()) // ConfigService
 	//configService
 	//eventLogService := NewEventLogService(app, daos.GetEventLogDAO(), common.CONTROLLER_TYPE_SERVER)
@@ -68,13 +70,20 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry, mapp
 	//serviceRegistry.SetMailer(NewMailer(farm.logger, farm.buildSmtp()))
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer
 
-	authServices := make(map[int]AuthService, 1)
+	authServices := make(map[int]AuthService, 2)
+	authService := NewLocalAuthService(_app, daos.GetOrganizationDAO(),
+		daos.GetUserDAO(), daos.GetRoleDAO(), daos.GetFarmDAO(), mappers.GetUserMapper())
+	gas := NewGoogleAuthService(_app, daos.GetOrganizationDAO(),
+		daos.GetUserDAO(), daos.GetRoleDAO(), daos.GetFarmDAO(),
+		mappers.GetUserMapper())
 	authServices[common.AUTH_TYPE_LOCAL] = authService
+	authServices[common.AUTH_TYPE_GOOGLE] = gas
 
 	registry := &DefaultServiceRegistry{
 		app:                 _app,
 		algorithmService:    algorithmService,
 		authService:         authService,
+		googleAuthService:   gas,
 		channelService:      channelService,
 		conditionService:    conditionService,
 		deviceServices:      make(map[uint64][]DeviceService, 0),
@@ -194,13 +203,13 @@ func (registry *DefaultServiceRegistry) GetEventLogService() EventLogService {
 	return registry.eventLogService
 }
 
-func (registry *DefaultServiceRegistry) SetFarmFactory(farmFactory *FarmFactory) {
-	registry.farmFactory = farmFactory
-}
+// func (registry *DefaultServiceRegistry) SetFarmFactory(farmFactory FarmFactory) {
+// 	registry.farmFactory = farmFactory
+// }
 
-func (registry *DefaultServiceRegistry) GetFarmFactory() *FarmFactory {
-	return registry.farmFactory
-}
+// func (registry *DefaultServiceRegistry) GetFarmFactory() FarmFactory {
+// 	return registry.farmFactory
+// }
 
 func (registry *DefaultServiceRegistry) AddFarmService(farmService FarmService) error {
 	registry.farmServicesMutex.Lock()
@@ -229,6 +238,20 @@ func (registry *DefaultServiceRegistry) GetFarmService(farmID uint64) FarmServic
 	defer registry.farmServicesMutex.RUnlock()
 	service, _ := registry.farmServices[farmID]
 	return service
+}
+
+func (registry *DefaultServiceRegistry) RemoveFarmService(farmID uint64) {
+	registry.farmServicesMutex.RLock()
+	defer registry.farmServicesMutex.RUnlock()
+	delete(registry.farmServices, farmID)
+}
+
+func (registry *DefaultServiceRegistry) SetFarmProvisioner(farmProvisioner provisioner.FarmProvisioner) {
+	registry.farmProvisioner = farmProvisioner
+}
+
+func (registry *DefaultServiceRegistry) GetFarmProvisioner() provisioner.FarmProvisioner {
+	return registry.farmProvisioner
 }
 
 func (registry *DefaultServiceRegistry) SetGoogleAuthService(googleAuthService AuthService) {

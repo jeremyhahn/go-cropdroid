@@ -105,14 +105,10 @@ func (server *Webserver) Run() {
 
 	server.buildRoutes()
 
-	http.Handle("/", server)
-
-	// Register static content endpoint after REST and websocket to avoid being clobbered
-
 	// Static content web server
 	fs := http.FileServer(http.Dir("public_html"))
-
 	server.router.PathPrefix("/").Handler(fs)
+	http.Handle("/", server.httpServer.Handler)
 
 	sPort := fmt.Sprintf(":%d", server.app.WebPort)
 	if server.app.SSLFlag {
@@ -188,8 +184,10 @@ func (server *Webserver) buildRoutes() {
 	// REST Handlers - Public Access
 	router.HandleFunc("/endpoints", server.endpoints)
 	router.HandleFunc("/system", server.systemStatus)
+	router.HandleFunc("/api/v1/pubkey", server.publicKey)
 	router.HandleFunc("/api/v1/register", registrationService.Register)
 	router.HandleFunc("/api/v1/login", server.jsonWebTokenService.GenerateToken)
+	router.HandleFunc("/api/v1/login/refresh", server.jsonWebTokenService.RefreshToken)
 	endpointList = append(endpointList, "/api/v1/register")
 	endpointList = append(endpointList, "/api/v1/login")
 
@@ -306,6 +304,7 @@ func (server *Webserver) buildRoutes() {
 	server.mutex.Lock()
 	server.router = router
 	server.endpointList = endpointList
+	server.httpServer.Handler = server.router
 	server.mutex.Unlock()
 }
 
@@ -519,6 +518,15 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	json, _ := json.MarshalIndent(farmState, "", " ")
 	fmt.Fprintln(w, string(json))
+}
+
+func (server *Webserver) publicKey(w http.ResponseWriter, r *http.Request) {
+	pubkey := server.app.KeyPair.GetPublicBytes()
+
+	//encoded := base64.StdEncoding.EncodeToString(pubkey)
+	//rest.NewJsonWriter().Write(w, http.StatusOK, encoded)
+
+	rest.NewJsonWriter().Write(w, http.StatusOK, string(pubkey))
 }
 
 func (server *Webserver) events(w http.ResponseWriter, r *http.Request) {

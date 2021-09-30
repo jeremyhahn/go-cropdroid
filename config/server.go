@@ -80,7 +80,7 @@ func (config *Server) GetOrganizations() []Organization {
 	return config.Organizations
 }
 
-func (config *Server) GetOrganization(id int) (*Organization, error) {
+func (config *Server) GetOrganization(id uint64) (*Organization, error) {
 	for _, org := range config.Organizations {
 		if org.GetID() == id {
 			return &org, nil

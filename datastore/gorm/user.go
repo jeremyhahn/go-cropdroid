@@ -19,24 +19,26 @@ func NewUserDAO(logger *logging.Logger, db *gorm.DB) dao.UserDAO {
 }
 
 func CreateUserDAO(db *gorm.DB, user common.UserAccount) dao.UserDAO {
-	//scope.SetUser(user)
 	return &GormUserDAO{db: db}
 }
 
-/*
-func (dao *GormUserDAO) GetById(userId int) (entity.UserEntity, error) {
-	var user entity.User
+func (dao *GormUserDAO) GetByID(userId uint64) (config.UserConfig, error) {
+	var user config.User
 	user.ID = userId
-	if err := dao.db.First(&user).Error; err != nil {
+	if err := dao.db.
+		Preload("Roles").
+		First(&user).Error; err != nil {
 		dao.logger.Errorf("[UserDAO.GetById] Error: %s", err.Error())
 		return nil, err
 	}
 	return &user, nil
-}*/
+}
 
 func (dao *GormUserDAO) GetByEmail(email string) (config.UserConfig, error) {
 	var user config.User
-	if err := dao.db.Preload("Roles").First(&user, "email = ?", email).Error; err != nil {
+	if err := dao.db.
+		Preload("Roles").
+		First(&user, "email = ?", email).Error; err != nil {
 		dao.logger.Errorf("[UserDAO.GetByEmail] %s", err.Error())
 		return nil, err
 	}

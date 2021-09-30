@@ -457,11 +457,10 @@ func (r *Raft) GetLeaderInfo(clusterID uint64) *ClusterInfo {
 }
 
 func (r *Raft) LeaderUpdated(info raftio.LeaderInfo) {
-	/*
-		clusterInfo := r.GetClusterInfo(info.ClusterID)
-		if clusterInfo != nil {
-			r.params.logger.Warningf("Raft cluster membership updated! %+v", info)
-		}*/
+	clusterInfo := r.GetClusterInfo(info.ClusterID)
+	if clusterInfo != nil {
+		r.params.logger.Warningf("Raft cluster membership updated! %+v", info)
+	}
 }
 
 func (r *Raft) GetNodeHost() *dragonboat.NodeHost {

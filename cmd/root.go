@@ -43,6 +43,7 @@ var Timezone string
 var Mode string
 var DowngradeUser string
 var EnableRegistrations bool
+var EnableDefaultFarm bool
 
 var DatastoreType string
 var DatastoreUser string
@@ -54,11 +55,10 @@ var DatastoreCACert string
 var DatastoreTlsKey string
 var DatastoreTlsCert string
 
-var DeviceStore string
+var DataStore string
 
-//var supportedDatastoreTypes = []string{"json", "yaml", "sqlite", "postgres", "cockroach"}
-
-var supportedDatastoreTypes = []string{"memory", "sqlite", "mysql", "postgres", "cockroach"}
+//var supportedGormEngines = []string{"json", "yaml", "sqlite", "postgres", "cockroach"}
+var supportedGormEngines = []string{"memory", "sqlite", "mysql", "postgres", "cockroach"}
 
 var logFormat = logging.MustStringFormatter(
 	`%{color}%{time:15:04:05.000} %{shortpkg}.%{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
@@ -73,23 +73,26 @@ var rootCmd = &cobra.Command{
   |_____  |    \_ |_____| |       |_____/ |    \_ |_____| __|__ |_____/
 
  Fully automate your hobby or commercial soil, hydroponics, or aeroponics
- garden or farm with CropDroid. Gain real-time statistics, remote monitoring
- and administration, push notifications for critical alerts and sophisticated
- dosing algorithms with artificial intelligence to take the guess work out of
- feedings and ongoing maintenance. Configure one-time and/or recurring schedules
- to switch things on and off, conditions to switch based on environment specifics,
- and digital timers to control how long they stay on. Enable cloud mode to gain access
- to social features and an online database with valuable plant data and downloadable
- configurations to ease setup, maximize yields, and provide precise, reproducible grow
- conditions.
+ indoor garden or outdoor farm with CropDroid. Gain real-time statistics,
+ remote monitoring and administration, push notifications for critical alerts
+ and sophisticated dosing algorithms with artificial intelligence to take the
+ guess work out of feedings and ongoing maintenance. Configure one-time and/or
+ recurring schedules to switch things on and off, program conditional logic based on
+ sensor values, digital timers to control how long things stay on/off, and automate your
+ own custom sequence of actions using programmable workflows. Enable cloud mode for easy
+ world-wide access, store and archive your data, access powerful analytics, automate
+ supply replenishment, access to social features, and an online database with valuable
+ plant data and downloadable configurations to ease setup, maximize yields, and provide
+ precise, reproducible grow conditions.
 
  CropDroid requires the use of hardware devices with sensors to monitor and manage your
  crop. A "room" device is used to control environment parameters for indoor grow
  rooms and greenhouses, including lights, temperature, humidity, and Co2. A "reservoir"
  device is used to manage water quality and flow while the "dosing" device
  allows precise amounts of nutrients and chemicals, and has the ability to act as a
- general purpose switching device. Custom devices are also available to meet your
- specific requirements.
+ general purpose switching device. An "irrigation" device is used to individually monitor
+ soil moisture on a pot by pot basis and hydrate them when necessary.Custom devices are
+ also available to meet your specific requirements.
 
  Complete documentation is available at https://github.com/jeremyhahn/go-cropdroid`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -131,10 +134,14 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DatastorePass, "datastore-pass", "", "", "Datastore password")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreHost, "datastore-host", "", "localhost", "Datastore IP or hostname")
 	rootCmd.PersistentFlags().IntVarP(&DatastorePort, "datastore-port", "", 26257, "Datastore listen port")
-	rootCmd.PersistentFlags().BoolVarP(&DatastoreCDC, "datastore-cdc", "", false, "Enable database changeefeed (Change Data Capture) real-time updates on supported tables")
+	rootCmd.PersistentFlags().BoolVarP(&DatastoreCDC, "datastore-cdc", "", false, "Enable database changefeed (Change Data Capture) real-time updates on supported tables")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreCACert, "datastore-ca-cert", "", "", "TLS Certificate Authority public key")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreTlsKey, "datastore-tls-key", "", "", "TLS key used to encrypt the database connection")
 	rootCmd.PersistentFlags().StringVarP(&DatastoreTlsCert, "datastore-tls-cert", "", "", "TLS certificate used to encrypt the database connection")
+
+	rootCmd.PersistentFlags().StringVarP(&DataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
+
+	rootCmd.PersistentFlags().BoolVarP(&EnableDefaultFarm, "enable-default-farm", "", true, "Create a default farm on startup")
 
 	if runtime.GOOS == "darwin" {
 		signal.Ignore(syscall.Signal(0xd))
@@ -151,7 +158,7 @@ func Execute() error {
 func initApp() {
 	location, err := time.LoadLocation(Timezone)
 	if err != nil {
-		log.Fatal("Unable to parse default timezone %s: %s", location, err)
+		log.Fatalf("Unable to parse default timezone %s: %s", location, err)
 	}
 	App.Location = location
 	App.NodeID = NodeID
@@ -168,6 +175,7 @@ func initApp() {
 	App.Mode = Mode
 	App.DowngradeUser = DowngradeUser
 	App.EnableRegistrations = EnableRegistrations
+	App.EnableDefaultFarm = EnableDefaultFarm
 	initLogger()
 	initConfig()
 	if App.DebugFlag {
@@ -241,18 +249,19 @@ func initLogger() {
 func initConfig() {
 	DatastoreType = strings.ToLower(DatastoreType)
 	App.GORMInitParams = &gormstore.GormInitParams{
-		DebugFlag: DebugFlag,
-		DataDir:   DataDir,
-		Engine:    DatastoreType,
-		Host:      DatastoreHost,
-		Port:      DatastorePort,
-		Username:  DatastoreUser,
-		Password:  DatastorePass,
-		CACert:    DatastoreCACert,
-		TLSKey:    DatastoreTlsKey,
-		TLSCert:   DatastoreTlsCert,
-		DBName:    app.Name,
-		Location:  App.Location}
+		DebugFlag:         DebugFlag,
+		EnableDefaultFarm: EnableDefaultFarm,
+		DataDir:           DataDir,
+		Engine:            DatastoreType,
+		Host:              DatastoreHost,
+		Port:              DatastorePort,
+		Username:          DatastoreUser,
+		Password:          DatastorePass,
+		CACert:            DatastoreCACert,
+		TLSKey:            DatastoreTlsKey,
+		TLSCert:           DatastoreTlsCert,
+		DBName:            app.Name,
+		Location:          App.Location}
 	App.ConfigDir = ConfigDir
 	configTypeSupported := func(configTypes []string) bool {
 		for _, t := range configTypes {
@@ -261,7 +270,7 @@ func initConfig() {
 			}
 		}
 		return false
-	}(supportedDatastoreTypes)
+	}(supportedGormEngines)
 	if !configTypeSupported {
 		log.Fatalf("Config type not supported: %s", DatastoreType)
 	}

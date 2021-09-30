@@ -5,13 +5,14 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/gossip"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/util"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
@@ -376,7 +377,8 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 			return
 		}
 
-		farmConfig, err := cluster.farmDAO.Get(provisionRequest.StateClusterID)
+		farmConfig, err := cluster.farmDAO.Get(
+			provisionRequest.StateClusterID, common.CONSISTENCY_CACHED)
 		if err != nil {
 			cluster.params.logger.Error("[Gossip.handleMessage] provision-request error=%s", err)
 			return
@@ -505,10 +507,7 @@ func (cluster *Gossip) Provision(farmConfig config.FarmConfig) error {
 		cluster.GossipAddress(), cluster.raft.GetPeers())
 
 	stateClusterID := uint64(farmConfig.GetID())
-
-	clusterHash := fnv.New64a()
-	clusterHash.Write([]byte(fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmConfig.GetID())))
-	configClusterID := clusterHash.Sum64()
+	configClusterID := util.ClusterHash(farmConfig.GetOrganizationID(), farmConfig.GetID())
 
 	bytes, err := json.Marshal(&gossip.ProvisionRequest{
 		StateClusterID:  stateClusterID,

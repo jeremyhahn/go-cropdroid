@@ -7,7 +7,7 @@ type WorkflowStep struct {
 	WorkflowID                uint64 `yaml:"workflow" json:"workflowId"`
 	DeviceID                  uint64 `yaml:"device" json:"deviceId"`
 	DeviceType                string `yaml:"deviceType" json:"deviceType"`
-	ChannelID                 int    `yaml:"channel" json:"channelId"`
+	ChannelID                 uint64 `yaml:"channel" json:"channelId"`
 	ChannelName               string `yaml:"channelName" json:"channelName"`
 	Webhook                   string `yaml:"webhook" json:"webhook"`
 	Duration                  int    `yaml:"duration" json:"duration"`
@@ -53,11 +53,11 @@ func (ws *WorkflowStep) GetDeviceType() string {
 	return ws.DeviceType
 }
 
-func (ws *WorkflowStep) SetChannelID(id int) {
+func (ws *WorkflowStep) SetChannelID(id uint64) {
 	ws.ChannelID = id
 }
 
-func (ws *WorkflowStep) GetChannelID() int {
+func (ws *WorkflowStep) GetChannelID() uint64 {
 	return ws.ChannelID
 }
 

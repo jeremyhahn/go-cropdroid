@@ -9,6 +9,18 @@
         "type": "shell",
         "label": "initsqlite",
         "command": "rm",
-        "args": ["-f", "db/cropdroid.db", "&&", "./cropdroid", "config", "--init", "--datastore", "sqlite"]
+        "args": ["-f", "db/cropdroid.db", "&&", 
+            "./cropdroid", "config", 
+            "--init", 
+            "--datastore", "sqlite"]
+    }, {
+        "type": "shell",
+        "label": "initsqlite-no-farm",
+        "command": "rm",
+        "args": ["-f", "db/cropdroid.db", "&&", 
+            "./cropdroid", "config",
+            "--init", 
+            "--datastore", "sqlite",
+            "--enable-default-farm=false"]
     }]
 }

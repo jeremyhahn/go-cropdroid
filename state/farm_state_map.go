@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 )
@@ -82,7 +81,8 @@ func (farm *FarmState) GetDevice(deviceType string) (DeviceStateMap, error) {
 	if device, ok := farm.Devices[deviceType]; ok {
 		return device, nil
 	}
-	return nil, fmt.Errorf("Device not found in farm state: %s", deviceType)
+	return nil, fmt.Errorf("Device not found in farm state. device=%s, farmID=%d",
+		deviceType, farm.Id)
 }
 
 func (farm *FarmState) GetDevices() map[string]DeviceStateMap {
@@ -101,7 +101,7 @@ func (farm *FarmState) GetMetricValue(device, key string) (float64, error) {
 			return 0.0, fmt.Errorf("Metric not found in farm state: %s.%s", device, key)
 		}
 	}
-	return 0.0, fmt.Errorf("Device not found in farm state: %s", device)
+	return 0.0, fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 }
 
 func (farm *FarmState) GetMetrics(device string) (map[string]float64, error) {
@@ -110,7 +110,7 @@ func (farm *FarmState) GetMetrics(device string) (map[string]float64, error) {
 	if _device, ok := farm.Devices[device]; ok {
 		return _device.GetMetrics(), nil
 	}
-	return nil, fmt.Errorf("Device not found in farm state: %s", device)
+	return nil, fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 }
 
 func (farm *FarmState) SetMetricValue(device, key string, value float64) error {
@@ -120,7 +120,7 @@ func (farm *FarmState) SetMetricValue(device, key string, value float64) error {
 		_device.GetMetrics()[key] = value
 		return nil
 	}
-	return fmt.Errorf("Device not found in farm state: %s", device)
+	return fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 }
 
 func (farm *FarmState) GetChannelValue(device string, channelID int) (int, error) {
@@ -133,7 +133,7 @@ func (farm *FarmState) GetChannelValue(device string, channelID int) (int, error
 		//}
 		return _device.GetChannels()[channelID], nil
 	}
-	return 0.0, fmt.Errorf("Device not found in farm state: %s", device)
+	return 0.0, fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 }
 
 func (farm *FarmState) SetChannelValue(device string, channelID int, value int) error {
@@ -143,7 +143,7 @@ func (farm *FarmState) SetChannelValue(device string, channelID int, value int) 
 		_device.GetChannels()[channelID] = value
 		return nil
 	}
-	return fmt.Errorf("Device not found in farm state: %s", device)
+	return fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 }
 
 func (farm *FarmState) GetChannels(device string) ([]int, error) {
@@ -152,7 +152,7 @@ func (farm *FarmState) GetChannels(device string) ([]int, error) {
 	if _device, ok := farm.Devices[device]; ok {
 		return _device.GetChannels(), nil
 	}
-	return nil, fmt.Errorf("Device not found in farm state: %s", device)
+	return nil, fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 }
 
 // Diff takes a map of metric and channels that represent a proposed state about to be merged into the state store
@@ -191,8 +191,7 @@ func (farm *FarmState) Diff(device string, metrics map[string]float64, channels 
 		}
 		return CreateDeviceStateDeltaMap(newMetrics, newChannels), nil
 	}
-	log.Printf("Device not found in farm state: %s\n", device)
-	return nil, ErrDeviceNotFound
+	return nil, fmt.Errorf("Device not found in farm state. device=%s, farmID=%d", device, farm.Id)
 	//return CreateDeviceStateDeltaMap(metrics, channels), nil
 }
 

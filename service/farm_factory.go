@@ -10,13 +10,22 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
-type FarmFactory struct {
+// "Global" farm factory used to manage all farms on the platform
+type FarmFactory interface {
+	BuildService(farmConfig config.FarmConfig) (FarmService, error)
+	BuildClusterService(farmConfig config.FarmConfig) (FarmService, error)
+	GetFarmProvisionerChan() chan config.FarmConfig
+	GetDeviceIndexMap() map[uint64]config.DeviceConfig
+	GetChannelIndexMap() map[int]config.ChannelConfig
+}
+
+type DefaultFarmFactory struct {
 	app                       *app.App
-	stateStore                state.FarmStorer
-	configStore               store.FarmConfigStorer
+	farmStateStore            state.FarmStorer
+	farmConfigStore           store.FarmConfigStorer
 	deviceConfigStore         store.DeviceConfigStorer
 	deviceStateStore          state.DeviceStorer
-	deviceDataStore           datastore.DeviceDatastore
+	deviceDataStore           datastore.DeviceDataStore
 	consistencyLevel          int
 	deviceMapper              mapper.DeviceMapper
 	changefeeders             map[string]datastore.Changefeeder
@@ -26,19 +35,20 @@ type FarmFactory struct {
 	serviceRegistry           ServiceRegistry
 	farmProvisionerChan       chan config.FarmConfig
 	farmTickerProvisionerChan chan uint64
+	FarmFactory
 }
 
 func NewFarmFactory(app *app.App, datastoreRegistry datastore.DatastoreRegistry,
 	serviceRegistry ServiceRegistry, farmStateStore state.FarmStorer,
 	farmConfigStore store.FarmConfigStorer, deviceStateStore state.DeviceStorer,
-	deviceConfigStore store.DeviceConfigStorer, deviceDataStore datastore.DeviceDatastore,
+	deviceConfigStore store.DeviceConfigStorer, deviceDataStore datastore.DeviceDataStore,
 	deviceMapper mapper.DeviceMapper, changefeeders map[string]datastore.Changefeeder,
-	farmProvisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan uint64) *FarmFactory {
+	farmProvisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan uint64) FarmFactory {
 
-	return &FarmFactory{
+	return &DefaultFarmFactory{
 		app:                       app,
-		stateStore:                farmStateStore,
-		configStore:               farmConfigStore,
+		farmStateStore:            farmStateStore,
+		farmConfigStore:           farmConfigStore,
 		deviceStateStore:          deviceStateStore,
 		deviceConfigStore:         deviceConfigStore,
 		deviceDataStore:           deviceDataStore,
@@ -52,15 +62,14 @@ func NewFarmFactory(app *app.App, datastoreRegistry datastore.DatastoreRegistry,
 		farmTickerProvisionerChan: farmTickerProvisionerChan}
 }
 
-func (fb *FarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, error) {
+func (ff *DefaultFarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, error) {
 
 	farmID := farmConfig.GetID()
 	farmName := farmConfig.GetName()
 	deviceConfigs := farmConfig.GetDevices()
 
-	farmDAO := fb.datastoreRegistry.GetFarmDAO()
-	deviceDAO := fb.datastoreRegistry.GetDeviceDAO()
-	deviceConfigDAO := fb.datastoreRegistry.GetDeviceConfigDAO()
+	farmDAO := ff.datastoreRegistry.GetFarmDAO()
+	deviceConfigDAO := ff.datastoreRegistry.GetDeviceConfigDAO()
 
 	farmChannels := FarmChannels{
 		FarmConfigChan:       make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
@@ -75,20 +84,20 @@ func (fb *FarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, 
 		DeviceStateDeltaChan:  make(chan map[string]state.DeviceStateDeltaMap, common.BUFFERED_CHANNEL_SIZE)}
 
 	// Build device services
-	deviceFactory := NewDeviceFactory(fb.app, farmID, farmName, deviceDAO,
-		fb.deviceStateStore, fb.deviceConfigStore, fb.consistencyLevel,
-		fb.deviceMapper, fb.serviceRegistry, &farmChannels)
+	deviceFactory := NewDeviceFactory(ff.app, farmID, farmName,
+		ff.deviceStateStore, ff.deviceConfigStore, ff.consistencyLevel,
+		ff.deviceMapper, ff.serviceRegistry, &farmChannels)
 
 	deviceServices, err := deviceFactory.BuildServices(deviceConfigs,
-		fb.deviceDataStore, farmConfig.GetMode())
+		ff.deviceDataStore, farmConfig.GetMode())
 	if err != nil {
-		fb.app.Logger.Fatal(err)
+		ff.app.Logger.Fatal(err)
 	}
 
 	// Build farm service
-	farmService, err := CreateFarmService(fb.app, farmDAO, fb.stateStore,
-		fb.configStore, fb.deviceConfigStore, fb.deviceDataStore, farmConfig, fb.consistencyLevel,
-		fb.serviceRegistry, &farmChannels, deviceConfigDAO)
+	farmService, err := CreateFarmService(ff.app, farmDAO, ff.farmStateStore,
+		ff.farmConfigStore, ff.deviceConfigStore, ff.deviceDataStore, farmConfig, ff.consistencyLevel,
+		ff.serviceRegistry, &farmChannels, deviceConfigDAO)
 	if err != nil {
 		return nil, err
 	}
@@ -116,26 +125,26 @@ func (fb *FarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, 
 				}
 			}*/
 
-	fb.serviceRegistry.SetDeviceFactory(deviceFactory)
-	fb.serviceRegistry.SetDeviceServices(farmID, deviceServices)
-	fb.serviceRegistry.AddFarmService(farmService)
+	ff.serviceRegistry.SetDeviceFactory(deviceFactory)
+	ff.serviceRegistry.SetDeviceServices(farmID, deviceServices)
+	ff.serviceRegistry.AddFarmService(farmService)
 
-	fb.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
-	fb.app.Logger.Debugf("Mode: %s", farmConfig.GetMode())
-	fb.app.Logger.Debugf("Timezone: %s", farmConfig.GetTimezone())
-	fb.app.Logger.Debugf("Polling interval: %d", farmConfig.GetInterval())
+	ff.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
+	ff.app.Logger.Debugf("Mode: %s", farmConfig.GetMode())
+	ff.app.Logger.Debugf("Timezone: %s", farmConfig.GetTimezone())
+	ff.app.Logger.Debugf("Polling interval: %d", farmConfig.GetInterval())
 
 	return farmService, nil
 }
 
-func (fb *FarmFactory) GetFarmProvisionerChan() chan config.FarmConfig {
-	return fb.farmProvisionerChan
+func (ff *DefaultFarmFactory) GetFarmProvisionerChan() chan config.FarmConfig {
+	return ff.farmProvisionerChan
 }
 
-func (fb *FarmFactory) GetDeviceIndexMap() map[uint64]config.DeviceConfig {
-	return fb.deviceIndexMap
+func (ff *DefaultFarmFactory) GetDeviceIndexMap() map[uint64]config.DeviceConfig {
+	return ff.deviceIndexMap
 }
 
-func (fb *FarmFactory) GetChannelIndexMap() map[int]config.ChannelConfig {
-	return fb.channelIndexMap
+func (ff *DefaultFarmFactory) GetChannelIndexMap() map[int]config.ChannelConfig {
+	return ff.channelIndexMap
 }

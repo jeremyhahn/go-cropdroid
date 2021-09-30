@@ -19,11 +19,11 @@ type GormDeviceStore struct {
 	db       *gorm.DB
 	dbtype   string
 	location *time.Location
-	datastore.DeviceDatastore
+	datastore.DeviceDataStore
 }
 
-func NewGormDeviceStore(logger *logging.Logger, db *gorm.DB, dbtype string,
-	location *time.Location) datastore.DeviceDatastore {
+func NewGormDataStore(logger *logging.Logger, db *gorm.DB, dbtype string,
+	location *time.Location) datastore.DeviceDataStore {
 
 	logger.Info("Using GormDeviceStore for device data store")
 	return &GormDeviceStore{logger: logger, db: db, dbtype: dbtype, location: location}

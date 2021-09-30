@@ -7,21 +7,23 @@ import (
 type OrganizationDAO interface {
 	First() (config.OrganizationConfig, error)
 	GetAll() ([]config.Organization, error)
-	Get(orgID int) (config.OrganizationConfig, error)
-	GetByUserID(userID int) ([]config.OrganizationConfig, error)
+	Get(orgID uint64) (config.OrganizationConfig, error)
+	GetByUserID(userID uint64) ([]config.OrganizationConfig, error)
 	//Find(orgID int) ([]config.Organization, error)
 	Create(organization config.OrganizationConfig) error
 	CreateUserRole(org config.OrganizationConfig, user config.UserConfig, role config.RoleConfig) error
 }
 
 type FarmDAO interface {
-	Create(farm *config.Farm) error
-	Save(farm *config.Farm) error
-	First() (config.FarmConfig, error)
-	Get(farmID uint64) (config.FarmConfig, error)
-	GetAll() ([]config.Farm, error)
-	GetByOrgAndUserID(orgID, userID int) ([]config.Farm, error)
 	Count() (int64, error)
+	Create(farm config.FarmConfig) error
+	Delete(farm config.FarmConfig) error
+	//DeleteById(farmID uint64) error
+	First() (config.FarmConfig, error)
+	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
+	GetAll() ([]config.Farm, error)
+	GetByOrgAndUserID(orgID, userID uint64) ([]config.Farm, error)
+	Save(farm config.FarmConfig) error
 }
 
 type DeviceDAO interface {
@@ -39,6 +41,7 @@ type DeviceConfigDAO interface {
 }
 
 type UserDAO interface {
+	GetByID(userID uint64) (config.UserConfig, error)
 	GetByEmail(email string) (config.UserConfig, error)
 	Create(user config.UserConfig) error
 	Save(user config.UserConfig) error // used by integration test only
@@ -49,6 +52,7 @@ type RoleDAO interface {
 	Save(role config.RoleConfig) error   // Used by integration test only
 	//GetByUserAndOrgID(userID, orgID int) (config.RoleConfig, error)
 	GetByUserAndOrgID(userID, orgID int) ([]config.Role, error)
+	GetByName(name string) (config.RoleConfig, error)
 }
 
 type AlgorithmDAO interface {
@@ -58,18 +62,18 @@ type AlgorithmDAO interface {
 
 type ChannelDAO interface {
 	Save(channel config.ChannelConfig) error
-	Get(channelID int) (config.ChannelConfig, error)
-	GetByDeviceID(deviceID int) ([]config.Channel, error)
-	GetByOrgUserAndDeviceID(orgID, userID int, deviceID uint64) ([]config.Channel, error)
+	Get(channelID uint64) (config.ChannelConfig, error)
+	GetByDeviceID(deviceID uint64) ([]config.Channel, error)
+	GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Channel, error)
 }
 
 type ConditionDAO interface {
 	Create(condition config.ConditionConfig) error
 	Save(condition config.ConditionConfig) error
 	Delete(condition config.ConditionConfig) error
-	Get(id int) (config.ConditionConfig, error)
-	GetByChannelID(id int) ([]config.Condition, error)
-	GetByOrgUserAndChannelID(orgID, userID, channelID int) ([]config.Condition, error)
+	Get(id uint64) (config.ConditionConfig, error)
+	GetByChannelID(id uint64) ([]config.Condition, error)
+	GetByOrgUserAndChannelID(orgID, userID, channelID uint64) ([]config.Condition, error)
 }
 
 type ConfigDAO interface {
@@ -81,15 +85,15 @@ type ConfigDAO interface {
 type MetricDAO interface {
 	Save(metric config.MetricConfig) error
 	Get(metricID int) (config.MetricConfig, error)
-	GetByDeviceID(deviceID int) ([]config.Metric, error) // Used to bootstrap sqlite config (configService.buildMetrics())
-	GetByOrgUserAndDeviceID(orgID, userID, deviceID int) ([]config.Metric, error)
+	GetByDeviceID(deviceID uint64) ([]config.Metric, error) // Used to bootstrap sqlite config (configService.buildMetrics())
+	GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Metric, error)
 }
 
 type ScheduleDAO interface {
 	Create(schedule config.ScheduleConfig) error
 	Save(schedule config.ScheduleConfig) error
 	Delete(schedule config.ScheduleConfig) error
-	GetByChannelID(id int) ([]config.Schedule, error)
+	GetByChannelID(id uint64) ([]config.Schedule, error)
 }
 
 type WorkflowDAO interface {

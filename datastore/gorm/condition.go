@@ -29,7 +29,7 @@ func (dao *GormConditionDAO) Delete(condition config.ConditionConfig) error {
 	return dao.db.Delete(condition).Error
 }
 
-func (dao *GormConditionDAO) Get(id int) (config.ConditionConfig, error) {
+func (dao *GormConditionDAO) Get(id uint64) (config.ConditionConfig, error) {
 	var condition config.Condition
 	if err := dao.db.First(&condition, id).Error; err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (dao *GormConditionDAO) Get(id int) (config.ConditionConfig, error) {
 	return &condition, nil
 }
 
-func (dao *GormConditionDAO) GetByChannelID(id int) ([]config.Condition, error) {
+func (dao *GormConditionDAO) GetByChannelID(id uint64) ([]config.Condition, error) {
 	var entities []config.Condition
 	if err := dao.db.Where("channel_id = ?", id).Find(&entities).Error; err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (dao *GormConditionDAO) GetByChannelID(id int) ([]config.Condition, error) 
 	return entities, nil
 }
 
-func (dao *GormConditionDAO) GetByOrgUserAndChannelID(orgID, userID, channelID int) ([]config.Condition, error) {
+func (dao *GormConditionDAO) GetByOrgUserAndChannelID(orgID, userID, channelID uint64) ([]config.Condition, error) {
 	dao.logger.Debugf("Getting conditions for orgID %d and channel %d", orgID, channelID)
 	var entities []config.Condition
 	if err := dao.db.Table("conditions").

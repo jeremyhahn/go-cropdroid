@@ -39,6 +39,6 @@ func BenchmarkGenericStorePut(b *testing.B) {
 	store := NewGenericStore(b.N)
 
 	for n := 0; n < b.N; n++ {
-		store.Put(n, deviceStateMap)
+		store.Put(uint64(n), deviceStateMap)
 	}
 }

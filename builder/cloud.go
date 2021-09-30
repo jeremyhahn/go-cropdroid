@@ -59,13 +59,23 @@ func (builder *CloudConfigBuilder) Build() (config.ServerConfig, service.Service
 
 	// Build JWT service
 	farmDAO := gorm.NewFarmDAO(builder.app.Logger, builder.app.GORM)
+
+	initializer := gorm.NewGormInitializer(builder.app.Logger,
+		builder.app.GormDB, builder.app.Location)
+
+	farmProvisioner = provisioner.NewRaftFarmProvisioner(
+		builder.app.Logger, builder.app.GossipCluster, builder.app.Location,
+		farmDAO, mapperRegistry.GetUserMapper(), initializer)
+
 	jsonWriter := rest.NewJsonWriter()
 	rsaKeyPair, err := app.CreateRsaKeyPair(builder.app.Logger, builder.app.KeyDir, rsa.PSSSaltLengthAuto)
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
 
-	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	jwtService := service.CreateJsonWebTokenService(builder.app,
+		farmProvisioner, farmDAO, mapperRegistry.GetDeviceMapper(),
+		serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}

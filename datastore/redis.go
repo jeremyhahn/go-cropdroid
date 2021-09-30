@@ -11,10 +11,10 @@ import (
 
 type RedisClient struct {
 	client *redistimeseries.Client
-	DeviceDatastore
+	DeviceDataStore
 }
 
-func NewRedisDeviceStore(address, password string) DeviceDatastore {
+func NewRedisDataStore(address, password string) DeviceDataStore {
 	/*
 		pool := &redis.Pool{Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", address, redis.DialPassword(password))

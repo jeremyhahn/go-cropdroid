@@ -45,7 +45,7 @@ func (metricDAO *GormMetricDAO) Get(metricID int) (config.MetricConfig, error) {
 	return &entity, nil
 }
 
-func (metricDAO *GormMetricDAO) GetByDeviceID(deviceID int) ([]config.Metric, error) {
+func (metricDAO *GormMetricDAO) GetByDeviceID(deviceID uint64) ([]config.Metric, error) {
 	metricDAO.logger.Debugf("Getting metric record for device %d", deviceID)
 	var entities []config.Metric
 	if err := metricDAO.db.Where("device_id = ?", deviceID).Find(&entities).Error; err != nil {
@@ -54,7 +54,7 @@ func (metricDAO *GormMetricDAO) GetByDeviceID(deviceID int) ([]config.Metric, er
 	return entities, nil
 }
 
-func (metricDAO *GormMetricDAO) GetByOrgUserAndDeviceID(orgID, userID, deviceID int) ([]config.Metric, error) {
+func (metricDAO *GormMetricDAO) GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Metric, error) {
 	metricDAO.logger.Debugf("Getting metric record for org '%d'", orgID)
 	var Metrics []config.Metric
 	if err := metricDAO.db.Table("metrics").

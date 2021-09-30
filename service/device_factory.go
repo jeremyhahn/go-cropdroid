@@ -6,7 +6,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/config/store"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/device"
@@ -16,9 +15,9 @@ import (
 
 // "Global" device service used to manage all devices used by the platform
 type DeviceFactory interface {
-	BuildServices(deviceConfigs []config.Device, datastore datastore.DeviceDatastore,
+	BuildServices(deviceConfigs []config.Device, datastore datastore.DeviceDataStore,
 		mode string) ([]DeviceService, error)
-	BuildService(datastore datastore.DeviceDatastore,
+	BuildService(datastore datastore.DeviceDataStore,
 		deviceConfig config.DeviceConfig, mode string) (DeviceService, error)
 	GetAll(session Session) ([]config.Device, error)
 	GetDevices(session Session) ([]common.Device, error)
@@ -31,14 +30,13 @@ type DefaultDeviceFactory struct {
 	stateStore      state.DeviceStorer
 	configStore     store.DeviceConfigStorer
 	consistency     int
-	deviceDAO       dao.DeviceDAO
 	deviceMapper    mapper.DeviceMapper
 	serviceRegistry ServiceRegistry
 	farmChannels    *FarmChannels
 	DeviceFactory
 }
 
-func NewDeviceFactory(app *app.App, farmID uint64, farmName string, deviceDAO dao.DeviceDAO,
+func NewDeviceFactory(app *app.App, farmID uint64, farmName string,
 	stateStore state.DeviceStorer, configStore store.DeviceConfigStorer, consistency int,
 	deviceMapper mapper.DeviceMapper, serviceRegistry ServiceRegistry,
 	farmChannels *FarmChannels) DeviceFactory {
@@ -50,7 +48,6 @@ func NewDeviceFactory(app *app.App, farmID uint64, farmName string, deviceDAO da
 		stateStore:      stateStore,
 		configStore:     configStore,
 		consistency:     consistency,
-		deviceDAO:       deviceDAO,
 		deviceMapper:    deviceMapper,
 		serviceRegistry: serviceRegistry,
 		farmChannels:    farmChannels}
@@ -58,7 +55,7 @@ func NewDeviceFactory(app *app.App, farmID uint64, farmName string, deviceDAO da
 
 // Builds all device services for a given farm
 func (factory *DefaultDeviceFactory) BuildServices(deviceConfigs []config.Device,
-	datastore datastore.DeviceDatastore, mode string) ([]DeviceService, error) {
+	datastore datastore.DeviceDataStore, mode string) ([]DeviceService, error) {
 
 	services := make([]DeviceService, 0, len(deviceConfigs))
 	for _, deviceConfig := range deviceConfigs {
@@ -76,7 +73,7 @@ func (factory *DefaultDeviceFactory) BuildServices(deviceConfigs []config.Device
 }
 
 // Builds a new device service
-func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceDatastore,
+func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceDataStore,
 	deviceConfig config.DeviceConfig, mode string) (DeviceService, error) {
 
 	var _device device.IOSwitcher
@@ -96,6 +93,8 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 		_device = device.NewSmartSwitch(factory.app, deviceConfig.GetURI(), deviceType)
 	}
 
+	// HACK: This populates the Raft config store from GORM dao
+	//       so NewDeviceService can look it up
 	factory.configStore.Put(deviceID, deviceConfig)
 
 	service, err := NewDeviceService(factory.app, deviceID,

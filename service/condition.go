@@ -15,7 +15,7 @@ import (
 )
 
 type ConditionService interface {
-	GetListView(session Session, channelID int) ([]*viewmodel.Condition, error)
+	GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error)
 	GetConditions(session Session, deviceID uint64) ([]config.ConditionConfig, error)
 	Create(session Session, condition config.ConditionConfig) (config.ConditionConfig, error)
 	Update(session Session, condition config.ConditionConfig) error
@@ -72,7 +72,7 @@ func NewConditionService(logger *logging.Logger, conditionDAO dao.ConditionDAO,
 // 	}
 // 	return conditions, nil
 // }
-func (service *DefaultConditionService) GetListView(session Session, channelID int) ([]*viewmodel.Condition, error) {
+func (service *DefaultConditionService) GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {

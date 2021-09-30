@@ -43,7 +43,7 @@ func (dao *GormOrganizationDAO) First() (config.OrganizationConfig, error) {
 	return &org, nil
 }
 
-func (dao *GormOrganizationDAO) Get(orgID int) (config.OrganizationConfig, error) {
+func (dao *GormOrganizationDAO) Get(orgID uint64) (config.OrganizationConfig, error) {
 	dao.logger.Debugf("Updating organization record")
 	var org config.Organization
 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
@@ -91,7 +91,7 @@ func (dao *GormOrganizationDAO) CreateUserRole(org config.OrganizationConfig, us
 		OrganizationID: org.GetID()}).Error
 }
 
-func (dao *GormOrganizationDAO) GetByUserID(userID int) ([]config.OrganizationConfig, error) {
+func (dao *GormOrganizationDAO) GetByUserID(userID uint64) ([]config.OrganizationConfig, error) {
 	dao.logger.Debugf("Getting organization id for user.id %d", userID)
 	var orgs []config.Organization
 	if err := dao.db.

@@ -16,7 +16,7 @@ import (
 	"github.com/lni/dragonboat/v3/logger"
 	"github.com/lni/dragonboat/v3/raftio"
 
-	"github.com/jeremyhahn/go-cropdroid/cluster/state"
+	statemachine "github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
 	"github.com/jeremyhahn/go-cropdroid/common"
 
 	sm "github.com/lni/dragonboat/v3/statemachine"
@@ -34,8 +34,9 @@ var (
 
 type RaftCluster interface {
 	AddNode(clusterID uint64, address string, retryCount int) (uint64, string, error)
-	CreateStateCluster(id uint64, sm state.FarmStateMachine) error
-	CreateConfigCluster(clusterID uint64, sm state.FarmConfigMachine) error
+	CreateFarmStateCluster(id uint64, sm statemachine.FarmStateMachine) error
+	CreateFarmConfigCluster(clusterID uint64, sm statemachine.FarmConfigMachine) error
+	CreateDeviceStateCluster(id uint64, sm statemachine.DeviceStateMachine) error
 	GetConfig() config.Config
 	GetClusterCount() int
 	GetClusterInfo(clusterID uint64) *ClusterInfo
@@ -174,7 +175,7 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	r.session[params.clusterID] = nh.GetNoOPSession(params.clusterID)
 	r.proposalChan[params.clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
 
-	if err := nh.StartOnDiskCluster(initialMembers, params.join, state.NewDiskKV, rc); err != nil {
+	if err := nh.StartOnDiskCluster(initialMembers, params.join, statemachine.NewDiskKV, rc); err != nil {
 		params.logger.Fatalf("Failed to create system raft cluster: %s", err)
 	}
 
@@ -209,7 +210,7 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 		time.Sleep(1 * time.Second)
 		_, ready, _ = getLeaderFunc()
 	}
-	if r.params.raftRequestedLeaderID > 0 {
+	if r.params.raftRequestedLeaderID > 0 && leaderID != uint64(r.params.raftRequestedLeaderID) {
 		r.params.logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader", r.params.raftRequestedLeaderID)
 		err = r.nodeHost.RequestLeaderTransfer(r.params.clusterID, uint64(r.params.raftRequestedLeaderID))
 		if err != nil {
@@ -286,24 +287,36 @@ func (r *Raft) DeleteNode(clusterID, nodeID uint64, address string) error {
 	return err
 }
 
-func (r *Raft) CreateStateCluster(clusterID uint64, sm state.FarmStateMachine) error {
+func (r *Raft) CreateFarmConfigCluster(clusterID uint64, sm statemachine.FarmConfigMachine) error {
 	newConfig := r.config
 	newConfig.ClusterID = clusterID
 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateStateMachine, newConfig); err != nil {
+	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
 		return err
 	}
 	return nil
 }
 
-func (r *Raft) CreateConfigCluster(clusterID uint64, sm state.FarmConfigMachine) error {
+func (r *Raft) CreateFarmStateCluster(clusterID uint64, sm statemachine.FarmStateMachine) error {
 	newConfig := r.config
 	newConfig.ClusterID = clusterID
 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateConfigMachine, newConfig); err != nil {
+	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmStateMachine, newConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func (r *Raft) CreateDeviceStateCluster(clusterID uint64, sm statemachine.DeviceStateMachine) error {
+	newConfig := r.config
+	newConfig.ClusterID = clusterID
+	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateDeviceStateMachine, newConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
 		return err
 	}
@@ -472,8 +485,12 @@ func (r *Raft) GetNodeHost() *dragonboat.NodeHost {
 }
 
 func (r *Raft) SyncPropose(clusterID uint64, cmd []byte) error {
+	session, ok := r.session[clusterID]
+	if !ok {
+		return common.ErrClusterNotFound
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
-	result, err := r.nodeHost.SyncPropose(ctx, r.session[clusterID], cmd)
+	result, err := r.nodeHost.SyncPropose(ctx, session, cmd)
 	cancel()
 	if err != nil {
 		r.params.logger.Errorf("[Raft.SyncPropose] Error: %s", err)

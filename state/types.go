@@ -22,6 +22,7 @@ type FarmStorer interface {
 	Put(farmID uint64, v FarmStateMap) error
 	Get(farmID uint64) (FarmStateMap, error)
 	GetAll() []*StoreViewItem
+	Close()
 }
 
 // Used by device state storage implementations
@@ -30,13 +31,14 @@ type DeviceStorer interface {
 	Put(deviceID uint64, v DeviceStateMap) error
 	Get(deviceID uint64) (DeviceStateMap, error)
 	GetAll() []*DeviceStoreViewItem
+	Close()
 }
 
 // Used by generic state store implementation
 type StateStore interface {
 	Len() int
-	Put(id int, v interface{})
-	Get(id int) (interface{}, bool)
+	Put(id uint64, v interface{})
+	Get(id uint64) (interface{}, bool)
 	GetAll() []interface{}
 }
 
@@ -67,7 +69,7 @@ type DeviceIndex interface {
 // channel in every device to find it.
 type ChannelIndex interface {
 	Len() int
-	Put(id int, v config.ChannelConfig)
-	Get(id int) (config.ChannelConfig, bool)
+	Put(id uint64, v config.ChannelConfig)
+	Get(id uint64) (config.ChannelConfig, bool)
 	GetAll() []config.ChannelConfig
 }

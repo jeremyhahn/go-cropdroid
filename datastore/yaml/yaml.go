@@ -19,7 +19,7 @@ type Smtp struct {
 }
 
 type Organization struct {
-	ID      int     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID      uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	Name    string  `gorm:"size:255" yaml:"name" json:"name"`
 	Farms   []Farm  `yaml:"farms" json:"farms"`
 	Users   []User  `yaml:"users" json:"users"`
@@ -28,7 +28,7 @@ type Organization struct {
 
 type Farm struct {
 	ID       uint64 `yaml:"id" json:"id"`
-	OrgID    int    `yaml:"orgId" json:"orgId"`
+	OrgID    uint64 `yaml:"orgId" json:"orgId"`
 	Mode     string `yaml:"mode" json:"mode"`
 	Name     string `yaml:"name" json:"name"`
 	Interval int    `yaml:"interval" json:"interval"`
@@ -36,14 +36,14 @@ type Farm struct {
 }
 
 type User struct {
-	ID       int      `yaml:"id" json:"id"`
+	ID       uint64   `yaml:"id" json:"id"`
 	Email    string   `yaml:"email" json:"email"`
 	Password string   `yaml:"password" json:"password"`
 	Roles    []string `yaml:"roles" json:"roles"`
 }
 
 type License struct {
-	UserQuota       int `yaml:"userQuota" json:"userQuota"`
-	FarmQuota       int `yaml:"farmQuota" json:"farmQuota"`
+	UserQuota   int `yaml:"userQuota" json:"userQuota"`
+	FarmQuota   int `yaml:"farmQuota" json:"farmQuota"`
 	DeviceQuota int `yaml:"deviceQuota" json:"deviceQuota"`
 }

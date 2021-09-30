@@ -7,7 +7,7 @@ import (
 )
 
 type ChannelService interface {
-	Get(id int) (common.Channel, error)
+	Get(id uint64) (common.Channel, error)
 	GetAll(session Session, deviceID uint64) ([]common.Channel, error)
 	Update(session Session, viewModel common.Channel) error
 }
@@ -25,7 +25,7 @@ func NewChannelService(dao dao.ChannelDAO, mapper mapper.ChannelMapper) ChannelS
 		mapper: mapper}
 }
 
-func (service *DefaultChannelService) Get(id int) (common.Channel, error) {
+func (service *DefaultChannelService) Get(id uint64) (common.Channel, error) {
 	entity, err := service.dao.Get(id)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (service *DefaultChannelService) Get(id int) (common.Channel, error) {
 }
 
 func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) ([]common.Channel, error) {
-	orgID := session.GetFarmService().GetConfig().GetOrgID()
+	orgID := session.GetFarmService().GetConfig().GetOrganizationID()
 	userID := session.GetUser().GetID()
 	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
 	if err != nil {

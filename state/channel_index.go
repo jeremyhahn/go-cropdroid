@@ -13,12 +13,12 @@ type ChannelIndexMap struct {
 func NewChannelIndex(len int) ChannelIndex {
 	return &ChannelIndexMap{
 		GenericStateStore{
-			items: make(map[int]interface{}, len),
+			items: make(map[uint64]interface{}, len),
 			mutex: &sync.RWMutex{}}}
 }
 
-func CreateChannelIndex(items map[int]config.ChannelConfig) ChannelIndex {
-	genericItems := make(map[int]interface{}, len(items))
+func CreateChannelIndex(items map[uint64]config.ChannelConfig) ChannelIndex {
+	genericItems := make(map[uint64]interface{}, len(items))
 	for i := range items {
 		genericItems[i] = items[i]
 	}
@@ -32,11 +32,11 @@ func (store *ChannelIndexMap) Len() int {
 	return len(store.items)
 }
 
-func (store *ChannelIndexMap) Put(id int, v config.ChannelConfig) {
-	store.GenericStateStore.Put(id, v)
+func (store *ChannelIndexMap) Put(id uint64, v config.ChannelConfig) {
+	store.GenericStateStore.Put(uint64(id), v)
 }
 
-func (store *ChannelIndexMap) Get(id int) (config.ChannelConfig, bool) {
+func (store *ChannelIndexMap) Get(id uint64) (config.ChannelConfig, bool) {
 	if item, ok := store.GenericStateStore.Get(id); ok {
 		return item.(config.ChannelConfig), true
 	}

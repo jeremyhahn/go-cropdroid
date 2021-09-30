@@ -14,8 +14,8 @@ import (
 )
 
 type ConditionService interface {
-	GetListView(session Session, channelID int) ([]*viewmodel.Condition, error)
-	GetConditions(session Session, channelID int) ([]config.ConditionConfig, error)
+	GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error)
+	GetConditions(session Session, channelID uint64) ([]config.ConditionConfig, error)
 	Create(session Session, condition config.ConditionConfig) (config.ConditionConfig, error)
 	Update(session Session, condition config.ConditionConfig) error
 	Delete(session Session, condition config.ConditionConfig) error
@@ -39,11 +39,11 @@ func NewConditionService(logger *logging.Logger, conditionDAO dao.ConditionDAO,
 }
 
 // GetConditions retrieves a list of condition entries from the database
-func (service *DefaultConditionService) GetListView(session Session, channelID int) ([]*viewmodel.Condition, error) {
+func (service *DefaultConditionService) GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error) {
 
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	orgID := farmConfig.GetOrgID()
+	orgID := farmConfig.GetOrganizationID()
 	userID := session.GetUser().GetID()
 
 	session.GetLogger().Debugf("[ConditionService.GetConditions] orgID=%d, userID=%d, channelID=%d", orgID, userID, channelID)
@@ -78,10 +78,10 @@ func (service *DefaultConditionService) GetListView(session Session, channelID i
 }
 
 // GetConditions retrieves a list of condition entries from the database
-func (service *DefaultConditionService) GetConditions(session Session, channelID int) ([]config.ConditionConfig, error) {
+func (service *DefaultConditionService) GetConditions(session Session, channelID uint64) ([]config.ConditionConfig, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
-	orgID := farmConfig.GetOrgID()
+	orgID := farmConfig.GetOrganizationID()
 	userID := session.GetUser().GetID()
 	session.GetLogger().Debugf("[ConditionService.GetConditions] orgID=%d, userID=%d, channelID=%d", orgID, userID, channelID)
 	for _, device := range farmConfig.GetDevices() {

@@ -212,3 +212,14 @@ The state store is responsible for keeping a single "record" for a device that i
 ## Device Store
 
 The device store is responsible for keeping historical data for a device - that is, many metric and channel values over time, used for analytics and reporting.
+
+
+# Golang channels
+
+The following golang channels are created for each farm
+
+1. Farm state gc ticker
+2. Device state gc ticker
+3. farm.WatchFarmStateChange
+4. farm.WatchFarmConfigChange
+5. farm.WatchDeviceStateChange

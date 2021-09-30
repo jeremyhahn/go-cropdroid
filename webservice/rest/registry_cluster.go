@@ -1,4 +1,4 @@
-// +build cluster
+// +build ignore
 
 package rest
 
@@ -18,6 +18,7 @@ func NewClusterRestServiceRegistry(publicKey string, mapperRegistry mapper.Mappe
 
 	jsonWriter := NewJsonWriter()
 	jwtService := serviceRegistry.GetJsonWebTokenService()
+	farmProvisioner := serviceRegistry.GetFarmProvisioner()
 
 	restServices := make([]RestService, 0)
 
@@ -31,6 +32,7 @@ func NewClusterRestServiceRegistry(publicKey string, mapperRegistry mapper.Mappe
 	workflowRestService := NewWorkflowRestService(serviceRegistry.GetWorkflowService(), jwtService, jsonWriter)
 	workflowStepRestService := NewWorkflowStepRestService(serviceRegistry.GetWorkflowStepService(), jwtService, jsonWriter)
 	googleRestService := NewGoogleRestService(serviceRegistry.GetGoogleAuthService(), jwtService, jsonWriter)
+	provisionerRestService := NewProvisionerRestService(farmProvisioner, jwtService, jsonWriter)
 
 	//restServices = append(restServices, configRestService)
 	restServices = append(restServices, channelRestService)
@@ -44,6 +46,7 @@ func NewClusterRestServiceRegistry(publicKey string, mapperRegistry mapper.Mappe
 	restServices = append(restServices, NewDeviceRestService(serviceRegistry, jwtService, jsonWriter))
 	restServices = append(restServices, workflowRestService)
 	restServices = append(restServices, workflowStepRestService)
+	restServices = append(restServices, provisionerRestService)
 
 	// Create unique list of device types
 	/*

@@ -19,14 +19,14 @@ type ChannelConditionHandler struct {
 	farmService      FarmService
 	deviceService    DeviceService
 	conditionService ConditionService
-	backoffTable     map[int]time.Time
+	backoffTable     map[uint64]time.Time
 	ConditionHandler
 }
 
 func NewChannelConditionHandler(logger *logging.Logger, deviceConfig config.DeviceConfig,
 	channelConfig config.ChannelConfig, farmState state.FarmStateMap, farmService FarmService,
 	deviceService DeviceService, conditionService ConditionService,
-	backoffTable map[int]time.Time) ConditionHandler {
+	backoffTable map[uint64]time.Time) ConditionHandler {
 
 	return &ChannelConditionHandler{
 		logger:           logger,

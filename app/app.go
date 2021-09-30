@@ -38,6 +38,7 @@ type App struct {
 	DebugFlag           bool
 	DowngradeUser       string
 	EnableRegistrations bool // WebRegistrations
+	EnableDefaultFarm   bool
 	GormDB              gormstore.GormDB
 	GORM                *gorm.DB
 	GORMInitParams      *gormstore.GormInitParams
@@ -183,5 +184,6 @@ func (this *App) InitGormDB() *gorm.DB {
 }
 
 func (this *App) NewGormDB() *gorm.DB {
-	return gormstore.NewGormDB(this.Logger, this.GORMInitParams).Connect(false)
+	this.GormDB = gormstore.NewGormDB(this.Logger, this.GORMInitParams)
+	return this.GormDB.Connect(false)
 }

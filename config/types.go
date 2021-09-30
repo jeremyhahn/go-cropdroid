@@ -6,6 +6,13 @@ import (
 )
 
 const (
+	MEMORY_STORE = iota
+	GORM_STORE
+	RAFT_MEMORY_STORE
+	RAFT_DISK_STORE
+)
+
+const (
 	CONFIG_KEY_NAME     = "name"
 	CONFIG_KEY_MODE     = "mode"
 	CONFIG_KEY_INTERVAL = "interval"
@@ -26,7 +33,7 @@ type ServerConfig interface {
 	SetID(int)
 	GetOrganizations() []Organization
 	SetOrganizations([]Organization)
-	GetOrganization(id int) (*Organization, error)
+	GetOrganization(id uint64) (*Organization, error)
 	SetInterval(int)
 	GetInterval() int
 	SetTimezone(string)
@@ -43,8 +50,8 @@ type ServerConfig interface {
 }
 
 type OrganizationConfig interface {
-	GetID() int
-	SetID() int
+	GetID() uint64
+	SetID(uint64)
 	GetName() string
 	SetName(string)
 	AddFarm(farm Farm)
@@ -60,8 +67,8 @@ type OrganizationConfig interface {
 type FarmConfig interface {
 	SetID(uint64)
 	GetID() uint64
-	SetOrganizationID(id int)
-	GetOrganizationID() int
+	SetOrganizationID(id uint64)
+	GetOrganizationID() uint64
 	GetReplicas() int
 	SetReplicas(count int)
 	SetConsistency(level int)
@@ -70,12 +77,14 @@ type FarmConfig interface {
 	GetStateStore() int
 	SetConfigStore(storeType int)
 	GetConfigStore() int
+	SetDataStore(storeType int)
+	GetDataStore() int
 	SetName(string)
 	GetName() string
 	SetMode(string)
 	GetMode() string
-	GetOrgID() int
-	SetOrgID(id int)
+	// GetOrgID() int
+	// SetOrgID(id int)
 	GetInterval() int
 	SetInterval(int)
 	SetTimezone(tz string)
@@ -157,10 +166,10 @@ type DeviceConfig interface {
 }
 
 type DeviceConfigConfig interface {
-	SetID(int)
-	GetID() int
-	SetUserID(int)
-	GetUserID() int
+	SetID(uint64)
+	GetID() uint64
+	SetUserID(uint64)
+	GetUserID() uint64
 	SetDeviceID(uint64)
 	GetDeviceID() uint64
 	SetKey(string)
@@ -193,8 +202,8 @@ type MetricConfig interface {
 }
 
 type ChannelConfig interface {
-	GetID() int
-	SetID(int)
+	GetID() uint64
+	SetID(uint64)
 	GetDeviceID() uint64
 	SetDeviceID(uint64)
 	GetChannelID() int
@@ -227,8 +236,8 @@ type ConditionConfig interface {
 	GetID() uint64
 	SetWorkflowID(id uint64)
 	GetWorkflowID() uint64
-	SetChannelID(int)
-	GetChannelID() int
+	SetChannelID(uint64)
+	GetChannelID() uint64
 	GetMetricID() int
 	SetMetricID(int)
 	SetComparator(string)
@@ -243,7 +252,7 @@ type ScheduleConfig interface {
 	SetID(uint64)
 	SetWorkflowID(id uint64)
 	GetWorkflowID() uint64
-	GetChannelID() int
+	GetChannelID() uint64
 	SetStartDate(time.Time)
 	GetStartDate() time.Time
 	SetEndDate(*time.Time)
@@ -270,7 +279,7 @@ type LicenseConfig interface {
 }
 
 type UserConfig interface {
-	GetID() int
+	GetID() uint64
 	SetEmail(string)
 	GetEmail() string
 	SetPassword(string)
@@ -310,8 +319,8 @@ type WorkflowStepConfig interface {
 	SetWorkflowID(id uint64)
 	GetDeviceID() uint64
 	SetDeviceID(id uint64)
-	GetChannelID() int
-	SetChannelID(id int)
+	GetChannelID() uint64
+	SetChannelID(id uint64)
 	GetWebhook() string
 	SetWebhook(url string)
 	GetDuration() int
@@ -323,7 +332,7 @@ type WorkflowStepConfig interface {
 }
 
 type RoleConfig interface {
-	GetID() int
+	GetID() uint64
 	GetName() string
 }
 
@@ -334,9 +343,9 @@ type FarmConfigChange struct {
 	Payload    interface{} `json:"payload"`
 }*/
 
-type FarmConfigStorer interface {
-	Len() int
-	Put(farmID int, v FarmConfig) error
-	Get(farmID int) (FarmConfig, error)
-	GetAll() []FarmConfig
-}
+// type FarmConfigStorer interface {
+// 	Len() int
+// 	Put(farmID int, v FarmConfig) error
+// 	Get(farmID int) (FarmConfig, error)
+// 	GetAll() []FarmConfig
+// }

@@ -4,12 +4,15 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	logging "github.com/op/go-logging"
 )
 
 type Session interface {
 	GetLogger() *logging.Logger
 	SetLogger(*logging.Logger)
+	GetFarms() ([]config.Farm, error)
 	GetFarmService() FarmService
 	SetFarmService(FarmService)
 	GetUser() common.UserAccount
@@ -19,14 +22,19 @@ type Session interface {
 
 type DefaultSession struct {
 	logger      *logging.Logger
+	orgID       uint64
+	farmDAO     dao.FarmDAO
 	farmService FarmService
 	user        common.UserAccount
 	Session
 }
 
-func CreateSession(logger *logging.Logger, farmService FarmService, user common.UserAccount) Session {
+func CreateSession(logger *logging.Logger, farmDAO dao.FarmDAO,
+	farmService FarmService, user common.UserAccount) Session {
 	return &DefaultSession{
 		logger:      logger,
+		orgID:       0,
+		farmDAO:     farmDAO,
 		farmService: farmService,
 		user:        user}
 }
@@ -34,6 +42,7 @@ func CreateSession(logger *logging.Logger, farmService FarmService, user common.
 func CreateSystemSession(logger *logging.Logger, farmService FarmService) Session {
 	return &DefaultSession{
 		logger:      logger,
+		orgID:       0,
 		farmService: farmService}
 }
 
@@ -43,6 +52,10 @@ func (session *DefaultSession) GetLogger() *logging.Logger {
 
 func (session *DefaultSession) SetLogger(logger *logging.Logger) {
 	session.logger = logger
+}
+
+func (session *DefaultSession) GetFarms() ([]config.Farm, error) {
+	return session.farmDAO.GetByOrgAndUserID(session.orgID, session.GetUser().GetID())
 }
 
 func (session *DefaultSession) GetFarmService() FarmService {

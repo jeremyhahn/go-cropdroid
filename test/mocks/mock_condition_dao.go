@@ -35,19 +35,19 @@ func (dao *MockConditionDAO) Update(condition config.ConditionConfig) error {
 	return args.Error(0)
 }
 
-func (dao *MockConditionDAO) Get(id int) (config.ConditionConfig, error) {
+func (dao *MockConditionDAO) Get(id uint64) (config.ConditionConfig, error) {
 	args := dao.Called(id)
 	fmt.Printf("Getting condition for id=%d\n", id)
 	return args.Get(0).(*config.Condition), nil
 }
 
-func (dao *MockConditionDAO) GetByChannelID(id int) ([]config.Condition, error) {
+func (dao *MockConditionDAO) GetByChannelID(id uint64) ([]config.Condition, error) {
 	args := dao.Called(id)
 	fmt.Printf("Getting condition by channel id=%d\n", id)
 	return args.Get(0).([]config.Condition), nil
 }
 
-func (dao *MockConditionDAO) GetByUserOrgAndDeviceID(orgID, deviceID int) ([]config.Condition, error) {
+func (dao *MockConditionDAO) GetByUserOrgAndDeviceID(orgID, deviceID uint64) ([]config.Condition, error) {
 	args := dao.Called(orgID, deviceID)
 	fmt.Printf("Getting condition by device id=%d and org id=%d\n", deviceID, orgID)
 	return args.Get(0).([]config.Condition), nil

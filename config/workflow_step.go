@@ -5,7 +5,7 @@ type WorkflowStep struct {
 	//Name string `gorm:"name" yaml:"name" json:"name"`
 	WorkflowID uint64 `yaml:"workflow" json:"workflow_id"`
 	DeviceID   uint64 `yaml:"device" json:"device_id"`
-	ChannelID  int    `yaml:"channel" json:"channel_id"`
+	ChannelID  uint64 `yaml:"channel" json:"channel_id"`
 	Webhook    string `yaml:"webhook" json:"webhook"`
 	//AlgorithmID        int    `yaml:"algorithm" json:"algorithm_id"`
 	Duration           int `yaml:"duration" json:"duration"`
@@ -59,12 +59,12 @@ func (ws *WorkflowStep) SetDeviceID(id uint64) {
 }
 
 // GetChannelID gets the target channel ID to execute
-func (ws *WorkflowStep) GetChannelID() int {
+func (ws *WorkflowStep) GetChannelID() uint64 {
 	return ws.ChannelID
 }
 
 // SetChannelID sets the target channel ID to execute
-func (ws *WorkflowStep) SetChannelID(id int) {
+func (ws *WorkflowStep) SetChannelID(id uint64) {
 	ws.ChannelID = id
 }
 

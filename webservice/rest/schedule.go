@@ -76,7 +76,7 @@ func (restService *DefaultScheduleRestService) GetSchedule(w http.ResponseWriter
 	defer session.Close()
 
 	params := mux.Vars(r)
-	channelID, err := strconv.Atoi(params["channelID"])
+	channelID, err := strconv.ParseUint(params["channelID"], 10, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

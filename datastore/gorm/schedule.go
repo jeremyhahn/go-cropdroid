@@ -31,7 +31,7 @@ func (dao *GormScheduleDAO) Delete(schedule config.ScheduleConfig) error {
 	return dao.db.Delete(schedule).Error
 }
 
-func (dao *GormScheduleDAO) GetByChannelID(id int) ([]config.Schedule, error) {
+func (dao *GormScheduleDAO) GetByChannelID(id uint64) ([]config.Schedule, error) {
 	var entities []config.Schedule
 	if err := dao.db.Where("channel_id = ?", id).Find(&entities).Error; err != nil {
 		return nil, err

@@ -12,16 +12,16 @@ import (
 func TestChannelMapperMapEntityToModel(t *testing.T) {
 	mapper := NewChannelMapper()
 	entity := &config.Channel{
-		ID:           1,
-		DeviceID: 2,
-		ChannelID:    3,
-		Name:         "Test Channel",
-		Enable:       true,
-		Notify:       true,
-		Duration:     1,
-		Debounce:     2,
-		Backoff:      3,
-		AlgorithmID:  4}
+		ID:          1,
+		DeviceID:    2,
+		ChannelID:   3,
+		Name:        "Test Channel",
+		Enable:      true,
+		Notify:      true,
+		Duration:    1,
+		Debounce:    2,
+		Backoff:     3,
+		AlgorithmID: 4}
 	model := mapper.MapEntityToModel(entity)
 	assert.Equal(t, model.GetID(), entity.GetID())
 	assert.Equal(t, model.GetDeviceID(), entity.GetDeviceID())
@@ -111,16 +111,16 @@ func TestChannelMapperMapEntityToConfig(t *testing.T) {
 	mapper := NewChannelMapper()
 
 	entity := &config.Channel{
-		ID:           1,
-		DeviceID: 2,
-		ChannelID:    3,
-		Name:         "Test Channel",
-		Enable:       true,
-		Notify:       true,
-		Duration:     1,
-		Debounce:     2,
-		Backoff:      3,
-		AlgorithmID:  4}
+		ID:          1,
+		DeviceID:    2,
+		ChannelID:   3,
+		Name:        "Test Channel",
+		Enable:      true,
+		Notify:      true,
+		Duration:    1,
+		Debounce:    2,
+		Backoff:     3,
+		AlgorithmID: 4}
 
 	config := mapper.MapEntityToConfig(entity)
 	assert.Equal(t, entity.GetID(), config.GetID())

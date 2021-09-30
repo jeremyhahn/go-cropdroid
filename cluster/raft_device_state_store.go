@@ -5,35 +5,30 @@ package cluster
 import (
 	"encoding/json"
 
-	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/state"
 
 	logging "github.com/op/go-logging"
 )
 
-type RaftDeviceStateStore interface {
-	datastore.DeviceDatastore
-	state.DeviceStorer
-}
-
-type DefaultRaftDeviceStateStore struct {
+type RaftDeviceStateStore struct {
 	logger *logging.Logger
 	raft   RaftCluster
-	RaftDeviceStateStore
+	common.DeviceStore
 }
 
-func NewRaftDeviceStateStore(logger *logging.Logger, raftCluster RaftCluster) RaftDeviceStateStore {
-	return &DefaultRaftDeviceStateStore{
+func NewRaftDeviceStateStore(logger *logging.Logger, raftCluster RaftCluster) common.DeviceStore {
+	return &RaftDeviceStateStore{
 		logger: logger,
 		raft:   raftCluster}
 }
 
-func (s *DefaultRaftDeviceStateStore) Len() int {
+func (s *RaftDeviceStateStore) Len() int {
 	return 1
 }
 
 // Puts a new device state entry into the Raft database
-func (s *DefaultRaftDeviceStateStore) Put(clusterID uint64, v state.DeviceStateMap) error {
+func (s *RaftDeviceStateStore) Put(clusterID uint64, v state.DeviceStateMap) error {
 	data, err := json.Marshal(*v.(*state.DeviceState))
 	if err != nil {
 		s.logger.Errorf("[RaftDeviceStateStore.Put] Error: %s", err)
@@ -47,7 +42,7 @@ func (s *DefaultRaftDeviceStateStore) Put(clusterID uint64, v state.DeviceStateM
 }
 
 // Gets the current real-time state for the specified device
-func (s *DefaultRaftDeviceStateStore) Get(clusterID uint64) (state.DeviceStateMap, error) {
+func (s *RaftDeviceStateStore) Get(clusterID uint64) (state.DeviceStateMap, error) {
 
 	// Lookup method always returns an array
 	// Lookup(nil) = get current state
@@ -69,7 +64,7 @@ func (s *DefaultRaftDeviceStateStore) Get(clusterID uint64) (state.DeviceStateMa
 	return nil, nil
 }
 
-func (s *DefaultRaftDeviceStateStore) GetAll() []*state.DeviceStoreViewItem {
+func (s *RaftDeviceStateStore) GetAll() []*state.DeviceStoreViewItem {
 	s.logger.Errorf("Not implemented")
 	return nil
 }
@@ -77,14 +72,14 @@ func (s *DefaultRaftDeviceStateStore) GetAll() []*state.DeviceStoreViewItem {
 /* Implements datastore.DeviceStore */
 
 // Saves a new record for historical record keeping and reporting
-func (s *DefaultRaftDeviceStateStore) Save(deviceID uint64, deviceState state.DeviceStateMap) error {
+func (s *RaftDeviceStateStore) Save(deviceID uint64, deviceState state.DeviceStateMap) error {
 	// Do nothing, the record was already saved to the raft database
 	// when the state store called Put() above.
 	return nil
 }
 
 // Returns all records for the given metric within the last 30 days
-func (s *DefaultRaftDeviceStateStore) GetLast30Days(deviceID uint64, metric string) ([]float64, error) {
+func (s *RaftDeviceStateStore) GetLast30Days(deviceID uint64, metric string) ([]float64, error) {
 	// Lookup method always returns an array
 	// Lookup(nil) = get current state
 	// Lookup("*") = get state history

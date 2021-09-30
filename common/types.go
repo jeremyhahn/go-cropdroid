@@ -1,10 +1,12 @@
 package common
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
@@ -14,8 +16,12 @@ const (
 	CONSISTENCY_QUORUM
 )
 
+var (
+	ErrClusterNotFound = errors.New("cluster not found")
+)
+
 type UserAccount interface {
-	GetID() int
+	GetID() uint64
 	GetEmail() string
 	SetEmail(string)
 	GetPassword() string
@@ -27,7 +33,7 @@ type UserAccount interface {
 }
 
 type Role interface {
-	GetID() int
+	GetID() uint64
 	GetName() string
 }
 
@@ -209,3 +215,8 @@ type FarmError struct {
 type DeviceObserver interface {
 	OnDeviceStateChange(diff DeviceState)
 }*/
+
+type DeviceStore interface {
+	datastore.DeviceDataStore
+	state.DeviceStorer
+}

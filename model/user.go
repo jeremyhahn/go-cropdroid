@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	ID                 int           `json:"id"`
+	ID                 uint64        `json:"id"`
 	Email              string        `json:"email"`
 	Password           string        `json:"password"`
 	Roles              []common.Role `json:"roles"`
@@ -17,7 +17,7 @@ func NewUser() common.UserAccount {
 		Roles: make([]common.Role, 0)}
 }
 
-func (user *User) GetID() int {
+func (user *User) GetID() uint64 {
 	return user.ID
 }
 

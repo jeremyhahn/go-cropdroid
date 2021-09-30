@@ -15,6 +15,7 @@ import (
 var CurrentTest *ServiceTest = &ServiceTest{mutex: &sync.Mutex{}}
 var Location *time.Location
 var TestSuiteName = "cropdroid_service_test"
+var EnableDefaultFarm = true
 
 type ServiceTest struct {
 	mutex    *sync.Mutex

@@ -91,7 +91,7 @@ func NewUnitTestSession() (*app.App, service.Session) {
 	// farmState := state.CreateFarmState(farmID, deviceState)
 
 	//session := service.CreateSession(logger, farmService, &model.User{
-	session := service.CreateSession(logger, nil, &model.User{
+	session := service.CreateSession(logger, nil, nil, &model.User{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "$ecret"})
@@ -122,13 +122,13 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 
 	channels := []config.Channel{
 		config.Channel{
-			ID:           1,
-			DeviceID: 1,
-			ChannelID:    testChannelID,
-			Name:         "test",
-			Enable:       true,
-			Notify:       true,
-			Conditions:   []config.Condition{*condition}}}
+			ID:         1,
+			DeviceID:   1,
+			ChannelID:  testChannelID,
+			Name:       "test",
+			Enable:     true,
+			Notify:     true,
+			Conditions: []config.Condition{*condition}}}
 
 	device := config.Device{
 		ID:   1,
@@ -150,7 +150,7 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 		Mode:           "virtual",
 		Name:           "Test Farm",
 		Interval:       50,
-		Devices:    []config.Device{device}}
+		Devices:        []config.Device{device}}
 
 	/*
 		serverConfig := &config.Server{

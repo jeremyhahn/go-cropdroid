@@ -3,8 +3,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
@@ -13,8 +11,8 @@ import (
 )
 
 func init() {
-	standaloneCmd.PersistentFlags().StringVarP(&DeviceStore, "device-store", "", "datastore", "Where to store metrics [ datastore | redis ]")
-	DeviceStore = strings.ToLower(DeviceStore)
+	// standaloneCmd.PersistentFlags().StringVarP(&DeviceStore, "device-store", "", "datastore", "Where to store metrics [ datastore | redis ]")
+	// DeviceStore = strings.ToLower(DeviceStore)
 
 	rootCmd.AddCommand(standaloneCmd)
 }
@@ -35,10 +33,8 @@ var standaloneCmd = &cobra.Command{
 		App.Mode = common.MODE_STANDALONE
 		App.InitGormDB()
 
-		//serverConfig, serviceRegistry, restServices, deviceIndex, channelIndex, err :=
-		//	builder.NewGormConfigBuilder(App, farmStateStore, deviceStateStore, deviceDatastore).Build()
-		rsaKeyPair, serverConfig, serviceRegistry, restServices, err := builder.NewGormConfigBuilder(
-			App, DeviceStore, AppStateTTL, AppStateTick).Build()
+		rsaKeyPair, serverConfig, serviceRegistry, restServices, farmTickerProvisionerChan, err := builder.NewGormConfigBuilder(
+			App, DataStore, AppStateTTL, AppStateTick).Build()
 
 		if err != nil {
 			App.Logger.Fatal(err)
@@ -50,16 +46,14 @@ var standaloneCmd = &cobra.Command{
 		//App.ChannelIndex = channelIndex
 
 		farmServices := serviceRegistry.GetFarmServices()
-		if len(farmServices) != 1 {
-			App.Logger.Fatal("Invalid standalone farm configuration")
-		}
 
 		for _, farmService := range farmServices {
 			go farmService.Run()
 		}
 
-		webserver := webservice.NewWebserver(App, serviceRegistry, restServices)
+		webserver := webservice.NewWebserver(App, serviceRegistry, restServices, farmTickerProvisionerChan)
 		go webserver.Run()
+		go webserver.RunProvisionerConsumer()
 
 		if changefeedService := serviceRegistry.GetChangefeedService(); changefeedService != nil {
 			changefeedService.Subscribe()

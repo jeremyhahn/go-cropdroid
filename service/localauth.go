@@ -10,7 +10,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
-	"github.com/jeremyhahn/go-cropdroid/provisioner"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,20 +22,22 @@ var (
 
 type LocalAuthService struct {
 	app     *app.App
-	userDAO dao.UserDAO
 	orgDAO  dao.OrganizationDAO
+	userDAO dao.UserDAO
+	roleDAO dao.RoleDAO
 	farmDAO dao.FarmDAO
 	mapper  mapper.UserMapper
 	AuthService
 }
 
-func NewLocalAuthService(app *app.App, userDAO dao.UserDAO, orgDAO dao.OrganizationDAO,
-	farmDAO dao.FarmDAO, userMapper mapper.UserMapper) AuthService {
+func NewLocalAuthService(app *app.App, orgDAO dao.OrganizationDAO, userDAO dao.UserDAO,
+	roleDAO dao.RoleDAO, farmDAO dao.FarmDAO, userMapper mapper.UserMapper) AuthService {
 
 	return &LocalAuthService{
 		app:     app,
-		userDAO: userDAO,
 		orgDAO:  orgDAO,
+		userDAO: userDAO,
+		roleDAO: roleDAO,
 		farmDAO: farmDAO,
 		mapper:  userMapper}
 }
@@ -52,8 +53,7 @@ func (service *LocalAuthService) Get(email string) (common.UserAccount, error) {
 	return service.mapper.MapUserEntityToModel(userEntity), nil
 }
 
-func (service *LocalAuthService) Login(userCredentials *UserCredentials,
-	farmProvisioner provisioner.FarmProvisioner) (common.UserAccount, []config.OrganizationConfig, error) {
+func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %s", userCredentials.Email)
 
@@ -64,7 +64,10 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials,
 	if err != nil {
 		return nil, nil, err
 	}
-	userEntity.SetRoles([]config.Role{config.Role{ID: 1, Name: common.DEFAULT_ROLE}})
+
+	roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
+	userEntity.SetRoles([]config.Role{*roleConfig.(*config.Role)})
+
 	err = bcrypt.CompareHashAndPassword([]byte(userEntity.GetPassword()), []byte(userCredentials.Password))
 	if err != nil {
 		return nil, nil, ErrInvalidCredentials

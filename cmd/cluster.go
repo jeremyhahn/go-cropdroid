@@ -61,8 +61,7 @@ func init() {
 	clusterCmd.PersistentFlags().IntVarP(&ClusterRaftPort, "raft-port", "", 60020, "Initial Raft members (for bootstrapping a new cluster)")
 	clusterCmd.PersistentFlags().IntVarP(&ClusterMaxNodes, "raft-max-nodes", "", 7, "Maximum number of nodes allowed to join a raft cluster")
 
-	clusterCmd.PersistentFlags().StringVarP(&DeviceStore, "device-store", "", "raft", "The database that stores historical device data [ datastore | redis | raft ]")
-	DeviceStore = strings.ToLower(DeviceStore)
+	clusterCmd.PersistentFlags().StringVarP(&DataStore, "data-store", "", "raft", "Where to store historical device data [ raft | gorm | redis ]")
 
 	rootCmd.AddCommand(clusterCmd)
 }
@@ -86,7 +85,7 @@ var clusterCmd = &cobra.Command{
 
 		if ClusterRaft != "" {
 			pieces := strings.Split(ClusterRaft, ",")
-			ClusterBootstrap = len(pieces) // bootstrapping; wait for all raft cluster to initialize
+			ClusterBootstrap = len(pieces)
 		}
 
 		localAddress := util.ParseLocalIP()
@@ -108,14 +107,16 @@ var clusterCmd = &cobra.Command{
 			raftPeers[i] = strings.TrimSpace(peer)
 		}
 
+		daoRegistry := gorm.NewGormRegistry(App.Logger, App.GormDB)
+
 		farmProvisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
+		farmDeprovisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 		farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
-		daoRegistry := gorm.NewGormRegistry(App.Logger, App.GORM)
 
 		params := cluster.NewClusterParams(App.Logger, uint64(ClusterID), uint64(NodeID), ClusterIaasProvider, ClusterRegion,
 			ClusterZone, App.DataDir, localAddress, ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort,
 			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes, ClusterBootstrap, daoRegistry,
-			farmProvisionerChan, farmTickerProvisionerChan)
+			farmProvisionerChan, farmDeprovisionerChan, farmTickerProvisionerChan)
 
 		App.GossipCluster = cluster.NewGossipCluster(params, cluster.NewHashring(ClusterVirtualNodes), daoRegistry.GetFarmDAO())
 		App.GossipCluster.Join()
@@ -123,7 +124,7 @@ var clusterCmd = &cobra.Command{
 
 		App.RaftCluster = App.GossipCluster.GetSystemRaft()
 		for App.RaftCluster == nil {
-			App.Logger.Debug("Waiting to be assigned to a Raft cluster...")
+			App.Logger.Info("Waiting for enough nodes to build the Raft quorum...")
 			time.Sleep(1 * time.Second)
 			App.RaftCluster = App.GossipCluster.GetSystemRaft()
 		}
@@ -132,15 +133,13 @@ var clusterCmd = &cobra.Command{
 		//App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)
 
 		// TODO: Check device hardware and firmware versions at startup, update devices db table
-		builder := builder.NewClusterConfigBuilder(App, params, DeviceStore, AppStateTTL, AppStateTick)
-		_, serverConfig, serviceRegistry, restServices, err := builder.Build()
+		builder := builder.NewClusterConfigBuilder(App, params, DataStore, AppStateTTL, AppStateTick)
+		rsaKeyPair, serverConfig, serviceRegistry, restServices, _, err := builder.Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
-		// farmProvisioner := provisioner.NewFarmProvisioner(App.Logger, App.NewGormDB(),
-		// 	App.Location, datastoreRegistry.GetFarmDAO(), serviceRegistry)
-
+		App.KeyPair = rsaKeyPair
 		App.Config = serverConfig.(*config.Server)
 		//App.DeviceIndex = deviceIndex
 		//App.ChannelIndex = channelIndex

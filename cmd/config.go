@@ -44,7 +44,7 @@ var configCmd = &cobra.Command{
 
 			switch App.Mode {
 			case common.MODE_STANDALONE, "virtual":
-				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, App.Location).Initialize(); err != nil {
+				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, App.Location).Initialize(App.EnableDefaultFarm); err != nil {
 					log.Fatal(err)
 				}
 			// case common.MODE_CLOUD:
@@ -66,7 +66,7 @@ var configCmd = &cobra.Command{
 
 				App.InitLogFile(os.Getuid(), os.Getgid())
 				App.InitGormDB()
-				_, serverConfig, _, _, err := builder.NewGormConfigBuilder(App, DeviceStore,
+				_, serverConfig, _, _, _, err := builder.NewGormConfigBuilder(App, DataStore,
 					AppStateTTL, AppStateTick).Build()
 				if err != nil {
 					App.Logger.Fatal(err)

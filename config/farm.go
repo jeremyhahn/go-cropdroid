@@ -8,11 +8,12 @@ import (
 
 type Farm struct {
 	ID             uint64     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	OrganizationID int        `yaml:"orgId" json:"orgId"`
+	OrganizationID uint64     `yaml:"orgId" json:"orgId"`
 	Replicas       int        `yaml:"replicas" json:"replicas"`
 	Consistency    int        `gorm:"consistency" yaml:"consistency" json:"consistency"`
 	StateStore     int        `gorm:"state_store" yaml:"state_store" json:"state_store"`
 	ConfigStore    int        `gorm:"config_store" yaml:"config_store" json:"config_store"`
+	DataStore      int        `gorm:"data_store" yaml:"data_store" json:"data_store"`
 	Mode           string     `gorm:"-" yaml:"mode" json:"mode"`
 	Name           string     `gorm:"-" yaml:"name" json:"name"`
 	Interval       int        `gorm:"-" yaml:"interval" json:"interval"`
@@ -33,8 +34,8 @@ func NewFarm() *Farm {
 		Users:   make([]User, 0)}
 }
 
-func CreateFarm(name string, orgID, interval int, users []User,
-	devices []Device) FarmConfig {
+func CreateFarm(name string, orgID uint64, interval int,
+	users []User, devices []Device) FarmConfig {
 
 	return &Farm{
 		//Interval:       60,
@@ -42,11 +43,11 @@ func CreateFarm(name string, orgID, interval int, users []User,
 		Devices:        devices}
 }
 
-func (farm *Farm) SetOrganizationID(id int) {
+func (farm *Farm) SetOrganizationID(id uint64) {
 	farm.OrganizationID = id
 }
 
-func (farm *Farm) GetOrganizationID() int {
+func (farm *Farm) GetOrganizationID() uint64 {
 	return farm.OrganizationID
 }
 
@@ -80,6 +81,14 @@ func (farm *Farm) SetConfigStore(storeType int) {
 
 func (farm *Farm) GetConfigStore() int {
 	return farm.ConfigStore
+}
+
+func (farm *Farm) SetDataStore(storeType int) {
+	farm.DataStore = storeType
+}
+
+func (farm *Farm) GetDataStore() int {
+	return farm.DataStore
 }
 
 func (farm *Farm) SetName(name string) {
@@ -150,13 +159,13 @@ func (farm *Farm) GetID() uint64 {
 	return farm.ID
 }
 
-func (farm *Farm) SetOrgID(id int) {
-	farm.OrganizationID = id
-}
+// func (farm *Farm) SetOrgID(id uint64) {
+// 	farm.OrganizationID = id
+// }
 
-func (farm *Farm) GetOrgID() int {
-	return farm.OrganizationID
-}
+// func (farm *Farm) GetOrgID() int {
+// 	return farm.OrganizationID
+// }
 
 func (farm *Farm) SetUsers(users []User) {
 	farm.Users = users

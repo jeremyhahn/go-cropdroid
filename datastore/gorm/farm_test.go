@@ -3,10 +3,13 @@ package gorm
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var DEFAULT_CONSISTENCY_LEVEL = common.CONSISTENCY_LOCAL
 
 func TestFarmAssociations(t *testing.T) {
 
@@ -48,7 +51,7 @@ func TestFarmAssociations(t *testing.T) {
 		UserID:         user.GetID(),
 		RoleID:         role.GetID()})
 
-	persisted, err := farmDAO.Get(farm.GetID())
+	persisted, err := farmDAO.Get(farm.GetID(), DEFAULT_CONSISTENCY_LEVEL)
 	assert.Nil(t, err)
 
 	assert.Equal(t, farm.GetID(), persisted.GetID())
@@ -124,31 +127,31 @@ func TestGet(t *testing.T) {
 	farm1 := config.NewFarm()
 	farm1.SetMode("test")
 	farm1.SetDevices([]config.Device{
-		config.Device{
+		{
 			Type: "server",
 			Configs: []config.DeviceConfigItem{
-				config.DeviceConfigItem{
+				{
 					Key:   "name",
 					Value: "Test Farm"},
-				config.DeviceConfigItem{
+				{
 					Key:   "mode",
 					Value: "test"},
-				config.DeviceConfigItem{
+				{
 					Key:   "interval",
 					Value: "59"}}}})
 
 	farm2 := config.NewFarm()
 	farm2.SetDevices([]config.Device{
-		config.Device{
+		{
 			Type: "server",
 			Configs: []config.DeviceConfigItem{
-				config.DeviceConfigItem{
+				{
 					Key:   "name",
 					Value: "Test Farm 2"},
-				config.DeviceConfigItem{
+				{
 					Key:   "mode",
 					Value: "test2"},
-				config.DeviceConfigItem{
+				{
 					Key:   "interval",
 					Value: "60"}}}})
 
@@ -158,13 +161,13 @@ func TestGet(t *testing.T) {
 	err = farmDAO.Create(farm2)
 	assert.Nil(t, err)
 
-	persitedFarm1, err := farmDAO.Get(1)
+	persitedFarm1, err := farmDAO.Get(1, DEFAULT_CONSISTENCY_LEVEL)
 	assert.Nil(t, err)
 	assert.Equal(t, "Test Farm", persitedFarm1.GetName())
 	assert.Equal(t, "test", persitedFarm1.GetMode())
 	assert.Equal(t, 59, persitedFarm1.GetInterval())
 
-	persitedFarm2, err := farmDAO.Get(2)
+	persitedFarm2, err := farmDAO.Get(2, DEFAULT_CONSISTENCY_LEVEL)
 	assert.Nil(t, err)
 	assert.Equal(t, "Test Farm 2", persitedFarm2.GetName())
 	assert.Equal(t, "test2", persitedFarm2.GetMode())
@@ -180,15 +183,29 @@ func TestCount(t *testing.T) {
 
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
 
-	err := farmDAO.Create(config.NewFarm())
+	farm1 := config.NewFarm()
+	err := farmDAO.Create(farm1)
 	assert.Nil(t, err)
 
-	err = farmDAO.Create(config.NewFarm())
+	farm2 := config.NewFarm()
+	err = farmDAO.Create(farm2)
 	assert.Nil(t, err)
 
 	count, err := farmDAO.Count()
 	assert.Nil(t, err)
 	assert.Equal(t, int64(2), count)
+
+	err = farmDAO.Delete(farm1)
+	assert.Nil(t, err)
+	count, err = farmDAO.Count()
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), count)
+
+	// err = farmDAO.DeleteById(farm2.GetID())
+	// assert.Nil(t, err)
+	// count, err = farmDAO.Count()
+	// assert.Nil(t, err)
+	// assert.Equal(t, int64(0), count)
 
 	currentTest.Cleanup()
 }

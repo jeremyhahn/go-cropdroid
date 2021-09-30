@@ -27,7 +27,7 @@ type IOSwitcherDeviceService struct {
 	consistency     int
 	stateStore      state.DeviceStorer
 	configStore     store.DeviceConfigStorer
-	deviceStore     datastore.DeviceDatastore
+	deviceStore     datastore.DeviceDataStore
 	device          device.IOSwitcher
 	deviceMutex     *sync.RWMutex
 	mapper          mapper.DeviceMapper
@@ -38,7 +38,7 @@ type IOSwitcherDeviceService struct {
 
 func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 	stateStore state.DeviceStorer, configStore store.DeviceConfigStorer,
-	deviceDatastore datastore.DeviceDatastore, deviceMapper mapper.DeviceMapper,
+	deviceDatastore datastore.DeviceDataStore, deviceMapper mapper.DeviceMapper,
 	device device.IOSwitcher, eventLogService EventLogService,
 	farmChannels *FarmChannels, consistency int) (DeviceService, error) {
 
@@ -47,13 +47,16 @@ func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 		return nil, err
 	}
 
-	deviceInfo, err := device.SystemInfo()
-	if err != nil {
-		return nil, err
+	if deviceConfig.IsEnabled() && deviceConfig.GetURI() != "" {
+		deviceInfo, err := device.SystemInfo()
+		if err != nil {
+			return nil, err
+		}
+
+		deviceConfig.SetHardwareVersion(deviceInfo.GetHardwareVersion())
+		deviceConfig.SetFirmwareVersion(deviceInfo.GetFirmwareVersion())
 	}
 
-	deviceConfig.SetHardwareVersion(deviceInfo.GetHardwareVersion())
-	deviceConfig.SetFirmwareVersion(deviceInfo.GetFirmwareVersion())
 	configStore.Put(deviceID, deviceConfig)
 
 	return &IOSwitcherDeviceService{
@@ -69,6 +72,12 @@ func NewDeviceService(app *app.App, deviceID uint64, farmName string,
 		eventLogService: eventLogService,
 		farmChannels:    farmChannels,
 		consistency:     consistency}, nil
+}
+
+func (service *IOSwitcherDeviceService) Stop() {
+	service.app.Logger.Debugf("Stopping device service. deviceID=%d, farmName=%s",
+		service.deviceID, service.farmName)
+	service.stateStore.Close()
 }
 
 func (service *IOSwitcherDeviceService) GetID() uint64 {
@@ -150,6 +159,11 @@ func (service *IOSwitcherDeviceService) Poll() error {
 	deviceID := service.deviceID
 	deviceType := service.device.GetType()
 	eventType := "Poll"
+	deviceConfig, err := service.configStore.Get(deviceID, common.CONSISTENCY_CACHED)
+	if !deviceConfig.IsEnabled() {
+		service.app.Logger.Warningf("%s disabled...", deviceType)
+		return nil
+	}
 	service.app.Logger.Debugf("Polling %s state...", deviceType)
 	state, err := service.device.State()
 	if err != nil {

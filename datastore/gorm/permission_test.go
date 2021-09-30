@@ -3,6 +3,7 @@ package gorm
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 
 	"github.com/stretchr/testify/assert"
@@ -91,12 +92,12 @@ func TestPermissions(t *testing.T) {
 		RoleID:         role.GetID()})
 
 	// Verify Get(id)
-	persisted, err := farmDAO.Get(farm.GetID())
+	persisted, err := farmDAO.Get(farm.GetID(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, farm.GetID(), persisted.GetID())
 
 	// Verify GetByOrgAndUserID(orgID, userID)
-	userFarms, err := farmDAO.GetByOrgAndUserID(farm.GetOrgID(), user.GetID())
+	userFarms, err := farmDAO.GetByOrgAndUserID(farm.GetOrganizationID(), user.GetID())
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(userFarms))
 	assert.Equal(t, farm.GetID(), userFarms[0].GetID())

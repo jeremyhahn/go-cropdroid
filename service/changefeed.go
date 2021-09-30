@@ -175,7 +175,7 @@ func (service *DefaultChangefeedService) OnDeviceConfigConfigChange(changefeed d
 
 	record := changefeed.GetRawMessage()
 
-	var id int
+	var id uint64
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
 		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
@@ -189,7 +189,7 @@ func (service *DefaultChangefeedService) OnDeviceConfigConfigChange(changefeed d
 		return
 	}
 
-	var userID int
+	var userID uint64
 	err = json.Unmarshal(*record["user_id"], &userID)
 	if err != nil {
 		service.app.Logger.Errorf("Error unmarshaling channel.userID: %s", err)
@@ -267,7 +267,7 @@ func (service *DefaultChangefeedService) OnChannelConfigChange(changefeed datast
 
 	record := changefeed.GetRawMessage()
 
-	var id int
+	var id uint64
 	err := json.Unmarshal(*record["id"], &id)
 	if err != nil {
 		service.app.Logger.Errorf("Error unmarshaling channel.id: %s", err)
@@ -324,7 +324,7 @@ func (service *DefaultChangefeedService) OnConditionConfigChange(changefeed data
 		return
 	}
 
-	var channelID int
+	var channelID uint64
 	err = json.Unmarshal(*record["channel_id"], &channelID)
 	if err != nil {
 		service.app.Logger.Errorf("Error unmarshaling channel.channelID: %s", err)
@@ -379,7 +379,7 @@ func (service *DefaultChangefeedService) OnScheduleConfigChange(changefeed datas
 		return
 	}
 
-	var channelID int
+	var channelID uint64
 	err = json.Unmarshal(*record["channel_id"], &channelID)
 	if err != nil {
 		service.app.Logger.Errorf("Error unmarshaling channel.channelID: %s", err)

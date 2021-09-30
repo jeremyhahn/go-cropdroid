@@ -32,7 +32,7 @@ func CreateSmartSwitch(httpClient HttpClient, app *app.App, baseURL, deviceType 
 }
 
 func NewSmartSwitch(app *app.App, baseURL, deviceType string) IOSwitcher {
-	app.Logger.Debugf("[NewSmartSwitch] Initializing %s device at %s", deviceType, baseURL)
+	app.Logger.Debugf("[NewSmartSwitch] Initializing %s device. url=%s", deviceType, baseURL)
 	return &SmartSwitch{
 		app:        app,
 		baseURL:    baseURL,
@@ -113,7 +113,7 @@ func (d *SmartSwitch) TimerSwitch(channel, duration int) (common.TimerEvent, err
 }
 
 func (d *SmartSwitch) SystemInfo() (DeviceInfo, error) {
-	endpoint := fmt.Sprintf("%s/%s", d.baseURL, "sys")
+	endpoint := fmt.Sprintf("%s/%s", d.baseURL, "system")
 	d.app.Logger.Debugf("endpoint=%s", endpoint)
 	response, err := d.httpClient.Get(endpoint)
 	if err != nil {

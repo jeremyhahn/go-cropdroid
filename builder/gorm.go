@@ -12,6 +12,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/cockroach"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/store"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/provisioner"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
@@ -21,24 +22,23 @@ type GormConfigBuilder struct {
 	app              *app.App
 	farmStateStore   state.FarmStorer
 	deviceStateStore state.DeviceStorer
-	deviceDataStore  datastore.DeviceDatastore
+	deviceDataStore  datastore.DeviceDataStore
 	consistencyLevel int
 	appStateTTL      int
 	appStateTick     int
 	ConfigBuilder
 }
 
-func NewGormConfigBuilder(_app *app.App, deviceStore string,
-	appStateTTL int, appStateTick int) ConfigBuilder {
+func NewGormConfigBuilder(_app *app.App, dataStore string, appStateTTL int, appStateTick int) ConfigBuilder {
 
 	farmStateStore := state.NewMemoryFarmStore(_app.Logger, 1, appStateTTL, time.Duration(appStateTick))
 	deviceStateStore := state.NewMemoryDeviceStore(_app.Logger, 3, appStateTTL, time.Duration(appStateTick))
 
-	var deviceDatastore datastore.DeviceDatastore
-	if deviceStore == "redis" {
-		deviceDatastore = datastore.NewRedisDeviceStore(":6379", "")
+	var deviceDatastore datastore.DeviceDataStore
+	if dataStore == "redis" {
+		deviceDatastore = datastore.NewRedisDataStore(":6379", "")
 	} else {
-		deviceDatastore = store.NewGormDeviceStore(_app.Logger, _app.GORM,
+		deviceDatastore = store.NewGormDataStore(_app.Logger, _app.GORM,
 			_app.GORMInitParams.Engine, _app.Location)
 	}
 
@@ -51,12 +51,12 @@ func NewGormConfigBuilder(_app *app.App, deviceStore string,
 }
 
 func (builder *GormConfigBuilder) Build() (app.KeyPair,
-	config.ServerConfig, service.ServiceRegistry,
-	[]rest.RestService, error) {
+	config.ServerConfig, service.ServiceRegistry, []rest.RestService,
+	chan uint64, error) {
 
 	var restServices []rest.RestService
 
-	datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GORM)
+	datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GormDB)
 	mapperRegistry := mapper.CreateRegistry()
 	serviceRegistry := service.CreateServiceRegistry(builder.app, datastoreRegistry, mapperRegistry)
 
@@ -91,32 +91,77 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	*/
 
 	farmDAO := gorm.NewFarmDAO(builder.app.Logger, builder.app.GORM)
-
 	farmConfigs, err := farmDAO.GetAll()
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-
 	serverConfig.SetFarms(farmConfigs)
 
+	farmProvisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
+	farmDeprovisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
+	farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
+	gormInitializer := gorm.NewGormInitializer(builder.app.Logger, builder.app.GormDB, builder.app.Location)
+	gormFarmConfigStore := store.NewGormFarmConfigStore(datastoreRegistry.NewFarmDAO(), 1)
+	gormDeviceConfigStore := store.NewGormDeviceConfigStore(datastoreRegistry.NewDeviceDAO(), 3)
+	farmFactory := service.NewFarmFactory(
+		builder.app, datastoreRegistry, serviceRegistry, builder.farmStateStore,
+		gormFarmConfigStore, builder.deviceStateStore, gormDeviceConfigStore,
+		builder.deviceDataStore, mapperRegistry.GetDeviceMapper(),
+		changefeeders, farmProvisionerChan, farmTickerProvisionerChan)
+	//serviceRegistry.SetFarmFactory(farmFactory)
+
+	farmProvisioner := provisioner.NewGormFarmProvisioner(
+		builder.app.Logger, builder.app.GORM, builder.app.Location,
+		datastoreRegistry.NewFarmDAO(), farmProvisionerChan,
+		farmDeprovisionerChan, mapperRegistry.GetUserMapper(),
+		gormInitializer)
+	serviceRegistry.SetFarmProvisioner(farmProvisioner)
+
 	for _, farmConfig := range farmConfigs {
-
-		// Each farm gets its own DAO / session to the DB
-		deviceDAO := datastoreRegistry.GetDeviceDAO()
-
-		gormFarmConfigStore := store.NewGormFarmConfigStore(farmDAO, 1)
-		gormDeviceConfigStore := store.NewGormDeviceConfigStore(deviceDAO, 3)
-
-		_, err := service.NewFarmFactory(
-			builder.app, datastoreRegistry, serviceRegistry, builder.farmStateStore,
-			gormFarmConfigStore, builder.deviceStateStore, gormDeviceConfigStore,
-			builder.deviceDataStore, mapperRegistry.GetDeviceMapper(),
-			changefeeders, nil, nil).BuildService(&farmConfig)
-
+		farmFactory.BuildService(&farmConfig)
 		if err != nil {
 			builder.app.Logger.Fatal(err)
 		}
 	}
+
+	// Listen for new farm provisioning requests
+	go func() {
+		for {
+			select {
+			case farmConfig := <-farmProvisionerChan:
+				builder.app.Logger.Debugf("Processing provisioner request...")
+				farmService, err := farmFactory.BuildService(farmConfig)
+				if err != nil {
+					builder.app.Logger.Errorf("Error: %s", err)
+					break
+				}
+				serviceRegistry.AddFarmService(farmService)
+				farmTickerProvisionerChan <- farmConfig.GetID()
+				go farmService.Run()
+			}
+		}
+	}()
+
+	// Listen for new farm deprovisioning requests
+	go func() {
+		for {
+			select {
+			case farmConfig := <-farmDeprovisionerChan:
+				farmID := farmConfig.GetID()
+				builder.app.Logger.Debugf("Processing deprovisioning request for farm %d", farmID)
+				farmService := serviceRegistry.GetFarmService(farmID)
+				if farmService == nil {
+					builder.app.Logger.Errorf("Farm not found: %d", farmID)
+					continue
+				}
+				farmService.Stop()
+				if err := farmDAO.Delete(farmConfig); err != nil {
+					builder.app.Logger.Error(err)
+				}
+				farmTickerProvisionerChan <- farmID
+			}
+		}
+	}()
 
 	// Build JWT service
 	jsonWriter := rest.NewJsonWriter()
@@ -124,7 +169,11 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	//farmConfigStore := store.NewGormFarmConfigStore(farmDAO, 1)
+	jwtService := service.CreateJsonWebTokenService(builder.app,
+		farmDAO, mapperRegistry.GetDeviceMapper(),
+		serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	//jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
@@ -137,10 +186,10 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	}
 
 	publicKey := string(rsaKeyPair.GetPublicBytes())
-	restServiceRegistry := rest.NewFreewareRestServiceRegistry(publicKey, mapperRegistry, serviceRegistry)
+	restServiceRegistry := rest.NewRestServiceRegistry(publicKey, mapperRegistry, serviceRegistry)
 	if restServices == nil {
 		restServices = restServiceRegistry.GetRestServices()
 	}
 
-	return rsaKeyPair, serverConfig, serviceRegistry, restServices, err
+	return rsaKeyPair, serverConfig, serviceRegistry, restServices, farmTickerProvisionerChan, err
 }

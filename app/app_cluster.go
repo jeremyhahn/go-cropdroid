@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/user"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -53,7 +52,7 @@ import (
 const Name = "cropdroid"
 
 type App struct {
-	configMutex         *sync.RWMutex
+	//configMutex         *sync.RWMutex
 	ChannelIndex        state.ChannelIndex
 	Config              *config.Server
 	ConfigDir           string
@@ -65,6 +64,7 @@ type App struct {
 	DebugFlag           bool
 	DowngradeUser       string
 	EnableRegistrations bool // WebRegistrations
+	EnableDefaultFarm   bool
 	GormDB              gormstore.GormDB
 	GORM                *gorm.DB
 	GORMInitParams      *gormstore.GormInitParams
@@ -90,17 +90,17 @@ func NewApp() *App {
 	return &App{Name: Name}
 }
 
-func (this *App) GetConfig() *config.Server {
-	this.configMutex.RLock()
-	defer this.configMutex.RUnlock()
-	return this.Config
-}
+// func (this *App) GetConfig() *config.Server {
+// 	this.configMutex.RLock()
+// 	defer this.configMutex.RUnlock()
+// 	return this.Config
+// }
 
-func (this *App) SetConfig(serverConfig config.ServerConfig) {
-	this.configMutex.Lock()
-	defer this.configMutex.Unlock()
-	this.Config = serverConfig.(*config.Server)
-}
+// func (this *App) SetConfig(serverConfig config.ServerConfig) {
+// 	this.configMutex.Lock()
+// 	defer this.configMutex.Unlock()
+// 	this.Config = serverConfig.(*config.Server)
+// }
 
 func (this *App) ValidateConfig() {
 	if this.Interval < 10 {
@@ -206,5 +206,6 @@ func (this *App) InitGormDB() *gorm.DB {
 }
 
 func (this *App) NewGormDB() *gorm.DB {
-	return gormstore.NewGormDB(this.Logger, this.GORMInitParams).Connect(false)
+	this.GormDB = gormstore.NewGormDB(this.Logger, this.GORMInitParams)
+	return this.GormDB.Connect(false)
 }

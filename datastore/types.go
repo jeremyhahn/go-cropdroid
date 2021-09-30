@@ -8,8 +8,14 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
+const (
+	GORM_STORE = iota
+	RAFT_STORE
+	REDIS_TS
+)
+
 type Initializer interface {
-	Initialize() error
+	Initialize(includeFarmConfig bool) error
 	BuildConfig(config.UserConfig) (config.FarmConfig, error)
 }
 
@@ -28,7 +34,7 @@ type Changefeed interface {
 	GetRawMessage() map[string]*json.RawMessage
 }
 
-type DeviceDatastore interface {
+type DeviceDataStore interface {
 	//CreateTable(tableName string, deviceState state.DeviceStateMap) error
 	Save(deviceID uint64, deviceState state.DeviceStateMap) error
 	GetLast30Days(deviceID uint64, metric string) ([]float64, error)
@@ -39,7 +45,9 @@ type DatastoreRegistry interface {
 	SetOrganizationDAO(dao dao.OrganizationDAO)
 	GetFarmDAO() dao.FarmDAO
 	SetFarmDAO(dao dao.FarmDAO)
+	NewFarmDAO() dao.FarmDAO
 	GetDeviceDAO() dao.DeviceDAO
+	NewDeviceDAO() dao.DeviceDAO
 	SetDeviceDAO(dao dao.DeviceDAO)
 	GetDeviceConfigDAO() dao.DeviceConfigDAO
 	SetDeviceConfigDAO(dao dao.DeviceConfigDAO)

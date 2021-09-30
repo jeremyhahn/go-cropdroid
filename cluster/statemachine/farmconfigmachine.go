@@ -1,6 +1,6 @@
 // +build cluster
 
-package state
+package statemachine
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"io"
 	"io/ioutil"
+	"sync"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	fs "github.com/jeremyhahn/go-cropdroid/state"
@@ -17,7 +18,7 @@ import (
 )
 
 type FarmConfigMachine interface {
-	CreateConfigMachine(clusterID, nodeID uint64) sm.IStateMachine
+	CreateFarmConfigMachine(clusterID, nodeID uint64) sm.IStateMachine
 	sm.IStateMachine
 }
 
@@ -30,6 +31,7 @@ type FarmConfigSM struct {
 	history              []config.FarmConfig
 	historyMaxSize       int
 	farmConfigChangeChan chan config.FarmConfig
+	mutex                *sync.RWMutex
 	sm.IStateMachine
 	fs.FarmStore
 }
@@ -47,12 +49,14 @@ func NewFarmConfigMachine(logger *logging.Logger, farmID uint64,
 		farmID:               farmID,
 		history:              make([]config.FarmConfig, 0, historyMaxSize),
 		farmConfigChangeChan: farmConfigChangeChan,
-		historyMaxSize:       historyMaxSize}
+		historyMaxSize:       historyMaxSize,
+		mutex:                &sync.RWMutex{}}
 }
 
-func (s *FarmConfigSM) CreateConfigMachine(clusterID, nodeID uint64) sm.IStateMachine {
+func (s *FarmConfigSM) CreateFarmConfigMachine(clusterID, nodeID uint64) sm.IStateMachine {
 	s.clusterID = clusterID
 	s.nodeID = nodeID
+	s.mutex = &sync.RWMutex{}
 	return s
 }
 
@@ -72,6 +76,9 @@ func (s *FarmConfigSM) hydrateConfigs(farmConfig config.Farm) config.Farm {
 
 func (s *FarmConfigSM) Lookup(query interface{}) (interface{}, error) {
 
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	s.logger.Warningf("[FarmConfigMachine.Lookup] query: %+v", query)
 	s.logger.Warningf("[FarmConfigMachine.Lookup] Current: %+v", s.current)
 	//s.logger.Warningf("[FarmConfigMachine.Lookup] History: %+v", s.history)
@@ -80,6 +87,10 @@ func (s *FarmConfigSM) Lookup(query interface{}) (interface{}, error) {
 }
 
 func (s *FarmConfigSM) Update(data []byte) (sm.Result, error) {
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	var farmConfig config.Farm
 	err := json.Unmarshal(data, &farmConfig)
 	if err != nil {
@@ -90,7 +101,6 @@ func (s *FarmConfigSM) Update(data []byte) (sm.Result, error) {
 	farmConfig = s.hydrateConfigs(farmConfig)
 	farmConfig.ParseConfigs()
 
-	//newHistory := make([]config.FarmConfig, 0, s.historyMaxSize)
 	newHistory := make([]config.FarmConfig, s.historyMaxSize)
 	for i, conf := range s.history {
 		newHistory[i+1] = conf
@@ -109,6 +119,10 @@ func (s *FarmConfigSM) Update(data []byte) (sm.Result, error) {
 // SaveSnapshot saves the current IStateMachine state into a snapshot using the
 // specified io.Writer object.
 func (s *FarmConfigSM) SaveSnapshot(w io.Writer, fc sm.ISnapshotFileCollection, done <-chan struct{}) error {
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	snap := s.history
 	if s.current != nil {
 		snap = append(snap, s.current)
@@ -125,6 +139,10 @@ func (s *FarmConfigSM) SaveSnapshot(w io.Writer, fc sm.ISnapshotFileCollection, 
 
 // RecoverFromSnapshot recovers the state using the provided snapshot.
 func (s *FarmConfigSM) RecoverFromSnapshot(r io.Reader, files []sm.SnapshotFile, done <-chan struct{}) error {
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err

@@ -1,5 +1,3 @@
-// +build cluster
-
 package service
 
 import (
@@ -12,7 +10,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
-	"github.com/jeremyhahn/go-cropdroid/provisioner"
 	"golang.org/x/crypto/bcrypt"
 	oauth2 "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
@@ -20,19 +17,23 @@ import (
 
 type GoogleAuthService struct {
 	app     *app.App
-	userDAO dao.UserDAO
 	orgDAO  dao.OrganizationDAO
+	userDAO dao.UserDAO
+	roleDAO dao.RoleDAO
 	farmDAO dao.FarmDAO
 	mapper  mapper.UserMapper
 	AuthService
 }
 
-func NewGoogleAuthService(app *app.App, userDAO dao.UserDAO, orgDAO dao.OrganizationDAO,
-	farmDAO dao.FarmDAO, userMapper mapper.UserMapper) AuthService {
+func NewGoogleAuthService(app *app.App, orgDAO dao.OrganizationDAO,
+	userDAO dao.UserDAO, roleDAO dao.RoleDAO, farmDAO dao.FarmDAO,
+	userMapper mapper.UserMapper) AuthService {
+
 	return &GoogleAuthService{
 		app:     app,
-		userDAO: userDAO,
 		orgDAO:  orgDAO,
+		userDAO: userDAO,
+		roleDAO: roleDAO,
 		farmDAO: farmDAO,
 		mapper:  userMapper}
 }
@@ -48,8 +49,7 @@ func (service *GoogleAuthService) Get(email string) (common.UserAccount, error) 
 	return service.mapper.MapUserEntityToModel(userEntity), nil
 }
 
-func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
-	farmProvisioner provisioner.FarmProvisioner) (common.UserAccount, []config.OrganizationConfig, error) {
+func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %+v", userCredentials)
 
@@ -68,8 +68,9 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
 
 	service.app.Logger.Debugf("tokenInfo: %+v", tokenInfo)
 
-	// Create a new trial account if this is a new user
 	userEntity, err := service.userDAO.GetByEmail(tokenInfo.Email)
+
+	// Create a new trial account if this is a new user
 	if err != nil && err.Error() == ErrRecordNotFound.Error() {
 
 		service.app.Logger.Debugf("Provisioning new Google account: %s", userCredentials.Email)
@@ -81,26 +82,41 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials,
 			return nil, nil, err
 		}
 
-		farmConfig, err := farmProvisioner.Provision(userAccount)
-		// TODO: Wait for account creation confirmation
-		if err != nil {
-			return nil, nil, err
-		}
+		userAccount.SetRoles([]common.Role{&model.Role{ID: 1, Name: common.DEFAULT_ROLE}})
 
-		/*
-				userAccount := &model.User{
-					Email:    userCredentials.Email,
-					Password: userCredentials.Password,
-					Roles:    []common.Role{model.NewRole(common.DEFAULT_ROLE)}}
-			farmConfig, err := farmProvisioner.BuildConfig(userAccount)
-			if err != nil {
-				return nil, nil, err
-			}
-			farmStateChangeChan := make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE)
-			farmFactory.BuildService(farmConfig, farmStateChangeChan)
-		*/
+		// provisionerParams := &provisioner.ProvisionerParams{}
 
-		newOrg := &config.Organization{ID: 0, Farms: []config.Farm{*farmConfig.(*config.Farm)}}
+		// if service.app.Mode == common.MODE_STANDALONE {
+		// 	provisionerParams.StateStore = state.MEMORY_STORE
+		// 	provisionerParams.ConfigStore = config.GORM_STORE
+		// 	provisionerParams.DataStore = datastore.GORM_STORE
+		// } else {
+		// 	provisionerParams.StateStore = state.RAFT_STORE
+		// 	provisionerParams.ConfigStore = config.RAFT_MEMORY_STORE
+		// 	provisionerParams.DataStore = datastore.GORM_STORE
+		// }
+
+		// farmConfig, err := service.farmProvisioner.Provision(userAccount, provisionerParams)
+		// // TODO: Wait for account creation confirmation
+		// if err != nil {
+		// 	return nil, nil, err
+		// }
+
+		// /*
+		// 		userAccount := &model.User{
+		// 			Email:    userCredentials.Email,
+		// 			Password: userCredentials.Password,
+		// 			Roles:    []common.Role{model.NewRole(common.DEFAULT_ROLE)}}
+		// 	farmConfig, err := farmProvisioner.BuildConfig(userAccount)
+		// 	if err != nil {
+		// 		return nil, nil, err
+		// 	}
+		// 	farmStateChangeChan := make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE)
+		// 	farmFactory.BuildService(farmConfig, farmStateChangeChan)
+		// */
+
+		//newOrg := &config.Organization{ID: 0, Farms: []config.Farm{*farmConfig.(*config.Farm)}}
+		newOrg := &config.Organization{ID: 0}
 		return userAccount, []config.OrganizationConfig{newOrg}, nil
 	}
 
@@ -162,10 +178,17 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials) (co
 	if err != nil {
 		return nil, err
 	}
+	// var roleConfig config.RoleConfig
+	// if userCredentials.OrganizationID > 0 {
+	// 	roleConfig, err = service.roleDAO.GetByName(common.ROLE_ANALYST)
+	// } else {
+	// 	roleConfig, err = service.roleDAO.GetByName(common.ROLE_ADMIN)
+	// }
+	roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
 	userConfig := &config.User{
 		Email:    email,
-		Password: string(encrypted)}
-
+		Password: string(encrypted),
+		Roles:    []config.Role{*roleConfig.(*config.Role)}}
 	err = service.userDAO.Create(userConfig) // creates userConfig.id
 	if err != nil {
 		return nil, err
@@ -174,6 +197,6 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials) (co
 		ID:       userConfig.GetID(),
 		Email:    email,
 		Password: token,
-		Roles:    []common.Role{model.NewRole(common.DEFAULT_ROLE)}}
+		Roles:    []common.Role{roleConfig}}
 	return userAccount, err
 }

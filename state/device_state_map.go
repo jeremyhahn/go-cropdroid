@@ -45,7 +45,7 @@ func CreateDeviceStateMap(metrics map[string]float64, channels []int) DeviceStat
 		Channels: channels}
 }
 
-func CreateDeviceStateMapEmpty(deviceID uint64, numMetrics, numChannels int) DeviceStateMap {
+func CreateEmptyDeviceStateMap(deviceID uint64, numMetrics, numChannels int) DeviceStateMap {
 	return &DeviceState{
 		DeviceID: deviceID,
 		Metrics:  make(map[string]float64, numMetrics),

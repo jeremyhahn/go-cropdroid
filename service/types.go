@@ -58,14 +58,16 @@ type FarmChannels struct {
 }
 
 type UserCredentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	AuthType int    `json:"authType"`
+	OrganizationID uint64 `json:"orgId"`
+	Email          string `json:"email"`
+	Password       string `json:"password"`
+	AuthType       int    `json:"authType"`
 }
 
 type JsonWebTokenService interface {
 	ParseToken(r *http.Request, extractor request.Extractor) (*jwt.Token, *JsonWebTokenClaims, error)
 	GenerateToken(w http.ResponseWriter, req *http.Request)
+	RefreshToken(w http.ResponseWriter, req *http.Request)
 	Middleware
 }
 
@@ -76,7 +78,7 @@ type Middleware interface {
 
 type AuthService interface {
 	Get(email string) (common.UserAccount, error)
-	Login(userCredentials *UserCredentials, farmProvisioner provisioner.FarmProvisioner) (common.UserAccount, []config.OrganizationConfig, error)
+	Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error)
 	Register(userCredentials *UserCredentials) (common.UserAccount, error)
 }
 
@@ -86,7 +88,7 @@ type UserService interface {
 	//GetUserByID(userId int) (common.UserAccount, error)
 	GetUserByEmail(email string) (common.UserAccount, error)
 	GetRole(userID, orgID int) (config.RoleConfig, error)
-	//GetOrganizations(userID int) ([]entity.Organization, error)
+	Refresh(userID uint64) (common.UserAccount, []config.OrganizationConfig, error)
 	AuthService
 }
 
@@ -124,12 +126,15 @@ type ServiceRegistry interface {
 	SetDeviceService(farmID uint64, deviceService DeviceService) (DeviceService, error)
 	SetEventLogService(EventLogService)
 	GetEventLogService() EventLogService
-	SetFarmFactory(FarmFactory *FarmFactory)
-	GetFarmFactory() *FarmFactory
+	// SetFarmFactory(FarmFactory FarmFactory)
+	// GetFarmFactory() FarmFactory
 	AddFarmService(farmService FarmService) error
 	SetFarmServices(map[uint64]FarmService)
 	GetFarmServices() map[uint64]FarmService
 	GetFarmService(uint64) FarmService
+	RemoveFarmService(farmID uint64)
+	SetFarmProvisioner(farmProvisioner provisioner.FarmProvisioner)
+	GetFarmProvisioner() provisioner.FarmProvisioner
 	SetGoogleAuthService(googleAuthService AuthService)
 	GetGoogleAuthService() AuthService
 	SetJsonWebTokenService(JsonWebTokenService)
@@ -185,6 +190,8 @@ type FarmService interface {
 	GetPublicKey() string
 	GetState() state.FarmStateMap
 	//OnLeaderUpdated(info raftio.LeaderInfo)
+	InitializeState(saveToStateStore bool) error
+	IsRunning() bool
 	Poll()
 	PollCluster()
 	PublishConfig(farmConfig config.FarmConfig) error
@@ -201,7 +208,7 @@ type FarmService interface {
 	SetMetricValue(deviceType string, key string, value float64) error
 	SetSwitchValue(deviceType string, channelID int, value int) error
 	//SetState(state state.FarmStateMap
-	//Stop()
+	Stop()
 	WatchConfig() <-chan config.FarmConfig
 	WatchState() <-chan state.FarmStateMap
 	WatchDeviceState() <-chan map[string]state.DeviceStateMap
@@ -223,6 +230,7 @@ type DeviceService interface {
 	Poll() error
 	SetConfig(config config.DeviceConfig) error
 	SetMode(mode string, device device.IOSwitcher)
+	Stop()
 	Switch(channelID, position int, logMessage string) (*common.Switch, error)
 	TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error)
 	ManageMetrics(config config.DeviceConfig, farmState state.FarmStateMap) []error

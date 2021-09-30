@@ -22,12 +22,15 @@ type deviceStoreItem struct {
 }
 
 type DeviceStore struct {
-	logger  *logging.Logger
-	devices map[uint64]deviceStoreItem
-	mutex   *sync.RWMutex
+	logger       *logging.Logger
+	devices      map[uint64]deviceStoreItem
+	mutex        *sync.RWMutex
+	gcTickerStop bool
 	DeviceStorer
 }
 
+// Creates a new memory based state store for devices. This store holds
+// a single DeviceStateMap that represents the current state of a single device.
 func NewMemoryDeviceStore(logger *logging.Logger, len, ttl int,
 	gcTicker time.Duration) DeviceStorer {
 
@@ -35,12 +38,14 @@ func NewMemoryDeviceStore(logger *logging.Logger, len, ttl int,
 	defer deviceStoreMutex.Unlock()
 
 	appstate := &DeviceStore{
-		logger:  logger,
-		devices: make(map[uint64]deviceStoreItem, len),
-		mutex:   deviceStoreMutex}
+		logger:       logger,
+		devices:      make(map[uint64]deviceStoreItem, len),
+		mutex:        deviceStoreMutex,
+		gcTickerStop: false}
 
 	if ttl > 0 {
 		go func() {
+			logger.Debugf("Device state store gcTicker started")
 			for now := range time.Tick(gcTicker) {
 				appstate.mutex.Lock()
 				for k, v := range appstate.devices {
@@ -49,6 +54,10 @@ func NewMemoryDeviceStore(logger *logging.Logger, len, ttl int,
 					}
 				}
 				appstate.mutex.Unlock()
+				if appstate.gcTickerStop {
+					logger.Debugf("Device state store gcTicker stopped")
+					return
+				}
 			}
 		}()
 	}
@@ -96,4 +105,9 @@ func (store *DeviceStore) GetAll() []*DeviceStoreViewItem {
 			LastAccess: v.lastAccess}
 	}
 	return devices
+}
+
+func (store *DeviceStore) Close() {
+	store.gcTickerStop = true
+	store.logger.Debugf("Stopping device state memory store gcTicker")
 }

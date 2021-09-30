@@ -8,7 +8,7 @@ import (
 
 type MetricService interface {
 	Get(id int) (common.Metric, error)
-	GetAll(session Session, deviceID int) ([]common.Metric, error)
+	GetAll(session Session, deviceID uint64) ([]common.Metric, error)
 	Update(session Session, metric common.Metric) error
 }
 
@@ -32,8 +32,8 @@ func (service *DefaultMetricService) Get(id int) (common.Metric, error) {
 	return service.mapper.MapEntityToModel(entity), nil
 }
 
-func (service *DefaultMetricService) GetAll(session Session, deviceID int) ([]common.Metric, error) {
-	orgID := session.GetFarmService().GetConfig().GetOrgID()
+func (service *DefaultMetricService) GetAll(session Session, deviceID uint64) ([]common.Metric, error) {
+	orgID := session.GetFarmService().GetConfig().GetOrganizationID()
 	userID := session.GetUser().GetID()
 	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
 	if err != nil {

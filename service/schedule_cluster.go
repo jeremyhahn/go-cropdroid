@@ -24,7 +24,7 @@ const (
 
 type ScheduleService interface {
 	GetNow() *time.Time
-	GetSchedule(session Session, channelID int) ([]config.Schedule, error)
+	GetSchedule(session Session, channelID uint64) ([]config.Schedule, error)
 	//GetSchedules(user common.UserAccount, deviceID int) ([]config.ScheduleConfig, error)
 	Create(session Session, schedule config.ScheduleConfig) (config.ScheduleConfig, error)
 	Update(session Session, schedule config.ScheduleConfig) error
@@ -78,7 +78,7 @@ func (service *DefaultScheduleService) GetNow() *time.Time {
 }
 
 // GetSchedule retrieves a specific schedule entry from the database
-func (service *DefaultScheduleService) GetSchedule(session Session, channelID int) ([]config.Schedule, error) {
+func (service *DefaultScheduleService) GetSchedule(session Session, channelID uint64) ([]config.Schedule, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {

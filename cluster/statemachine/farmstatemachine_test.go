@@ -1,6 +1,6 @@
 // +build cluster
 
-package state
+package statemachine
 
 import (
 	"encoding/json"

@@ -35,6 +35,7 @@ type ClusterParams struct {
 	maxNodes                  int                         `json:"maxNodes"`
 	bootstrap                 int                         `json:"bootstrap"`
 	farmProvisionerChan       chan config.FarmConfig      `json:"-"`
+	farmDeprovisionerChan     chan config.FarmConfig      `json:"-"`
 	farmTickerProvisionerChan chan uint64                 `json:"-"`
 	daoRegistry               datastore.DatastoreRegistry `json:"-"`
 }
@@ -43,7 +44,7 @@ func NewClusterParams(logger *logging.Logger, clusterID, nodeID uint64, provider
 	zone, dataDir, localAddress, listen string, gossipPeers []string, raft []string, join bool,
 	gossipPort, raftPort, raftRequestedLeaderID int, vnodes, maxNodes, bootstrap int,
 	daoRegistry datastore.DatastoreRegistry, farmProvisionerChan chan config.FarmConfig,
-	farmTickerProvisionerChan chan uint64) *ClusterParams {
+	farmDeprovisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan uint64) *ClusterParams {
 
 	var nodeName string
 	hostname, _ := os.Hostname()
@@ -130,6 +131,7 @@ func NewClusterParams(logger *logging.Logger, clusterID, nodeID uint64, provider
 		maxNodes:                  maxNodes,
 		bootstrap:                 bootstrap,
 		farmProvisionerChan:       farmProvisionerChan,
+		farmDeprovisionerChan:     farmDeprovisionerChan,
 		farmTickerProvisionerChan: farmTickerProvisionerChan,
 		daoRegistry:               daoRegistry}
 }
@@ -160,6 +162,10 @@ func (cp *ClusterParams) GetDatastoreRegistry() datastore.DatastoreRegistry {
 
 func (cp *ClusterParams) GetFarmProvisionerChan() chan config.FarmConfig {
 	return cp.farmProvisionerChan
+}
+
+func (cp *ClusterParams) GetFarmDeprovisionerChan() chan config.FarmConfig {
+	return cp.farmDeprovisionerChan
 }
 
 func (cp *ClusterParams) GetFarmTickerProvisionerChan() chan uint64 {

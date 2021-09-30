@@ -76,6 +76,11 @@ const (
 	DEFAULT_USER     = "admin"
 	DEFAULT_PASSWORD = "cropdroid"
 	DEFAULT_ROLE     = "admin"
+	DEFAULT_ROLE_ID  = 1
+
+	ROLE_ADMIN      = "admin"
+	ROLE_CULTIVATOR = "cultivator"
+	ROLE_ANALYST    = "analyst"
 
 	AUTH_TYPE_LOCAL  = 0
 	AUTH_TYPE_GOOGLE = 1
@@ -130,14 +135,14 @@ const (
 
 	METRIC_RESERVOIR_MEMORY_KEY       = "mem"
 	METRIC_RESERVOIR_TEMP_KEY         = "resTemp"
-	METRIC_RESERVOIR_PH_KEY           = "PH"
-	METRIC_RESERVOIR_EC_KEY           = "EC"
-	METRIC_RESERVOIR_TDS_KEY          = "TDS"
-	METRIC_RESERVOIR_ORP_KEY          = "ORP"
-	METRIC_RESERVOIR_DOMGL_KEY        = "DO_mgL"
-	METRIC_RESERVOIR_DOPER_KEY        = "DO_PER"
-	METRIC_RESERVOIR_SAL_KEY          = "SAL"
-	METRIC_RESERVOIR_SG_KEY           = "SG"
+	METRIC_RESERVOIR_PH_KEY           = "ph"
+	METRIC_RESERVOIR_EC_KEY           = "ec"
+	METRIC_RESERVOIR_TDS_KEY          = "tds"
+	METRIC_RESERVOIR_ORP_KEY          = "orp"
+	METRIC_RESERVOIR_DOMGL_KEY        = "do_mgL"
+	METRIC_RESERVOIR_DOPER_KEY        = "do_per"
+	METRIC_RESERVOIR_SAL_KEY          = "sal"
+	METRIC_RESERVOIR_SG_KEY           = "sg"
 	METRIC_RESERVOIR_ENVTEMP_KEY      = "envTemp"
 	METRIC_RESERVOIR_ENVHUMIDITY_KEY  = "envHumidity"
 	METRIC_RESERVOIR_ENVHEATINDEX_KEY = "envHeatIndex"

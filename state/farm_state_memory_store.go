@@ -23,21 +23,27 @@ type storeItem struct {
 }
 
 type FarmStore struct {
-	logger *logging.Logger
-	farms  map[uint64]storeItem
-	mutex  *sync.RWMutex
+	logger       *logging.Logger
+	farms        map[uint64]storeItem
+	mutex        *sync.RWMutex
+	gcTickerStop bool
 	FarmStorer
 }
 
+// Creates a new memory based state store to hold farms. This store holds
+// a single FarmStateMap that represents the current state of a farm and
+// it's associated device states.
 func NewMemoryFarmStore(logger *logging.Logger, len, ttl int, gcTicker time.Duration) FarmStorer {
 	farmStoreMutex.Lock()
 	defer farmStoreMutex.Unlock()
 	appstate := &FarmStore{
-		logger: logger,
-		farms:  make(map[uint64]storeItem, len),
-		mutex:  farmStoreMutex}
+		logger:       logger,
+		farms:        make(map[uint64]storeItem, len),
+		mutex:        farmStoreMutex,
+		gcTickerStop: false}
 	if ttl > 0 {
 		go func() {
+			logger.Debugf("Farm state store gcTicker started")
 			for now := range time.Tick(gcTicker) {
 				appstate.mutex.Lock()
 				for k, v := range appstate.farms {
@@ -46,6 +52,10 @@ func NewMemoryFarmStore(logger *logging.Logger, len, ttl int, gcTicker time.Dura
 					}
 				}
 				appstate.mutex.Unlock()
+				if appstate.gcTickerStop {
+					logger.Debugf("Farm state store gcTicker stopped")
+					return
+				}
 			}
 		}()
 	}
@@ -93,4 +103,9 @@ func (store *FarmStore) GetAll() []*StoreViewItem {
 			LastAccess: v.lastAccess}
 	}
 	return farms
+}
+
+func (store *FarmStore) Close() {
+	store.gcTickerStop = true
+	store.logger.Debugf("Stopping farm state memory store gcTicker")
 }

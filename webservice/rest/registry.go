@@ -5,17 +5,18 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
-type FreewareRestServiceRegistry struct {
+type DefaultRestServiceRegistry struct {
 	jwtService      service.JsonWebTokenService
 	serviceRegistry service.ServiceRegistry
 	services        []RestService
 	RestServiceRegistry
 }
 
-func NewFreewareRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
+func NewRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
 
 	jsonWriter := NewJsonWriter()
 	jwtService := serviceRegistry.GetJsonWebTokenService()
+	farmProvisioner := serviceRegistry.GetFarmProvisioner()
 
 	restServices := make([]RestService, 0)
 
@@ -26,8 +27,11 @@ func NewFreewareRestServiceRegistry(publicKey string, mapperRegistry mapper.Mapp
 	scheduleRestService := NewScheduleRestService(serviceRegistry.GetScheduleService(), jwtService, jsonWriter)
 	algorithmRestService := NewAlgorithmRestService(serviceRegistry.GetAlgorithmService(), jwtService, jsonWriter)
 	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry.GetDeviceFactory(), jwtService, jsonWriter)
+	//farmFactoryRestService := NewFarmFactoryRestService(serviceRegistry.GetFarmFactory(), jwtService, jsonWriter)
 	workflowRestService := NewWorkflowRestService(serviceRegistry.GetWorkflowService(), jwtService, jsonWriter)
 	workflowStepRestService := NewWorkflowStepRestService(serviceRegistry.GetWorkflowStepService(), jwtService, jsonWriter)
+	googleRestService := NewGoogleRestService(serviceRegistry.GetGoogleAuthService(), jwtService, jsonWriter)
+	provisionerRestService := NewProvisionerRestService(farmProvisioner, jwtService, jsonWriter)
 
 	//restServices = append(restServices, configRestService)
 	restServices = append(restServices, channelRestService)
@@ -36,10 +40,13 @@ func NewFreewareRestServiceRegistry(publicKey string, mapperRegistry mapper.Mapp
 	restServices = append(restServices, scheduleRestService)
 	restServices = append(restServices, algorithmRestService)
 	restServices = append(restServices, deviceFactoryRestService)
+	//restServices = append(restServices, farmFactoryRestService)
+	restServices = append(restServices, googleRestService)
 	restServices = append(restServices, NewFarmRestService(publicKey, jwtService, jsonWriter))
 	restServices = append(restServices, NewDeviceRestService(serviceRegistry, jwtService, jsonWriter))
 	restServices = append(restServices, workflowRestService)
 	restServices = append(restServices, workflowStepRestService)
+	restServices = append(restServices, provisionerRestService)
 
 	/*
 		for _, farmService := range serviceRegistry.GetFarmServices() {
@@ -67,11 +74,11 @@ func NewFreewareRestServiceRegistry(publicKey string, mapperRegistry mapper.Mapp
 			}
 		}*/
 
-	return &FreewareRestServiceRegistry{
+	return &DefaultRestServiceRegistry{
 		jwtService: jwtService,
 		services:   restServices}
 }
 
-func (registry *FreewareRestServiceRegistry) GetRestServices() []RestService {
+func (registry *DefaultRestServiceRegistry) GetRestServices() []RestService {
 	return registry.services
 }

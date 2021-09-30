@@ -39,6 +39,17 @@ func (dao *GormRoleDAO) GetByUserAndOrgID(userID, orgID int) ([]config.Role, err
 	return roles, nil
 }
 
+func (dao *GormRoleDAO) GetByName(name string) (config.RoleConfig, error) {
+	dao.logger.Debugf("Getting role %s", name)
+	var role config.Role
+	if err := dao.db.
+		Table("roles").
+		First(&role, "name = ?", name).Error; err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
 /*
 func (dao *GormRoleDAO) Create(res config.RoleConfig) error {
 	return dao.db.Create(res).Error

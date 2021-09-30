@@ -11,7 +11,8 @@
             "host": "127.0.0.1",
             "program": "${workspaceRoot}",
             "args": ["config", "--debug", "--init", "--datastore=cockroach"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         }, {
             "name": "Debug CropDroid Standlone (sqlite)",
             "type": "go",
@@ -24,7 +25,22 @@
             "preLaunchTask": "initsqlite",
             "program": "${workspaceRoot}",
             "args": ["standalone", "--debug", "--ssl=false", "--port=8091", "--enable-registrations", "--datastore=sqlite"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
+        }, {
+            "name": "Debug CropDroid Standlone (sqlite - no farm)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            //"preLaunchTasks": ["buildStandalone", "initsqlite"],
+            "preLaunchTask": "initsqlite-no-farm",
+            "program": "${workspaceRoot}",
+            "args": ["standalone", "--debug", "--ssl=false", "--port=8091", "--enable-registrations", "--datastore=sqlite", "--enable-default-farm=false"],
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Debug CropDroid Standlone (memory)",
@@ -36,7 +52,8 @@
             "host": "127.0.0.1",
             "program": "${workspaceRoot}",
             "args": ["standalone", "--debug", "--ssl=false", "--port=8091", "--enable-registrations"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Debug CropDroid",
@@ -54,7 +71,8 @@
             },
             "args": ["cluster", "--debug", "--config-dir=./test", "--data-dir=./db/cluster", "--log-dir=/var/log/cropdroid/cluster", "--keys=keys",
                 "--ssl=false", "--port=8093", "--datastore=cockroach", "--node-id=3", "--enable-registrations"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Debug CropDroid Cluster (Node1 :: Pebble)",
@@ -73,11 +91,12 @@
                 "--ssl=false", 
                 "--port=8091",
                 "--datastore=cockroach",
-                "--device-store=raft",
+                "--data-store=raft",
                 "--enable-registrations",
                 "--listen=192.168.0.71",
                 "--raft=192.168.0.71:60020,192.168.0.71:60021,192.168.0.71:60022"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Debug CropDroid Cluster (Pebble)",
@@ -96,7 +115,7 @@
                 "--ssl=false", 
                 "--port=8093",
                 "--datastore=cockroach",
-                "--device-store=raft",
+                "--data-store=raft",
                 "--enable-registrations",
                 "--listen=192.168.0.71",
                 "--gossip-peers=192.168.0.71:60010,192.168.0.71:60011",
@@ -104,7 +123,8 @@
                 "--raft=192.168.0.71:60020,192.168.0.71:60021,192.168.0.71:60022",
                 "--raft-port=60022",
                 "--raft-leader-id=3"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Debug CropDroid Cluster :: Add Node",
@@ -133,7 +153,8 @@
                 "--gossip-peers=192.168.0.71:60010,192.168.0.71:60011,192.168.0.71:60012",
                 "--gossip-port=60013",
                 "--raft-port=60023"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Debug Cockroach SSL",
@@ -164,7 +185,8 @@
                 "--gossip-port=60012",
                 "--raft=192.168.0.71:60020,192.168.0.71:60021,192.168.0.71:60022",
                 "--raft-port=60022"],
-            "showLog": true
+            "showLog": true,
+            "debugAdapter": "legacy"
         },
         {
             "name": "Remote Debug Session",
@@ -176,6 +198,19 @@
             "remotePath": "/usr/local/bin/cropdroid",
             "cwd": "${workspaceFolder}",
             "buildFlags": "-tags='cluster,pebble'",
+            "showLog": true,
+            "trace": "log",
+            "logOutput": "rpc"
+        },
+        {
+            "name": "Remote Debug (cropdroid1)",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "port": 40000,
+            "host": "cropdroid1",
+            "remotePath": "/usr/local/bin/cropdroid",
+            "cwd": "${workspaceFolder}",
             "showLog": true,
             "trace": "log",
             "logOutput": "rpc"

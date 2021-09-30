@@ -78,7 +78,7 @@ build-standalone:
 	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-debug:
-	$(GOBIN)/go build -gcflags "-N" -o $(APP) -gcflags='all=-N -l' -ldflags="-w -s ${LDFLAGS}"
+	$(GOBIN)/go build -gcflags='all=-N -l' -o $(APP) -gcflags='all=-N -l' -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-static:
 	CGO_ENABLED=1 \
@@ -120,7 +120,7 @@ build-standalone-arm64-debug:
 
 build-standalone-arm64-debug-static:
 	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
-	$(GOBIN)/go build -gcflags "all=-N -l" -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
+	$(GOBIN)/go build -gcflags "all=-N -l" -o $(APP) --ldflags '-extldflags -static -v ${LDFLAGS}'
 
 build-cluster: build-cluster-pebble
 

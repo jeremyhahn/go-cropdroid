@@ -20,8 +20,8 @@ func NewConfigMapper() ConfigMapper {
 func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (config.ServerConfig, error) {
 
 	license := &config.License{
-		UserQuota:       1,
-		FarmQuota:       1,
+		UserQuota:   1,
+		FarmQuota:   1,
 		DeviceQuota: 3}
 
 	_orgs := make([]config.Organization, len(yamlConfig.Organizations))
@@ -36,7 +36,7 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 				_roles := make([]config.Role, len(user.Roles))
 				for l, role := range user.Roles {
 					_roles[l] = config.Role{
-						ID:   l,
+						ID:   uint64(l),
 						Name: role}
 				}
 				farmUsers[k] = config.User{
@@ -57,7 +57,7 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 			_roles := make([]config.Role, len(user.Roles))
 			for k, role := range user.Roles {
 				_roles[k] = config.Role{
-					ID:   k,
+					ID:   uint64(k),
 					Name: role}
 			}
 			orgUsers[k] = config.User{

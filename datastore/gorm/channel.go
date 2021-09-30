@@ -23,7 +23,7 @@ func (channelDAO *GormChannelDAO) Save(channel config.ChannelConfig) error {
 	return channelDAO.db.Save(channel).Error
 }
 
-func (channelDAO *GormChannelDAO) Get(channelID int) (config.ChannelConfig, error) {
+func (channelDAO *GormChannelDAO) Get(channelID uint64) (config.ChannelConfig, error) {
 	channelDAO.logger.Debugf("Getting channel id %d", channelID)
 	var entity config.Channel
 	if err := channelDAO.db.First(&entity, channelID).Error; err != nil {
@@ -32,7 +32,7 @@ func (channelDAO *GormChannelDAO) Get(channelID int) (config.ChannelConfig, erro
 	return &entity, nil
 }
 
-func (channelDAO *GormChannelDAO) GetByDeviceID(deviceID int) ([]config.Channel, error) {
+func (channelDAO *GormChannelDAO) GetByDeviceID(deviceID uint64) ([]config.Channel, error) {
 	channelDAO.logger.Debugf("Getting channel record for device %d", deviceID)
 	var entities []config.Channel
 	if err := channelDAO.db.Where("device_id = ?", deviceID).Order("channel_id").Find(&entities).Error; err != nil {
@@ -42,7 +42,7 @@ func (channelDAO *GormChannelDAO) GetByDeviceID(deviceID int) ([]config.Channel,
 }
 
 // GetByOrgUserAndDeviceID gets a list of channels the user has permission to access
-func (channelDAO *GormChannelDAO) GetByOrgUserAndDeviceID(orgID, userID int, deviceID uint64) ([]config.Channel, error) {
+func (channelDAO *GormChannelDAO) GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Channel, error) {
 	channelDAO.logger.Debugf("Getting channel record for organization '%d'", orgID)
 	var channels []config.Channel
 	if err := channelDAO.db.Table("channels").

@@ -6,8 +6,8 @@ import (
 )
 
 type Channel struct {
-	ID             int                `yaml:"id" json:"id"`
-	DeviceID   uint64             `yaml:"deviceID" json:"deviceId"`
+	ID             uint64             `yaml:"id" json:"id"`
+	DeviceID       uint64             `yaml:"deviceID" json:"deviceId"`
 	ChannelID      int                `yaml:"channelId" json:"channelId"`
 	Name           string             `yaml:"name" json:"name"`
 	Enable         bool               `yaml:"enable" json:"enable"`
@@ -26,11 +26,11 @@ func NewChannel() common.Channel {
 	return &Channel{}
 }
 
-func (channel *Channel) SetID(id int) {
+func (channel *Channel) SetID(id uint64) {
 	channel.ID = id
 }
 
-func (channel *Channel) GetID() int {
+func (channel *Channel) GetID() uint64 {
 	return channel.ID
 }
 

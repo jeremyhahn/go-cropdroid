@@ -1,6 +1,6 @@
 // +build cluster,pebble
 
-package state
+package statemachine
 
 import (
 	"bytes"

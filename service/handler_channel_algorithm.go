@@ -19,13 +19,13 @@ type ChannelAlgorithmHandler struct {
 	metric       config.MetricConfig
 	value        float64
 	threshold    float64
-	backoffTable map[int]time.Time
+	backoffTable map[uint64]time.Time
 	AlgorithmHandler
 }
 
 func NewChannelAlgorithmHandler(logger *logging.Logger, service DeviceService,
 	device config.DeviceConfig, channel config.ChannelConfig, metric config.MetricConfig,
-	value, threshold float64, backoffTable map[int]time.Time) AlgorithmHandler {
+	value, threshold float64, backoffTable map[uint64]time.Time) AlgorithmHandler {
 
 	return &ChannelAlgorithmHandler{
 		logger:       logger,

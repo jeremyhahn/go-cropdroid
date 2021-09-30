@@ -3,7 +3,7 @@ package model
 import "github.com/jeremyhahn/go-cropdroid/common"
 
 type Role struct {
-	ID          int    `json:"id"`
+	ID          uint64 `json:"id"`
 	Name        string `json:"name"`
 	common.Role `json:"-"`
 }
@@ -12,7 +12,7 @@ func NewRole(name string) common.Role {
 	return &Role{Name: name}
 }
 
-func (role *Role) GetID() int {
+func (role *Role) GetID() uint64 {
 	return role.ID
 }
 

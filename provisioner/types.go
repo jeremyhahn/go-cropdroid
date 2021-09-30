@@ -5,10 +5,16 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
+type ProvisionerParams struct {
+	ConfigStore int
+	StateStore  int
+	DataStore   int
+}
+
 type FarmProvisioner interface {
 	//BuildConfig(adminUser common.UserAccount) (config.FarmConfig, error)
-	Provision(user common.UserAccount) (config.FarmConfig, error)
-	Deprovision(common.UserAccount) error
+	Provision(user common.UserAccount, params *ProvisionerParams) (config.FarmConfig, error)
+	Deprovision(user common.UserAccount, farmID uint64) error
 }
 
 // const (

@@ -1,7 +1,7 @@
 package config
 
 type Channel struct {
-	ID            int         `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID            uint64      `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	DeviceID      uint64      `yaml:"device" json:"device_id"`
 	ChannelID     int         `yaml:"channel" json:"channel_id"`
 	Name          string      `yaml:"name" json:"name"`
@@ -22,11 +22,11 @@ func NewChannel() *Channel {
 		Schedule:   make([]Schedule, 0)}
 }
 
-func (channel *Channel) SetID(id int) {
+func (channel *Channel) SetID(id uint64) {
 	channel.ID = id
 }
 
-func (channel *Channel) GetID() int {
+func (channel *Channel) GetID() uint64 {
 	return channel.ID
 }
 
@@ -38,10 +38,12 @@ func (channel *Channel) SetDeviceID(id uint64) {
 	channel.DeviceID = id
 }
 
+// Sets the board / channel id using the ID printed on the PCB
 func (channel *Channel) SetChannelID(id int) {
 	channel.ChannelID = id
 }
 
+// Sets the board / channel id using the ID printed on the PCB
 func (channel *Channel) GetChannelID() int {
 	return channel.ChannelID
 }

@@ -4,8 +4,8 @@ package webservice
 
 import (
 	"crypto/tls"
-	// "encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/codegangsta/negroni"
@@ -26,149 +28,93 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/webservice/websocket"
 )
 
+var (
+	ErrFarmNotFound = errors.New("Farm not found")
+)
+
 type Webserver struct {
-	app          *app.App
-	router       *mux.Router
-	httpServer   *http.Server
-	registry     service.ServiceRegistry
-	restServices []rest.RestService
-	eventType    string
-	endpointList []string
-	closeChan    chan bool
+	mutex                     sync.Mutex
+	app                       *app.App
+	httpServer                *http.Server
+	router                    *mux.Router
+	baseURI                   string
+	registry                  service.ServiceRegistry
+	restServices              []rest.RestService
+	eventType                 string
+	endpointList              []string
+	closeChan                 chan bool
+	farmTickerProvisionerChan chan uint64
+	farmHubs                  map[uint64]*websocket.FarmHub
+	farmHubMutex              sync.Mutex
+	jsonWebTokenService       service.JsonWebTokenService
+	notificationService       service.NotificationService
+	notificationHubs          map[int]*websocket.NotificationHub
+	notificationHubMutex      sync.Mutex
+	farmTickerSubrouter       *mux.Router
+	eventLogService           service.EventLogService
 }
 
-func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry, restServices []rest.RestService) *Webserver {
-	router := mux.NewRouter().StrictSlash(true)
-	return &Webserver{
-		app:    app,
-		router: router,
-		httpServer: &http.Server{
-			ReadTimeout:  common.HTTP_SERVER_READ_TIMEOUT,
-			WriteTimeout: common.HTTP_SERVER_WRITE_TIMEOUT,
-			IdleTimeout:  common.HTTP_SERVER_IDLE_TIMEOUT,
-			Handler:      router,
-		},
-		registry:     serviceRegistry,
-		restServices: restServices,
-		eventType:    "WebServer",
-		endpointList: make([]string, 0),
-		closeChan:    make(chan bool, 1)}
+func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
+	restServices []rest.RestService, farmTickerProvisionerChan chan uint64) *Webserver {
+
+	webserver := &Webserver{
+		mutex:                     sync.Mutex{},
+		app:                       app,
+		router:                    mux.NewRouter().StrictSlash(true),
+		baseURI:                   "/api/v1",
+		registry:                  serviceRegistry,
+		restServices:              restServices,
+		eventType:                 "WebServer",
+		endpointList:              make([]string, 0),
+		closeChan:                 make(chan bool, 1),
+		farmTickerProvisionerChan: farmTickerProvisionerChan,
+		farmHubs:                  make(map[uint64]*websocket.FarmHub),
+		farmHubMutex:              sync.Mutex{},
+		jsonWebTokenService:       serviceRegistry.GetJsonWebTokenService(),
+		notificationService:       serviceRegistry.GetNotificationService(),
+		notificationHubs:          make(map[int]*websocket.NotificationHub),
+		notificationHubMutex:      sync.Mutex{},
+		eventLogService:           serviceRegistry.GetEventLogService()}
+	webserver.httpServer = &http.Server{
+		ReadTimeout:  common.HTTP_SERVER_READ_TIMEOUT,
+		WriteTimeout: common.HTTP_SERVER_WRITE_TIMEOUT,
+		IdleTimeout:  common.HTTP_SERVER_IDLE_TIMEOUT,
+		Handler:      webserver.router,
+	}
+	return webserver
+}
+
+func (server *Webserver) RunProvisionerConsumer() {
+	for {
+		select {
+		case farmID := <-server.farmTickerProvisionerChan:
+			server.app.Logger.Warningf("[Webserver.RunProvisionerConsumer] Received message for farmID %d", farmID)
+			server.buildRoutes()
+		}
+	}
+}
+
+func (server *Webserver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	server.mutex.Lock()
+	router := server.router
+	server.mutex.Unlock()
+	router.ServeHTTP(w, r)
 }
 
 func (server *Webserver) Run() {
 
-	jsonWriter := rest.NewJsonWriter()
-	sPort := fmt.Sprintf(":%d", server.app.WebPort)
-	baseURI := "/api/v1"
-	//baseOrgURI := fmt.Sprintf("%s/organizations/{organizationID}", baseURI)
-	baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseURI)
-	//baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseOrgURI)
-
-	registrationService := rest.NewRegisterRestService(server.app, server.registry.GetUserService(), jsonWriter)
-	jsonWebTokenService := server.registry.GetJsonWebTokenService()
-	notificationService := server.registry.GetNotificationService()
-	eventLogService := server.registry.GetEventLogService()
+	server.buildRoutes()
 
 	// Static content web server
 	fs := http.FileServer(http.Dir("public_html"))
-
-	// REST Handlers - Public Access
-	server.router.HandleFunc("/endpoints", server.endpoints)
-	server.router.HandleFunc("/system", server.systemStatus)
-	server.router.HandleFunc("/api/v1/pubkey", server.publicKey)
-	server.router.HandleFunc("/api/v1/register", registrationService.Register)
-	server.router.HandleFunc("/api/v1/login", jsonWebTokenService.GenerateToken)
-	server.endpointList = append(server.endpointList, "/api/v1/register")
-	server.endpointList = append(server.endpointList, "/api/v1/login")
-
-	server.router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}", baseFarmURI), server.sendNotification)
-	server.router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}/{priority}", baseFarmURI), server.sendNotification)
-
-	farmStateURI := fmt.Sprintf("%s/state", baseURI)
-	server.router.HandleFunc(farmStateURI, server.state)
-	server.endpointList = append(server.endpointList, farmStateURI)
-
-	// farmConfigURI := fmt.Sprintf("%s/config", baseURI)
-	// server.router.HandleFunc(farmConfigURI, server.config)
-	// server.endpointList = append(server.endpointList, farmConfigURI)
-
-	//server.router.HandleFunc("/maint/{mode}", server.MaintenanceMode).Methods("GET")
-	farmMaintModeURI := fmt.Sprintf("%s/maint/{mode}", baseFarmURI)
-	server.router.HandleFunc(farmMaintModeURI, server.MaintenanceMode).Methods("GET")
-	server.endpointList = append(server.endpointList, farmMaintModeURI)
-
-	// REST Handlers - JWT authentication required
-	for _, restService := range server.restServices {
-		endpoints := restService.RegisterEndpoints(server.router, baseURI, baseFarmURI)
-		for _, endpoint := range endpoints {
-			server.app.Logger.Debugf("Loading REST resource: %s", endpoint)
-			server.endpointList = append(server.endpointList, endpoint)
-		}
-	}
-
-	endpoint := fmt.Sprintf("%s/events", baseFarmURI)
-	server.router.Handle(endpoint, negroni.New(
-		negroni.HandlerFunc(jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(server.events)),
-	))
-	server.endpointList = append(server.endpointList, endpoint)
-
-	endpoint = fmt.Sprintf("%s/events/{page}", baseFarmURI)
-	server.router.Handle(endpoint, negroni.New(
-		negroni.HandlerFunc(jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(server.eventsPage)),
-	))
-	server.endpointList = append(server.endpointList, endpoint)
-
-	// /virtual
-	/*
-		server.router.Handle("/api/v1/virtual/{vdevice}/{metric}/{value}", negroni.New(
-			negroni.HandlerFunc(jsonWebTokenService.Validate),
-			negroni.Wrap(http.HandlerFunc(server.setVirtualMetric)),
-		)).Methods("GET")
-	*/
-
-	// Websocket hubs
-	notificationHub := websocket.NewNotificationHub(server.app.Logger, notificationService)
-	go notificationHub.Run()
-
-	// Websocket handlers
-	endpoint = fmt.Sprintf("%s/notifications", baseFarmURI)
-	server.router.Handle(endpoint, negroni.New(
-		negroni.HandlerFunc(jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handler := websocket.NewNotificationHandler(server.app.Logger, notificationHub, jsonWebTokenService)
-			handler.OnConnect(w, r)
-		})),
-	))
-	//server.endpointList = append(server.endpointList, endpoint)
-
-	for _, farmService := range server.registry.GetFarmServices() {
-		farmHub := websocket.NewFarmHub(server.app.Logger, notificationService, farmService)
-		go farmHub.Run()
-		endpoint = fmt.Sprintf("%s/farmticker/{farmID}", baseURI)
-		server.router.Handle(endpoint, negroni.New(
-			negroni.HandlerFunc(jsonWebTokenService.Validate),
-			negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				handler := websocket.NewFarmHandler(server.app.Logger, farmHub, notificationService, jsonWebTokenService)
-				handler.OnConnect(w, r)
-			})),
-		))
-		//server.endpointList = append(server.endpointList, endpoint)
-	}
-
-	sort.Strings(server.endpointList)
-
-	server.app.Logger.Debugf("Loaded %d REST services", len(server.endpointList))
-
-	// Register static content endpoint after REST and websocket to avoid being clobbered
 	server.router.PathPrefix("/").Handler(fs)
-	http.Handle("/", server.router)
+	http.Handle("/", server.httpServer.Handler)
 
+	sPort := fmt.Sprintf(":%d", server.app.WebPort)
 	if server.app.SSLFlag {
 
 		server.app.Logger.Debugf("Starting web services on TLS port %d", server.app.WebPort)
-		eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.WebPort))
+		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.WebPort))
 
 		certfile := fmt.Sprintf("%s/cert.pem", server.app.KeyDir)
 		keyfile := fmt.Sprintf("%s/key.pem", server.app.KeyDir)
@@ -197,6 +143,7 @@ func (server *Webserver) Run() {
 			}))
 		}
 
+		//err = http.Serve(listener, server.router)
 		err = server.httpServer.Serve(listener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
@@ -205,7 +152,7 @@ func (server *Webserver) Run() {
 	} else {
 
 		server.app.Logger.Infof("Starting web services on port %d", server.app.WebPort)
-		eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.WebPort))
+		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.WebPort))
 
 		ipv4Listener, err := net.Listen("tcp4", sPort)
 		if err != nil {
@@ -214,11 +161,189 @@ func (server *Webserver) Run() {
 
 		server.app.DropPrivileges()
 
+		//err = http.Serve(ipv4Listener, server.router)
 		err = server.httpServer.Serve(ipv4Listener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}
 	}
+}
+
+func (server *Webserver) buildRoutes() {
+
+	router := mux.NewRouter().StrictSlash(true)
+	endpointList := make([]string, 0)
+
+	jsonWriter := rest.NewJsonWriter()
+	//baseOrgURI := fmt.Sprintf("%s/organizations/{organizationID}", server.baseURI)
+	baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", server.baseURI)
+	//baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseOrgURI)
+
+	registrationService := rest.NewRegisterRestService(server.app, server.registry.GetUserService(), jsonWriter)
+
+	// REST Handlers - Public Access
+	router.HandleFunc("/endpoints", server.endpoints)
+	router.HandleFunc("/system", server.systemStatus)
+	router.HandleFunc("/api/v1/pubkey", server.publicKey)
+	router.HandleFunc("/api/v1/register", registrationService.Register)
+	router.HandleFunc("/api/v1/login", server.jsonWebTokenService.GenerateToken)
+	router.HandleFunc("/api/v1/login/refresh", server.jsonWebTokenService.RefreshToken)
+	endpointList = append(endpointList, "/api/v1/register")
+	endpointList = append(endpointList, "/api/v1/login")
+
+	router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}", baseFarmURI), server.sendNotification)
+	router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}/{priority}", baseFarmURI), server.sendNotification)
+
+	/*
+		farmStateURI := fmt.Sprintf("%s/state", server.baseURI)
+		router.HandleFunc(farmStateURI, server.state)
+		endpointList = append(endpointList, farmStateURI)
+
+		farmConfigURI := fmt.Sprintf("%s/config", server.baseURI)
+		router.HandleFunc(farmConfigURI, server.config)
+		endpointList = append(endpointList, farmConfigURI)
+	*/
+	//router.HandleFunc("/maint/{mode}", server.MaintenanceMode).Methods("GET")
+	//farmMaintModeURI := fmt.Sprintf("%s/maint/{mode}", baseFarmURI)
+	//router.HandleFunc(farmMaintModeURI, server.MaintenanceMode).Methods("GET")
+	//endpointList = append(endpointList, farmMaintModeURI)
+
+	for _, restService := range server.restServices {
+		endpoints := restService.RegisterEndpoints(router, server.baseURI, baseFarmURI)
+		for _, endpoint := range endpoints {
+			server.app.Logger.Debugf("[WebServer.buildRoutes] Loading REST resource: %s", endpoint)
+			endpointList = append(endpointList, endpoint)
+		}
+	}
+
+	endpoint := fmt.Sprintf("%s/events", baseFarmURI)
+	router.Handle(endpoint, negroni.New(
+		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(server.events)),
+	))
+	endpointList = append(endpointList, endpoint)
+
+	endpoint = fmt.Sprintf("%s/events/{page}", baseFarmURI)
+	router.Handle(endpoint, negroni.New(
+		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(server.eventsPage)),
+	))
+	endpointList = append(endpointList, endpoint)
+
+	// /virtual
+	/*
+		router.Handle("/api/v1/virtual/{vdevice}/{metric}/{value}", negroni.New(
+			negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+			negroni.Wrap(http.HandlerFunc(server.setVirtualMetric)),
+		)).Methods("GET")
+	*/
+
+	// Websocket hubs
+
+	// /api/v1/farms/{farmID}/notifications
+	endpoint = fmt.Sprintf("%s/notifications", baseFarmURI)
+	router.Handle(endpoint, negroni.New(
+		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			params := mux.Vars(r)
+			farmID, err := strconv.Atoi(params["farmID"])
+			if err != nil {
+				rest.BadRequestError(w, r, err, jsonWriter)
+				return
+			}
+			if _, ok := server.notificationHubs[farmID]; !ok {
+				server.app.Logger.Debugf("[WebServer.buildRoutes] Creating new websocket notification hub for farm %d", farmID)
+				server.notificationHubMutex.Lock()
+				server.notificationHubs[farmID] = websocket.NewNotificationHub(server.app.Logger, server.notificationService)
+				server.notificationHubMutex.Unlock()
+				go server.notificationHubs[farmID].Run()
+			}
+			handler := websocket.NewNotificationHandler(server.app.Logger, server.notificationHubs[farmID], server.jsonWebTokenService)
+			handler.OnConnect(w, r)
+		})),
+	))
+	endpointList = append(endpointList, endpoint)
+
+	//endpoint = fmt.Sprintf("%s/farmticker", server.farmTicker)
+	//server.farmTickerSubrouter = router.PathPrefix(endpoint).Subrouter()
+	//endpointList = append(endpointList, endpoint)
+
+	// /api/v1/farmticker/{farmID}
+	endpoint = fmt.Sprintf("%s/farmticker/{farmID}", server.baseURI)
+	router.Handle(endpoint, negroni.New(
+		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			params := mux.Vars(r)
+			farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
+			if err != nil {
+				rest.BadRequestError(w, r, err, jsonWriter)
+				return
+			}
+			farmService := server.registry.GetFarmService(farmID)
+			if farmService == nil {
+				rest.BadRequestError(w, r, ErrFarmNotFound, jsonWriter)
+				return
+			}
+			if _, ok := server.farmHubs[farmID]; !ok {
+				server.app.Logger.Debugf("[WebServer.buildRoutes] Creating new websocket hub for farm %d", farmID)
+				server.farmHubMutex.Lock()
+				server.farmHubs[farmID] = websocket.NewFarmHub(server.app.Logger, server.notificationService, farmService)
+				server.farmHubMutex.Unlock()
+				go server.farmHubs[farmID].Run()
+			}
+			handler := websocket.NewFarmHandler(server.app.Logger, server.farmHubs[farmID], server.notificationService, server.jsonWebTokenService)
+			handler.OnConnect(w, r)
+		})),
+	))
+	endpointList = append(endpointList, endpoint)
+
+	server.app.Logger.Debugf("[WebServer.buildRoutes] Loaded %d REST services", len(endpointList))
+
+	sort.Strings(endpointList)
+
+	server.mutex.Lock()
+	server.router = router
+	server.endpointList = endpointList
+	server.httpServer.Handler = server.router
+	server.mutex.Unlock()
+}
+
+/*
+func (server *Webserver) Shutdown() {
+	server.app.Logger.Info("Shutting down web services")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	server.httpServer.Shutdown(ctx)
+	cancel()
+}*/
+
+func (server *Webserver) farmTicker(w http.ResponseWriter, r *http.Request) {
+
+	params := mux.Vars(r)
+	farmid := params["farmID"]
+	farmID, err := strconv.ParseUint(farmid, 10, 64)
+	if err != nil {
+		server.app.Logger.Errorf("[Webserver.farmTicker] Error: %s", err)
+		return
+	}
+
+	farmService := server.registry.GetFarmService(farmID)
+	if farmService == nil {
+		server.app.Logger.Error("[Webserver.farmTicker] Can find farm service with farmID %d", farmID)
+		return
+	}
+
+	farmHub := websocket.NewFarmHub(server.app.Logger, server.notificationService, farmService)
+	go farmHub.Run()
+
+	endpoint := fmt.Sprintf("%s/farmticker/%d", server.baseURI, farmID)
+	server.router.Handle(endpoint, negroni.New(
+		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := websocket.NewFarmHandler(server.app.Logger, farmHub, server.notificationService, server.jsonWebTokenService)
+			handler.OnConnect(w, r)
+		})),
+	))
+	server.endpointList = append(server.endpointList, endpoint)
 }
 
 func (server *Webserver) sendNotification(w http.ResponseWriter, r *http.Request) {
@@ -248,11 +373,12 @@ func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
 	rest.NewJsonWriter().Write(w, http.StatusOK, states)
 }
 
-// func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
-// 	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.Config)
-// }
+func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
+	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.Config)
+}
 
 func (server *Webserver) endpoints(w http.ResponseWriter, r *http.Request) {
+	server.WalkRoutes() // TODO remove
 	rest.NewJsonWriter().Write(w, http.StatusOK, server.endpointList)
 }
 
@@ -268,7 +394,7 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 		NotificationQueueLength: server.registry.GetNotificationService().QueueSize(),
 		Farms:                   len(server.registry.GetFarmServices()),
 		Changefeeds:             changefeedCount,
-		//DeviceIndexLength:   server.app.DeviceIndex.Len(),
+		//DeviceIndexLength:       server.app.DeviceIndex.Len(),
 		//ChannelIndexLength:      server.app.ChannelIndex.Len(),
 		Version: &app.AppVersion{
 			Release:   app.Release,
@@ -291,6 +417,36 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 			NumForcedGC: memstats.NumForcedGC}}
 
 	rest.NewJsonWriter().Write(w, http.StatusOK, systemStatus)
+}
+
+func (server *Webserver) WalkRoutes() {
+	err := server.router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		pathTemplate, err := route.GetPathTemplate()
+		if err == nil {
+			server.app.Logger.Debug("ROUTE:", pathTemplate)
+		}
+		pathRegexp, err := route.GetPathRegexp()
+		if err == nil {
+			server.app.Logger.Debug("Path regexp:", pathRegexp)
+		}
+		queriesTemplates, err := route.GetQueriesTemplates()
+		if err == nil {
+			server.app.Logger.Debug("Queries templates:", strings.Join(queriesTemplates, ","))
+		}
+		queriesRegexps, err := route.GetQueriesRegexp()
+		if err == nil {
+			server.app.Logger.Debug("Queries regexps:", strings.Join(queriesRegexps, ","))
+		}
+		methods, err := route.GetMethods()
+		if err == nil {
+			server.app.Logger.Debug("Methods:", strings.Join(methods, ","))
+		}
+		server.app.Logger.Debug("")
+		return nil
+	})
+	if err != nil {
+		server.app.Logger.Errorf("[Webserver.WalkRoutes] Error: err", err)
+	}
 }
 
 func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request) {
@@ -316,14 +472,13 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 		}*/
 
 	farmService := server.registry.GetFarmService(farmID)
-
 	if farmService == nil {
-		server.sendNotFound(w, r, fmt.Errorf("FarmID %d not found", farmID))
+		server.app.Logger.Error(ErrFarmNotFound)
 		return
 	}
 
 	farmState := farmService.GetState()
-	if farmState != nil {
+	if farmState == nil {
 		server.app.Logger.Error(err.Error())
 		server.sendBadRequest(w, r, err)
 		return
@@ -375,7 +530,7 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 		server.sendBadRequest(w, r, err)
 	}
 
-	server.app.Logger.Debugf("page %s requested", page)
+	server.app.Logger.Debugf("[Webserver.eventsPage] page %s requested", page)
 
 	entities := server.registry.GetEventLogService().GetPage(p)
 	w.Header().Set("Content-Type", "application/json")
@@ -389,11 +544,6 @@ func (server *Webserver) clientIP(req *http.Request) string {
 		server.app.Logger.Error(err.Error())
 	}
 	return ip
-}
-
-func (server *Webserver) sendNotFound(w http.ResponseWriter, r *http.Request, err error) {
-	http.Error(w, "Not Found", http.StatusNotFound)
-	fmt.Fprintln(w, err)
 }
 
 func (server *Webserver) sendBadRequest(w http.ResponseWriter, r *http.Request, err error) {

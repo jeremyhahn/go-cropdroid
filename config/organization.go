@@ -4,7 +4,7 @@ import "fmt"
 
 // Organization groups users and devices
 type Organization struct {
-	ID    int    `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID    uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	Name  string `gorm:"size:255" yaml:"name" json:"name"`
 	Farms []Farm `yaml:"farms" json:"farms"`
 	//Devices        []Device `yaml:"devices" json:"devices"`
@@ -26,8 +26,13 @@ func CreateOrganization(farms []Farm, users []User) *Organization {
 		Users: users}
 }
 
+// SetID sets the unique identifier for the org
+func (o *Organization) SetID(id uint64) {
+	o.ID = id
+}
+
 // GetID returns the unique identifier for the org
-func (o *Organization) GetID() int {
+func (o *Organization) GetID() uint64 {
 	return o.ID
 }
 

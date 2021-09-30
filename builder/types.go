@@ -9,5 +9,5 @@ import (
 
 type ConfigBuilder interface {
 	//Build() (config.ServerConfig, service.ServiceRegistry, []rest.RestService, state.DeviceIndex, state.ChannelIndex, error)
-	Build() (app.KeyPair, config.ServerConfig, service.ServiceRegistry, []rest.RestService, error)
+	Build() (app.KeyPair, config.ServerConfig, service.ServiceRegistry, []rest.RestService, chan uint64, error)
 }

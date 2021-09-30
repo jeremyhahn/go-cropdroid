@@ -29,9 +29,11 @@ func (s *GormFarmConfigStore) Len() int {
 }
 
 func (s *GormFarmConfigStore) Cache(farmID uint64, c config.FarmConfig) {
-	s.mutex.RLock()
-	s.cachedConfig[farmID] = *c.(*config.Farm)
-	s.mutex.RUnlock()
+	if c != nil {
+		s.mutex.RLock()
+		s.cachedConfig[farmID] = *c.(*config.Farm)
+		s.mutex.RUnlock()
+	}
 }
 
 func (s *GormFarmConfigStore) Put(farmID uint64, c config.FarmConfig) error {
@@ -46,7 +48,7 @@ func (s *GormFarmConfigStore) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.
 			return &config, nil
 		}
 	}
-	config, err := s.farmDAO.Get(farmID)
+	config, err := s.farmDAO.Get(farmID, CONSISTENCY_LEVEL)
 	s.Cache(farmID, config)
 	return config, err
 }

@@ -1,4 +1,4 @@
-// +build cluster
+// +build ignore
 
 package statemachine
 
@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
-	"sync"
 
 	fs "github.com/jeremyhahn/go-cropdroid/state"
 	sm "github.com/lni/dragonboat/v3/statemachine"
@@ -16,7 +15,7 @@ import (
 )
 
 type FarmStateMachine interface {
-	CreateFarmStateMachine(clusterID, nodeID uint64) sm.IStateMachine
+	CreateStateMachine(clusterID, nodeID uint64) sm.IStateMachine
 	sm.IStateMachine
 }
 
@@ -28,16 +27,9 @@ type FarmSM struct {
 	current             fs.FarmStateMap
 	history             []fs.FarmStateMap
 	farmStateChangeChan chan fs.FarmStateMap
-	mutex               *sync.RWMutex
-	FarmStateMachine
+	sm.IStateMachine
 	fs.FarmStore
 }
-
-/*cs := colfer.DeviceState{}
-  bytes, err := cs.UnmarshalBinary()
-  if err != nil {
-    panic(err)
-  }*/
 
 func NewFarmStateMachine(logger *logging.Logger, farmID uint64,
 	farmStateChangeChan chan fs.FarmStateMap) FarmStateMachine {
@@ -46,14 +38,12 @@ func NewFarmStateMachine(logger *logging.Logger, farmID uint64,
 		logger:              logger,
 		farmID:              farmID,
 		history:             make([]fs.FarmStateMap, 0),
-		farmStateChangeChan: farmStateChangeChan,
-		mutex:               &sync.RWMutex{}}
+		farmStateChangeChan: farmStateChangeChan}
 }
 
-func (s *FarmSM) CreateFarmStateMachine(clusterID, nodeID uint64) sm.IStateMachine {
+func (s *FarmSM) CreateStateMachine(clusterID, nodeID uint64) sm.IStateMachine {
 	s.clusterID = clusterID
 	s.nodeID = nodeID
-	s.mutex = &sync.RWMutex{}
 	return s
 }
 
@@ -62,9 +52,6 @@ func (s *FarmSM) Lookup(query interface{}) (interface{}, error) {
 	s.logger.Warningf("[FarmStateMachine.Lookup] query: %+v", query)
 	s.logger.Warningf("[FarmStateMachine.Lookup] Current: %+v", s.current)
 	//s.logger.Warningf("[FarmStateMachine.Lookup] History: %+v", s.history)
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 
 	if query == nil {
 		return []fs.FarmStateMap{s.current}, nil
@@ -85,10 +72,6 @@ func (s *FarmSM) Lookup(query interface{}) (interface{}, error) {
 }
 
 func (s *FarmSM) Update(data []byte) (sm.Result, error) {
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	var farmState fs.FarmState
 	err := json.Unmarshal(data, &farmState)
 	if err != nil {
@@ -111,10 +94,6 @@ func (s *FarmSM) Update(data []byte) (sm.Result, error) {
 // SaveSnapshot saves the current IStateMachine state into a snapshot using the
 // specified io.Writer object.
 func (s *FarmSM) SaveSnapshot(w io.Writer, fc sm.ISnapshotFileCollection, done <-chan struct{}) error {
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	snap := s.history
 	if s.current != nil {
 		snap = append(snap, s.current)
@@ -131,10 +110,6 @@ func (s *FarmSM) SaveSnapshot(w io.Writer, fc sm.ISnapshotFileCollection, done <
 
 // RecoverFromSnapshot recovers the state using the provided snapshot.
 func (s *FarmSM) RecoverFromSnapshot(r io.Reader, files []sm.SnapshotFile, done <-chan struct{}) error {
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err

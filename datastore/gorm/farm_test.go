@@ -42,7 +42,7 @@ func TestFarmAssociations(t *testing.T) {
 	farm.SetInterval(60)
 	farm.SetUsers([]config.User{*user})
 
-	err := farmDAO.Create(farm)
+	err := farmDAO.Save(farm)
 	assert.Nil(t, err)
 
 	currentTest.gorm.Create(&config.Permission{
@@ -92,10 +92,10 @@ func TestGetAll(t *testing.T) {
 	farm2.SetMode("test2")
 	farm2.SetInterval(59)
 
-	err := farmDAO.Create(farm1)
+	err := farmDAO.Save(farm1)
 	assert.Nil(t, err)
 
-	err = farmDAO.Create(farm2)
+	err = farmDAO.Save(farm2)
 	assert.Nil(t, err)
 
 	farms, err := farmDAO.GetAll()
@@ -155,10 +155,10 @@ func TestGet(t *testing.T) {
 					Key:   "interval",
 					Value: "60"}}}})
 
-	err := farmDAO.Create(farm1)
+	err := farmDAO.Save(farm1)
 	assert.Nil(t, err)
 
-	err = farmDAO.Create(farm2)
+	err = farmDAO.Save(farm2)
 	assert.Nil(t, err)
 
 	persitedFarm1, err := farmDAO.Get(1, DEFAULT_CONSISTENCY_LEVEL)
@@ -184,11 +184,11 @@ func TestCount(t *testing.T) {
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
 
 	farm1 := config.NewFarm()
-	err := farmDAO.Create(farm1)
+	err := farmDAO.Save(farm1)
 	assert.Nil(t, err)
 
 	farm2 := config.NewFarm()
-	err = farmDAO.Create(farm2)
+	err = farmDAO.Save(farm2)
 	assert.Nil(t, err)
 
 	count, err := farmDAO.Count()

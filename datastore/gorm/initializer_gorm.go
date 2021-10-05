@@ -20,11 +20,12 @@ type GormInitializer struct {
 	db       *gorm.DB
 	location *time.Location
 	farmDAO  dao.FarmDAO
+	appMode  string
 	datastore.Initializer
 }
 
 func NewGormInitializer(logger *logging.Logger, gormDB GormDB,
-	location *time.Location) datastore.Initializer {
+	location *time.Location, appMode string) datastore.Initializer {
 
 	db := gormDB.GORM()
 	return &GormInitializer{
@@ -32,7 +33,8 @@ func NewGormInitializer(logger *logging.Logger, gormDB GormDB,
 		db:       db,
 		gormDB:   gormDB,
 		location: location,
-		farmDAO:  NewFarmDAO(logger, db)}
+		farmDAO:  NewFarmDAO(logger, db),
+		appMode:  appMode}
 }
 
 // Initializes a new database, including a new administrative user and default FarmConfig.
@@ -207,14 +209,14 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig) (co
 		{ChannelID: common.CHANNEL_DOSER_NUTE3_ID, Name: common.CHANNEL_DOSER_NUTE3, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0}})
 
 	farm := config.NewFarm()
-	// Cluster specific!
-	farm.StateStore = state.RAFT_STORE
-	farm.ConfigStore = config.RAFT_MEMORY_STORE
-	farm.DataStore = datastore.GORM_STORE
-	farm.Consistency = common.CONSISTENCY_CACHED
-	// End Cluster specific
+	if initializer.appMode == common.MODE_CLUSTER {
+		farm.StateStore = state.RAFT_STORE
+		farm.ConfigStore = config.RAFT_MEMORY_STORE
+		farm.DataStore = datastore.GORM_STORE
+		farm.Consistency = common.CONSISTENCY_CACHED
+	}
 	farm.SetDevices([]config.Device{*serverDevice, *roomDevice, *reservoirDevice, *doserDevice})
-	initializer.farmDAO.Create(farm)
+	initializer.farmDAO.Save(farm)
 
 	permission := &config.Permission{
 		UserID: adminUser.GetID(),

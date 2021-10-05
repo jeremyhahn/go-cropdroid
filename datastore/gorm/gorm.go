@@ -26,6 +26,7 @@ type GormDB interface {
 }
 
 type GormInitParams struct {
+	AppMode           string
 	DebugFlag         bool
 	EnableDefaultFarm bool
 	DataDir           string
@@ -66,7 +67,7 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 		database.db.Exec("PRAGMA foreign_keys = ON;")
 		//database.db.LogMode(true)
 		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
-		if err := NewGormInitializer(database.logger, database, database.params.Location).Initialize(database.params.EnableDefaultFarm); err != nil {
+		if err := NewGormInitializer(database.logger, database, database.params.Location, database.params.AppMode).Initialize(database.params.EnableDefaultFarm); err != nil {
 			database.logger.Fatal(err)
 		}
 	case "sqlite":

@@ -25,7 +25,7 @@ func TestOrganizationCRUD(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Nil(t, org)
 
-	err = orgDAO.Create(&config.Organization{
+	err = orgDAO.Save(&config.Organization{
 		Name: "Test Org"})
 	assert.Nil(t, err)
 
@@ -99,7 +99,7 @@ func TestOrganizationGetByUserID(t *testing.T) {
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, orgDAO)
 
-	err := orgDAO.Create(orgConfig)
+	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
 
 	assert.Equal(t, orgConfig.GetID() > 0, true)
@@ -142,7 +142,7 @@ func TestOrganizationGetAll(t *testing.T) {
 		Name:  testOrgName,
 		Farms: []config.Farm{*farmConfig}}
 
-	err := orgDAO.Create(orgConfig)
+	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
 	assert.Equal(t, orgConfig.GetName(), testOrgName)
 
@@ -156,7 +156,7 @@ func TestOrganizationGetAll(t *testing.T) {
 		Name:  testOrgName2,
 		Farms: []config.Farm{*farmConfig2}}
 
-	err = orgDAO.Create(orgConfig2)
+	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
 
 	// make sure orgs are returned fully hydrated
@@ -192,7 +192,7 @@ func TestOrganizationEnchilada(t *testing.T) {
 	currentTest.logger.Infof("Org: %+v", org)
 
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
-	err := orgDAO.Create(org)
+	err := orgDAO.Save(org)
 	assert.Nil(t, err)
 	assert.NotNil(t, org.GetID())
 

@@ -82,7 +82,7 @@ func TestPermissions(t *testing.T) {
 	farm.SetInterval(60)
 	//farm.SetUsers([]config.User{*user})
 
-	err = farmDAO.Create(farm)
+	err = farmDAO.Save(farm)
 	assert.Nil(t, err)
 
 	currentTest.gorm.Create(&config.Permission{

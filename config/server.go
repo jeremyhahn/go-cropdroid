@@ -97,10 +97,6 @@ func (config *Server) SetFarms(farms []Farm) {
 	config.Farms = farms
 }
 
-func (config *Server) SetFarm(id uint64, farm FarmConfig) {
-	for i, farm := range config.GetFarms() {
-		if farm.GetID() == id {
-			config.Farms[i] = farm
-		}
-	}
+func (config *Server) AddFarm(farm FarmConfig) {
+	config.Farms = append(config.Farms, *farm.(*Farm))
 }

@@ -46,7 +46,7 @@ type ServerConfig interface {
 	SetLicense(license *License)
 	GetFarms() []Farm
 	SetFarms(farms []Farm)
-	SetFarm(id uint64, farm FarmConfig)
+	AddFarm(farm FarmConfig)
 }
 
 type OrganizationConfig interface {

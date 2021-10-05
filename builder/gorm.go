@@ -55,6 +55,7 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	chan uint64, error) {
 
 	var restServices []rest.RestService
+	var farmConfigs []config.Farm
 
 	datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GormDB)
 	mapperRegistry := mapper.CreateRegistry()
@@ -82,25 +83,14 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	serverConfig.SetMode(builder.app.Mode)
 	//serverConfig.SetSmtp()
 	//serverConfig.SetLicense()
-	//serverConfig.SetOrganizations()
-	/*
-	   orgs, err := orgDAO.GetAll()
-	   if err != nil {
-	     builder.app.Logger.Fatal(err)
-	   }
-	*/
 
 	farmDAO := gorm.NewFarmDAO(builder.app.Logger, builder.app.GORM)
-	farmConfigs, err := farmDAO.GetAll()
-	if err != nil {
-		builder.app.Logger.Fatal(err)
-	}
-	serverConfig.SetFarms(farmConfigs)
 
 	farmProvisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 	farmDeprovisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 	farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
-	gormInitializer := gorm.NewGormInitializer(builder.app.Logger, builder.app.GormDB, builder.app.Location)
+	gormInitializer := gorm.NewGormInitializer(builder.app.Logger,
+		builder.app.GormDB, builder.app.Location, builder.app.Mode)
 	gormFarmConfigStore := store.NewGormFarmConfigStore(datastoreRegistry.NewFarmDAO(), 1)
 	gormDeviceConfigStore := store.NewGormDeviceConfigStore(datastoreRegistry.NewDeviceDAO(), 3)
 	farmFactory := service.NewFarmFactory(
@@ -117,11 +107,27 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 		gormInitializer)
 	serviceRegistry.SetFarmProvisioner(farmProvisioner)
 
+	orgs, err := datastoreRegistry.GetOrganizationDAO().GetAll()
+	if err != nil {
+		builder.app.Logger.Fatal(err)
+	}
+	//serverConfig.SetOrganizations(orgs)
+
+	if len(orgs) > 0 {
+		for _, org := range orgs {
+			farmConfigs = append(farmConfigs, org.GetFarms()...)
+		}
+	} else {
+		farmConfigs, err = farmDAO.GetAll()
+	}
+	if err != nil {
+		builder.app.Logger.Fatal(err)
+	}
+	serverConfig.SetFarms(farmConfigs)
+
 	for _, farmConfig := range farmConfigs {
 		farmFactory.BuildService(&farmConfig)
-		if err != nil {
-			builder.app.Logger.Fatal(err)
-		}
+		//serverConfig.AddFarm(&farmConfig)
 	}
 
 	// Listen for new farm provisioning requests

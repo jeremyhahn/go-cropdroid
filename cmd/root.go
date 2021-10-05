@@ -249,6 +249,7 @@ func initLogger() {
 func initConfig() {
 	DatastoreType = strings.ToLower(DatastoreType)
 	App.GORMInitParams = &gormstore.GormInitParams{
+		AppMode:           Mode,
 		DebugFlag:         DebugFlag,
 		EnableDefaultFarm: EnableDefaultFarm,
 		DataDir:           DataDir,

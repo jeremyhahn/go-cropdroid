@@ -1,4 +1,4 @@
-// +build cluster
+// +build ignore
 
 package statemachine
 

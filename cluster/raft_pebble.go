@@ -175,7 +175,7 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	r.session[params.clusterID] = nh.GetNoOPSession(params.clusterID)
 	r.proposalChan[params.clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
 
-	if err := nh.StartOnDiskCluster(initialMembers, params.join, statemachine.NewDiskKV, rc); err != nil {
+	if err := nh.StartOnDiskCluster(initialMembers, params.join, statemachine.NewSystemDiskKV, rc); err != nil {
 		params.logger.Fatalf("Failed to create system raft cluster: %s", err)
 	}
 
@@ -292,7 +292,9 @@ func (r *Raft) CreateFarmConfigCluster(clusterID uint64, sm statemachine.FarmCon
 	newConfig.ClusterID = clusterID
 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
+	if err := r.nodeHost.StartOnDiskCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
+		//if err := r.nodeHost.StartOnDiskCluster(r.peers, false, statemachine.NewDiskKV, newConfig); err != nil {
+		//if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
 		return err
 	}
@@ -304,7 +306,8 @@ func (r *Raft) CreateFarmStateCluster(clusterID uint64, sm statemachine.FarmStat
 	newConfig.ClusterID = clusterID
 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmStateMachine, newConfig); err != nil {
+	//if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateStateMachine, newConfig); err != nil {
+	if err := r.nodeHost.StartConcurrentCluster(r.peers, false, sm.CreateFarmStateMachine, newConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
 		return err
 	}

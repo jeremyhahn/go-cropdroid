@@ -52,7 +52,9 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 	builder.serviceRegistry = service.CreateServiceRegistry(builder.app,
 		builder.datastoreRegistry, builder.mapperRegistry)
 
-	gormInitializer := gorm.NewGormInitializer(builder.app.Logger, builder.app.GormDB, builder.app.Location)
+	gormInitializer := gorm.NewGormInitializer(builder.app.Logger,
+		builder.app.GormDB, builder.app.Location, builder.app.Mode)
+
 	farmProvisioner := provisioner.NewRaftFarmProvisioner(
 		builder.app.Logger, builder.app.GossipCluster, builder.app.Location,
 		builder.datastoreRegistry.NewFarmDAO(),

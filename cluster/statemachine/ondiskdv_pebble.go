@@ -5,39 +5,25 @@ package statemachine
 import (
 	"bytes"
 	"crypto/md5"
-	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"github.com/cockroachdb/pebble"
-
-	sm "github.com/lni/dragonboat/v3/statemachine"
 )
 
 const (
 	appliedIndexKey    string = "disk_kv_applied_index"
-	testDBDirName      string = "example-data"
-	currentDBFilename  string = "current"
-	updatingDBFilename string = "current.updating"
+	testDBDirName      string = "pebbledb-data"
+	currentDBFilename  string = "farmconfig"
+	updatingDBFilename string = "farmconfig.updating"
 )
-
-//
-// Note: this is an example demonstrating how to use the on disk state machine
-// feature in Dragonboat. it assumes the underlying db only supports Get, Put
-// and TakeSnapshot operations. this is not a demonstration on how to build a
-// distributed key-value database.
-//
 
 func syncDir(dir string) (err error) {
 	if runtime.GOOS == "windows" {
@@ -257,320 +243,314 @@ func cleanupNodeDataDir(dir string) error {
 	return nil
 }
 
-// DiskKV is a state machine that implements the IOnDiskStateMachine interface.
-// DiskKV stores key-value pairs in the underlying PebbleDB key-value store. As
-// it is used as an example, it is implemented using the most basic features
-// common in most key-value stores. This is NOT a benchmark program.
-type DiskKV struct {
-	clusterID   uint64
-	nodeID      uint64
-	lastApplied uint64
-	db          unsafe.Pointer
-	closed      bool
-	aborted     bool
-}
+// // DiskKV is a state machine that implements the IOnDiskStateMachine interface.
+// // DiskKV stores key-value pairs in the underlying PebbleDB key-value store. As
+// // it is used as an example, it is implemented using the most basic features
+// // common in most key-value stores. This is NOT a benchmark program.
+// type DiskKV struct {
+// 	clusterID   uint64
+// 	nodeID      uint64
+// 	lastApplied uint64
+// 	db          unsafe.Pointer
+// 	closed      bool
+// 	aborted     bool
+// }
 
-// NewDiskKV creates a new disk kv test state machine.
-func NewDiskKV(clusterID uint64, nodeID uint64) sm.IOnDiskStateMachine {
-	d := &DiskKV{
-		clusterID: clusterID,
-		nodeID:    nodeID,
-	}
-	return d
-}
+// // NewDiskKV creates a new disk kv test state machine.
+// func NewDiskKV(clusterID uint64, nodeID uint64) sm.IOnDiskStateMachine {
+// 	d := &DiskKV{
+// 		clusterID: clusterID,
+// 		nodeID:    nodeID,
+// 	}
+// 	return d
+// }
 
-func (d *DiskKV) CreateStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
-	d.clusterID = clusterID
-	d.nodeID = nodeID
-	return d
-}
+// func (d *DiskKV) queryAppliedIndex(db *pebbledb) (uint64, error) {
+// 	val, closer, err := db.db.Get([]byte(appliedIndexKey))
+// 	if err != nil && err != pebble.ErrNotFound {
+// 		return 0, err
+// 	}
+// 	defer func() {
+// 		if closer != nil {
+// 			closer.Close()
+// 		}
+// 	}()
+// 	if len(val) == 0 {
+// 		return 0, nil
+// 	}
+// 	return binary.LittleEndian.Uint64(val), nil
+// }
 
-func (d *DiskKV) queryAppliedIndex(db *pebbledb) (uint64, error) {
-	val, closer, err := db.db.Get([]byte(appliedIndexKey))
-	if err != nil && err != pebble.ErrNotFound {
-		return 0, err
-	}
-	defer func() {
-		if closer != nil {
-			closer.Close()
-		}
-	}()
-	if len(val) == 0 {
-		return 0, nil
-	}
-	return binary.LittleEndian.Uint64(val), nil
-}
+// // Open opens the state machine and return the index of the last Raft Log entry
+// // already updated into the state machine.
+// func (d *DiskKV) Open(stopc <-chan struct{}) (uint64, error) {
+// 	dir := getNodeDBDirName(d.clusterID, d.nodeID)
+// 	if err := createNodeDataDir(dir); err != nil {
+// 		panic(err)
+// 	}
+// 	var dbdir string
+// 	if !isNewRun(dir) {
+// 		if err := cleanupNodeDataDir(dir); err != nil {
+// 			return 0, err
+// 		}
+// 		var err error
+// 		dbdir, err = getCurrentDBDirName(dir)
+// 		if err != nil {
+// 			return 0, err
+// 		}
+// 		if _, err := os.Stat(dbdir); err != nil {
+// 			if os.IsNotExist(err) {
+// 				panic("db dir unexpectedly deleted")
+// 			}
+// 		}
+// 	} else {
+// 		dbdir = getNewRandomDBDirName(dir)
+// 		if err := saveCurrentDBDirName(dir, dbdir); err != nil {
+// 			return 0, err
+// 		}
+// 		if err := replaceCurrentDBFile(dir); err != nil {
+// 			return 0, err
+// 		}
+// 	}
+// 	db, err := createDB(dbdir)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	atomic.SwapPointer(&d.db, unsafe.Pointer(db))
+// 	appliedIndex, err := d.queryAppliedIndex(db)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	d.lastApplied = appliedIndex
+// 	return appliedIndex, nil
+// }
 
-// Open opens the state machine and return the index of the last Raft Log entry
-// already updated into the state machine.
-func (d *DiskKV) Open(stopc <-chan struct{}) (uint64, error) {
-	dir := getNodeDBDirName(d.clusterID, d.nodeID)
-	if err := createNodeDataDir(dir); err != nil {
-		panic(err)
-	}
-	var dbdir string
-	if !isNewRun(dir) {
-		if err := cleanupNodeDataDir(dir); err != nil {
-			return 0, err
-		}
-		var err error
-		dbdir, err = getCurrentDBDirName(dir)
-		if err != nil {
-			return 0, err
-		}
-		if _, err := os.Stat(dbdir); err != nil {
-			if os.IsNotExist(err) {
-				panic("db dir unexpectedly deleted")
-			}
-		}
-	} else {
-		dbdir = getNewRandomDBDirName(dir)
-		if err := saveCurrentDBDirName(dir, dbdir); err != nil {
-			return 0, err
-		}
-		if err := replaceCurrentDBFile(dir); err != nil {
-			return 0, err
-		}
-	}
-	db, err := createDB(dbdir)
-	if err != nil {
-		return 0, err
-	}
-	atomic.SwapPointer(&d.db, unsafe.Pointer(db))
-	appliedIndex, err := d.queryAppliedIndex(db)
-	if err != nil {
-		panic(err)
-	}
-	d.lastApplied = appliedIndex
-	return appliedIndex, nil
-}
+// // Lookup queries the state machine.
+// func (d *DiskKV) Lookup(key interface{}) (interface{}, error) {
+// 	db := (*pebbledb)(atomic.LoadPointer(&d.db))
+// 	if db != nil {
+// 		v, err := db.lookup(key.([]byte))
+// 		if err == nil && d.closed {
+// 			panic("lookup returned valid result when DiskKV is already closed")
+// 		}
+// 		if err == pebble.ErrNotFound {
+// 			return v, nil
+// 		}
+// 		return v, err
+// 	}
+// 	return nil, errors.New("db closed")
+// }
 
-// Lookup queries the state machine.
-func (d *DiskKV) Lookup(key interface{}) (interface{}, error) {
-	db := (*pebbledb)(atomic.LoadPointer(&d.db))
-	if db != nil {
-		v, err := db.lookup(key.([]byte))
-		if err == nil && d.closed {
-			panic("lookup returned valid result when DiskKV is already closed")
-		}
-		if err == pebble.ErrNotFound {
-			return v, nil
-		}
-		return v, err
-	}
-	return nil, errors.New("db closed")
-}
+// // Update updates the state machine. In this example, all updates are put into
+// // a PebbleDB write batch and then atomically written to the DB together with
+// // the index of the last Raft Log entry. For simplicity, we always Sync the
+// // writes (db.wo.Sync=True). To get higher throughput, you can implement the
+// // Sync() method below and choose not to synchronize for every Update(). Sync()
+// // will periodically called by Dragonboat to synchronize the state.
+// func (d *DiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
+// 	if d.aborted {
+// 		panic("update() called after abort set to true")
+// 	}
+// 	if d.closed {
+// 		panic("update called after Close()")
+// 	}
+// 	db := (*pebbledb)(atomic.LoadPointer(&d.db))
+// 	wb := db.db.NewBatch()
+// 	defer wb.Close()
+// 	for idx, e := range ents {
+// 		dataKV := &KVData{}
+// 		if err := json.Unmarshal(e.Cmd, dataKV); err != nil {
+// 			panic(err)
+// 		}
+// 		wb.Set([]byte(dataKV.Key), []byte(dataKV.Val), db.wo)
+// 		ents[idx].Result = sm.Result{Value: uint64(len(ents[idx].Cmd))}
+// 	}
+// 	// save the applied index to the DB.
+// 	appliedIndex := make([]byte, 8)
+// 	binary.LittleEndian.PutUint64(appliedIndex, ents[len(ents)-1].Index)
+// 	wb.Set([]byte(appliedIndexKey), appliedIndex, db.wo)
+// 	if err := db.db.Apply(wb, db.syncwo); err != nil {
+// 		return nil, err
+// 	}
+// 	if d.lastApplied >= ents[len(ents)-1].Index {
+// 		panic("lastApplied not moving forward")
+// 	}
+// 	d.lastApplied = ents[len(ents)-1].Index
+// 	return ents, nil
+// }
 
-// Update updates the state machine. In this example, all updates are put into
-// a PebbleDB write batch and then atomically written to the DB together with
-// the index of the last Raft Log entry. For simplicity, we always Sync the
-// writes (db.wo.Sync=True). To get higher throughput, you can implement the
-// Sync() method below and choose not to synchronize for every Update(). Sync()
-// will periodically called by Dragonboat to synchronize the state.
-func (d *DiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
-	if d.aborted {
-		panic("update() called after abort set to true")
-	}
-	if d.closed {
-		panic("update called after Close()")
-	}
-	db := (*pebbledb)(atomic.LoadPointer(&d.db))
-	wb := db.db.NewBatch()
-	defer wb.Close()
-	for idx, e := range ents {
-		dataKV := &KVData{}
-		if err := json.Unmarshal(e.Cmd, dataKV); err != nil {
-			panic(err)
-		}
-		wb.Set([]byte(dataKV.Key), []byte(dataKV.Val), db.wo)
-		ents[idx].Result = sm.Result{Value: uint64(len(ents[idx].Cmd))}
-	}
-	// save the applied index to the DB.
-	appliedIndex := make([]byte, 8)
-	binary.LittleEndian.PutUint64(appliedIndex, ents[len(ents)-1].Index)
-	wb.Set([]byte(appliedIndexKey), appliedIndex, db.wo)
-	if err := db.db.Apply(wb, db.syncwo); err != nil {
-		return nil, err
-	}
-	if d.lastApplied >= ents[len(ents)-1].Index {
-		panic("lastApplied not moving forward")
-	}
-	d.lastApplied = ents[len(ents)-1].Index
-	return ents, nil
-}
-
-// Sync synchronizes all in-core state of the state machine. Since the Update
-// method in this example already does that every time when it is invoked, the
-// Sync method here is a NoOP.
-func (d *DiskKV) Sync() error {
-	return nil
-}
+// // Sync synchronizes all in-core state of the state machine. Since the Update
+// // method in this example already does that every time when it is invoked, the
+// // Sync method here is a NoOP.
+// func (d *DiskKV) Sync() error {
+// 	return nil
+// }
 
 type diskKVCtx struct {
 	db       *pebbledb
 	snapshot *pebble.Snapshot
 }
 
-// PrepareSnapshot prepares snapshotting. PrepareSnapshot is responsible to
-// capture a state identifier that identifies a point in time state of the
-// underlying data. In this example, we use Pebble's snapshot feature to
-// achieve that.
-func (d *DiskKV) PrepareSnapshot() (interface{}, error) {
-	if d.closed {
-		panic("prepare snapshot called after Close()")
-	}
-	if d.aborted {
-		panic("prepare snapshot called after abort")
-	}
-	db := (*pebbledb)(atomic.LoadPointer(&d.db))
-	return &diskKVCtx{
-		db:       db,
-		snapshot: db.db.NewSnapshot(),
-	}, nil
-}
+// // PrepareSnapshot prepares snapshotting. PrepareSnapshot is responsible to
+// // capture a state identifier that identifies a point in time state of the
+// // underlying data. In this example, we use Pebble's snapshot feature to
+// // achieve that.
+// func (d *DiskKV) PrepareSnapshot() (interface{}, error) {
+// 	if d.closed {
+// 		panic("prepare snapshot called after Close()")
+// 	}
+// 	if d.aborted {
+// 		panic("prepare snapshot called after abort")
+// 	}
+// 	db := (*pebbledb)(atomic.LoadPointer(&d.db))
+// 	return &diskKVCtx{
+// 		db:       db,
+// 		snapshot: db.db.NewSnapshot(),
+// 	}, nil
+// }
 
 func iteratorIsValid(iter *pebble.Iterator) bool {
 	return iter.Valid()
 }
 
-// saveToWriter saves all existing key-value pairs to the provided writer.
-// As an example, we use the most straight forward way to implement this.
-func (d *DiskKV) saveToWriter(db *pebbledb,
-	ss *pebble.Snapshot, w io.Writer) error {
-	iter := ss.NewIter(db.ro)
-	defer iter.Close()
-	values := make([]*KVData, 0)
-	for iter.First(); iteratorIsValid(iter); iter.Next() {
-		kv := &KVData{
-			Key: string(iter.Key()),
-			Val: string(iter.Value()),
-		}
-		values = append(values, kv)
-	}
-	count := uint64(len(values))
-	sz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(sz, count)
-	if _, err := w.Write(sz); err != nil {
-		return err
-	}
-	for _, dataKv := range values {
-		data, err := json.Marshal(dataKv)
-		if err != nil {
-			panic(err)
-		}
-		binary.LittleEndian.PutUint64(sz, uint64(len(data)))
-		if _, err := w.Write(sz); err != nil {
-			return err
-		}
-		if _, err := w.Write(data); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// // saveToWriter saves all existing key-value pairs to the provided writer.
+// // As an example, we use the most straight forward way to implement this.
+// func (d *DiskKV) saveToWriter(db *pebbledb,
+// 	ss *pebble.Snapshot, w io.Writer) error {
+// 	iter := ss.NewIter(db.ro)
+// 	defer iter.Close()
+// 	values := make([]*KVData, 0)
+// 	for iter.First(); iteratorIsValid(iter); iter.Next() {
+// 		kv := &KVData{
+// 			Key: string(iter.Key()),
+// 			Val: string(iter.Value()),
+// 		}
+// 		values = append(values, kv)
+// 	}
+// 	count := uint64(len(values))
+// 	sz := make([]byte, 8)
+// 	binary.LittleEndian.PutUint64(sz, count)
+// 	if _, err := w.Write(sz); err != nil {
+// 		return err
+// 	}
+// 	for _, dataKv := range values {
+// 		data, err := json.Marshal(dataKv)
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 		binary.LittleEndian.PutUint64(sz, uint64(len(data)))
+// 		if _, err := w.Write(sz); err != nil {
+// 			return err
+// 		}
+// 		if _, err := w.Write(data); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
-// SaveSnapshot saves the state machine state identified by the state
-// identifier provided by the input ctx parameter. Note that SaveSnapshot
-// is not suppose to save the latest state.
-func (d *DiskKV) SaveSnapshot(ctx interface{},
-	w io.Writer, done <-chan struct{}) error {
-	if d.closed {
-		panic("prepare snapshot called after Close()")
-	}
-	if d.aborted {
-		panic("prepare snapshot called after abort")
-	}
-	ctxdata := ctx.(*diskKVCtx)
-	db := ctxdata.db
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	ss := ctxdata.snapshot
-	defer ss.Close()
-	return d.saveToWriter(db, ss, w)
-}
+// // SaveSnapshot saves the state machine state identified by the state
+// // identifier provided by the input ctx parameter. Note that SaveSnapshot
+// // is not suppose to save the latest state.
+// func (d *DiskKV) SaveSnapshot(ctx interface{},
+// 	w io.Writer, done <-chan struct{}) error {
+// 	if d.closed {
+// 		panic("prepare snapshot called after Close()")
+// 	}
+// 	if d.aborted {
+// 		panic("prepare snapshot called after abort")
+// 	}
+// 	ctxdata := ctx.(*diskKVCtx)
+// 	db := ctxdata.db
+// 	db.mu.RLock()
+// 	defer db.mu.RUnlock()
+// 	ss := ctxdata.snapshot
+// 	defer ss.Close()
+// 	return d.saveToWriter(db, ss, w)
+// }
 
-// RecoverFromSnapshot recovers the state machine state from snapshot. The
-// snapshot is recovered into a new DB first and then atomically swapped with
-// the existing DB to complete the recovery.
-func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
-	done <-chan struct{}) error {
-	if d.closed {
-		panic("recover from snapshot called after Close()")
-	}
-	dir := getNodeDBDirName(d.clusterID, d.nodeID)
-	dbdir := getNewRandomDBDirName(dir)
-	oldDirName, err := getCurrentDBDirName(dir)
-	if err != nil {
-		return err
-	}
-	db, err := createDB(dbdir)
-	if err != nil {
-		return err
-	}
-	sz := make([]byte, 8)
-	if _, err := io.ReadFull(r, sz); err != nil {
-		return err
-	}
-	total := binary.LittleEndian.Uint64(sz)
-	wb := db.db.NewBatch()
-	defer wb.Close()
-	for i := uint64(0); i < total; i++ {
-		if _, err := io.ReadFull(r, sz); err != nil {
-			return err
-		}
-		toRead := binary.LittleEndian.Uint64(sz)
-		data := make([]byte, toRead)
-		if _, err := io.ReadFull(r, data); err != nil {
-			return err
-		}
-		dataKv := &KVData{}
-		if err := json.Unmarshal(data, dataKv); err != nil {
-			panic(err)
-		}
-		wb.Set([]byte(dataKv.Key), []byte(dataKv.Val), db.wo)
-	}
-	if err := db.db.Apply(wb, db.syncwo); err != nil {
-		return err
-	}
-	if err := saveCurrentDBDirName(dir, dbdir); err != nil {
-		return err
-	}
-	if err := replaceCurrentDBFile(dir); err != nil {
-		return err
-	}
-	newLastApplied, err := d.queryAppliedIndex(db)
-	if err != nil {
-		panic(err)
-	}
-	// when d.lastApplied == newLastApplied, it probably means there were some
-	// dummy entries or membership change entries as part of the new snapshot
-	// that never reached the SM and thus never moved the last applied index
-	// in the SM snapshot.
-	if d.lastApplied > newLastApplied {
-		panic("last applied not moving forward")
-	}
-	d.lastApplied = newLastApplied
-	old := (*pebbledb)(atomic.SwapPointer(&d.db, unsafe.Pointer(db)))
-	if old != nil {
-		old.close()
-	}
-	parent := filepath.Dir(oldDirName)
-	if err := os.RemoveAll(oldDirName); err != nil {
-		return err
-	}
-	return syncDir(parent)
-}
+// // RecoverFromSnapshot recovers the state machine state from snapshot. The
+// // snapshot is recovered into a new DB first and then atomically swapped with
+// // the existing DB to complete the recovery.
+// func (d *DiskKV) RecoverFromSnapshot(r io.Reader,
+// 	done <-chan struct{}) error {
+// 	if d.closed {
+// 		panic("recover from snapshot called after Close()")
+// 	}
+// 	dir := getNodeDBDirName(d.clusterID, d.nodeID)
+// 	dbdir := getNewRandomDBDirName(dir)
+// 	oldDirName, err := getCurrentDBDirName(dir)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	db, err := createDB(dbdir)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	sz := make([]byte, 8)
+// 	if _, err := io.ReadFull(r, sz); err != nil {
+// 		return err
+// 	}
+// 	total := binary.LittleEndian.Uint64(sz)
+// 	wb := db.db.NewBatch()
+// 	defer wb.Close()
+// 	for i := uint64(0); i < total; i++ {
+// 		if _, err := io.ReadFull(r, sz); err != nil {
+// 			return err
+// 		}
+// 		toRead := binary.LittleEndian.Uint64(sz)
+// 		data := make([]byte, toRead)
+// 		if _, err := io.ReadFull(r, data); err != nil {
+// 			return err
+// 		}
+// 		dataKv := &KVData{}
+// 		if err := json.Unmarshal(data, dataKv); err != nil {
+// 			panic(err)
+// 		}
+// 		wb.Set([]byte(dataKv.Key), []byte(dataKv.Val), db.wo)
+// 	}
+// 	if err := db.db.Apply(wb, db.syncwo); err != nil {
+// 		return err
+// 	}
+// 	if err := saveCurrentDBDirName(dir, dbdir); err != nil {
+// 		return err
+// 	}
+// 	if err := replaceCurrentDBFile(dir); err != nil {
+// 		return err
+// 	}
+// 	newLastApplied, err := d.queryAppliedIndex(db)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	// when d.lastApplied == newLastApplied, it probably means there were some
+// 	// dummy entries or membership change entries as part of the new snapshot
+// 	// that never reached the SM and thus never moved the last applied index
+// 	// in the SM snapshot.
+// 	if d.lastApplied > newLastApplied {
+// 		panic("last applied not moving forward")
+// 	}
+// 	d.lastApplied = newLastApplied
+// 	old := (*pebbledb)(atomic.SwapPointer(&d.db, unsafe.Pointer(db)))
+// 	if old != nil {
+// 		old.close()
+// 	}
+// 	parent := filepath.Dir(oldDirName)
+// 	if err := os.RemoveAll(oldDirName); err != nil {
+// 		return err
+// 	}
+// 	return syncDir(parent)
+// }
 
-// Close closes the state machine.
-func (d *DiskKV) Close() error {
-	db := (*pebbledb)(atomic.SwapPointer(&d.db, unsafe.Pointer(nil)))
-	if db != nil {
-		d.closed = true
-		db.close()
-	} else {
-		if d.closed {
-			panic("close called twice")
-		}
-	}
-	return nil
-}
+// // Close closes the state machine.
+// func (d *DiskKV) Close() error {
+// 	db := (*pebbledb)(atomic.SwapPointer(&d.db, unsafe.Pointer(nil)))
+// 	if db != nil {
+// 		d.closed = true
+// 		db.close()
+// 	} else {
+// 		if d.closed {
+// 			panic("close called twice")
+// 		}
+// 	}
+// 	return nil
+// }

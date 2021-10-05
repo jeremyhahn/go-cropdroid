@@ -5,21 +5,21 @@ import (
 )
 
 type OrganizationDAO interface {
-	First() (config.OrganizationConfig, error)
-	GetAll() ([]config.Organization, error)
-	Get(orgID uint64) (config.OrganizationConfig, error)
+	First() (config.OrganizationConfig, error) // used by test only
+	GetAll() ([]config.Organization, error)    // used by test only
+	//Get(orgID uint64) (config.OrganizationConfig, error)
 	GetByUserID(userID uint64) ([]config.OrganizationConfig, error)
 	//Find(orgID int) ([]config.Organization, error)
-	Create(organization config.OrganizationConfig) error
-	CreateUserRole(org config.OrganizationConfig, user config.UserConfig, role config.RoleConfig) error
+	Save(organization config.OrganizationConfig) error
+	CreateUserRole(org config.OrganizationConfig, user config.UserConfig, role config.RoleConfig) error // used by test only
 }
 
 type FarmDAO interface {
-	Count() (int64, error)
-	Create(farm config.FarmConfig) error
+	Count() (int64, error) // used by test only
+	//Create(farm config.FarmConfig) error
 	Delete(farm config.FarmConfig) error
 	//DeleteById(farmID uint64) error
-	First() (config.FarmConfig, error)
+	//First() (config.FarmConfig, error)
 	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
 	GetAll() ([]config.Farm, error)
 	GetByOrgAndUserID(orgID, userID uint64) ([]config.Farm, error)
@@ -44,19 +44,19 @@ type UserDAO interface {
 	GetByID(userID uint64) (config.UserConfig, error)
 	GetByEmail(email string) (config.UserConfig, error)
 	Create(user config.UserConfig) error
-	Save(user config.UserConfig) error // used by integration test only
+	Save(user config.UserConfig) error // used by test only
 }
 
 type RoleDAO interface {
-	Create(role config.RoleConfig) error // Used by integration test only
-	Save(role config.RoleConfig) error   // Used by integration test only
+	Create(role config.RoleConfig) error // used by test only
+	Save(role config.RoleConfig) error   // used by test only
 	//GetByUserAndOrgID(userID, orgID int) (config.RoleConfig, error)
 	GetByUserAndOrgID(userID, orgID int) ([]config.Role, error)
 	GetByName(name string) (config.RoleConfig, error)
 }
 
 type AlgorithmDAO interface {
-	Create(config.AlgorithmConfig) error // used by integration test only
+	Create(config.AlgorithmConfig) error // used by test only
 	GetAll() ([]config.Algorithm, error)
 }
 

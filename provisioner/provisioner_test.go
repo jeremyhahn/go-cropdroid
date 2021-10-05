@@ -3,6 +3,7 @@ package provisioner
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
@@ -68,7 +69,7 @@ func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *ProvisionerParam
 	it := NewIntegrationTest()
 	userMapper := mapper.NewUserMapper()
 	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm)
-	initializer := gormstore.NewGormInitializer(it.logger, it.db, it.location)
+	initializer := gormstore.NewGormInitializer(it.logger, it.db, it.location, common.MODE_STANDALONE)
 	params := &ProvisionerParams{
 		ConfigStore: config.MEMORY_STORE,
 		StateStore:  state.MEMORY_STORE,

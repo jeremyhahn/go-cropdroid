@@ -87,6 +87,8 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmCo
 		Preload("Workflows.Conditions").
 		Preload("Workflows.Schedules").
 		Preload("Workflows.Steps").
+		// Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
+		// Where("permissions.farm_id = ?", farmID).
 		First(&farm, farmID).Error; err != nil {
 		return nil, err
 	}
@@ -124,7 +126,7 @@ func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
 	return farms, nil
 }
 
-func (dao *GormFarmDAO) GetByOrgAndUserID(orgID, userID uint64) ([]config.Farm, error) {
+func (dao *GormFarmDAO) GetByUserID(userID uint64) ([]config.Farm, error) {
 	dao.logger.Debug("Getting all farms for user: %d", userID)
 	var farms []config.Farm
 	if err := dao.db.
@@ -141,7 +143,7 @@ func (dao *GormFarmDAO) GetByOrgAndUserID(orgID, userID uint64) ([]config.Farm, 
 		Preload("Workflows.Schedules").
 		Preload("Workflows.Steps").
 		Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
-		Where("permissions.organization_id = ? AND permissions.user_id = ?", orgID, userID).
+		Where("permissions.user_id = ?", userID).
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}

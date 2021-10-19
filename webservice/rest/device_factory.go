@@ -16,19 +16,19 @@ type DeviceFactoryRestService interface {
 }
 
 type DefaultMicroFactoryRestService struct {
-	deviceFactory service.DeviceFactory
-	middleware    service.Middleware
-	jsonWriter    common.HttpWriter
+	serviceRegistry service.ServiceRegistry
+	middleware      service.Middleware
+	jsonWriter      common.HttpWriter
 	DeviceFactoryRestService
 }
 
-func NewDeviceFactoryRestService(deviceFactory service.DeviceFactory,
+func NewDeviceFactoryRestService(serviceRegistry service.ServiceRegistry,
 	middleware service.Middleware, jsonWriter common.HttpWriter) DeviceFactoryRestService {
 
 	return &DefaultMicroFactoryRestService{
-		deviceFactory: deviceFactory,
-		middleware:    middleware,
-		jsonWriter:    jsonWriter}
+		serviceRegistry: serviceRegistry,
+		middleware:      middleware,
+		jsonWriter:      jsonWriter}
 }
 
 func (restService *DefaultMicroFactoryRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
@@ -51,7 +51,8 @@ func (restService *DefaultMicroFactoryRestService) GetAll(w http.ResponseWriter,
 
 	session.GetLogger().Debug("getting devices")
 
-	devices, err := restService.deviceFactory.GetDevices(session)
+	deviceFactory := restService.serviceRegistry.GetDeviceFactory()
+	devices, err := deviceFactory.GetDevices(session)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

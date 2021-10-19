@@ -2,11 +2,10 @@ package mapper
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/datastore/yaml"
 )
 
 type ConfigMapper interface {
-	MapFromFileConfig(serverConfig *yaml.Server) (config.ServerConfig, error)
+	MapFromFileConfig(serverConfig config.Server) (config.ServerConfig, error)
 }
 
 type DefaultConfigMapper struct {
@@ -17,7 +16,7 @@ func NewConfigMapper() ConfigMapper {
 	return &DefaultConfigMapper{}
 }
 
-func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (config.ServerConfig, error) {
+func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig config.Server) (config.ServerConfig, error) {
 
 	license := &config.License{
 		UserQuota:   1,
@@ -37,7 +36,7 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 				for l, role := range user.Roles {
 					_roles[l] = config.Role{
 						ID:   uint64(l),
-						Name: role}
+						Name: role.Name}
 				}
 				farmUsers[k] = config.User{
 					ID:       user.ID,
@@ -47,7 +46,7 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 			}
 			_farms[j] = config.Farm{
 				ID:             farm.ID,
-				OrganizationID: farm.OrgID,
+				OrganizationID: farm.OrganizationID,
 				Users:          farmUsers}
 		}
 
@@ -58,7 +57,7 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 			for k, role := range user.Roles {
 				_roles[k] = config.Role{
 					ID:   uint64(k),
-					Name: role}
+					Name: role.Name}
 			}
 			orgUsers[k] = config.User{
 				ID:       user.ID,
@@ -79,14 +78,12 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig *yaml.Server) (c
 		Interval: yamlConfig.Interval,
 		Timezone: yamlConfig.Timezone,
 		Mode:     yamlConfig.Mode,
-		/*
-			Smtp: &config.Smtp{
-				Enable:    yamlConfig.Smtp.Enable,
-				Host:      yamlConfig.Smtp.Host,
-				Port:      yamlConfig.Smtp.Port,
-				Username:  yamlConfig.Smtp.Username,
-				Password:  yamlConfig.Smtp.Password,
-				Recipient: yamlConfig.Smtp.Recipient},
-		*/
+		Smtp: &config.Smtp{
+			Enable:    yamlConfig.Smtp.Enable,
+			Host:      yamlConfig.Smtp.Host,
+			Port:      yamlConfig.Smtp.Port,
+			Username:  yamlConfig.Smtp.Username,
+			Password:  yamlConfig.Smtp.Password,
+			Recipient: yamlConfig.Smtp.Recipient},
 		Organizations: _orgs}, nil
 }

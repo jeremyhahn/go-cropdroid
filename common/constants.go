@@ -73,10 +73,15 @@ const (
 	MODE_CLUSTER    = "cluster"
 	MODE_CLOUD      = "cloud"
 
-	DEFAULT_USER     = "admin"
-	DEFAULT_PASSWORD = "cropdroid"
-	DEFAULT_ROLE     = "admin"
-	DEFAULT_ROLE_ID  = 1
+	FARM_ACCESS_NONE = "none" // disallow access to farms
+	//FARM_ACCESS_OWNER = "owner" // allow access only to owned farms
+	FARM_ACCESS_ALL = "all" // allow access to all farms
+
+	DEFAULT_USER        = "admin"
+	DEFAULT_PASSWORD    = "cropdroid"
+	DEFAULT_ROLE        = "admin"
+	DEFAULT_ROLE_ID     = 1
+	DEFAULT_FARM_ACCESS = FARM_ACCESS_ALL
 
 	ROLE_ADMIN      = "admin"
 	ROLE_CULTIVATOR = "cultivator"
@@ -89,6 +94,9 @@ const (
 	WORKFLOW_STATE_EXECUTING = 1
 	WORKFLOW_STATE_COMPLETED = 2
 	WORKFLOW_STATE_ERROR     = 3
+
+	EMAIL_ACTIVATION   = "activation_email.html"
+	EMAIL_REGISTRATION = "registration_email.html"
 
 	// Initializer / provisioner
 	DEFAULT_GALLONS = "50"

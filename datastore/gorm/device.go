@@ -27,7 +27,14 @@ func (dao *GormDeviceDAO) Save(device config.DeviceConfig) error {
 func (dao *GormDeviceDAO) Get(id uint64) (config.DeviceConfig, error) {
 	dao.logger.Debugf("Getting device %d", id)
 	var devices []config.Device
-	if err := dao.db.First(&devices, id).Error; err != nil {
+	if err := dao.db.
+		Preload("Configs").
+		Preload("Metrics").
+		Preload("Channels").
+		First(&devices, id).Error; err != nil {
+		return nil, err
+	}
+	if err := devices[0].ParseConfigs(); err != nil {
 		return nil, err
 	}
 	return &devices[0], nil
@@ -36,9 +43,13 @@ func (dao *GormDeviceDAO) Get(id uint64) (config.DeviceConfig, error) {
 func (dao *GormDeviceDAO) GetByFarmId(farmID uint64) ([]config.Device, error) {
 	dao.logger.Debugf("Getting devices for farm id %d", farmID)
 	var devices []config.Device
-	if err := dao.db.Preload("Configs").Preload("Metrics").Preload("Channels").
-		Where("farm_id = ?", farmID).Order("id asc").Find(&devices).Error; err != nil {
-
+	if err := dao.db.
+		Preload("Configs").
+		Preload("Metrics").
+		Preload("Channels").
+		Where("farm_id = ?", farmID).
+		Order("id asc").
+		Find(&devices).Error; err != nil {
 		return nil, err
 	}
 	if len(devices) == 0 {

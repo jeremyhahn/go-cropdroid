@@ -3,7 +3,6 @@ package store
 import (
 	"sync"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/config/store"
@@ -30,26 +29,26 @@ func (s *GormFarmConfigStore) Len() int {
 
 func (s *GormFarmConfigStore) Cache(farmID uint64, c config.FarmConfig) {
 	if c != nil {
-		s.mutex.RLock()
+		s.mutex.Lock()
 		s.cachedConfig[farmID] = *c.(*config.Farm)
-		s.mutex.RUnlock()
+		s.mutex.Unlock()
 	}
 }
 
 func (s *GormFarmConfigStore) Put(farmID uint64, c config.FarmConfig) error {
 	farmConfig := c.(*config.Farm)
-	s.Cache(farmID, farmConfig)
+	// s.Cache(farmID, farmConfig)
 	return s.farmDAO.Save(farmConfig)
 }
 
 func (s *GormFarmConfigStore) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error) {
-	if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED {
-		if config, ok := s.cachedConfig[farmID]; ok {
-			return &config, nil
-		}
-	}
+	// if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED {
+	// 	if config, ok := s.cachedConfig[farmID]; ok {
+	// 		return &config, nil
+	// 	}
+	// }
 	config, err := s.farmDAO.Get(farmID, CONSISTENCY_LEVEL)
-	s.Cache(farmID, config)
+	// s.Cache(farmID, config)
 	return config, err
 }
 

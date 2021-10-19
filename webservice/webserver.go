@@ -106,15 +106,15 @@ func (server *Webserver) Run() {
 	server.buildRoutes()
 
 	// Static content web server
-	fs := http.FileServer(http.Dir("public_html"))
+	fs := http.FileServer(http.Dir(common.HTTP_PUBLIC_HTML))
 	server.router.PathPrefix("/").Handler(fs)
 	http.Handle("/", server.httpServer.Handler)
 
-	sPort := fmt.Sprintf(":%d", server.app.WebPort)
-	if server.app.SSLFlag {
+	sPort := fmt.Sprintf(":%d", server.app.Config.WebPort)
+	if server.app.Config.SSLFlag {
 
-		server.app.Logger.Debugf("Starting web services on TLS port %d", server.app.WebPort)
-		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.WebPort))
+		server.app.Logger.Debugf("Starting web services on TLS port %d", server.app.Config.WebPort)
+		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.Config.WebPort))
 
 		certfile := fmt.Sprintf("%s/cert.pem", server.app.KeyDir)
 		keyfile := fmt.Sprintf("%s/key.pem", server.app.KeyDir)
@@ -136,7 +136,7 @@ func (server *Webserver) Run() {
 
 		server.app.DropPrivileges()
 
-		if server.app.RedirectHttpToHttps {
+		if server.app.Config.RedirectHttpToHttps {
 			server.app.Logger.Debugf("[Webserver] Redirecting HTTP to HTTPS")
 			go http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "https://"+r.Host+sPort+r.URL.String(), http.StatusMovedPermanently)
@@ -151,8 +151,8 @@ func (server *Webserver) Run() {
 
 	} else {
 
-		server.app.Logger.Infof("Starting web services on port %d", server.app.WebPort)
-		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.WebPort))
+		server.app.Logger.Infof("Starting web services on port %d", server.app.Config.WebPort)
+		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.Config.WebPort))
 
 		ipv4Listener, err := net.Listen("tcp4", sPort)
 		if err != nil {
@@ -179,16 +179,19 @@ func (server *Webserver) buildRoutes() {
 	baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", server.baseURI)
 	//baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseOrgURI)
 
-	registrationService := rest.NewRegisterRestService(server.app, server.registry.GetUserService(), jsonWriter)
+	registrationService := rest.NewRegistrationRestService(server.app, server.registry.GetUserService(), jsonWriter)
 
 	// REST Handlers - Public Access
 	router.HandleFunc("/endpoints", server.endpoints)
 	router.HandleFunc("/system", server.systemStatus)
 	router.HandleFunc("/api/v1/pubkey", server.publicKey)
 	router.HandleFunc("/api/v1/register", registrationService.Register)
+	router.HandleFunc("/api/v1/register/activate/{token}", registrationService.Activate)
+	//router.HandleFunc("/api/v1/register/unsubscribe/{token}", registrationService.Unsubscribe)
 	router.HandleFunc("/api/v1/login", server.jsonWebTokenService.GenerateToken)
 	router.HandleFunc("/api/v1/login/refresh", server.jsonWebTokenService.RefreshToken)
 	endpointList = append(endpointList, "/api/v1/register")
+	endpointList = append(endpointList, "/api/v1/register/activate")
 	endpointList = append(endpointList, "/api/v1/login")
 
 	router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}", baseFarmURI), server.sendNotification)
@@ -390,7 +393,7 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 		changefeedCount = changefeedService.FeedCount()
 	}
 	systemStatus := &model.System{
-		Mode:                    server.app.Mode,
+		Mode:                    server.app.Config.Mode,
 		NotificationQueueLength: server.registry.GetNotificationService().QueueSize(),
 		Farms:                   len(server.registry.GetFarmServices()),
 		Changefeeds:             changefeedCount,

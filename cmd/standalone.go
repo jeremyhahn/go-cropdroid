@@ -5,7 +5,7 @@ package cmd
 import (
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
 	"github.com/spf13/cobra"
 )
@@ -30,10 +30,10 @@ var standaloneCmd = &cobra.Command{
 	changefeeds to enable real-time notifications).`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		App.Mode = common.MODE_STANDALONE
+		App.Config.Mode = common.MODE_STANDALONE
 		App.InitGormDB()
 
-		rsaKeyPair, serverConfig, serviceRegistry, restServices, farmTickerProvisionerChan, err := builder.NewGormConfigBuilder(
+		rsaKeyPair, serviceRegistry, restServices, farmTickerProvisionerChan, err := builder.NewGormConfigBuilder(
 			App, DataStore, AppStateTTL, AppStateTick).Build()
 
 		if err != nil {
@@ -41,9 +41,7 @@ var standaloneCmd = &cobra.Command{
 		}
 
 		App.KeyPair = rsaKeyPair
-		App.Config = serverConfig.(*config.Server)
-		//App.DeviceIndex = deviceIndex
-		//App.ChannelIndex = channelIndex
+		App.Mailer = service.NewMailer(App, nil)
 
 		farmServices := serviceRegistry.GetFarmServices()
 

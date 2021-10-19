@@ -127,6 +127,7 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&entity.Inventory{})
 	database.db.AutoMigrate(&config.Workflow{})
 	database.db.AutoMigrate(&config.WorkflowStep{})
+	database.db.AutoMigrate(&config.Registration{})
 	return nil
 }
 

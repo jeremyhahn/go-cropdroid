@@ -97,7 +97,7 @@ func TestFarmStateMachineUpdateLookupEmptyStore(t *testing.T) {
 		assert.Equal(t, ent.Result.Value, uint64(len(entries[i].Cmd)))
 	}
 
-	configClusterIdBytes := util.ClusterHashBytes(farm1.GetOrganizationID(), farm1.GetID())
+	configClusterIdBytes := util.ClusterHashAsBytes(farm1.GetOrganizationID(), farm1.GetID())
 	persisted, err := farmConfigMachine.Lookup(configClusterIdBytes)
 	assert.Nil(t, err)
 	assert.NotNil(t, persisted)

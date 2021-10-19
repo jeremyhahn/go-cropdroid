@@ -26,7 +26,7 @@ func NewRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegist
 	conditionRestService := NewConditionRestService(serviceRegistry.GetConditionService(), mapperRegistry.GetConditionMapper(), jwtService, jsonWriter)
 	scheduleRestService := NewScheduleRestService(serviceRegistry.GetScheduleService(), jwtService, jsonWriter)
 	algorithmRestService := NewAlgorithmRestService(serviceRegistry.GetAlgorithmService(), jwtService, jsonWriter)
-	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry.GetDeviceFactory(), jwtService, jsonWriter)
+	deviceFactoryRestService := NewDeviceFactoryRestService(serviceRegistry, jwtService, jsonWriter)
 	//farmFactoryRestService := NewFarmFactoryRestService(serviceRegistry.GetFarmFactory(), jwtService, jsonWriter)
 	workflowRestService := NewWorkflowRestService(serviceRegistry.GetWorkflowService(), jwtService, jsonWriter)
 	workflowStepRestService := NewWorkflowStepRestService(serviceRegistry.GetWorkflowStepService(), jwtService, jsonWriter)

@@ -2,11 +2,9 @@ package config
 
 // User represents a user account in the app
 type User struct {
-	ID uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	//Farms    []Farm `gorm:"many2many:permissions" yaml:"farmId" json:"farmId"`
-	Email    string `yaml:"email" json:"email"`
-	Password string `yaml:"password" json:"password"`
-	//Roles    []Role `yaml:"roles" json:"roles"`
+	ID         uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	Email      string `yaml:"email" json:"email"`
+	Password   string `yaml:"password" json:"password"`
 	Roles      []Role `gorm:"many2many:permissions" yaml:"roles" json:"roles"`
 	UserConfig `yaml:"-" json:"-"`
 }
@@ -51,5 +49,5 @@ func (entity *User) AddRole(role Role) {
 }
 
 func (entity *User) RedactPassword() {
-	entity.Password = "****"
+	entity.Password = "***"
 }

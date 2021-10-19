@@ -61,6 +61,7 @@ func TestPermissions(t *testing.T) {
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
+	permissionDAO := NewPermissionDAO(currentTest.logger, currentTest.gorm)
 
 	role := config.NewRole()
 	role.SetName("test")
@@ -85,11 +86,13 @@ func TestPermissions(t *testing.T) {
 	err = farmDAO.Save(farm)
 	assert.Nil(t, err)
 
-	currentTest.gorm.Create(&config.Permission{
+	permission := &config.Permission{
 		OrganizationID: 0,
 		FarmID:         farm.GetID(),
 		UserID:         user.GetID(),
-		RoleID:         role.GetID()})
+		RoleID:         role.GetID()}
+
+	permissionDAO.Save(permission)
 
 	// Verify Get(id)
 	persisted, err := farmDAO.Get(farm.GetID(), common.CONSISTENCY_LOCAL)
@@ -97,7 +100,7 @@ func TestPermissions(t *testing.T) {
 	assert.Equal(t, farm.GetID(), persisted.GetID())
 
 	// Verify GetByOrgAndUserID(orgID, userID)
-	userFarms, err := farmDAO.GetByOrgAndUserID(farm.GetOrganizationID(), user.GetID())
+	userFarms, err := farmDAO.GetByUserID(user.GetID())
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(userFarms))
 	assert.Equal(t, farm.GetID(), userFarms[0].GetID())

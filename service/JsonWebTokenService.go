@@ -25,6 +25,7 @@ import (
 
 type JsonWebTokenServiceImpl struct {
 	app             *app.App
+	orgDAO          dao.OrganizationDAO
 	farmDAO         dao.FarmDAO
 	deviceMapper    mapper.DeviceMapper
 	serviceRegistry ServiceRegistry
@@ -32,6 +33,7 @@ type JsonWebTokenServiceImpl struct {
 	rsaKeyPair      app.KeyPair
 	jsonWriter      common.HttpWriter
 	farmProvisioner provisioner.FarmProvisioner
+	defaultRole     config.RoleConfig
 	JsonWebTokenService
 	Middleware
 }
@@ -66,22 +68,22 @@ type JsonWebTokenClaims struct {
 	jwt.StandardClaims
 }
 
-func NewJsonWebTokenService(_app *app.App, farmDAO dao.FarmDAO,
-	deviceMapper mapper.DeviceMapper, serviceRegistry ServiceRegistry,
-	jsonWriter common.HttpWriter) (JsonWebTokenService, error) {
+func NewJsonWebTokenService(_app *app.App, orgDAO dao.OrganizationDAO,
+	farmDAO dao.FarmDAO, defaultRole config.RoleConfig, deviceMapper mapper.DeviceMapper,
+	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter) (JsonWebTokenService, error) {
 
 	keypair, err := app.NewRsaKeyPair(_app.Logger, _app.KeyDir)
 	if err != nil {
 		return nil, err
 	}
-	return CreateJsonWebTokenService(_app, farmDAO,
+	return CreateJsonWebTokenService(_app, orgDAO, farmDAO, defaultRole,
 		deviceMapper, serviceRegistry, jsonWriter, 60, keypair), nil // 1 hour expiration
 }
 
-func CreateJsonWebTokenService(_app *app.App,
-	farmDAO dao.FarmDAO, deviceMapper mapper.DeviceMapper,
-	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter,
-	expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
+func CreateJsonWebTokenService(_app *app.App, orgDAO dao.OrganizationDAO,
+	farmDAO dao.FarmDAO, defaultRole config.RoleConfig,
+	deviceMapper mapper.DeviceMapper, serviceRegistry ServiceRegistry,
+	jsonWriter common.HttpWriter, expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
 
 	return &JsonWebTokenServiceImpl{
 		app:             _app,
@@ -90,7 +92,8 @@ func CreateJsonWebTokenService(_app *app.App,
 		serviceRegistry: serviceRegistry,
 		jsonWriter:      jsonWriter,
 		expiration:      time.Duration(expiration),
-		rsaKeyPair:      rsaKeyPair}
+		rsaKeyPair:      rsaKeyPair,
+		defaultRole:     defaultRole}
 }
 
 func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
@@ -104,7 +107,6 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 	service.app.Logger.Debugf("Claims: %+v", claims)
 
 	var roles []config.Role
-	//var farmConfig *config.Farm
 	var farmConfig config.FarmConfig
 	var isFarmMember = false
 
@@ -139,27 +141,11 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 
 	if orgID == 0 && farmID > 0 {
 
-		// TODO: Refactor to use RegistryService!
-		// Try to fet the farm from global app config first
-		for _, farm := range service.app.Config.GetFarms() {
-			if farm.GetID() == farmID {
-				farmConfig = &farm
-				break
-			}
+		farmService := service.serviceRegistry.GetFarmService(farmID)
+		if farmService == nil {
+			return nil, fmt.Errorf("Farm not found: %d", farmID)
 		}
-
-		// Look it up from the database
-		if farmConfig == nil {
-			farm, err := service.farmDAO.Get(farmID, common.CONSISTENCY_CACHED)
-			if err != nil {
-				service.app.Logger.Errorf("Error: %s", err)
-				if err.Error() == "record not found" {
-					return nil, errors.New("Farm not found")
-				}
-				return nil, errors.New("Internal server error")
-			}
-			farmConfig = farm
-		}
+		farmConfig = farmService.GetConfig()
 
 		for _, user := range farmConfig.GetUsers() {
 			if user.GetEmail() == claims.Email {
@@ -169,7 +155,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 			}
 		}
 
-	} else if err == nil && farmID > 0 {
+	} else if orgID > 0 && farmID > 0 {
 
 		var isOrgMember = false
 
@@ -193,6 +179,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 			if org.GetID() == orgID {
 				for _, user := range org.GetUsers() {
 					if user.GetEmail() == claims.Email {
+						isFarmMember = true
 						roles = user.GetRoles()
 						break
 					}
@@ -200,9 +187,9 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 				for _, farm := range org.GetFarms() {
 					if farm.GetID() == farmID {
 						farmConfig = &farm
-						isFarmMember = true
 						for _, user := range farm.GetUsers() {
 							if user.GetEmail() == claims.Email {
+								isFarmMember = true
 								roles = user.GetRoles()
 								break
 							}
@@ -214,16 +201,8 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 			//currentConfiguredOrgIDs = append(currentConfiguredOrgIDs, org.GetID())
 		}
 	} else {
-		// No farms assigned to user
-		if organizations[0].Roles[0] != common.DEFAULT_ROLE {
-			errmsg := fmt.Sprintf("Only admins can create farms")
-			service.app.Logger.Errorf("[UNAUTHORIZED] Unauthorized attempt to create farm: user=%s, farm=%d", claims.Email, farmID)
-			http.Error(w, errmsg, http.StatusBadRequest)
-		}
-		roles = append(roles, config.Role{
-			ID:   common.DEFAULT_ROLE_ID,
-			Name: common.DEFAULT_ROLE,
-		})
+		// No orgs or farms assigned to user, therefore no role or permissions either
+		roles = append(roles, *service.defaultRole.(*config.Role))
 	}
 
 	if !isFarmMember && farmID > 0 {
@@ -247,22 +226,20 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 	// TODO map[index] instead of loop
 	for _, farmService := range service.serviceRegistry.GetFarmServices() {
 		if farmService.GetFarmID() == farmID {
-			return CreateSession(service.app.Logger, service.farmDAO,
-				farmService, user), nil
+			return CreateSession(service.app.Logger, service.orgDAO,
+				service.farmDAO, farmService, user), nil
 		}
 	}
 
-	/*
-		farmService, err := CreateFarmService(service.app, service.farmDAO, service.app.FarmStore,
-			 farmConfig, service.deviceMapper, service.serviceRegistry)
-		if err != nil {
-			service.app.Logger.Errorf("Error: %s", err)
-			return nil, err
-		}
-		return CreateSession(service.app.Logger, farmService, user), nil
-	*/
+	// farmService, err := CreateFarmService(service.app, service.farmDAO, service.app.FarmStore,
+	// 	 farmConfig, service.deviceMapper, service.serviceRegistry)
+	// if err != nil {
+	// 	service.app.Logger.Errorf("Error: %s", err)
+	// 	return nil, err
+	// }
+	// return CreateSession(service.app.Logger, farmService, user), nil
 
-	return CreateSession(service.app.Logger, service.farmDAO, nil, user), nil
+	return CreateSession(service.app.Logger, service.orgDAO, service.farmDAO, nil, user), nil
 	//return nil, errors.New("Farm not found in service registry")
 }
 
@@ -337,11 +314,16 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 		return
 	}
 
-	service.app.Logger.Errorf("user: %+v", user)
-	service.app.Logger.Errorf("userAccount: %+v", userAccount)
-	service.app.Logger.Errorf("orgs: %+v", orgs)
-	service.app.Logger.Errorf("org.len: %+v", len(orgs))
-	service.app.Logger.Errorf("org[0].Farms: %+v", orgs[0].GetFarms())
+	if len(userAccount.GetRoles()) == 0 {
+		// Must be a new user
+		userAccount.SetRoles([]common.Role{service.defaultRole.(*config.Role)})
+	}
+
+	service.app.Logger.Debugf("user: %+v", user)
+	service.app.Logger.Debugf("userAccount: %+v", userAccount)
+	service.app.Logger.Debugf("orgs: %+v", orgs)
+	service.app.Logger.Debugf("org.len: %+v", len(orgs))
+	service.app.Logger.Debugf("org[0].Farms.len: %+v", len(orgs[0].GetFarms()))
 
 	roleClaims := make([]string, len(userAccount.GetRoles()))
 	for j, role := range userAccount.GetRoles() {
@@ -380,9 +362,8 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, JsonWebTokenClaims{
 		//ServerID: service.app.Config.GetID(),
-		UserID: userAccount.GetID(),
-		Email:  userAccount.GetEmail(),
-		//Organizations: orgClaims,
+		UserID:        userAccount.GetID(),
+		Email:         userAccount.GetEmail(),
 		Organizations: string(orgClaimsJson),
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    common.APPNAME,
@@ -397,8 +378,8 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 
 	service.app.Logger.Debugf("Genearted JSON token: %s", tokenString)
 
-	tokenDTO := viewmodel.JsonWebToken{Value: tokenString}
-	service.jsonWriter.Write(w, http.StatusOK, tokenDTO)
+	jwtViewModel := viewmodel.JsonWebToken{Value: tokenString}
+	service.jsonWriter.Write(w, http.StatusOK, jwtViewModel)
 }
 
 func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req *http.Request) {
@@ -407,11 +388,15 @@ func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req 
 		if token.Valid {
 			userService := service.serviceRegistry.GetUserService()
 			userAccount, orgs, err := userService.Refresh(claims.UserID)
-
 			if err != nil {
 				service.app.Logger.Errorf("Error refreshing token: %s", err)
 				service.jsonWriter.Write(w, http.StatusUnauthorized, viewmodel.JsonWebToken{Error: "Invalid token"})
 				return
+			}
+
+			if len(userAccount.GetRoles()) == 0 {
+				// Must be a new user
+				userAccount.SetRoles([]common.Role{service.defaultRole.(*config.Role)})
 			}
 
 			roleClaims := make([]string, len(userAccount.GetRoles()))

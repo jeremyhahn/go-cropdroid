@@ -23,17 +23,21 @@ type Session interface {
 type DefaultSession struct {
 	logger      *logging.Logger
 	orgID       uint64
+	orgDAO      dao.OrganizationDAO
 	farmDAO     dao.FarmDAO
 	farmService FarmService
 	user        common.UserAccount
 	Session
 }
 
-func CreateSession(logger *logging.Logger, farmDAO dao.FarmDAO,
-	farmService FarmService, user common.UserAccount) Session {
+func CreateSession(logger *logging.Logger, orgDAO dao.OrganizationDAO,
+	farmDAO dao.FarmDAO, farmService FarmService,
+	user common.UserAccount) Session {
+
 	return &DefaultSession{
 		logger:      logger,
 		orgID:       0,
+		orgDAO:      orgDAO,
 		farmDAO:     farmDAO,
 		farmService: farmService,
 		user:        user}
@@ -55,7 +59,8 @@ func (session *DefaultSession) SetLogger(logger *logging.Logger) {
 }
 
 func (session *DefaultSession) GetFarms() ([]config.Farm, error) {
-	return session.farmDAO.GetByOrgAndUserID(session.orgID, session.GetUser().GetID())
+
+	return session.farmDAO.GetByUserID(session.GetUser().GetID())
 }
 
 func (session *DefaultSession) GetFarmService() FarmService {

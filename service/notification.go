@@ -27,12 +27,12 @@ func (ns *NotificationServiceImpl) QueueSize() int {
 
 func (ns *NotificationServiceImpl) Enqueue(notification common.Notification) error {
 	if ns.mailer != nil {
-		ns.mailer.Send(notification.GetTitle(), notification.GetType(), notification.GetMessage())
+		ns.mailer.Send(notification.GetType(), notification.GetMessage())
 	}
 	ns.logger.Debugf("Enqueuing notification %v+", notification)
 	if notification.GetPriority() == common.NOTIFICATION_PRIORITY_HIGH {
 		if ns.mailer != nil {
-			ns.mailer.Send(notification.GetTitle(), notification.GetType(), notification.GetMessage())
+			ns.mailer.Send(notification.GetType(), notification.GetMessage())
 		}
 	}
 	select {

@@ -30,7 +30,7 @@ func (writer *JsonWriter) Write(w http.ResponseWriter, status int, response inte
 		errResponse := JsonResponse{Error: fmt.Sprintf("JsonWriter failed to marshal response entity %s %+v", reflect.TypeOf(response), response)}
 		errBytes, err := json.Marshal(errResponse)
 		if err != nil {
-			errResponse := JsonResponse{Error: "JsonWriter internal server error"}
+			errResponse := JsonResponse{Error: fmt.Sprintf("JsonWriter internal server error: %s", err.Error())}
 			errBytes, _ := json.Marshal(errResponse)
 			http.Error(w, string(errBytes), http.StatusInternalServerError)
 		}
@@ -40,6 +40,12 @@ func (writer *JsonWriter) Write(w http.ResponseWriter, status int, response inte
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(jsonResponse)
+}
+
+func (writer *JsonWriter) Success200(w http.ResponseWriter, response interface{}) {
+	writer.Write(w, http.StatusOK, JsonResponse{
+		Success: true,
+		Payload: response})
 }
 
 func (writer *JsonWriter) Error200(w http.ResponseWriter, err error) {

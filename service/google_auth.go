@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
@@ -77,12 +78,19 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 
 		userAccount, err := service.Register(&UserCredentials{
 			Email:    tokenInfo.Email,
-			Password: idToken})
+			Password: idToken}, "")
 		if err != nil {
 			return nil, nil, err
 		}
 
-		userAccount.SetRoles([]common.Role{&model.Role{ID: 1, Name: common.DEFAULT_ROLE}})
+		roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
+		if err != nil {
+			return nil, nil, err
+		}
+		userAccount.SetRoles([]common.Role{
+			&model.Role{
+				ID:   roleConfig.GetID(),
+				Name: roleConfig.GetName()}})
 
 		// provisionerParams := &provisioner.ProvisionerParams{}
 
@@ -143,13 +151,13 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 			organizations = append(organizations, &org)
 		}*/
 
-	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID())
+	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID(), true)
 	if err != nil {
 		service.app.Logger.Errorf("Database error: %s", err)
 		return nil, nil, ErrInternalDatabase
 	}
 	if len(organizations) == 0 {
-		farms, err := service.farmDAO.GetByOrgAndUserID(0, userEntity.GetID())
+		farms, err := service.farmDAO.GetByUserID(userEntity.GetID())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -163,8 +171,10 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 	return service.mapper.MapUserEntityToModel(userEntity), organizations, nil
 }
 
-func (service *GoogleAuthService) Register(userCredentials *UserCredentials) (common.UserAccount, error) {
-	if !service.app.EnableRegistrations {
+func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
+	baseURI string) (common.UserAccount, error) {
+
+	if !service.app.Config.EnableRegistrations {
 		return nil, ErrRegistrationDisabled
 	}
 	email := userCredentials.Email
@@ -184,19 +194,27 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials) (co
 	// } else {
 	// 	roleConfig, err = service.roleDAO.GetByName(common.ROLE_ADMIN)
 	// }
-	roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
+	//roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
 	userConfig := &config.User{
 		Email:    email,
-		Password: string(encrypted),
-		Roles:    []config.Role{*roleConfig.(*config.Role)}}
+		Password: string(encrypted)}
+	//	Roles:    []config.Role{*roleConfig.(*config.Role)}}
+
 	err = service.userDAO.Create(userConfig) // creates userConfig.id
 	if err != nil {
 		return nil, err
 	}
+
 	userAccount := &model.User{
 		ID:       userConfig.GetID(),
 		Email:    email,
-		Password: token,
-		Roles:    []common.Role{roleConfig}}
+		Password: token}
+
 	return userAccount, err
+}
+
+func (service *GoogleAuthService) Activate(registrationID uint64) (common.UserAccount, error) {
+	err := errors.New("GoogleAuthService.Activate not implemented")
+	service.app.Logger.Error(err)
+	return nil, err
 }

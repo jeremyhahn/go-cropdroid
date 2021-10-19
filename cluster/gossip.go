@@ -507,7 +507,7 @@ func (cluster *Gossip) Provision(farmConfig config.FarmConfig) error {
 		cluster.GossipAddress(), cluster.raft.GetPeers())
 
 	stateClusterID := uint64(farmConfig.GetID())
-	configClusterID := util.ClusterHash(farmConfig.GetOrganizationID(), farmConfig.GetID())
+	configClusterID := util.NewClusterHash(farmConfig.GetOrganizationID(), farmConfig.GetID())
 
 	bytes, err := json.Marshal(&gossip.ProvisionRequest{
 		StateClusterID:  stateClusterID,

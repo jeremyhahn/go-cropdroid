@@ -2,7 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug cropdroid config",
+            "name": "Debug cropdroid config show",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "${workspaceRoot}",
+            "args": ["config", "--debug", "--show"],
+            "showLog": true,
+            "debugAdapter": "legacy"
+        }, {
+            "name": "Debug cropdroid config (cockroachdb)",
             "type": "go",
             "request": "launch",
             "mode": "debug",

@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"net/smtp"
 	"strconv"
 
@@ -18,9 +20,13 @@ type GMailer struct {
 	username  string
 	password  string
 	recipient string
+	common.Mailer
 }
 
 func NewMailer(app *app.App, smtpConfig config.SmtpConfig) common.Mailer {
+	if smtpConfig == nil {
+		smtpConfig = app.Config.Smtp
+	}
 	return &GMailer{
 		app:       app,
 		enabled:   smtpConfig.IsEnabled(),
@@ -31,15 +37,19 @@ func NewMailer(app *app.App, smtpConfig config.SmtpConfig) common.Mailer {
 		recipient: smtpConfig.GetRecipient()}
 }
 
-func (mailer *GMailer) Send(farmName, subject, message string) error {
+func (mailer *GMailer) SetRecipient(recipient string) {
+	mailer.recipient = recipient
+}
+
+func (mailer *GMailer) Send(subject, message string) error {
 	if !mailer.enabled {
 		mailer.app.Logger.Warningf("Disabled!")
 		return nil
 	}
 
-	mailer.app.Logger.Debugf("subject=[%s] %s, message=%s", farmName, subject, message)
+	mailer.app.Logger.Debugf("subject=[%s] %s, message=%s", subject, message)
 
-	if mailer.host == "" || mailer.port != 0 || mailer.username == "" || mailer.password == "" || mailer.recipient == "" {
+	if mailer.host == "" || mailer.port <= 0 || mailer.username == "" || mailer.password == "" || mailer.recipient == "" {
 		err := fmt.Errorf("Invalid SMTP configuration")
 		mailer.app.Logger.Error(err)
 		return err
@@ -47,7 +57,7 @@ func (mailer *GMailer) Send(farmName, subject, message string) error {
 
 	msg := "From: " + mailer.username + "\n" +
 		"To: " + mailer.recipient + "\n" +
-		"Subject: " + farmName + " " + subject + "\n\n" + message
+		"Subject: " + subject + "\n\n" + message
 
 	err := smtp.SendMail(mailer.host+":"+strconv.Itoa(mailer.port),
 		smtp.PlainAuth("", mailer.username, mailer.password, mailer.host),
@@ -59,4 +69,41 @@ func (mailer *GMailer) Send(farmName, subject, message string) error {
 	}
 
 	return nil
+}
+
+func (mailer *GMailer) SendHtml(template, subject string, data interface{}) (bool, error) {
+	mime := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+
+	body, err := mailer.parseTemplate(template, data)
+	if err != nil {
+		return false, err
+	}
+
+	// mailer.app.Logger.Debugf("body=%s", body)
+	// mailer.app.Logger.Debugf("data=%+v", data)
+
+	msg := "From: " + mailer.username + "\n" +
+		"To: " + mailer.recipient + "\n" +
+		"Subject: " + subject + "\n" + mime + "\n" + body
+
+	if err := smtp.SendMail(mailer.host+":"+strconv.Itoa(mailer.port),
+		smtp.PlainAuth("", mailer.username, mailer.password, mailer.host),
+		mailer.username, []string{mailer.recipient}, []byte(msg)); err != nil {
+
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (mailer *GMailer) parseTemplate(templateFileName string, data interface{}) (string, error) {
+	t, err := template.ParseFiles(templateFileName)
+	if err != nil {
+		return "", err
+	}
+	buf := new(bytes.Buffer)
+	if err = t.Execute(buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

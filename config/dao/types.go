@@ -1,14 +1,14 @@
 package dao
 
-import (
-	"github.com/jeremyhahn/go-cropdroid/config"
-)
+import "github.com/jeremyhahn/go-cropdroid/config"
 
 type OrganizationDAO interface {
 	First() (config.OrganizationConfig, error) // used by test only
 	GetAll() ([]config.Organization, error)    // used by test only
 	//Get(orgID uint64) (config.OrganizationConfig, error)
-	GetByUserID(userID uint64) ([]config.OrganizationConfig, error)
+	GetByUserID(userID uint64, shallow bool) ([]config.OrganizationConfig, error)
+	//GetByName(name string) (config.OrganizationConfig, error)
+	Get(id uint64) (config.OrganizationConfig, error)
 	//Find(orgID int) ([]config.Organization, error)
 	Save(organization config.OrganizationConfig) error
 	CreateUserRole(org config.OrganizationConfig, user config.UserConfig, role config.RoleConfig) error // used by test only
@@ -22,7 +22,7 @@ type FarmDAO interface {
 	//First() (config.FarmConfig, error)
 	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
 	GetAll() ([]config.Farm, error)
-	GetByOrgAndUserID(orgID, userID uint64) ([]config.Farm, error)
+	GetByUserID(userID uint64) ([]config.Farm, error)
 	Save(farm config.FarmConfig) error
 }
 
@@ -41,7 +41,7 @@ type DeviceConfigDAO interface {
 }
 
 type UserDAO interface {
-	GetByID(userID uint64) (config.UserConfig, error)
+	Get(orgID, userID uint64) (config.UserConfig, error)
 	GetByEmail(email string) (config.UserConfig, error)
 	Create(user config.UserConfig) error
 	Save(user config.UserConfig) error // used by test only
@@ -111,4 +111,16 @@ type WorkflowStepDAO interface {
 	Delete(condition config.WorkflowStepConfig) error
 	Get(id uint64) (config.WorkflowStepConfig, error)
 	GetByWorkflowID(id uint64) ([]config.WorkflowStep, error)
+}
+
+type RegistrationDAO interface {
+	Save(registration config.RegistrationConfig) error
+	Get(id uint64) (config.RegistrationConfig, error)
+	Delete(registration config.RegistrationConfig) error
+}
+
+type PermissionDAO interface {
+	Save(permission config.PermissionConfig) error
+	Get(id uint64) (config.PermissionConfig, error)
+	Delete(permission config.PermissionConfig) error
 }

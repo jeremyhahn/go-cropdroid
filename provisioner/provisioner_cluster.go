@@ -41,7 +41,7 @@ func NewRaftFarmProvisioner(logger *logging.Logger, gossip cluster.GossipCluster
 
 func (provisioner *RaftFarmProvisioner) Provision(userAccount common.UserAccount, params *ProvisionerParams) (config.FarmConfig, error) {
 	userConfig := provisioner.userMapper.MapUserModelToEntity(userAccount)
-	farmConfig, err := provisioner.initializer.BuildConfig(userConfig)
+	farmConfig, err := provisioner.initializer.BuildConfig(userConfig, userAccount.GetRoles()[0])
 	if err != nil {
 		return nil, err
 	}

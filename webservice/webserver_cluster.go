@@ -20,6 +20,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
@@ -33,28 +34,31 @@ var (
 )
 
 type Webserver struct {
-	mutex                     sync.Mutex
 	app                       *app.App
-	httpServer                *http.Server
-	router                    *mux.Router
 	baseURI                   string
-	registry                  service.ServiceRegistry
-	restServices              []rest.RestService
+	closeChan                 chan bool
 	eventType                 string
 	endpointList              []string
-	closeChan                 chan bool
+	eventLogService           service.EventLogService
+	httpServer                *http.Server
 	farmTickerProvisionerChan chan uint64
+	farmTickerSubrouter       *mux.Router
 	farmHubs                  map[uint64]*websocket.FarmHub
 	farmHubMutex              sync.Mutex
+	gossipCluster             cluster.GossipCluster
 	jsonWebTokenService       service.JsonWebTokenService
+	mutex                     sync.Mutex
 	notificationService       service.NotificationService
 	notificationHubs          map[int]*websocket.NotificationHub
 	notificationHubMutex      sync.Mutex
-	farmTickerSubrouter       *mux.Router
-	eventLogService           service.EventLogService
+	raftCluster               cluster.RaftCluster
+	registry                  service.ServiceRegistry
+	restServices              []rest.RestService
+	router                    *mux.Router
 }
 
-func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
+func NewWebserver(app *app.App, gossipCluster cluster.GossipCluster,
+	raftCluster cluster.RaftCluster, serviceRegistry service.ServiceRegistry,
 	restServices []rest.RestService, farmTickerProvisionerChan chan uint64) *Webserver {
 
 	webserver := &Webserver{
@@ -62,7 +66,6 @@ func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
 		app:                       app,
 		router:                    mux.NewRouter().StrictSlash(true),
 		baseURI:                   "/api/v1",
-		registry:                  serviceRegistry,
 		restServices:              restServices,
 		eventType:                 "WebServer",
 		endpointList:              make([]string, 0),
@@ -72,6 +75,8 @@ func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
 		farmHubMutex:              sync.Mutex{},
 		jsonWebTokenService:       serviceRegistry.GetJsonWebTokenService(),
 		notificationService:       serviceRegistry.GetNotificationService(),
+		gossipCluster:             gossipCluster,
+		raftCluster:               raftCluster,
 		notificationHubs:          make(map[int]*websocket.NotificationHub),
 		notificationHubMutex:      sync.Mutex{},
 		eventLogService:           serviceRegistry.GetEventLogService()}
@@ -106,7 +111,7 @@ func (server *Webserver) Run() {
 	server.buildRoutes()
 
 	// Static content web server
-	fs := http.FileServer(http.Dir("public_html"))
+	fs := http.FileServer(http.Dir(common.HTTP_PUBLIC_HTML))
 	server.router.PathPrefix("/").Handler(fs)
 	http.Handle("/", server.httpServer.Handler)
 
@@ -179,7 +184,7 @@ func (server *Webserver) buildRoutes() {
 	baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", server.baseURI)
 	//baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseOrgURI)
 
-	registrationService := rest.NewRegisterRestService(server.app, server.registry.GetUserService(), jsonWriter)
+	registrationService := rest.NewRegistrationRestService(server.app, server.registry.GetUserService(), jsonWriter)
 
 	// REST Handlers - Public Access
 	router.HandleFunc("/endpoints", server.endpoints)
@@ -416,26 +421,26 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 			NumGC:       memstats.NumGC,
 			NumForcedGC: memstats.NumForcedGC}}
 
-	if server.app.GossipCluster != nil {
+	if server.gossipCluster != nil {
 		systemStatus.GossipStats = &model.GossipStats{
-			NumNodes: server.app.GossipCluster.GetMemberCount(),
-			//HealthScore: server.app.GossipCluster.GetHealthScore(),
-			Serf:     server.app.GossipCluster.GetSerfStats(),
-			Hashring: &model.Hashring{Loads: server.app.GossipCluster.GetHashring().GetLoads()}}
+			NumNodes: server.gossipCluster.GetMemberCount(),
+			//HealthScore: server.gossipCluster.GetHealthScore(),
+			Serf:     server.gossipCluster.GetSerfStats(),
+			Hashring: &model.Hashring{Loads: server.gossipCluster.GetHashring().GetLoads()}}
 	}
 
-	if server.app.RaftCluster != nil {
-		clusterID := server.app.RaftCluster.GetParams().GetClusterID()
-		leaderID, ready, _ := server.app.RaftCluster.GetNodeHost().GetLeaderID(clusterID)
+	if server.raftCluster != nil {
+		clusterID := server.raftCluster.GetParams().GetClusterID()
+		leaderID, ready, _ := server.raftCluster.GetNodeHost().GetLeaderID(clusterID)
 		systemStatus.RaftStats = &model.RaftStats{
-			NumClusters: server.app.RaftCluster.GetClusterCount(),
-			NumNodes:    server.app.RaftCluster.GetNodeCount(),
+			NumClusters: server.raftCluster.GetClusterCount(),
+			NumNodes:    server.raftCluster.GetNodeCount(),
 			LeaderID:    int(leaderID),
-			IsLeader:    server.app.RaftCluster.IsLeader(clusterID),
+			IsLeader:    server.raftCluster.IsLeader(clusterID),
 			IsReady:     ready,
-			Params:      server.app.RaftCluster.GetParams(),
-			Clusters:    server.app.RaftCluster.GetClusterStatus(),
-			Hashring:    &model.Hashring{Loads: server.app.RaftCluster.GetHashring().GetLoads()}}
+			Params:      server.raftCluster.GetParams(),
+			Clusters:    server.raftCluster.GetClusterStatus(),
+			Hashring:    &model.Hashring{Loads: server.raftCluster.GetHashring().GetLoads()}}
 	}
 
 	rest.NewJsonWriter().Write(w, http.StatusOK, systemStatus)

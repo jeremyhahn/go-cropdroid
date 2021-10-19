@@ -58,10 +58,11 @@ type FarmChannels struct {
 }
 
 type UserCredentials struct {
-	OrganizationID uint64 `json:"orgId"`
-	Email          string `json:"email"`
-	Password       string `json:"password"`
-	AuthType       int    `json:"authType"`
+	OrgID    uint64 `json:"orgId"`
+	OrgName  string `json:"orgName"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	AuthType int    `json:"authType"`
 }
 
 type JsonWebTokenService interface {
@@ -77,9 +78,10 @@ type Middleware interface {
 }
 
 type AuthService interface {
-	Get(email string) (common.UserAccount, error)
+	//Get(email string) (common.UserAccount, error)
 	Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error)
-	Register(userCredentials *UserCredentials) (common.UserAccount, error)
+	Register(userCredentials *UserCredentials, baseURI string) (common.UserAccount, error)
+	Activate(registrationID uint64) (common.UserAccount, error)
 }
 
 type UserService interface {
@@ -87,7 +89,7 @@ type UserService interface {
 	GetCurrentUser() (common.UserAccount, error)
 	//GetUserByID(userId int) (common.UserAccount, error)
 	GetUserByEmail(email string) (common.UserAccount, error)
-	GetRole(userID, orgID int) (config.RoleConfig, error)
+	//GetRole(orgID int) (config.RoleConfig, error)
 	Refresh(userID uint64) (common.UserAccount, []config.OrganizationConfig, error)
 	AuthService
 }
@@ -193,7 +195,7 @@ type FarmService interface {
 	InitializeState(saveToStateStore bool) error
 	IsRunning() bool
 	Poll()
-	PollCluster()
+	//PollCluster(raftCluster cluster.RaftCluster)
 	PublishConfig(farmConfig config.FarmConfig) error
 	PublishState(farmState state.FarmStateMap) error
 	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error

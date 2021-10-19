@@ -336,16 +336,29 @@ type RoleConfig interface {
 	GetName() string
 }
 
-/*
-type FarmConfigChange struct {
-	Type       string      `json:"type"`
-	FarmConfig FarmConfig  `json:"farmConfig"`
-	Payload    interface{} `json:"payload"`
-}*/
+type RegistrationConfig interface {
+	GetID() uint64
+	SetEmail(email string)
+	GetEmail() string
+	SetPassword(pw string)
+	GetPassword() string
+	RedactPassword()
+	GetCreatedAt() int64
+	SetOrganizationID(id uint64)
+	GetOrganizationID() uint64
+	SetOrganizationName(name string)
+	GetOrganizationName() string
+}
 
-// type FarmConfigStorer interface {
-// 	Len() int
-// 	Put(farmID int, v FarmConfig) error
-// 	Get(farmID int) (FarmConfig, error)
-// 	GetAll() []FarmConfig
-// }
+type PermissionConfig interface {
+	GetID() uint64
+	SetID(id uint64)
+	GetOrgID() uint64
+	SetOrgID(id uint64)
+	GetFarmID() uint64
+	SetFarmID(id uint64)
+	GetUserID() uint64
+	SetUserID(id uint64)
+	GetRoleID() uint64
+	SetRoleID(id uint64)
+}

@@ -9,6 +9,8 @@ import (
 type GormDaoRegistry struct {
 	logger          *logging.Logger
 	gormDB          GormDB
+	permissionDAO   dao.PermissionDAO
+	registrationDAO dao.RegistrationDAO
 	orgDAO          dao.OrganizationDAO
 	farmDAO         dao.FarmDAO
 	deviceDAO       dao.DeviceDAO
@@ -31,6 +33,8 @@ func NewGormRegistry(logger *logging.Logger, gormDB GormDB) datastore.DatastoreR
 	return &GormDaoRegistry{
 		logger:          logger,
 		gormDB:          gormDB,
+		permissionDAO:   NewPermissionDAO(logger, db),
+		registrationDAO: NewRegistrationDAO(logger, db),
 		orgDAO:          NewOrganizationDAO(logger, db),
 		farmDAO:         NewFarmDAO(logger, db),
 		deviceDAO:       NewDeviceDAO(logger, db),
@@ -146,6 +150,22 @@ func (registry *GormDaoRegistry) GetUserDAO() dao.UserDAO {
 
 func (registry *GormDaoRegistry) SetUserDAO(dao dao.UserDAO) {
 	registry.userDAO = dao
+}
+
+func (registry *GormDaoRegistry) GetRegistrationDAO() dao.RegistrationDAO {
+	return registry.registrationDAO
+}
+
+func (registry *GormDaoRegistry) SetRegistrationDAO(regDAO dao.RegistrationDAO) {
+	registry.registrationDAO = regDAO
+}
+
+func (registry *GormDaoRegistry) GetPermissionDAO() dao.PermissionDAO {
+	return registry.permissionDAO
+}
+
+func (registry *GormDaoRegistry) SetPermissionDAO(permissionDAO dao.PermissionDAO) {
+	registry.permissionDAO = permissionDAO
 }
 
 func (registry *GormDaoRegistry) GetRoleDAO() dao.RoleDAO {

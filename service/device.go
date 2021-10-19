@@ -298,7 +298,7 @@ func (service *IOSwitcherDeviceService) SetMetricValue(key string, value float64
 		service.app.Logger.Errorf("Error: %s", err)
 		service.error("Farm.poll", "Farm.poll", err)
 	}
-	if service.app.Mode == common.CONFIG_MODE_VIRTUAL || service.app.Mode == common.MODE_STANDALONE {
+	if service.app.Config.Mode == common.CONFIG_MODE_VIRTUAL || service.app.Config.Mode == common.MODE_STANDALONE {
 		err := service.device.(*device.VirtualIOSwitch).WriteState(deviceState)
 		if err != nil {
 			return err

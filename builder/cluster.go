@@ -28,35 +28,40 @@ type ClusterConfigBuilder struct {
 	appStateTTL       int
 	appStateTick      int
 	datastoreRegistry datastore.DatastoreRegistry
-	serviceRegistry   service.ServiceRegistry
+	serviceRegistry   service.ClusterServiceRegistry
 	mapperRegistry    mapper.MapperRegistry
 	changefeeders     map[string]datastore.Changefeeder
-	ConfigBuilder
+	gossipCluster     cluster.GossipCluster
+	raftCluster       cluster.RaftCluster
 }
 
 func NewClusterConfigBuilder(_app *app.App, params *cluster.ClusterParams,
-	dataStore string, appStateTTL, appStateTick int) ConfigBuilder {
+	gossipCluster cluster.GossipCluster, raftCluster cluster.RaftCluster,
+	dataStore string, appStateTTL, appStateTick int) *ClusterConfigBuilder {
 
 	return &ClusterConfigBuilder{
-		app:    _app,
-		params: params}
+		app:           _app,
+		params:        params,
+		gossipCluster: gossipCluster,
+		raftCluster:   raftCluster}
 }
 
 func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
-	service.ServiceRegistry, []rest.RestService, chan uint64, error) {
+	service.ClusterServiceRegistry, []rest.RestService, chan uint64, error) {
 
 	builder.mapperRegistry = mapper.CreateRegistry()
 	builder.datastoreRegistry = builder.params.GetDatastoreRegistry()
 	// builder.serviceRegistry = service.CreateClusterServiceRegistry(builder.app,
 	// 	builder.datastoreRegistry, builder.mapperRegistry)
-	builder.serviceRegistry = service.CreateServiceRegistry(builder.app,
-		builder.datastoreRegistry, builder.mapperRegistry)
+	builder.serviceRegistry = service.CreateClusterServiceRegistry(builder.app,
+		builder.datastoreRegistry, builder.mapperRegistry,
+		builder.gossipCluster, builder.raftCluster)
 
 	gormInitializer := gorm.NewGormInitializer(builder.app.Logger,
 		builder.app.GormDB, builder.app.Location, builder.app.Mode)
 
 	farmProvisioner := provisioner.NewRaftFarmProvisioner(
-		builder.app.Logger, builder.app.GossipCluster, builder.app.Location,
+		builder.app.Logger, builder.gossipCluster, builder.app.Location,
 		builder.datastoreRegistry.NewFarmDAO(),
 		builder.mapperRegistry.GetUserMapper(),
 		//		builder.params.GetFarmProvisionerChan(),
@@ -95,7 +100,9 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 	//builder.app.Config = serverConfig.(*config.Server)
 	//builder.app.Logger.Debugf("builder.app.Config: %+v", builder.app.Config)
 
+	orgDAO := gorm.NewOrganizationDAO(builder.app.Logger, builder.app.GORM)
 	farmDAO := gorm.NewFarmDAO(builder.app.Logger, builder.app.GORM)
+	roleDAO := gorm.NewRoleDAO(builder.app.Logger, builder.app.GORM)
 	farmConfigs, err := farmDAO.GetAll()
 	if err != nil {
 		builder.app.Logger.Fatal(err)
@@ -173,7 +180,11 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 		builder.app.Logger.Fatal(err)
 	}
 	//farmConfigStore := store.NewGormFarmConfigStore(farmDAO, 1)
-	jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO,
+	defaultRole, err := roleDAO.GetByName(builder.app.Config.DefaultRole)
+	if err != nil {
+		builder.app.Logger.Fatal(err)
+	}
+	jwtService := service.CreateJsonWebTokenService(builder.app, orgDAO, farmDAO, defaultRole,
 		builder.mapperRegistry.GetDeviceMapper(), builder.serviceRegistry, jsonWriter,
 		525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
@@ -190,11 +201,11 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 	// deviceIndex := state.CreateDeviceIndex(farmFactory.GetDeviceIndexMap())
 	// channelIndex := state.CreateChannelIndex(farmFactory.GetChannelIndexMap())
 
-	if builder.app.DatastoreCDC {
-		changefeedService := service.NewChangefeedService(builder.app,
-			builder.serviceRegistry, builder.changefeeders)
-		builder.serviceRegistry.SetChangefeedService(changefeedService)
-	}
+	// if builder.app.DataStoreCDC {
+	// 	changefeedService := service.NewChangefeedService(builder.app,
+	// 		builder.serviceRegistry, builder.changefeeders)
+	// 	builder.serviceRegistry.SetChangefeedService(changefeedService)
+	// }
 
 	publicKey := string(rsaKeyPair.GetPublicBytes())
 
@@ -234,7 +245,7 @@ func (builder *ClusterConfigBuilder) createFarmStateStore(storeType int) state.F
 	case state.MEMORY_STORE:
 		farmStateStore = builder.newMemoryFarmStateStore()
 	case state.RAFT_STORE:
-		farmStateStore = cluster.NewRaftFarmStateStore(builder.app.Logger, builder.app.RaftCluster)
+		farmStateStore = cluster.NewRaftFarmStateStore(builder.app.Logger, builder.raftCluster)
 	default:
 		farmStateStore = builder.newMemoryFarmStateStore()
 	}
@@ -250,7 +261,7 @@ func (builder *ClusterConfigBuilder) createFarmConfigStore(storeType int) config
 		farmConfigStore = store.NewGormFarmConfigStore(farmDAO, 1)
 	case config.RAFT_MEMORY_STORE, config.RAFT_DISK_STORE:
 		farmConfigStore = cluster.NewRaftFarmConfigStore(builder.app.Logger,
-			builder.app.RaftCluster)
+			builder.raftCluster)
 	}
 	return farmConfigStore
 }
@@ -266,7 +277,7 @@ func (builder *ClusterConfigBuilder) createDeviceStateStore(storeType int, devic
 		// } else {
 		// 	deviceStateStore = cluster.NewRaftDeviceStore(builder.app.Logger, builder.app.RaftCluster)
 		// }
-		deviceStateStore = cluster.NewRaftDeviceStateStore(builder.app.Logger, builder.app.RaftCluster)
+		deviceStateStore = cluster.NewRaftDeviceStateStore(builder.app.Logger, builder.raftCluster)
 	default:
 		deviceStateStore = builder.newMemoryDeviceStateStore()
 	}
@@ -297,7 +308,7 @@ func (builder *ClusterConfigBuilder) createDeviceDataStore(storeType int) datast
 			builder.app.GORM, builder.app.GORMInitParams.Engine,
 			builder.app.Location)
 	case datastore.RAFT_STORE:
-		deviceDataStore = cluster.NewRaftDeviceStateStore(builder.app.Logger, builder.app.RaftCluster)
+		deviceDataStore = cluster.NewRaftDeviceStateStore(builder.app.Logger, builder.raftCluster)
 	case datastore.REDIS_TS:
 		deviceDataStore = datastore.NewRedisDataStore(":6379", "")
 	}

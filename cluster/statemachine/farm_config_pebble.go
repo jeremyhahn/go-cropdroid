@@ -172,7 +172,7 @@ func (d *FarmDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 		}
 		// farmConfig = s.hydrateConfigs(farmConfig)
 		// farmConfig.ParseConfigs()
-		configClusterID := util.ClusterHashBytes(farmConfig.GetOrganizationID(), farmConfig.GetID())
+		configClusterID := util.ClusterHashAsBytes(farmConfig.GetOrganizationID(), farmConfig.GetID())
 		wb.Set(configClusterID, e.Cmd, db.wo)
 		d.farmConfigChangeChan <- &farmConfig
 		ents[idx].Result = sm.Result{Value: uint64(len(ents[idx].Cmd))}

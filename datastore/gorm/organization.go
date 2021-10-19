@@ -100,16 +100,92 @@ func (dao *GormOrganizationDAO) CreateUserRole(org config.OrganizationConfig, us
 		OrganizationID: org.GetID()}).Error
 }
 
-func (dao *GormOrganizationDAO) GetByUserID(userID uint64) ([]config.OrganizationConfig, error) {
-	dao.logger.Debugf("Getting organization id for user.id %d", userID)
-	var orgs []config.Organization
+// func (dao *GormOrganizationDAO) GetByName(name string) (config.OrganizationConfig, error) {
+// 	dao.logger.Debugf("Fetching organization: %s", name)
+// 	var org config.Organization
+// 	if err := dao.db.
+// 		Preload("Farms").
+// 		Preload("Users").
+// 		Preload("Users.Roles").
+// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
+// 		Preload("Farms.Devices").
+// 		Preload("Farms.Devices.Configs").
+// 		Preload("Farms.Devices.Metrics").
+// 		Preload("Farms.Devices.Channels").
+// 		Preload("Farms.Devices.Channels.Conditions").
+// 		Preload("Farms.Devices.Channels.Schedule").
+// 		Preload("Farms.Workflows").
+// 		Preload("Farms.Workflows.Conditions").
+// 		Preload("Farms.Workflows.Schedules").
+// 		Preload("Farms.Workflows.Steps").
+// 		First(&org, "name = ?", name).Error; err != nil {
+// 		return nil, err
+// 	}
+// 	return &org, nil
+// }
+
+func (dao *GormOrganizationDAO) Get(id uint64) (config.OrganizationConfig, error) {
+	dao.logger.Debugf("Fetching organization ID: %d", id)
+	var org config.Organization
 	if err := dao.db.
-		Table("organizations").
 		Preload("Farms").
-		Select("organizations.id, organizations.name").
-		Joins("JOIN permissions on organizations.id = permissions.organization_id AND permissions.user_id = ?", userID).
-		Find(&orgs).Error; err != nil {
+		Preload("Users").
+		Preload("Users.Roles").
+		//Preload("Farms.Users").Preload("Farms.Users.Roles").
+		Preload("Farms.Devices").
+		Preload("Farms.Devices.Configs").
+		Preload("Farms.Devices.Metrics").
+		Preload("Farms.Devices.Channels").
+		Preload("Farms.Devices.Channels.Conditions").
+		Preload("Farms.Devices.Channels.Schedule").
+		Preload("Farms.Workflows").
+		Preload("Farms.Workflows.Conditions").
+		Preload("Farms.Workflows.Schedules").
+		Preload("Farms.Workflows.Steps").
+		First(&org, id).Error; err != nil {
 		return nil, err
+	}
+	return &org, nil
+}
+
+// This method returns a minimal depth organization with its associated farms and users.
+// No device or workflows are returned.
+func (dao *GormOrganizationDAO) GetByUserID(userID uint64, shallow bool) ([]config.OrganizationConfig, error) {
+	dao.logger.Debugf("Getting organizations for user.id %d", userID)
+	var orgs []config.Organization
+	if shallow {
+		if err := dao.db.
+			Table("organizations").
+			Preload("Farms").
+			Preload("Users").
+			Preload("Users.Roles").
+			Select("organizations.id, organizations.name").
+			Joins("JOIN permissions on organizations.id = permissions.organization_id AND permissions.user_id = ?", userID).
+			Find(&orgs).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		if err := dao.db.
+			Table("organizations").
+			Preload("Farms").
+			Preload("Users").
+			Preload("Users.Roles").
+			//Preload("Farms.Users").Preload("Farms.Users.Roles").
+			Preload("Farms.Devices").
+			Preload("Farms.Devices.Configs").
+			Preload("Farms.Devices.Metrics").
+			Preload("Farms.Devices.Channels").
+			Preload("Farms.Devices.Channels.Conditions").
+			Preload("Farms.Devices.Channels.Schedule").
+			Preload("Farms.Workflows").
+			Preload("Farms.Workflows.Conditions").
+			Preload("Farms.Workflows.Schedules").
+			Preload("Farms.Workflows.Steps").
+			Select("organizations.id, organizations.name").
+			Joins("JOIN permissions on organizations.id = permissions.organization_id AND permissions.user_id = ?", userID).
+			Find(&orgs).Error; err != nil {
+			return nil, err
+		}
 	}
 	configs := make([]config.OrganizationConfig, len(orgs))
 	for i, org := range orgs {

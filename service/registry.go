@@ -71,8 +71,10 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer
 
 	authServices := make(map[int]AuthService, 2)
-	authService := NewLocalAuthService(_app, daos.GetOrganizationDAO(),
-		daos.GetUserDAO(), daos.GetRoleDAO(), daos.GetFarmDAO(), mappers.GetUserMapper())
+	authService := NewLocalAuthService(_app, daos.GetPermissionDAO(),
+		daos.GetRegistrationDAO(), daos.GetOrganizationDAO(),
+		daos.GetFarmDAO(), daos.GetUserDAO(), daos.GetRoleDAO(),
+		mappers.GetUserMapper())
 	gas := NewGoogleAuthService(_app, daos.GetOrganizationDAO(),
 		daos.GetUserDAO(), daos.GetRoleDAO(), daos.GetFarmDAO(),
 		mappers.GetUserMapper())

@@ -3,7 +3,6 @@ package store
 import (
 	"sync"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/config/store"
@@ -38,18 +37,18 @@ func (s *GormDeviceConfigStore) Cache(deviceID uint64, c config.DeviceConfig) {
 
 func (s *GormDeviceConfigStore) Put(deviceID uint64, c config.DeviceConfig) error {
 	deviceConfig := c.(*config.Device)
-	s.Cache(deviceID, deviceConfig)
+	//s.Cache(deviceID, deviceConfig)
 	return s.deviceDAO.Save(deviceConfig)
 }
 
 func (s *GormDeviceConfigStore) Get(deviceID uint64, CONSISTENCY_LEVEL int) (config.DeviceConfig, error) {
-	if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED {
-		if config, ok := s.cachedConfig[deviceID]; ok {
-			return &config, nil
-		}
-	}
+	// if CONSISTENCY_LEVEL == common.CONSISTENCY_CACHED {
+	// 	if config, ok := s.cachedConfig[deviceID]; ok {
+	// 		return &config, nil
+	// 	}
+	// }
 	config, err := s.deviceDAO.Get(deviceID)
-	s.Cache(deviceID, config)
+	//s.Cache(deviceID, config)
 	return config, err
 }
 

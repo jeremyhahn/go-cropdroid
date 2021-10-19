@@ -5,6 +5,7 @@ package service
 import (
 	"time"
 
+	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/common"
 )
 
@@ -12,6 +13,9 @@ import (
 func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 
 	farm.app.Logger.Debugf("Farm %d watching for incoming device state changes", farm.farmID)
+
+	clusterServiceRegisty := farm.serviceRegistry.(ClusterServiceRegistry)
+	raftCluster := clusterServiceRegisty.GetRaftCluster()
 
 	for {
 		select {
@@ -27,7 +31,7 @@ func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 				continue
 			}
 
-			if !farm.app.RaftCluster.IsLeader(farm.farmID) {
+			if !raftCluster.IsLeader(farm.farmID) {
 				continue
 			}
 
@@ -66,9 +70,12 @@ func (farm *DefaultFarmService) RunCluster() {
 	}
 	farm.running = true
 
-	if farm.app.RaftCluster != nil {
+	clusterServiceRegisty := farm.serviceRegistry.(ClusterServiceRegistry)
+	raftCluster := clusterServiceRegisty.GetRaftCluster()
 
-		nodeID := farm.app.RaftCluster.GetParams().GetNodeID()
+	if raftCluster != nil {
+
+		nodeID := raftCluster.GetParams().GetNodeID()
 		//clusterID := uint64(farm.GetConfig().GetID())
 		farm.app.Logger.Infof("Starting farm. node=%d, farm.id=%d, farm.name=%s", nodeID, farm.GetFarmID())
 	}
@@ -94,11 +101,11 @@ func (farm *DefaultFarmService) RunCluster() {
 			}
 		}()*/
 
-	farm.pollCluster()
-	farm.PollCluster()
+	farm.pollCluster(raftCluster)
+	farm.PollCluster(raftCluster)
 }
 
-func (farm *DefaultFarmService) PollCluster() {
+func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftCluster) {
 
 	farmConfig, err := farm.configStore.Get(farm.configClusterID, common.CONSISTENCY_CACHED)
 	if err != nil || farmConfig == nil {
@@ -113,7 +120,7 @@ func (farm *DefaultFarmService) PollCluster() {
 		for {
 			select {
 			case <-ticker.C:
-				farm.pollCluster()
+				farm.pollCluster(raftCluster)
 			case <-quit:
 				ticker.Stop()
 				return
@@ -122,12 +129,12 @@ func (farm *DefaultFarmService) PollCluster() {
 	}
 }
 
-func (farm *DefaultFarmService) pollCluster() {
+func (farm *DefaultFarmService) pollCluster(raftCluster cluster.RaftCluster) {
 
 	farm.app.Logger.Debugf("Polling farm, configClusterID=%d, farmID=%d",
 		farm.configClusterID, farm.farmID)
 
-	if isLeader := farm.app.RaftCluster.WaitForClusterReady(farm.configClusterID); isLeader == false {
+	if isLeader := raftCluster.WaitForClusterReady(farm.configClusterID); isLeader == false {
 		// Only the cluster leader polls the farm
 		return
 	}

@@ -42,10 +42,10 @@ var configCmd = &cobra.Command{
 			App.GORM = App.GormDB.Connect(true)
 			App.GORM.LogMode(App.DebugFlag)
 
-			switch App.Mode {
+			switch App.Config.Mode {
 			case common.MODE_STANDALONE, "virtual":
 				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, App.Location,
-					App.Mode).Initialize(App.EnableDefaultFarm); err != nil {
+					App.Config.Mode).Initialize(App.Config.EnableDefaultFarm); err != nil {
 					log.Fatal(err)
 				}
 			// case common.MODE_CLOUD:
@@ -53,7 +53,7 @@ var configCmd = &cobra.Command{
 			// 		log.Fatal(err)
 			// 	}
 			default:
-				App.Logger.Fatalf("Unsupported mode: %s", App.Mode)
+				App.Logger.Fatalf("Unsupported mode: %s", App.Config.Mode)
 			}
 
 			log.Println("Database initialized")
@@ -62,12 +62,19 @@ var configCmd = &cobra.Command{
 
 		if ShowConfigFlag {
 
-			if DatastoreType == "memory" || DatastoreType == "sqlite" ||
-				DatastoreType == "postgres" || DatastoreType == "cockroach" {
+			// c := viper.AllSettings()
+			// bs, err := yaml.Marshal(c)
+			// if err != nil {
+			// 	log.Fatalf("unable to marshal config to YAML: %v", err)
+			// }
+			// fmt.Printf("%+v\n", string(bs))
+
+			if DataStoreEngine == "memory" || DataStoreEngine == "sqlite" ||
+				DataStoreEngine == "postgres" || DataStoreEngine == "cockroach" {
 
 				App.InitLogFile(os.Getuid(), os.Getgid())
 				App.InitGormDB()
-				_, serverConfig, _, _, _, err := builder.NewGormConfigBuilder(App, DataStore,
+				_, _, _, _, err := builder.NewGormConfigBuilder(App, DataStore,
 					AppStateTTL, AppStateTick).Build()
 				if err != nil {
 					App.Logger.Fatal(err)
@@ -75,9 +82,9 @@ var configCmd = &cobra.Command{
 				//spew.Dump(serverConfig)
 				var data []byte
 				if ConfigOutputFormat == "yaml" {
-					data, err = yaml.Marshal(serverConfig)
+					data, err = yaml.Marshal(App.Config)
 				} else if ConfigOutputFormat == "json" {
-					data, err = json.Marshal(serverConfig)
+					data, err = json.Marshal(App.Config)
 				} else {
 					App.Logger.Fatal("Unsupported output format: %s", ConfigOutputFormat)
 				}
@@ -94,12 +101,12 @@ var configCmd = &cobra.Command{
 			compressor := util.NewCompressor()
 			var data []byte
 			var err error
-			if DatastoreType == "yaml" {
+			if DataStoreEngine == "yaml" {
 				data, err = yaml.Marshal(App.Config)
-			} else if DatastoreType == "json" {
+			} else if DataStoreEngine == "json" {
 				data, err = json.Marshal(App.Config)
 			} else {
-				App.Logger.Fatalf("Unsupported datastore type: %s", DatastoreType)
+				App.Logger.Fatalf("Unsupported datastore type: %s", DataStoreEngine)
 			}
 			if err != nil {
 				App.Logger.Fatal(err)

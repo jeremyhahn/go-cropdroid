@@ -58,11 +58,15 @@ func (initializer *GormInitializer) Initialize(includeFarmConfig bool) error {
 	adminUser := config.NewUser()
 	adminUser.SetEmail(common.DEFAULT_USER)
 	adminUser.SetPassword(string(encrypted))
-	adminUser.SetRoles([]config.Role{*adminRole})
 	initializer.db.Create(adminUser)
 
+	permission := &config.Permission{
+		UserID: adminUser.GetID(),
+		RoleID: adminRole.GetID()}
+	initializer.db.Create(permission)
+
 	if includeFarmConfig {
-		farmConfig, err := initializer.BuildConfig(adminUser)
+		farmConfig, err := initializer.BuildConfig(adminUser, adminRole)
 		if err != nil {
 			return err
 		}
@@ -77,7 +81,7 @@ func (initializer *GormInitializer) Initialize(includeFarmConfig bool) error {
 }
 
 // Builds a FarmConfig for the specified pre-existing admin user.
-func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig) (config.FarmConfig, error) {
+func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, assignedRole config.RoleConfig) (config.FarmConfig, error) {
 
 	defaultTimezone := initializer.location.String()
 	now := time.Now().In(initializer.location)
@@ -215,12 +219,18 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig) (co
 		farm.DataStore = datastore.GORM_STORE
 		farm.Consistency = common.CONSISTENCY_CACHED
 	}
+	//  else {
+	// 	farm.StateStore = state.GORM_STORE
+	// 	farm.ConfigStore = config.GORM_STORE
+	// 	farm.DataStore = datastore.GORM_STORE
+	// 	farm.Consistency = common.CONSISTENCY_LOCAL
+	// }
 	farm.SetDevices([]config.Device{*serverDevice, *roomDevice, *reservoirDevice, *doserDevice})
 	initializer.farmDAO.Save(farm)
 
 	permission := &config.Permission{
 		UserID: adminUser.GetID(),
-		RoleID: adminUser.GetRoles()[0].GetID(),
+		RoleID: assignedRole.GetID(),
 		FarmID: farm.GetID()}
 	initializer.db.Create(permission)
 

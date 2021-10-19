@@ -26,7 +26,6 @@ type UserAccount interface {
 	SetEmail(string)
 	GetPassword() string
 	SetPassword(string)
-	GetToken() string
 	GetRoles() []Role
 	SetRoles([]Role)
 	AddRole(Role)
@@ -39,6 +38,7 @@ type Role interface {
 
 type HttpWriter interface {
 	Write(w http.ResponseWriter, status int, response interface{})
+	Success200(w http.ResponseWriter, response interface{})
 	Error200(w http.ResponseWriter, err error)
 	Error400(w http.ResponseWriter, err error)
 	Error500(w http.ResponseWriter, err error)
@@ -55,7 +55,9 @@ type Notification interface {
 }
 
 type Mailer interface {
-	Send(farmName, subject, message string) error
+	SetRecipient(recipient string)
+	Send(subject, message string) error
+	SendHtml(template, subject string, data interface{}) (bool, error)
 }
 
 // type DeviceService interface {

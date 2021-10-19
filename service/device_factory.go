@@ -110,14 +110,10 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 	return service, nil
 }
 
+// Should the following 2 methods be refactored into the device service?
+
 // Returns all device configs for a given farm session
 func (factory *DefaultDeviceFactory) GetAll(session Session) ([]config.Device, error) {
-	// deviceEntities, err := factory.deviceDAO.GetByFarmId(
-	// 	session.GetFarmService().GetConfig().GetID())
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//return deviceEntities, nil
 	return session.GetFarmService().GetConfig().GetDevices(), nil
 }
 
@@ -125,33 +121,6 @@ func (factory *DefaultDeviceFactory) GetAll(session Session) ([]config.Device, e
 func (factory *DefaultDeviceFactory) GetDevices(session Session) ([]common.Device, error) {
 	var devices []common.Device
 	farmService := session.GetFarmService()
-	//farmConfig := farmService.GetConfig()
-
-	// deviceEntities, err := factory.deviceDAO.GetByFarmId(farmConfig.GetID())
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// //devices := make([]common.Device, len(deviceEntities)-1) // -1 for server device
-	// for _, entity := range deviceEntities {
-	// 	if entity.GetType() == common.CONTROLLER_TYPE_SERVER {
-	// 		continue
-	// 	}
-	// 	deviceState, err := farmService.GetState().GetDevice(entity.GetType())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	deviceConfig, err := farmConfig.GetDevice(entity.GetType())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	device, err := factory.deviceMapper.MapStateToDevice(deviceState, *deviceConfig)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	//devices[i] = device
-	// 	devices = append(devices, device) // dynamically add - not sure how many server devices there will be
-	// }
-
 	deviceConfigs := farmService.GetConfig().GetDevices()
 	for _, deviceConfig := range deviceConfigs {
 		if deviceConfig.GetType() == common.CONTROLLER_TYPE_SERVER {
@@ -167,6 +136,5 @@ func (factory *DefaultDeviceFactory) GetDevices(session Session) ([]common.Devic
 		}
 		devices = append(devices, device)
 	}
-
 	return devices, nil
 }

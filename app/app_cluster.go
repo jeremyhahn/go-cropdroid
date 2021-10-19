@@ -16,12 +16,12 @@ import (
 
 	logging "github.com/op/go-logging"
 
-	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jinzhu/gorm"
 )
+import "github.com/jeremyhahn/go-cropdroid/common"
 
 /*
     	 Auth & Billing System              (gossip, dragonboat, cockroachdb - control plane) (cloud platform)
@@ -58,8 +58,8 @@ type App struct {
 	ConfigDir           string
 	ConfigFile          string
 	DeviceIndex         state.DeviceIndex
-	DatastoreType       string
-	DatastoreCDC        bool
+	DataStoreEngine     string
+	DataStoreCDC        bool
 	DataDir             string
 	DebugFlag           bool
 	DowngradeUser       string
@@ -68,19 +68,20 @@ type App struct {
 	GormDB              gormstore.GormDB
 	GORM                *gorm.DB
 	GORMInitParams      *gormstore.GormInitParams
-	GossipCluster       cluster.GossipCluster
-	HomeDir             string
-	Interval            int
-	KeyDir              string
-	KeyPair             KeyPair
-	Location            *time.Location
-	LogDir              string
-	LogFile             string
-	Logger              *logging.Logger
-	Mode                string
-	Name                string
-	NodeID              int
-	RaftCluster         cluster.RaftCluster
+	//GossipCluster       cluster.GossipCluster
+	HomeDir  string
+	Interval int
+	KeyDir   string
+	KeyPair  KeyPair
+	Location *time.Location
+	LogDir   string
+	LogFile  string
+	Logger   *logging.Logger
+	Mailer   common.Mailer
+	Mode     string
+	Name     string
+	NodeID   int
+	//RaftCluster         cluster.RaftCluster
 	RedirectHttpToHttps bool
 	SSLFlag             bool
 	WebPort             int
@@ -103,8 +104,8 @@ func NewApp() *App {
 // }
 
 func (this *App) ValidateConfig() {
-	if this.Interval < 10 {
-		this.Logger.Fatal("Interval must be at least 10 seconds")
+	if this.Interval != 60 {
+		this.Logger.Fatal("Interval must be 60 seconds")
 	}
 	if len(this.Config.Organizations[0].GetFarms()) <= 0 {
 		this.Logger.Fatal("No farms configured, consider running 'cropdroid config --init' first")

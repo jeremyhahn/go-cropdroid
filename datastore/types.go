@@ -16,7 +16,7 @@ const (
 
 type Initializer interface {
 	Initialize(includeFarmConfig bool) error
-	BuildConfig(config.UserConfig) (config.FarmConfig, error)
+	BuildConfig(config.UserConfig, config.RoleConfig) (config.FarmConfig, error)
 }
 
 type ChangefeedCallback func(Changefeed)
@@ -63,6 +63,10 @@ type DatastoreRegistry interface {
 	SetAlgorithmDAO(dao dao.AlgorithmDAO)
 	GetUserDAO() dao.UserDAO
 	SetUserDAO(dao.UserDAO)
+	GetPermissionDAO() dao.PermissionDAO
+	SetPermissiondAO(regDAO dao.PermissionDAO)
+	GetRegistrationDAO() dao.RegistrationDAO
+	SetRegistrationDAO(regDAO dao.RegistrationDAO)
 	GetRoleDAO() dao.RoleDAO
 	SetRoleDAO(dao.RoleDAO)
 	GetWorkflowDAO() dao.WorkflowDAO

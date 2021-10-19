@@ -93,7 +93,7 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 
 	var configClusterID uint64
 	if farmService.isRaftConfigStore(farmConfig) {
-		configClusterID = util.ClusterHash(farmConfig.GetOrganizationID(), farmID)
+		configClusterID = util.NewClusterHash(farmConfig.GetOrganizationID(), farmID)
 	} else {
 		configClusterID = farmConfig.GetID()
 
@@ -137,7 +137,6 @@ func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
 			deviceID, len(conf.GetMetrics()), len(conf.GetChannels()))
 		deviceStateMaps = append(deviceStateMaps, deviceStateMap)
 		_state.SetDevice(conf.GetType(), deviceStateMap)
-		//farm.backoffTable[deviceID] = make(map[int]time.Time, 0)
 		farm.backoffTable[farm.farmID] = make(map[uint64]time.Time, 0)
 	}
 	if saveToStateStore {
@@ -181,7 +180,7 @@ func (farm *DefaultFarmService) GetConfig() config.FarmConfig {
 		farm.GetFarmID(), farm.configClusterID)
 
 	farmConfigID := farm.farmID
-	if farm.app.Mode == common.MODE_CLUSTER {
+	if farm.app.Config.Mode == common.MODE_CLUSTER {
 		farmConfigID = farm.configClusterID
 	}
 

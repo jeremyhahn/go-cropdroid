@@ -19,14 +19,18 @@ func NewUserDAO(logger *logging.Logger, db *gorm.DB) dao.UserDAO {
 }
 
 func CreateUserDAO(db *gorm.DB, user common.UserAccount) dao.UserDAO {
-	return &GormUserDAO{db: db}
+	return &GormUserDAO{
+		logger: &logging.Logger{},
+		db:     db}
 }
 
-func (dao *GormUserDAO) GetByID(userId uint64) (config.UserConfig, error) {
+func (dao *GormUserDAO) Get(orgID, userID uint64) (config.UserConfig, error) {
 	var user config.User
-	user.ID = userId
+	//user.ID = userID
 	if err := dao.db.
 		Preload("Roles").
+		Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
+		Where("permissions.organization_id = ? AND permissions.user_id = ?", orgID, userID).
 		First(&user).Error; err != nil {
 		dao.logger.Errorf("[UserDAO.GetById] Error: %s", err.Error())
 		return nil, err

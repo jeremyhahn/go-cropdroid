@@ -14,6 +14,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
 
@@ -61,6 +62,7 @@ func init() {
 	clusterCmd.PersistentFlags().IntVarP(&ClusterRaftPort, "raft-port", "", 60020, "Initial Raft members (for bootstrapping a new cluster)")
 	clusterCmd.PersistentFlags().IntVarP(&ClusterMaxNodes, "raft-max-nodes", "", 7, "Maximum number of nodes allowed to join a raft cluster")
 
+	clusterCmd.PersistentFlags().StringVarP(&DataStoreEngine, "datastore", "", "raft", "Data store type [ memory | sqlite | mysql | postgres | cockroach | raft ]")
 	clusterCmd.PersistentFlags().StringVarP(&DataStore, "data-store", "", "raft", "Where to store historical device data [ raft | gorm | redis ]")
 
 	rootCmd.AddCommand(clusterCmd)
@@ -81,6 +83,7 @@ var clusterCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		App.Mode = common.MODE_CLUSTER
+		App.Mailer = service.NewMailer(App, nil)
 		App.InitGormDB()
 
 		if ClusterRaft != "" {
@@ -118,29 +121,30 @@ var clusterCmd = &cobra.Command{
 			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes, ClusterBootstrap, daoRegistry,
 			farmProvisionerChan, farmDeprovisionerChan, farmTickerProvisionerChan)
 
-		App.GossipCluster = cluster.NewGossipCluster(params, cluster.NewHashring(ClusterVirtualNodes), daoRegistry.GetFarmDAO())
-		App.GossipCluster.Join()
-		go App.GossipCluster.Run()
+		gossipCluster := cluster.NewGossipCluster(params, cluster.NewHashring(ClusterVirtualNodes), daoRegistry.GetFarmDAO())
+		gossipCluster.Join()
+		go gossipCluster.Run()
 
-		App.RaftCluster = App.GossipCluster.GetSystemRaft()
-		for App.RaftCluster == nil {
+		raftCluster := gossipCluster.GetSystemRaft()
+		for raftCluster == nil {
 			App.Logger.Info("Waiting for enough nodes to build the Raft quorum...")
 			time.Sleep(1 * time.Second)
-			App.RaftCluster = App.GossipCluster.GetSystemRaft()
+			raftCluster = gossipCluster.GetSystemRaft()
 		}
 
 		//App.ConfigStore = cluster.NewRaftFarmConfigStore(App.Logger, App.RaftCluster)
 		//App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)
 
 		// TODO: Check device hardware and firmware versions at startup, update devices db table
-		builder := builder.NewClusterConfigBuilder(App, params, DataStore, AppStateTTL, AppStateTick)
-		rsaKeyPair, serverConfig, serviceRegistry, restServices, _, err := builder.Build()
+		builder := builder.NewClusterConfigBuilder(App, params, gossipCluster, raftCluster,
+			DataStore, AppStateTTL, AppStateTick)
+		rsaKeyPair, _, serviceRegistry, restServices, _, err := builder.Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
 		App.KeyPair = rsaKeyPair
-		App.Config = serverConfig.(*config.Server)
+		//App.Config = serverConfig.(*config.Server)
 		//App.DeviceIndex = deviceIndex
 		//App.ChannelIndex = channelIndex
 
@@ -152,7 +156,8 @@ var clusterCmd = &cobra.Command{
 			changefeedService.Subscribe()
 		}
 
-		webserver := webservice.NewWebserver(App, serviceRegistry, restServices, farmTickerProvisionerChan)
+		webserver := webservice.NewWebserver(App, gossipCluster, raftCluster,
+			serviceRegistry, restServices, farmTickerProvisionerChan)
 		go webserver.Run()
 		go webserver.RunClusterProvisionerConsumer()
 
@@ -165,11 +170,11 @@ var clusterCmd = &cobra.Command{
 
 		//webserver.Shutdown()
 
-		if err := App.GossipCluster.Shutdown(); err != nil {
+		if err := gossipCluster.Shutdown(); err != nil {
 			App.Logger.Error(err)
 		}
 
-		if err := App.RaftCluster.Shutdown(); err != nil {
+		if err := raftCluster.Shutdown(); err != nil {
 			App.Logger.Fatal(err)
 		}
 

@@ -17,7 +17,6 @@ import (
 	"github.com/lni/dragonboat/v3/plugin/rocksdb"
 	"github.com/lni/dragonboat/v3/raftio"
 
-	"github.com/jeremyhahn/go-cropdroid/cluster/state"
 	"github.com/jeremyhahn/go-cropdroid/common"
 
 	sm "github.com/lni/dragonboat/v3/statemachine"

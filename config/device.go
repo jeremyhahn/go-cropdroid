@@ -213,35 +213,35 @@ func (device *Device) ParseConfigs() error {
 	return nil
 }
 
-// HydrateConfigs populates the device config items from the ConfigMap. This is
-// used when unmarshalling from JSON or YAML since device.Configs json:"-" and yaml:"-"
-// is set so the results are returned as key/value pairs by the API. Probably best to refactor
-// this so the API returns a dedicated view and device.Configs doesn't get ignored.
-func (device *Device) HydrateConfigs() error {
-	configs := device.GetConfigMap()
-	enableKey := fmt.Sprintf("%s.enable", device.Type)
-	notifyKey := fmt.Sprintf("%s.notify", device.Type)
-	uriKey := fmt.Sprintf("%s.uri", device.Type)
-	for key, value := range configs {
-		switch key {
-		case enableKey:
-			b, err := strconv.ParseBool(value)
-			if err != nil {
-				return err
-			}
-			device.Enable = b
-		case notifyKey:
-			b, err := strconv.ParseBool(value)
-			if err != nil {
-				return err
-			}
-			device.Notify = b
-		case uriKey:
-			device.URI = value
-		}
-	}
-	return nil
-}
+// // HydrateConfigs populates the device config items from the ConfigMap. This is
+// // used when unmarshalling from JSON or YAML since device.Configs json:"-" and yaml:"-"
+// // is set so the results are returned as key/value pairs by the API. Probably best to refactor
+// // this so the API returns a dedicated view and device.Configs doesn't get ignored.
+// func (device *Device) HydrateConfigs() error {
+// 	configs := device.GetConfigMap()
+// 	enableKey := fmt.Sprintf("%s.enable", device.Type)
+// 	notifyKey := fmt.Sprintf("%s.notify", device.Type)
+// 	uriKey := fmt.Sprintf("%s.uri", device.Type)
+// 	for key, value := range configs {
+// 		switch key {
+// 		case enableKey:
+// 			b, err := strconv.ParseBool(value)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			device.Enable = b
+// 		case notifyKey:
+// 			b, err := strconv.ParseBool(value)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			device.Notify = b
+// 		case uriKey:
+// 			device.URI = value
+// 		}
+// 	}
+// 	return nil
+// }
 
 /*
 func (device *Device) getBoolConfig(key string) (bool, error) {

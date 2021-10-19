@@ -91,7 +91,7 @@ func NewUnitTestSession() (*app.App, service.Session) {
 	// farmState := state.CreateFarmState(farmID, deviceState)
 
 	//session := service.CreateSession(logger, farmService, &model.User{
-	session := service.CreateSession(logger, nil, nil, &model.User{
+	session := service.CreateSession(logger, nil, nil, nil, &model.User{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "$ecret"})

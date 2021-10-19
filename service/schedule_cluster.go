@@ -131,7 +131,7 @@ func (service *DefaultScheduleService) Update(session Session, schedule config.S
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			for i, _ := range channel.GetSchedule() {
+			for i := range channel.GetSchedule() {
 				if channel.GetID() == schedule.GetChannelID() {
 					s := schedule.(*config.Schedule)
 					channel.Schedule[i] = *s

@@ -16,7 +16,7 @@ func NewMockMailer(session service.Session) common.Mailer {
 	return &MockMailer{session: session}
 }
 
-func (mailer *MockMailer) Send(farmName, subject, message string) error {
+func (mailer *MockMailer) Send(subject, message string) error {
 	mailer.session.GetLogger().Debugf("MockMailer: subject=%s, message=%s", subject, message)
 	return nil
 }

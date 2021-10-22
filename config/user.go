@@ -2,8 +2,8 @@ package config
 
 // User represents a user account in the app
 type User struct {
-	ID         uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	Email      string `yaml:"email" json:"email"`
+	ID         uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	Email      string `gorm:"index" yaml:"email" json:"email"`
 	Password   string `yaml:"password" json:"password"`
 	Roles      []Role `gorm:"many2many:permissions" yaml:"roles" json:"roles"`
 	UserConfig `yaml:"-" json:"-"`

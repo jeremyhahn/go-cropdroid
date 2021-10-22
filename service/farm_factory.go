@@ -8,6 +8,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
 // "Global" farm factory used to manage all farms on the platform
@@ -35,6 +36,7 @@ type DefaultFarmFactory struct {
 	serviceRegistry           ServiceRegistry
 	farmProvisionerChan       chan config.FarmConfig
 	farmTickerProvisionerChan chan uint64
+	idGenerator               util.IdGenerator
 	FarmFactory
 }
 
@@ -43,7 +45,8 @@ func NewFarmFactory(app *app.App, datastoreRegistry datastore.DatastoreRegistry,
 	farmConfigStore store.FarmConfigStorer, deviceStateStore state.DeviceStorer,
 	deviceConfigStore store.DeviceConfigStorer, deviceDataStore datastore.DeviceDataStore,
 	deviceMapper mapper.DeviceMapper, changefeeders map[string]datastore.Changefeeder,
-	farmProvisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan uint64) FarmFactory {
+	farmProvisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan uint64,
+	idGenerator util.IdGenerator) FarmFactory {
 
 	return &DefaultFarmFactory{
 		app:                       app,
@@ -59,7 +62,8 @@ func NewFarmFactory(app *app.App, datastoreRegistry datastore.DatastoreRegistry,
 		datastoreRegistry:         datastoreRegistry,
 		serviceRegistry:           serviceRegistry,
 		farmProvisionerChan:       farmProvisionerChan,
-		farmTickerProvisionerChan: farmTickerProvisionerChan}
+		farmTickerProvisionerChan: farmTickerProvisionerChan,
+		idGenerator:               idGenerator}
 }
 
 func (ff *DefaultFarmFactory) BuildService(farmConfig config.FarmConfig) (FarmService, error) {
@@ -95,7 +99,7 @@ func (ff *DefaultFarmFactory) BuildService(farmConfig config.FarmConfig) (FarmSe
 	}
 
 	// Build farm service
-	farmService, err := CreateFarmService(ff.app, farmDAO, ff.farmStateStore,
+	farmService, err := CreateFarmService(ff.app, farmDAO, ff.idGenerator, ff.farmStateStore,
 		ff.farmConfigStore, ff.deviceConfigStore, ff.deviceDataStore, farmConfig, ff.consistencyLevel,
 		ff.serviceRegistry, &farmChannels, deviceConfigDAO)
 	if err != nil {

@@ -84,7 +84,7 @@ type ConfigDAO interface {
 
 type MetricDAO interface {
 	Save(metric config.MetricConfig) error
-	Get(metricID int) (config.MetricConfig, error)
+	Get(metricID uint64) (config.MetricConfig, error)
 	GetByDeviceID(deviceID uint64) ([]config.Metric, error) // Used to bootstrap sqlite config (configService.buildMetrics())
 	GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Metric, error)
 }

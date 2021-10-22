@@ -3,7 +3,7 @@ package config
 import "time"
 
 type Registration struct {
-	ID        uint64 `gorm:"primary_key" yaml:"id" json:"id"`
+	ID        uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
 	Email     string `yaml:"email" json:"email"`
 	Password  string `yaml:"password" json:"password"`
 	CreatedAt int64  `yaml:"created" json:"created"`
@@ -12,11 +12,15 @@ type Registration struct {
 	RegistrationConfig
 }
 
-func NewRegistration(id uint64) *Registration {
+func NewRegistration() *Registration {
+	return &Registration{
+		CreatedAt: time.Now().Unix()}
+}
+
+func CreateRegistration(id uint64) *Registration {
 	return &Registration{
 		ID:        id,
-		CreatedAt: time.Now().Unix(),
-	}
+		CreatedAt: time.Now().Unix()}
 }
 
 // GetToken gets the registration token

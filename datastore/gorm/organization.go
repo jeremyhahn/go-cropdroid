@@ -25,12 +25,20 @@ func (dao *GormOrganizationDAO) Save(organization config.OrganizationConfig) err
 func (dao *GormOrganizationDAO) First() (config.OrganizationConfig, error) {
 	dao.logger.Debugf("Updating organization record")
 	var org config.Organization
-	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
+	if err := dao.db.Preload("Farms").
+		Preload("Users").
+		Preload("Users.Roles").
 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
 		Preload("Farms.Devices").
-		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
+		Preload("Farms.Devices.Configs").
+		Preload("Farms.Devices.Metrics").
+		Preload("Farms.Devices.Channels").
 		Preload("Farms.Devices.Channels.Conditions").
 		Preload("Farms.Devices.Channels.Schedule").
+		Preload("Farms.Workflows").
+		Preload("Farms.Workflows.Conditions").
+		Preload("Farms.Workflows.Schedules").
+		Preload("Farms.Workflows.Steps").
 		First(&org).Error; err != nil {
 		return nil, err
 	}
@@ -42,26 +50,6 @@ func (dao *GormOrganizationDAO) First() (config.OrganizationConfig, error) {
 	}
 	return &org, nil
 }
-
-// func (dao *GormOrganizationDAO) Get(orgID uint64) (config.OrganizationConfig, error) {
-// 	dao.logger.Debugf("Updating organization record")
-// 	var org config.Organization
-// 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
-// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-// 		Preload("Farms.Devices").
-// 		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
-// 		Preload("Farms.Devices.Channels.Conditions").
-// 		Preload("Farms.Devices.Channels.Schedule").
-// 		First(&org, orgID).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	for i, farm := range org.GetFarms() {
-// 		farm.ParseConfigs()
-// 		org.Farms[i] = farm
-// 	}
-
-// 	return &org, nil
-// }
 
 func (dao *GormOrganizationDAO) GetAll() ([]config.Organization, error) {
 	dao.logger.Debugf("Fetching all organizations")
@@ -99,30 +87,6 @@ func (dao *GormOrganizationDAO) CreateUserRole(org config.OrganizationConfig, us
 		RoleID:         role.GetID(),
 		OrganizationID: org.GetID()}).Error
 }
-
-// func (dao *GormOrganizationDAO) GetByName(name string) (config.OrganizationConfig, error) {
-// 	dao.logger.Debugf("Fetching organization: %s", name)
-// 	var org config.Organization
-// 	if err := dao.db.
-// 		Preload("Farms").
-// 		Preload("Users").
-// 		Preload("Users.Roles").
-// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-// 		Preload("Farms.Devices").
-// 		Preload("Farms.Devices.Configs").
-// 		Preload("Farms.Devices.Metrics").
-// 		Preload("Farms.Devices.Channels").
-// 		Preload("Farms.Devices.Channels.Conditions").
-// 		Preload("Farms.Devices.Channels.Schedule").
-// 		Preload("Farms.Workflows").
-// 		Preload("Farms.Workflows.Conditions").
-// 		Preload("Farms.Workflows.Schedules").
-// 		Preload("Farms.Workflows.Steps").
-// 		First(&org, "name = ?", name).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	return &org, nil
-// }
 
 func (dao *GormOrganizationDAO) Get(id uint64) (config.OrganizationConfig, error) {
 	dao.logger.Debugf("Fetching organization ID: %d", id)
@@ -207,3 +171,47 @@ func (dao *GormOrganizationDAO) Find(orgID int) ([]config.Organization, error) {
 	}
 	return orgs, nil
 }*/
+
+// func (dao *GormOrganizationDAO) Get(orgID uint64) (config.OrganizationConfig, error) {
+// 	dao.logger.Debugf("Updating organization record")
+// 	var org config.Organization
+// 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
+// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
+// 		Preload("Farms.Devices").
+// 		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
+// 		Preload("Farms.Devices.Channels.Conditions").
+// 		Preload("Farms.Devices.Channels.Schedule").
+// 		First(&org, orgID).Error; err != nil {
+// 		return nil, err
+// 	}
+// 	for i, farm := range org.GetFarms() {
+// 		farm.ParseConfigs()
+// 		org.Farms[i] = farm
+// 	}
+
+// 	return &org, nil
+// }
+
+// func (dao *GormOrganizationDAO) GetByName(name string) (config.OrganizationConfig, error) {
+// 	dao.logger.Debugf("Fetching organization: %s", name)
+// 	var org config.Organization
+// 	if err := dao.db.
+// 		Preload("Farms").
+// 		Preload("Users").
+// 		Preload("Users.Roles").
+// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
+// 		Preload("Farms.Devices").
+// 		Preload("Farms.Devices.Configs").
+// 		Preload("Farms.Devices.Metrics").
+// 		Preload("Farms.Devices.Channels").
+// 		Preload("Farms.Devices.Channels.Conditions").
+// 		Preload("Farms.Devices.Channels.Schedule").
+// 		Preload("Farms.Workflows").
+// 		Preload("Farms.Workflows.Conditions").
+// 		Preload("Farms.Workflows.Schedules").
+// 		Preload("Farms.Workflows.Steps").
+// 		First(&org, "name = ?", name).Error; err != nil {
+// 		return nil, err
+// 	}
+// 	return &org, nil
+// }

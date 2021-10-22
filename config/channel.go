@@ -12,7 +12,7 @@ type Channel struct {
 	Duration      int         `yaml:"duration" json:"duration"`
 	Debounce      int         `yaml:"debounce" json:"debounce"`
 	Backoff       int         `yaml:"backoff" json:"backoff"`
-	AlgorithmID   int         `yaml:"algorithm" json:"algorithm_id"`
+	AlgorithmID   uint64      `yaml:"algorithm" json:"algorithm_id"`
 	ChannelConfig `yaml:"-" json:"-"`
 }
 
@@ -141,10 +141,10 @@ func (channel *Channel) GetBackoff() int {
 	return channel.Backoff
 }
 
-func (channel *Channel) SetAlgorithmID(id int) {
+func (channel *Channel) SetAlgorithmID(id uint64) {
 	channel.AlgorithmID = id
 }
 
-func (channel *Channel) GetAlgorithmID() int {
+func (channel *Channel) GetAlgorithmID() uint64 {
 	return channel.AlgorithmID
 }

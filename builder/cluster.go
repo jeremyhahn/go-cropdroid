@@ -1,5 +1,5 @@
-// +build cluster
-// +build !cloud
+//go:build cluster && !cloud
+// +build cluster,!cloud
 
 package builder
 
@@ -19,6 +19,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 )
 
@@ -33,6 +34,7 @@ type ClusterConfigBuilder struct {
 	changefeeders     map[string]datastore.Changefeeder
 	gossipCluster     cluster.GossipCluster
 	raftCluster       cluster.RaftCluster
+	idGenerator       util.IdGenerator
 }
 
 func NewClusterConfigBuilder(_app *app.App, params *cluster.ClusterParams,
@@ -43,7 +45,8 @@ func NewClusterConfigBuilder(_app *app.App, params *cluster.ClusterParams,
 		app:           _app,
 		params:        params,
 		gossipCluster: gossipCluster,
-		raftCluster:   raftCluster}
+		raftCluster:   raftCluster,
+		idGenerator:   util.NewIdGenerator(_app.DataStoreEngine)}
 }
 
 func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
@@ -58,7 +61,8 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 		builder.gossipCluster, builder.raftCluster)
 
 	gormInitializer := gorm.NewGormInitializer(builder.app.Logger,
-		builder.app.GormDB, builder.app.Location, builder.app.Mode)
+		builder.app.GormDB, builder.idGenerator, builder.app.Location,
+		builder.app.Mode)
 
 	farmProvisioner := provisioner.NewRaftFarmProvisioner(
 		builder.app.Logger, builder.gossipCluster, builder.app.Location,
@@ -236,7 +240,7 @@ func (builder *ClusterConfigBuilder) BuildFarmFactory(stateStoreType,
 		farmConfigStore, deviceStateStore, deviceConfigStore,
 		deviceDataStore, builder.mapperRegistry.GetDeviceMapper(),
 		builder.changefeeders, builder.params.GetFarmProvisionerChan(),
-		builder.params.GetFarmTickerProvisionerChan())
+		builder.params.GetFarmTickerProvisionerChan(), builder.idGenerator)
 }
 
 func (builder *ClusterConfigBuilder) createFarmStateStore(storeType int) state.FarmStorer {
@@ -261,7 +265,7 @@ func (builder *ClusterConfigBuilder) createFarmConfigStore(storeType int) config
 		farmConfigStore = store.NewGormFarmConfigStore(farmDAO, 1)
 	case config.RAFT_MEMORY_STORE, config.RAFT_DISK_STORE:
 		farmConfigStore = cluster.NewRaftFarmConfigStore(builder.app.Logger,
-			builder.raftCluster)
+			builder.raftCluster, builder.idGenerator)
 	}
 	return farmConfigStore
 }

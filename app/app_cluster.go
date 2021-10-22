@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package app

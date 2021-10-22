@@ -179,8 +179,8 @@ type DeviceConfigConfig interface {
 }
 
 type MetricConfig interface {
-	GetID() int
-	SetID(int)
+	GetID() uint64
+	SetID(uint64)
 	GetDeviceID() uint64
 	SetDeviceID(uint64)
 	GetDataType() int
@@ -227,8 +227,8 @@ type ChannelConfig interface {
 	SetDebounce(int)
 	GetBackoff() int
 	SetBackoff(int)
-	GetAlgorithmID() int
-	SetAlgorithmID(int)
+	GetAlgorithmID() uint64
+	SetAlgorithmID(uint64)
 }
 
 type ConditionConfig interface {
@@ -238,8 +238,8 @@ type ConditionConfig interface {
 	GetWorkflowID() uint64
 	SetChannelID(uint64)
 	GetChannelID() uint64
-	GetMetricID() int
-	SetMetricID(int)
+	GetMetricID() uint64
+	SetMetricID(uint64)
 	SetComparator(string)
 	GetComparator() string
 	SetThreshold(float64)
@@ -351,8 +351,8 @@ type RegistrationConfig interface {
 }
 
 type PermissionConfig interface {
-	GetID() uint64
-	SetID(id uint64)
+	// GetID() uint64
+	// SetID(id uint64)
 	GetOrgID() uint64
 	SetOrgID(id uint64)
 	GetFarmID() uint64

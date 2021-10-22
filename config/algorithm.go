@@ -1,12 +1,12 @@
 package config
 
 type AlgorithmConfig interface {
-	GetID() int
+	GetID() uint64
 	GetName() string
 }
 
 type Algorithm struct {
-	ID              int    `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID              uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
 	Name            string `yaml:"name" json:"name"`
 	AlgorithmConfig `yaml:"-" json:"-"`
 }
@@ -15,11 +15,11 @@ func NewAlgorithm() *Algorithm {
 	return &Algorithm{}
 }
 
-func (algorithm *Algorithm) GetID() int {
+func (algorithm *Algorithm) GetID() uint64 {
 	return algorithm.ID
 }
 
-func (algorithm *Algorithm) SetID(id int) {
+func (algorithm *Algorithm) SetID(id uint64) {
 	algorithm.ID = id
 }
 

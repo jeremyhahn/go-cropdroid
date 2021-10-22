@@ -8,6 +8,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/op/go-logging"
 )
 
@@ -20,12 +21,14 @@ type ChannelAlgorithmHandler struct {
 	value        float64
 	threshold    float64
 	backoffTable map[uint64]time.Time
+	idGenerator  util.IdGenerator
 	AlgorithmHandler
 }
 
-func NewChannelAlgorithmHandler(logger *logging.Logger, service DeviceService,
-	device config.DeviceConfig, channel config.ChannelConfig, metric config.MetricConfig,
-	value, threshold float64, backoffTable map[uint64]time.Time) AlgorithmHandler {
+func NewChannelAlgorithmHandler(logger *logging.Logger, idGenerator util.IdGenerator,
+	service DeviceService, device config.DeviceConfig, channel config.ChannelConfig,
+	metric config.MetricConfig, value, threshold float64,
+	backoffTable map[uint64]time.Time) AlgorithmHandler {
 
 	return &ChannelAlgorithmHandler{
 		logger:       logger,
@@ -41,7 +44,8 @@ func NewChannelAlgorithmHandler(logger *logging.Logger, service DeviceService,
 func (h *ChannelAlgorithmHandler) Handle() (bool, error) {
 	deviceType := h.device.GetType()
 	h.logger.Debugf("Processing %s %s algorithm", deviceType, h.channel.GetName())
-	if h.channel.GetAlgorithmID() == common.ALGORITHM_PH_ID {
+	phAlgorithmID := h.idGenerator.NewID(common.ALGORITHM_PH_KEY)
+	if h.channel.GetAlgorithmID() == phAlgorithmID {
 		configs := h.device.GetConfigs()
 		gallons := 0
 		gallonsConfigKey := fmt.Sprintf("%s.gallons", deviceType)

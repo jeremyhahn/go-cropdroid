@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package service
@@ -86,7 +87,8 @@ func (ff *DefaultFarmFactory) createFarmConfigCluster(
 		params := raftCluster.GetParams()
 		params.SetClusterID(configID)
 		params.SetDataDir(fmt.Sprintf("%s/%d-%d", ff.app.DataDir, farmID, configID))
-		sm := statemachine.NewFarmConfigMachine(ff.app.Logger, configID, farmConfigChangeChan, common.DEFAULT_FARM_CONFIG_HISTORY_LENGTH)
+		sm := statemachine.NewFarmConfigMachine(ff.app.Logger, ff.idGenerator,
+			configID, farmConfigChangeChan, common.DEFAULT_FARM_CONFIG_HISTORY_LENGTH)
 		if err := raftCluster.CreateFarmConfigCluster(configID, sm); err != nil {
 			return err
 		}

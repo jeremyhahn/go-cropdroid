@@ -1,7 +1,7 @@
 package config
 
 type Role struct {
-	ID   uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID   uint64 `gorm:"primary_key" yaml:"id" json:"id"`
 	Name string `yaml:"name" json:"name"`
 	//Users []User `yaml:"users" json:"users"`
 	//Users      []User `gorm:"many2many:permissions"`

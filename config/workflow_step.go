@@ -1,7 +1,7 @@
 package config
 
 type WorkflowStep struct {
-	ID uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
 	//Name string `gorm:"name" yaml:"name" json:"name"`
 	WorkflowID uint64 `yaml:"workflow" json:"workflow_id"`
 	DeviceID   uint64 `yaml:"device" json:"device_id"`

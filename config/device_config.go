@@ -3,7 +3,7 @@ package config
 // Config represents a configuration value for a given user within a
 // a specific organization for a specific device
 type DeviceConfigItem struct {
-	ID                 uint64 `gorm:"primary_key:auto_increment" json:"id"`
+	ID                 uint64 `gorm:"primaryKey" json:"id"`
 	UserID             uint64 `gorm:"index:user_id" json:"user_id"`
 	DeviceID           uint64 `gorm:"index:config_device_id" json:"device_id"`
 	Key                string `gorm:"size:255;index:key" json:"key"`

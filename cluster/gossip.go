@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package cluster
@@ -12,7 +13,6 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/gossip"
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/util"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
@@ -101,7 +101,8 @@ func (s ClusterState) String() string {
 // NewGossipCluster creates a new GossipCluster implementation on the heap
 // and returns a pointer. This operation blocks until the minimum number of
 // nodes required (3) to create an initial Raft cluster is formed.
-func NewGossipCluster(params *ClusterParams, hashring *Consistent, farmDAO dao.FarmDAO) GossipCluster {
+func NewGossipCluster(params *ClusterParams, hashring *Consistent,
+	farmDAO dao.FarmDAO) GossipCluster {
 
 	cluster := &Gossip{
 		mutex:      &sync.RWMutex{},
@@ -358,7 +359,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 
 		nodeIDs := make([]uint64, 0)
 		clusterInfo := cluster.raft.GetClusterInfo(params.clusterID)
-		for nid, _ := range clusterInfo.Nodes {
+		for nid := range clusterInfo.Nodes {
 			//for nid, raftAddress := range clusterInfo.Nodes {
 			//cluster.nodes[raftAddress] = member[nid-1]
 			nodeIDs = append(nodeIDs, nid)
@@ -507,7 +508,8 @@ func (cluster *Gossip) Provision(farmConfig config.FarmConfig) error {
 		cluster.GossipAddress(), cluster.raft.GetPeers())
 
 	stateClusterID := uint64(farmConfig.GetID())
-	configClusterID := util.NewClusterHash(farmConfig.GetOrganizationID(), farmConfig.GetID())
+	clusterID := fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmConfig.GetID())
+	configClusterID := cluster.params.idGenerator.NewID(clusterID)
 
 	bytes, err := json.Marshal(&gossip.ProvisionRequest{
 		StateClusterID:  stateClusterID,

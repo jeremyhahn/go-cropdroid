@@ -19,11 +19,6 @@ func NewFarmDAO(logger *logging.Logger, db *gorm.DB) dao.FarmDAO {
 	return &GormFarmDAO{logger: logger, db: db}
 }
 
-// func (dao *GormFarmDAO) Create(farm config.FarmConfig) error {
-// 	dao.logger.Debugf("Creating farm record: %s", farm.GetName())
-// 	return dao.db.Create(farm).Error
-// }
-
 func (dao *GormFarmDAO) Delete(farm config.FarmConfig) error {
 
 	dao.logger.Debugf("Deleting farm record: %s", farm.GetName())
@@ -47,29 +42,14 @@ func (dao *GormFarmDAO) Delete(farm config.FarmConfig) error {
 	return dao.db.Delete(farm).Error
 }
 
-// func (dao *GormFarmDAO) DeleteById(farmID uint64) error {
-// 	dao.logger.Debugf("Deleing farm record: %d", farmID)
-// 	//	return dao.db.Delete(&config.Farm{}, farmID).Error
-// 	model := dao.db.Model(farm).AddForeignKey("farm_id", "devices(farm_id)", "UPDATE", "UPDATE")
-// 	return dao.db.Delete(model).Error
-// }
-
 func (dao *GormFarmDAO) Save(farm config.FarmConfig) error {
+	// f := *farm.(*config.Farm)
+	// if farm.GetID() == 0 {
+	// 	farm.SetID(dao.idGenerator.NewID(farm.GetName()))
+	// }
 	dao.logger.Debugf("Saving farm record: %s", farm.GetName())
 	return dao.db.Save(farm).Error
 }
-
-// func (dao *GormFarmDAO) First() (config.FarmConfig, error) {
-// 	dao.logger.Debugf("Getting first farm record")
-// 	var farm config.Farm
-// 	if err := dao.db.First(&farm).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	if err := farm.ParseConfigs(); err != nil {
-// 		return nil, err
-// 	}
-// 	return &farm, nil
-// }
 
 func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error) {
 	dao.logger.Debugf("Getting farm: %d", farmID)
@@ -165,3 +145,27 @@ func (dao *GormFarmDAO) Count() (int64, error) {
 	}
 	return count, nil
 }
+
+// func (dao *GormFarmDAO) First() (config.FarmConfig, error) {
+// 	dao.logger.Debugf("Getting first farm record")
+// 	var farm config.Farm
+// 	if err := dao.db.First(&farm).Error; err != nil {
+// 		return nil, err
+// 	}
+// 	if err := farm.ParseConfigs(); err != nil {
+// 		return nil, err
+// 	}
+// 	return &farm, nil
+// }
+
+// func (dao *GormFarmDAO) Create(farm config.FarmConfig) error {
+// 	dao.logger.Debugf("Creating farm record: %s", farm.GetName())
+// 	return dao.db.Create(farm).Error
+// }
+
+// func (dao *GormFarmDAO) DeleteById(farmID uint64) error {
+// 	dao.logger.Debugf("Deleing farm record: %d", farmID)
+// 	//	return dao.db.Delete(&config.Farm{}, farmID).Error
+// 	model := dao.db.Model(farm).AddForeignKey("farm_id", "devices(farm_id)", "UPDATE", "UPDATE")
+// 	return dao.db.Delete(model).Error
+// }

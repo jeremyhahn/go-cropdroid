@@ -1,12 +1,15 @@
+//go:build cluster
 // +build cluster
 
 package statemachine
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/lni/dragonboat/v3/statemachine"
@@ -28,9 +31,10 @@ func createLogger() *logging.Logger {
 func TestOpen(t *testing.T) {
 
 	logger := createLogger()
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	configClusterID := uint64(1234567890)
 	farmChangeConfigChan := make(chan config.FarmConfig, 5)
-	farmConfigMachine := NewFarmConfigMachine(logger,
+	farmConfigMachine := NewFarmConfigMachine(logger, idGenerator,
 		configClusterID, farmChangeConfigChan, 0)
 
 	lastAppliedIndex, err := farmConfigMachine.Open(nil)
@@ -41,9 +45,10 @@ func TestOpen(t *testing.T) {
 func TestFarmStateMachineUpdateLookupEmptyStore(t *testing.T) {
 
 	logger := createLogger()
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	configClusterID := uint64(1234567890)
 	farmChangeConfigChan := make(chan config.FarmConfig, 5)
-	farmConfigMachine := NewFarmConfigMachine(logger,
+	farmConfigMachine := NewFarmConfigMachine(logger, idGenerator,
 		configClusterID, farmChangeConfigChan, 0)
 
 	farm1 := config.NewFarm()
@@ -97,7 +102,9 @@ func TestFarmStateMachineUpdateLookupEmptyStore(t *testing.T) {
 		assert.Equal(t, ent.Result.Value, uint64(len(entries[i].Cmd)))
 	}
 
-	configClusterIdBytes := util.ClusterHashAsBytes(farm1.GetOrganizationID(), farm1.GetID())
+	key := fmt.Sprintf("%d-%d", farm1.GetOrganizationID(), farm1.GetID())
+	configClusterIdBytes := idGenerator.StringBytes(key)
+
 	persisted, err := farmConfigMachine.Lookup(configClusterIdBytes)
 	assert.Nil(t, err)
 	assert.NotNil(t, persisted)

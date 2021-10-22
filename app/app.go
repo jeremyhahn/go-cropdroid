@@ -1,3 +1,4 @@
+//go:build !cluster
 // +build !cluster
 
 package app
@@ -25,20 +26,21 @@ import (
 const Name = "cropdroid"
 
 type App struct {
-	Config         *config.Server
-	DebugFlag      bool
-	GormDB         gormstore.GormDB
-	GORM           *gorm.DB
-	GORMInitParams *gormstore.GormInitParams
-	HomeDir        string
-	KeyDir         string
-	KeyPair        KeyPair
-	Location       *time.Location
-	LogDir         string
-	LogFile        string
-	Logger         *logging.Logger
-	Mailer         common.Mailer
-	Name           string
+	Config          *config.Server
+	DebugFlag       bool
+	GormDB          gormstore.GormDB
+	GORM            *gorm.DB
+	GORMInitParams  *gormstore.GormInitParams
+	DataStoreEngine string
+	HomeDir         string
+	KeyDir          string
+	KeyPair         KeyPair
+	Location        *time.Location
+	LogDir          string
+	LogFile         string
+	Logger          *logging.Logger
+	Mailer          common.Mailer
+	Name            string
 }
 
 func NewApp() *App {

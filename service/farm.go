@@ -39,15 +39,16 @@ type DefaultFarmService struct {
 	farmConfigQuitChan  chan int
 	deviceStateQuitChan chan int
 	pollTickerQuitChan  chan int
+	idGenerator         util.IdGenerator
 	FarmService
 	//observer.FarmConfigObserver
 }
 
-func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmStorer,
-	configStore store.FarmConfigStorer, deviceConfigStore store.DeviceConfigStorer,
-	deviceDataStore datastore.DeviceDataStore, farmConfig config.FarmConfig, consistencyLevel int,
-	serviceRegistry ServiceRegistry, farmChannels *FarmChannels,
-	deviceConfigDAO dao.DeviceConfigDAO) (FarmService, error) {
+func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, idGenerator util.IdGenerator,
+	stateStore state.FarmStorer, configStore store.FarmConfigStorer,
+	deviceConfigStore store.DeviceConfigStorer, deviceDataStore datastore.DeviceDataStore,
+	farmConfig config.FarmConfig, consistencyLevel int, serviceRegistry ServiceRegistry,
+	farmChannels *FarmChannels, deviceConfigDAO dao.DeviceConfigDAO) (FarmService, error) {
 
 	farmID := farmConfig.GetID()
 	mode := farmConfig.GetMode()
@@ -89,11 +90,13 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, stateStore state.FarmS
 		deviceStateQuitChan: make(chan int),
 		pollTickerQuitChan:  make(chan int),
 		deviceConfigDAO:     deviceConfigDAO,
-		backoffTable:        backoffTable}
+		backoffTable:        backoffTable,
+		idGenerator:         idGenerator}
 
 	var configClusterID uint64
 	if farmService.isRaftConfigStore(farmConfig) {
-		configClusterID = util.NewClusterHash(farmConfig.GetOrganizationID(), farmID)
+		key := fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmID)
+		configClusterID = idGenerator.NewID(key)
 	} else {
 		configClusterID = farmConfig.GetID()
 
@@ -779,7 +782,7 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig config.DeviceConfig,
 			// 	continue
 			// }
 
-			handler := NewChannelConditionHandler(farm.app.Logger,
+			handler := NewChannelConditionHandler(farm.app.Logger, farm.idGenerator,
 				deviceConfig, channel, farmState, farm, deviceService,
 				farm.conditionService, farm.backoffTable[farm.farmID])
 			handled, err := handler.Handle()

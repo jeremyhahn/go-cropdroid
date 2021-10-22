@@ -42,9 +42,11 @@ var configCmd = &cobra.Command{
 			App.GORM = App.GormDB.Connect(true)
 			App.GORM.LogMode(App.DebugFlag)
 
+			idGenerator := util.NewIdGenerator(App.DataStoreEngine)
+
 			switch App.Config.Mode {
 			case common.MODE_STANDALONE, "virtual":
-				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, App.Location,
+				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, idGenerator, App.Location,
 					App.Config.Mode).Initialize(App.Config.EnableDefaultFarm); err != nil {
 					log.Fatal(err)
 				}

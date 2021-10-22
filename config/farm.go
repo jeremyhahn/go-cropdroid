@@ -7,7 +7,7 @@ import (
 )
 
 type Farm struct {
-	ID             uint64     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID             uint64     `gorm:"primaryKey" yaml:"id" json:"id"`
 	OrganizationID uint64     `yaml:"orgId" json:"orgId"`
 	Replicas       int        `yaml:"replicas" json:"replicas"`
 	Consistency    int        `gorm:"consistency" yaml:"consistency" json:"consistency"`
@@ -41,6 +41,14 @@ func CreateFarm(name string, orgID uint64, interval int,
 		//Interval:       60,
 		OrganizationID: orgID,
 		Devices:        devices}
+}
+
+func (farm *Farm) SetID(id uint64) {
+	farm.ID = id
+}
+
+func (farm *Farm) GetID() uint64 {
+	return farm.ID
 }
 
 func (farm *Farm) SetOrganizationID(id uint64) {
@@ -150,22 +158,6 @@ func (farm *Farm) GetPublicKey() string {
 func (farm *Farm) GetSmtp() SmtpConfig {
 	return farm.Smtp
 }
-
-func (farm *Farm) SetID(id uint64) {
-	farm.ID = id
-}
-
-func (farm *Farm) GetID() uint64 {
-	return farm.ID
-}
-
-// func (farm *Farm) SetOrgID(id uint64) {
-// 	farm.OrganizationID = id
-// }
-
-// func (farm *Farm) GetOrgID() int {
-// 	return farm.OrganizationID
-// }
 
 func (farm *Farm) SetUsers(users []User) {
 	farm.Users = users

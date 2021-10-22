@@ -1,3 +1,4 @@
+//go:build cluster && pebble
 // +build cluster,pebble
 
 package statemachine
@@ -6,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,11 +37,13 @@ type FarmDiskKV struct {
 	closed               bool
 	aborted              bool
 	farmConfigChangeChan chan config.FarmConfig
+	idGenerator          util.IdGenerator
 	FarmConfigMachine
 }
 
-func NewFarmConfigMachine(logger *logging.Logger, configClusterID uint64,
-	farmConfigChangeChan chan config.FarmConfig, historyMaxSize int) FarmConfigMachine {
+func NewFarmConfigMachine(logger *logging.Logger, idGenerator util.IdGenerator,
+	configClusterID uint64, farmConfigChangeChan chan config.FarmConfig,
+	historyMaxSize int) FarmConfigMachine {
 
 	return &FarmDiskKV{
 		logger:               logger,
@@ -172,7 +176,8 @@ func (d *FarmDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 		}
 		// farmConfig = s.hydrateConfigs(farmConfig)
 		// farmConfig.ParseConfigs()
-		configClusterID := util.ClusterHashAsBytes(farmConfig.GetOrganizationID(), farmConfig.GetID())
+		key := fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmConfig.GetID())
+		configClusterID := d.idGenerator.StringBytes(key)
 		wb.Set(configClusterID, e.Cmd, db.wo)
 		d.farmConfigChangeChan <- &farmConfig
 		ents[idx].Result = sm.Result{Value: uint64(len(ents[idx].Cmd))}

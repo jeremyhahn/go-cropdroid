@@ -6,7 +6,7 @@ import (
 )
 
 type Device struct {
-	ID              uint64             `gorm:"primary_key;auto_increment" yaml:"id" json:"id"`
+	ID              uint64             `gorm:"primaryKey" yaml:"id" json:"id"`
 	FarmID          uint64             `yaml:"farmId" json:"farmId"`
 	Type            string             `yaml:"type" json:"type"`
 	Interval        int                `yaml:"interval" json:"interval"`

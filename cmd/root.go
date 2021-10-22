@@ -162,6 +162,7 @@ func initApp() {
 	App.DebugFlag = viper.GetBool("debug")
 	App.HomeDir = viper.GetString("home")
 	App.KeyDir = viper.GetString("keys")
+	App.DataStoreEngine = viper.GetString("datastore")
 	initLogger()
 	initConfig()
 	if App.DebugFlag {
@@ -258,7 +259,7 @@ func initConfig() {
 	App.Config.Mode = viper.GetString("mode")
 	App.Config.DowngradeUser = viper.GetString("setuid")
 	App.Config.EnableRegistrations = viper.GetBool("enable-registrations")
-	App.Config.EnableDefaultFarm = viper.GetBool("redirect-default-farm")
+	App.Config.EnableDefaultFarm = viper.GetBool("enable-default-farm")
 
 	App.Logger.Debugf("%+v", App.Config)
 

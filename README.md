@@ -60,6 +60,12 @@ Linux x64 requires the following toolchain:
 1. [RocksDB Tooling](https://github.com/facebook/rocksdb/wiki/Administration-and-Data-Access-Tool)
 
 
+# Databases
+
+### Sqlite
+uint64 not supported: https://github.com/golang/go/issues/9373
+
+
 # Devices
 
 ## Room Device

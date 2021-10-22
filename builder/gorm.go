@@ -15,6 +15,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 )
 
@@ -26,6 +27,7 @@ type GormConfigBuilder struct {
 	consistencyLevel int
 	appStateTTL      int
 	appStateTick     int
+	idGenerator      util.IdGenerator
 }
 
 func NewGormConfigBuilder(_app *app.App, dataStore string, appStateTTL int, appStateTick int) *GormConfigBuilder {
@@ -46,7 +48,8 @@ func NewGormConfigBuilder(_app *app.App, dataStore string, appStateTTL int, appS
 		farmStateStore:   farmStateStore,
 		deviceStateStore: deviceStateStore,
 		deviceDataStore:  deviceDatastore,
-		consistencyLevel: common.CONSISTENCY_CACHED}
+		consistencyLevel: common.CONSISTENCY_CACHED,
+		idGenerator:      util.NewIdGenerator(_app.DataStoreEngine)}
 }
 
 func (builder *GormConfigBuilder) Build() (app.KeyPair,
@@ -90,14 +93,14 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	farmDeprovisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 	farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
 	gormInitializer := gorm.NewGormInitializer(builder.app.Logger,
-		builder.app.GormDB, builder.app.Location, builder.app.Config.Mode)
+		builder.app.GormDB, builder.idGenerator, builder.app.Location, builder.app.Config.Mode)
 	gormFarmConfigStore := store.NewGormFarmConfigStore(datastoreRegistry.NewFarmDAO(), 1)
 	gormDeviceConfigStore := store.NewGormDeviceConfigStore(datastoreRegistry.NewDeviceDAO(), 3)
 	farmFactory := service.NewFarmFactory(
 		builder.app, datastoreRegistry, serviceRegistry, builder.farmStateStore,
 		gormFarmConfigStore, builder.deviceStateStore, gormDeviceConfigStore,
 		builder.deviceDataStore, mapperRegistry.GetDeviceMapper(),
-		changefeeders, farmProvisionerChan, farmTickerProvisionerChan)
+		changefeeders, farmProvisionerChan, farmTickerProvisionerChan, builder.idGenerator)
 	//serviceRegistry.SetFarmFactory(farmFactory)
 
 	farmProvisioner := provisioner.NewGormFarmProvisioner(

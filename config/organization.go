@@ -4,7 +4,7 @@ import "fmt"
 
 // Organization groups users and devices
 type Organization struct {
-	ID    uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID    uint64 `gorm:"primary_key" yaml:"id" json:"id"`
 	Name  string `gorm:"size:255" yaml:"name" json:"name"`
 	Farms []Farm `yaml:"farms" json:"farms"`
 	//Devices        []Device `yaml:"devices" json:"devices"`

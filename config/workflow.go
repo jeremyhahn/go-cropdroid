@@ -6,7 +6,7 @@ import "time"
 // of WorkflowStep, which can be triggered manually or based on a
 // Schedule or Condition.
 type Workflow struct {
-	ID             uint64         `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID             uint64         `gorm:"primaryKey" yaml:"id" json:"id"`
 	FarmID         uint64         `yaml:"farm" json:"farm_id"`
 	Name           string         `gorm:"name" yaml:"name" json:"name"`
 	Conditions     []Condition    `gorm:"conditions" yaml:"conditions" json:"conditions"`

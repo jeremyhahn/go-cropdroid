@@ -5,8 +5,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 
@@ -62,12 +64,14 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	database.isServerConnection = serverConnection
 	switch database.params.Engine {
 	case "memory":
+		idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 		//"file:%s?mode=memory&cache=shared"
 		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory", database.params.DBName))
 		database.db.Exec("PRAGMA foreign_keys = ON;")
 		//database.db.LogMode(true)
 		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
-		if err := NewGormInitializer(database.logger, database, database.params.Location, database.params.AppMode).Initialize(database.params.EnableDefaultFarm); err != nil {
+		if err := NewGormInitializer(database.logger, database, idGenerator, database.params.Location,
+			database.params.AppMode).Initialize(database.params.EnableDefaultFarm); err != nil {
 			database.logger.Fatal(err)
 		}
 	case "sqlite":

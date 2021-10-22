@@ -20,8 +20,9 @@ func NewPermissionDAO(logger *logging.Logger, db *gorm.DB) dao.PermissionDAO {
 }
 
 func (permissionDAO *GormPermissionDAO) Save(permission config.PermissionConfig) error {
+	perm := *permission.(*config.Permission)
 	permissionDAO.logger.Debugf(fmt.Sprintf("Saving permission record: %+v", permission))
-	return permissionDAO.db.Save(permission).Error
+	return permissionDAO.db.Save(perm).Error
 }
 
 func (permissionDAO *GormPermissionDAO) Get(id uint64) (config.PermissionConfig, error) {

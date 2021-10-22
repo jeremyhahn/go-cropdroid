@@ -7,7 +7,7 @@ import (
 )
 
 type Metric struct {
-	ID            int        `yaml:"id" json:"id"`
+	ID            uint64     `yaml:"id" json:"id"`
 	DeviceID      uint64     `yaml:"deviceID" json:"deviceId"`
 	DataType      int        `yaml:"datatype" json:"datatype"`
 	Name          string     `yaml:"name" json:"name"`
@@ -26,7 +26,7 @@ func NewMetric() common.Metric {
 	return &Metric{}
 }
 
-func CreateMetric(id int, name string, enable bool, notify bool, value float64) common.Metric {
+func CreateMetric(id uint64, name string, enable bool, notify bool, value float64) common.Metric {
 	return &Metric{
 		ID:     id,
 		Name:   name,
@@ -35,11 +35,11 @@ func CreateMetric(id int, name string, enable bool, notify bool, value float64) 
 		Value:  value}
 }
 
-func (metric *Metric) SetID(id int) {
+func (metric *Metric) SetID(id uint64) {
 	metric.ID = id
 }
 
-func (metric *Metric) GetID() int {
+func (metric *Metric) GetID() uint64 {
 	return metric.ID
 }
 

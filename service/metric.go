@@ -7,7 +7,7 @@ import (
 )
 
 type MetricService interface {
-	Get(id int) (common.Metric, error)
+	Get(id uint64) (common.Metric, error)
 	GetAll(session Session, deviceID uint64) ([]common.Metric, error)
 	Update(session Session, metric common.Metric) error
 }
@@ -24,7 +24,7 @@ func NewMetricService(dao dao.MetricDAO, mapper mapper.MetricMapper) MetricServi
 		mapper: mapper}
 }
 
-func (service *DefaultMetricService) Get(id int) (common.Metric, error) {
+func (service *DefaultMetricService) Get(id uint64) (common.Metric, error) {
 	entity, err := service.dao.Get(id)
 	if err != nil {
 		return nil, err

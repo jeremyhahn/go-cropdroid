@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package cluster
@@ -12,6 +13,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
 type ClusterParams struct {
@@ -38,13 +40,15 @@ type ClusterParams struct {
 	farmDeprovisionerChan     chan config.FarmConfig      `json:"-"`
 	farmTickerProvisionerChan chan uint64                 `json:"-"`
 	daoRegistry               datastore.DatastoreRegistry `json:"-"`
+	idGenerator               util.IdGenerator
 }
 
 func NewClusterParams(logger *logging.Logger, clusterID, nodeID uint64, provider, region,
 	zone, dataDir, localAddress, listen string, gossipPeers []string, raft []string, join bool,
 	gossipPort, raftPort, raftRequestedLeaderID int, vnodes, maxNodes, bootstrap int,
-	daoRegistry datastore.DatastoreRegistry, farmProvisionerChan chan config.FarmConfig,
-	farmDeprovisionerChan chan config.FarmConfig, farmTickerProvisionerChan chan uint64) *ClusterParams {
+	idGenerator util.IdGenerator, daoRegistry datastore.DatastoreRegistry,
+	farmProvisionerChan chan config.FarmConfig, farmDeprovisionerChan chan config.FarmConfig,
+	farmTickerProvisionerChan chan uint64) *ClusterParams {
 
 	var nodeName string
 	hostname, _ := os.Hostname()
@@ -133,7 +137,8 @@ func NewClusterParams(logger *logging.Logger, clusterID, nodeID uint64, provider
 		farmProvisionerChan:       farmProvisionerChan,
 		farmDeprovisionerChan:     farmDeprovisionerChan,
 		farmTickerProvisionerChan: farmTickerProvisionerChan,
-		daoRegistry:               daoRegistry}
+		daoRegistry:               daoRegistry,
+		idGenerator:               idGenerator}
 }
 
 func (cp *ClusterParams) SetDataDir(dir string) {

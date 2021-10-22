@@ -10,6 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/stretchr/testify/assert"
 
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
@@ -67,9 +68,11 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 
 func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *ProvisionerParams) {
 	it := NewIntegrationTest()
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	userMapper := mapper.NewUserMapper()
 	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm)
-	initializer := gormstore.NewGormInitializer(it.logger, it.db, it.location, common.MODE_STANDALONE)
+	initializer := gormstore.NewGormInitializer(it.logger, it.db, idGenerator,
+		it.location, common.MODE_STANDALONE)
 	params := &ProvisionerParams{
 		ConfigStore: config.MEMORY_STORE,
 		StateStore:  state.MEMORY_STORE,

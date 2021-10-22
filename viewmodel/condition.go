@@ -9,7 +9,7 @@ import (
 type Condition struct {
 	ID         string  `json:"id"`
 	DeviceType string  `json:"deviceType"`
-	MetricID   int     `json:"metricId"`
+	MetricID   uint64  `json:"metricId"`
 	MetricName string  `json:"metricName"`
 	WorkflowID uint64  `json:"workflowId"`
 	ChannelID  uint64  `json:"channelId"`
@@ -27,7 +27,7 @@ func (condition *Condition) GetDeviceType() string {
 	return condition.DeviceType
 }
 
-func (condition *Condition) GetMetricID() int {
+func (condition *Condition) GetMetricID() uint64 {
 	return condition.MetricID
 }
 

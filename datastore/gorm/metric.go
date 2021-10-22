@@ -36,7 +36,7 @@ func (metricDAO *GormMetricDAO) Save(metric config.MetricConfig) error {
 	return metricDAO.db.Save(metric).Error
 }
 
-func (metricDAO *GormMetricDAO) Get(metricID int) (config.MetricConfig, error) {
+func (metricDAO *GormMetricDAO) Get(metricID uint64) (config.MetricConfig, error) {
 	metricDAO.logger.Debugf("Getting metric id %d", metricID)
 	var entity config.Metric
 	if err := metricDAO.db.First(&entity, metricID).Error; err != nil {

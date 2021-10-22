@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package cluster
@@ -17,16 +18,20 @@ import (
 type RaftFarmConfigStore struct {
 	logger       *logging.Logger
 	raft         RaftCluster
+	idGenerator  util.IdGenerator
 	cachedConfig config.FarmConfig
 	mutex        *sync.RWMutex
 	store.FarmConfigStorer
 }
 
-func NewRaftFarmConfigStore(logger *logging.Logger, raftCluster RaftCluster) store.FarmConfigStorer {
+func NewRaftFarmConfigStore(logger *logging.Logger, raftCluster RaftCluster,
+	idGenerator util.IdGenerator) store.FarmConfigStorer {
+
 	return &RaftFarmConfigStore{
-		logger: logger,
-		raft:   raftCluster,
-		mutex:  &sync.RWMutex{}}
+		logger:      logger,
+		raft:        raftCluster,
+		idGenerator: idGenerator,
+		mutex:       &sync.RWMutex{}}
 }
 
 func (s *RaftFarmConfigStore) Len() int {
@@ -58,14 +63,14 @@ func (s *RaftFarmConfigStore) Get(clusterID uint64, CONSISTENCY_LEVEL int) (conf
 		return s.cachedConfig, nil
 	}
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
-		result, err = s.raft.SyncRead(clusterID, util.ClusterIdBytes(clusterID))
+		result, err = s.raft.SyncRead(clusterID, s.idGenerator.Uint64Bytes(clusterID))
 		if err != nil {
 			s.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
 			return nil, err
 		}
 	} else {
 		// CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL
-		result, err = s.raft.ReadLocal(clusterID, util.ClusterIdBytes(clusterID))
+		result, err = s.raft.ReadLocal(clusterID, s.idGenerator.Uint64Bytes(clusterID))
 		if err != nil {
 			s.logger.Errorf("[RaftFarmConfigStore.Get] Error (clusterID=%d): %s", clusterID, err)
 			return nil, err

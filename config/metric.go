@@ -1,7 +1,7 @@
 package config
 
 type Metric struct {
-	ID           int     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	ID           uint64  `gorm:"primaryKey" yaml:"id" json:"id"`
 	DeviceID     uint64  `yaml:"deviceID" json:"device_id"`
 	DataType     int     `gorm:"column:datatype" yaml:"datatype" json:"datatype"`
 	Name         string  `yaml:"name" json:"name"`
@@ -18,7 +18,7 @@ func NewMetric() *Metric {
 	return &Metric{}
 }
 
-func CreateMetric(id int, name string, enable bool, notify bool) MetricConfig {
+func CreateMetric(id uint64, name string, enable bool, notify bool) MetricConfig {
 	return &Metric{
 		ID:     id,
 		Name:   name,
@@ -26,11 +26,11 @@ func CreateMetric(id int, name string, enable bool, notify bool) MetricConfig {
 		Notify: notify}
 }
 
-func (metric *Metric) SetID(id int) {
+func (metric *Metric) SetID(id uint64) {
 	metric.ID = id
 }
 
-func (metric *Metric) GetID() int {
+func (metric *Metric) GetID() uint64 {
 	return metric.ID
 }
 

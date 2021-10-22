@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"regexp"
-	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -30,6 +29,7 @@ var (
 
 type LocalAuthService struct {
 	app           *app.App
+	idGenerator   util.IdGenerator
 	permissionDAO dao.PermissionDAO
 	regDAO        dao.RegistrationDAO
 	orgDAO        dao.OrganizationDAO
@@ -43,16 +43,16 @@ type LocalAuthService struct {
 // Performs authentication, registration and activation services using
 // "local" datastore data access objects.
 func NewLocalAuthService(app *app.App, permissionDAO dao.PermissionDAO,
-	regDAO dao.RegistrationDAO, orgDAO dao.OrganizationDAO,
-	farmDAO dao.FarmDAO, userDAO dao.UserDAO, roleDAO dao.RoleDAO,
-	userMapper mapper.UserMapper) AuthService {
+	regDAO dao.RegistrationDAO, orgDAO dao.OrganizationDAO, farmDAO dao.FarmDAO,
+	userDAO dao.UserDAO, roleDAO dao.RoleDAO, userMapper mapper.UserMapper) AuthService {
 
 	return &LocalAuthService{
 		app:           app,
+		idGenerator:   util.NewIdGenerator(app.DataStoreEngine),
 		permissionDAO: permissionDAO,
+		regDAO:        regDAO,
 		orgDAO:        orgDAO,
 		farmDAO:       farmDAO,
-		regDAO:        regDAO,
 		userDAO:       userDAO,
 		roleDAO:       roleDAO,
 		mapper:        userMapper}
@@ -111,8 +111,7 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common
 	return service.mapper.MapUserEntityToModel(userEntity), orgs, nil
 }
 
-// Registers a new user and sends an email with an activation button in HTML
-// format.
+// Registers a new user and sends an email with an activation button in HTML format.
 func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 	baseURI string) (common.UserAccount, error) {
 
@@ -138,8 +137,8 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		return nil, err
 	}
 
-	registrationID := util.NewRegistrationHash(userCredentials.Email, time.Now().Unix())
-	registration := config.NewRegistration(registrationID)
+	registrationID := service.idGenerator.NewID(userCredentials.Email)
+	registration := config.CreateRegistration(registrationID)
 	registration.SetEmail(userCredentials.Email)
 	registration.SetPassword(string(encrypted))
 
@@ -147,7 +146,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		if service.app.Config.Mode == common.MODE_STANDALONE {
 			return nil, ErrOrgRegistrationUnsupported
 		}
-		userCredentials.OrgID = util.NewOrganizationHash(userCredentials.OrgName)
+		userCredentials.OrgID = service.idGenerator.NewID(userCredentials.OrgName)
 		persistedOrg, err := service.orgDAO.Get(userCredentials.OrgID)
 		if err != nil && err.Error() != ErrRecordNotFound.Error() {
 			service.app.Logger.Errorf("%s", err.Error())
@@ -198,6 +197,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	}
 
 	userConfig := &config.User{
+		ID:       service.idGenerator.NewID(registration.GetEmail()),
 		Email:    registration.GetEmail(),
 		Password: registration.GetPassword()}
 
@@ -220,7 +220,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	if orgName != "" {
 
 		service.orgDAO.Save(&config.Organization{
-			ID:   util.NewOrganizationHash(orgName),
+			ID:   service.idGenerator.NewID(orgName),
 			Name: orgName})
 
 		if service.app.Config.DefaultPermission == common.FARM_ACCESS_ALL {

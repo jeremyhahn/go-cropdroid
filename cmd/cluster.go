@@ -1,3 +1,4 @@
+//go:build cluster && !cloud
 // +build cluster,!cloud
 
 package cmd
@@ -111,15 +112,18 @@ var clusterCmd = &cobra.Command{
 		}
 
 		daoRegistry := gorm.NewGormRegistry(App.Logger, App.GormDB)
+		idGenerator := util.NewIdGenerator(App.DataStoreEngine)
 
 		farmProvisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 		farmDeprovisionerChan := make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE)
 		farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
 
-		params := cluster.NewClusterParams(App.Logger, uint64(ClusterID), uint64(NodeID), ClusterIaasProvider, ClusterRegion,
-			ClusterZone, App.DataDir, localAddress, ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort,
-			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes, ClusterBootstrap, daoRegistry,
-			farmProvisionerChan, farmDeprovisionerChan, farmTickerProvisionerChan)
+		params := cluster.NewClusterParams(App.Logger, uint64(ClusterID), uint64(NodeID),
+			ClusterIaasProvider, ClusterRegion, ClusterZone, App.DataDir, localAddress,
+			ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort,
+			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes,
+			ClusterBootstrap, idGenerator, daoRegistry, farmProvisionerChan,
+			farmDeprovisionerChan, farmTickerProvisionerChan)
 
 		gossipCluster := cluster.NewGossipCluster(params, cluster.NewHashring(ClusterVirtualNodes), daoRegistry.GetFarmDAO())
 		gossipCluster.Join()

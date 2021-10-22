@@ -8,11 +8,13 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/op/go-logging"
 )
 
 type ChannelConditionHandler struct {
 	logger           *logging.Logger
+	idGenerator      util.IdGenerator
 	deviceConfig     config.DeviceConfig
 	channelConfig    config.ChannelConfig
 	farmState        state.FarmStateMap
@@ -20,16 +22,19 @@ type ChannelConditionHandler struct {
 	deviceService    DeviceService
 	conditionService ConditionService
 	backoffTable     map[uint64]time.Time
+	idGeerator       util.IdGenerator
 	ConditionHandler
 }
 
-func NewChannelConditionHandler(logger *logging.Logger, deviceConfig config.DeviceConfig,
-	channelConfig config.ChannelConfig, farmState state.FarmStateMap, farmService FarmService,
+func NewChannelConditionHandler(logger *logging.Logger, idGenerator util.IdGenerator,
+	deviceConfig config.DeviceConfig, channelConfig config.ChannelConfig,
+	farmState state.FarmStateMap, farmService FarmService,
 	deviceService DeviceService, conditionService ConditionService,
 	backoffTable map[uint64]time.Time) ConditionHandler {
 
 	return &ChannelConditionHandler{
 		logger:           logger,
+		idGenerator:      idGenerator,
 		deviceConfig:     deviceConfig,
 		channelConfig:    channelConfig,
 		farmState:        farmState,
@@ -99,7 +104,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 
 	if h.channelConfig.GetAlgorithmID() > 0 {
 		// Dont continue processing channels managed by algorithms
-		handled, err := NewChannelAlgorithmHandler(h.logger, h.deviceService,
+		handled, err := NewChannelAlgorithmHandler(h.logger, h.idGenerator, h.deviceService,
 			h.deviceConfig, h.channelConfig, conditionMetric, value,
 			condition.GetThreshold(), h.backoffTable).Handle()
 		if err != nil {

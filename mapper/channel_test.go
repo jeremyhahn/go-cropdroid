@@ -48,7 +48,7 @@ func TestChannelMapperMapConfigToModel(t *testing.T) {
 	channelConfig.SetDuration(1)
 	channelConfig.SetDebounce(2)
 	channelConfig.SetBackoff(3)
-	channelConfig.SetAlgorithmID(4)
+	channelConfig.SetAlgorithmID(uint64(4))
 
 	channel, ok := channelConfig.(common.Channel)
 	assert.True(t, ok)

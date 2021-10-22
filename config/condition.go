@@ -9,7 +9,7 @@ type Condition struct {
 	ID              uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	WorkflowID      uint64  `yaml:"workflow" json:"workflow_id"`
 	ChannelID       uint64  `yaml:"channel" json:"channel_id"`
-	MetricID        int     `yaml:"metric" json:"metric_id"`
+	MetricID        uint64  `yaml:"metric" json:"metric_id"`
 	Comparator      string  `yaml:"comparator" json:"comparator"`
 	Threshold       float64 `yaml:"threshold" json:"threshold"`
 	ConditionConfig `yaml:"-" json:"-"`
@@ -43,11 +43,11 @@ func (condition *Condition) GetChannelID() uint64 {
 	return condition.ChannelID
 }
 
-func (condition *Condition) SetMetricID(metric int) {
+func (condition *Condition) SetMetricID(metric uint64) {
 	condition.MetricID = metric
 }
 
-func (condition *Condition) GetMetricID() int {
+func (condition *Condition) GetMetricID() uint64 {
 	return condition.MetricID
 }
 

@@ -85,3 +85,29 @@ func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 
 	currentTest.Cleanup()
 }
+
+func TestRole_GetAll(t *testing.T) {
+
+	currentTest := NewIntegrationTest()
+	currentTest.gorm.AutoMigrate(&config.Role{})
+
+	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
+	roleDAO.Save(&config.Role{
+		ID:   1,
+		Name: "admin"})
+	roleDAO.Save(&config.Role{
+		ID:   2,
+		Name: "cultivator"})
+	roleDAO.Save(&config.Role{
+		ID:   3,
+		Name: "analyst"})
+
+	roles, err := roleDAO.GetAll()
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(roles))
+	assert.Equal(t, "admin", roles[0].GetName())
+	assert.Equal(t, "cultivator", roles[1].GetName())
+	assert.Equal(t, "analyst", roles[2].GetName())
+
+	currentTest.Cleanup()
+}

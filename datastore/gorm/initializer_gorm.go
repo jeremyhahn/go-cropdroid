@@ -1,6 +1,7 @@
 package gorm
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,10 @@ import (
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	ErrFarmAlreadyExists = errors.New("farm already exists")
 )
 
 type GormInitializer struct {
@@ -84,14 +89,19 @@ func (initializer *GormInitializer) Initialize(includeFarmConfig bool) error {
 	permission := &config.Permission{
 		UserID: adminUser.GetID(),
 		RoleID: adminRole.GetID()}
-	initializer.permissionDAO.Save(permission)
 
 	if includeFarmConfig {
-		farmConfig, err := initializer.BuildConfig(adminUser, adminRole)
+		farmConfig, err := initializer.BuildConfig(0, adminUser, adminRole)
 		if err != nil {
 			return err
 		}
-		initializer.farmDAO.Save(farmConfig.(*config.Farm))
+		if err := initializer.farmDAO.Save(farmConfig.(*config.Farm)); err != nil {
+			return err
+		}
+		permission.SetFarmID(farmConfig.GetID())
+	}
+	if err := initializer.permissionDAO.Save(permission); err != nil {
+		return err
 	}
 
 	phAlgoID := initializer.newID(common.ALGORITHM_PH_KEY)
@@ -115,19 +125,41 @@ func (initializer *GormInitializer) newFarmID(farmID uint64, key string) uint64 
 	return initializer.idGenerator.NewID(fmt.Sprintf("%d-%s", farmID, key))
 }
 
-// Builds a FarmConfig for the specified pre-existing admin user.
-func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, assignedRole config.RoleConfig) (config.FarmConfig, error) {
+// Builds a FarmConfig for the specified (pre-existing) administrative user.
+func (initializer *GormInitializer) BuildConfig(orgID uint64, adminUser config.UserConfig, assignedRole config.RoleConfig) (config.FarmConfig, error) {
 
-	farmName := "My Crop"
-	farmKey := fmt.Sprintf("%d-%s", adminUser.GetID(), farmName)
+	farms, err := initializer.permissionDAO.GetFarms(orgID)
+
+	farmName := fmt.Sprintf("%s %d", common.DEFAULT_CROP_NAME, len(farms)+1)
+	farmKey := fmt.Sprintf("%d-%s", orgID, farmName)
 	farmID := initializer.idGenerator.NewID(farmKey)
+
+	// Make sure farm doesn't already exist
+	for _, farm := range farms {
+		if farm.GetID() == farmID {
+			return nil, ErrFarmAlreadyExists
+		}
+	}
+
+	// Add permissions for all users in the org
+	users, err := initializer.permissionDAO.GetUsers(orgID)
+	for _, user := range users {
+		permission := &config.Permission{
+			UserID: user.GetID(),
+			RoleID: user.GetRoles()[0].GetID(),
+			FarmID: farmID}
+		initializer.permissionDAO.Save(permission)
+	}
+	// Add permission for adminUser
+	permission := &config.Permission{
+		UserID: adminUser.GetID(),
+		RoleID: assignedRole.GetID(),
+		FarmID: farmID}
+	initializer.permissionDAO.Save(permission)
 
 	defaultTimezone := initializer.location.String()
 	now := time.Now().In(initializer.location)
-	//nowHr, nowMin, _ := now.Clock()
 	sevenPM := time.Date(now.Year(), now.Month(), now.Day(), 19, 0, 0, 0, initializer.location)
-
-	// common.SERVER_CONTROLLER_ID needs to match the ID of this server device!!
 
 	serverDevice := config.NewDevice()
 	serverDeviceNameID := initializer.newFarmID(farmID, "server-name")
@@ -145,47 +177,48 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	serverDevice.SetType(common.CONTROLLER_TYPE_SERVER)
 	serverDevice.SetDescription("Provides monitoring, real-time notifications, and web services")
 	serverDevice.SetConfigs([]config.DeviceConfigItem{
-		{ID: serverDeviceNameID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_NAME_KEY, Value: "First Room"},
-		{ID: serverDeviceIntervalID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_INTERVAL_KEY, Value: "60"},
-		{ID: serverDeviceTimezoneID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_TIMEZONE_KEY, Value: defaultTimezone},
-		{ID: serverDeviceModeID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_MODE_KEY, Value: "virtual"},
-		{ID: serverDeviceSmtpEnableID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_ENABLE_KEY, Value: "false"},
-		{ID: serverDeviceSmtpHostID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_HOST_KEY, Value: "smtp.gmail.com"},
-		{ID: serverDeviceSmtpPortID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_PORT_KEY, Value: "587"},
-		{ID: serverDeviceSmtpUsernameID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_USERNAME_KEY, Value: "myuser@gmail.com"},
-		{ID: serverDeviceSmtpPasswordID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_PASSWORD_KEY, Value: "$ecret!"},
-		{ID: serverDeviceSmtpRecipientID, UserID: adminUser.GetID(), DeviceID: serverDevice.GetID(), Key: common.CONFIG_SMTP_RECIPIENT_KEY, Value: "1234567890@vtext.com"}})
+		{ID: serverDeviceNameID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_NAME_KEY, Value: farmName},
+		{ID: serverDeviceIntervalID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_INTERVAL_KEY, Value: "60"},
+		{ID: serverDeviceTimezoneID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_TIMEZONE_KEY, Value: defaultTimezone},
+		{ID: serverDeviceModeID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_MODE_KEY, Value: "virtual"},
+		{ID: serverDeviceSmtpEnableID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_SMTP_ENABLE_KEY, Value: "false"},
+		{ID: serverDeviceSmtpHostID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_SMTP_HOST_KEY, Value: "smtp.gmail.com"},
+		{ID: serverDeviceSmtpPortID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_SMTP_PORT_KEY, Value: "587"},
+		{ID: serverDeviceSmtpUsernameID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_SMTP_USERNAME_KEY, Value: "myuser@gmail.com"},
+		{ID: serverDeviceSmtpPasswordID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_SMTP_PASSWORD_KEY, Value: "$ecret!"},
+		{ID: serverDeviceSmtpRecipientID, UserID: adminUser.GetID(), DeviceID: serverDeviceID, Key: common.CONFIG_SMTP_RECIPIENT_KEY, Value: "1234567890@vtext.com"}})
 
 	roomDevice := config.NewDevice()
 	roomDeviceEnableID := initializer.newFarmID(farmID, "room-enable")
 	roomDeviceNotifyID := initializer.newFarmID(farmID, "room-notify")
 	roomDeviceUriID := initializer.newFarmID(farmID, "room-uri")
 	roomDeviceVideoID := initializer.newFarmID(farmID, "room-video")
-	roomDeviceMetric0ID := initializer.newFarmID(farmID, "metric-0")
-	roomDeviceMetric1ID := initializer.newFarmID(farmID, "metric-1")
-	roomDeviceMetric2ID := initializer.newFarmID(farmID, "metric-2")
-	roomDeviceMetric3ID := initializer.newFarmID(farmID, "metric-3")
-	roomDeviceMetric4ID := initializer.newFarmID(farmID, "metric-4")
-	roomDeviceMetric5ID := initializer.newFarmID(farmID, "metric-5")
-	roomDeviceMetric6ID := initializer.newFarmID(farmID, "metric-6")
-	roomDeviceMetric7ID := initializer.newFarmID(farmID, "metric-7")
-	roomDeviceMetric8ID := initializer.newFarmID(farmID, "metric-8")
-	roomDeviceMetric9ID := initializer.newFarmID(farmID, "metric-9")
-	roomDeviceMetric10ID := initializer.newFarmID(farmID, "metric-10")
-	roomDeviceMetric11ID := initializer.newFarmID(farmID, "metric-11")
-	roomDeviceMetric12ID := initializer.newFarmID(farmID, "metric-12")
-	roomDeviceMetric13ID := initializer.newFarmID(farmID, "metric-13")
-	roomDeviceMetric14ID := initializer.newFarmID(farmID, "metric-14")
-	roomDeviceMetric15ID := initializer.newFarmID(farmID, "metric-15")
-	roomDeviceMetric16ID := initializer.newFarmID(farmID, "metric-16")
-	roomDevice.SetID(initializer.newFarmID(farmID, common.CONTROLLER_TYPE_ROOM))
+	roomDeviceMetric0ID := initializer.newFarmID(farmID, "room-metric-0")
+	roomDeviceMetric1ID := initializer.newFarmID(farmID, "room-metric-1")
+	roomDeviceMetric2ID := initializer.newFarmID(farmID, "room-metric-2")
+	roomDeviceMetric3ID := initializer.newFarmID(farmID, "room-metric-3")
+	roomDeviceMetric4ID := initializer.newFarmID(farmID, "room-metric-4")
+	roomDeviceMetric5ID := initializer.newFarmID(farmID, "room-metric-5")
+	roomDeviceMetric6ID := initializer.newFarmID(farmID, "room-metric-6")
+	roomDeviceMetric7ID := initializer.newFarmID(farmID, "room-metric-7")
+	roomDeviceMetric8ID := initializer.newFarmID(farmID, "room-metric-8")
+	roomDeviceMetric9ID := initializer.newFarmID(farmID, "room-metric-9")
+	roomDeviceMetric10ID := initializer.newFarmID(farmID, "room-metric-10")
+	roomDeviceMetric11ID := initializer.newFarmID(farmID, "room-metric-11")
+	roomDeviceMetric12ID := initializer.newFarmID(farmID, "room-metric-12")
+	roomDeviceMetric13ID := initializer.newFarmID(farmID, "room-metric-13")
+	roomDeviceMetric14ID := initializer.newFarmID(farmID, "room-metric-14")
+	roomDeviceMetric15ID := initializer.newFarmID(farmID, "room-metric-15")
+	roomDeviceMetric16ID := initializer.newFarmID(farmID, "room-metric-16")
+	roomDeviceID := initializer.newFarmID(farmID, common.CONTROLLER_TYPE_ROOM)
+	roomDevice.SetID(roomDeviceID)
 	roomDevice.SetType(common.CONTROLLER_TYPE_ROOM)
 	roomDevice.SetDescription("Manages and monitors room climate")
 	roomDevice.SetConfigs([]config.DeviceConfigItem{
-		{ID: roomDeviceEnableID, UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: common.CONFIG_ROOM_ENABLE_KEY, Value: "true"},
-		{ID: roomDeviceNotifyID, UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: common.CONFIG_ROOM_NOTIFY_KEY, Value: "true"},
-		{ID: roomDeviceUriID, UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: common.CONFIG_ROOM_URI_KEY},
-		{ID: roomDeviceVideoID, UserID: adminUser.GetID(), DeviceID: roomDevice.GetID(), Key: common.CONFIG_ROOM_VIDEO_KEY}})
+		{ID: roomDeviceEnableID, UserID: adminUser.GetID(), DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_ENABLE_KEY, Value: "true"},
+		{ID: roomDeviceNotifyID, UserID: adminUser.GetID(), DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_NOTIFY_KEY, Value: "true"},
+		{ID: roomDeviceUriID, UserID: adminUser.GetID(), DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_URI_KEY},
+		{ID: roomDeviceVideoID, UserID: adminUser.GetID(), DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_VIDEO_KEY}})
 	roomDevice.SetMetrics([]config.Metric{
 		{ID: roomDeviceMetric0ID, Key: common.METRIC_ROOM_MEMORY_KEY, Name: "Available System Memory", DataType: common.DATATYPE_INT, Unit: "bytes", Enable: true, Notify: true, AlarmLow: 500, AlarmHigh: 100000},
 		{ID: roomDeviceMetric1ID, Key: common.METRIC_ROOM_TEMPF0_KEY, Name: "Ceiling Air Temperature", DataType: common.DATATYPE_FLOAT, Unit: "°", Enable: true, Notify: true, AlarmLow: 71, AlarmHigh: 85},
@@ -219,12 +252,18 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	roomChannel4ID := initializer.newFarmID(farmID, "room-chan-4")
 	roomChannel5ID := initializer.newFarmID(farmID, "room-chan-5")
 	roomChannel0ScheduleID := initializer.newFarmID(farmID, "room-chan-0-sched-1")
+	roomChannel1ConditionID := initializer.newFarmID(farmID, "room-chan-1-cond-1")
+	roomChannel2ConditionID := initializer.newFarmID(farmID, "room-chan-2-cond-1")
+	roomChannel3ConditionID := initializer.newFarmID(farmID, "room-chan-3-cond-1")
 	roomDevice.SetChannels([]config.Channel{
 		{ID: roomChannel0ID, ChannelID: common.CHANNEL_ROOM_LIGHTING_ID, Name: common.CHANNEL_ROOM_LIGHTING, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 64800, AlgorithmID: 0,
 			Schedule: []config.Schedule{{ID: roomChannel0ScheduleID, StartDate: sevenPM, Frequency: common.SCHEDULE_FREQUENCY_DAILY}}},
-		{ID: roomChannel1ID, ChannelID: common.CHANNEL_ROOM_AC_ID, Name: common.CHANNEL_ROOM_AC, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
-		{ID: roomChannel2ID, ChannelID: common.CHANNEL_ROOM_HEATER_ID, Name: common.CHANNEL_ROOM_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
-		{ID: roomChannel3ID, ChannelID: common.CHANNEL_ROOM_DEHUEY_ID, Name: common.CHANNEL_ROOM_DEHUEY, Enable: true, Notify: true, Debounce: 10, Backoff: 0, Duration: 0, AlgorithmID: 0},
+		{ID: roomChannel1ID, ChannelID: common.CHANNEL_ROOM_AC_ID, Name: common.CHANNEL_ROOM_AC, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []config.Condition{{ID: roomChannel1ConditionID, MetricID: roomDeviceMetric1ID, Comparator: ">", Threshold: 85.0}}},
+		{ID: roomChannel2ID, ChannelID: common.CHANNEL_ROOM_HEATER_ID, Name: common.CHANNEL_ROOM_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []config.Condition{{ID: roomChannel2ConditionID, MetricID: roomDeviceMetric2ID, Comparator: "<", Threshold: 70.0}}},
+		{ID: roomChannel3ID, ChannelID: common.CHANNEL_ROOM_DEHUEY_ID, Name: common.CHANNEL_ROOM_DEHUEY, Enable: true, Notify: true, Debounce: 10, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []config.Condition{{ID: roomChannel3ConditionID, MetricID: roomDeviceMetric3ID, Comparator: ">", Threshold: 55.0}}},
 		{ID: roomChannel4ID, ChannelID: common.CHANNEL_ROOM_VENTILATION_ID, Name: common.CHANNEL_ROOM_VENTILATION, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 900, AlgorithmID: 0,
 			Schedule: ventSchedules},
 		{ID: roomChannel5ID, ChannelID: common.CHANNEL_ROOM_CO2_ID, Name: common.CHANNEL_ROOM_CO2, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0}})
@@ -239,33 +278,36 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	resChannel2ID := initializer.newFarmID(farmID, "res-chan-2")
 	resChannel3ID := initializer.newFarmID(farmID, "res-chan-3")
 	resChannel4ID := initializer.newFarmID(farmID, "res-chan-4")
+	resChannel1ConditionID := initializer.newFarmID(farmID, "res-chan-1-cond-1")
+	resChannel2ConditionID := initializer.newFarmID(farmID, "res-chan-2-cond-1")
 	resDeviceWaterChangeEnableID := initializer.newFarmID(farmID, "res-waterchange-enable")
 	resDeviceWaterChangeNotifyID := initializer.newFarmID(farmID, "res-waterchange-notify")
-	resDeviceMetric0ID := initializer.newFarmID(farmID, "metric-0")
-	resDeviceMetric1ID := initializer.newFarmID(farmID, "metric-1")
-	resDeviceMetric2ID := initializer.newFarmID(farmID, "metric-2")
-	resDeviceMetric3ID := initializer.newFarmID(farmID, "metric-3")
-	resDeviceMetric4ID := initializer.newFarmID(farmID, "metric-4")
-	resDeviceMetric5ID := initializer.newFarmID(farmID, "metric-5")
-	resDeviceMetric6ID := initializer.newFarmID(farmID, "metric-6")
-	resDeviceMetric7ID := initializer.newFarmID(farmID, "metric-7")
-	resDeviceMetric8ID := initializer.newFarmID(farmID, "metric-8")
-	resDeviceMetric9ID := initializer.newFarmID(farmID, "metric-9")
-	resDeviceMetric10ID := initializer.newFarmID(farmID, "metric-10")
-	resDeviceMetric11ID := initializer.newFarmID(farmID, "metric-11")
-	resDeviceMetric12ID := initializer.newFarmID(farmID, "metric-12")
-	resDeviceMetric13ID := initializer.newFarmID(farmID, "metric-13")
-	resDeviceMetric14ID := initializer.newFarmID(farmID, "metric-14")
-	reservoirDevice.SetID(initializer.newFarmID(farmID, common.CONTROLLER_TYPE_RESERVOIR))
+	resDeviceMetric0ID := initializer.newFarmID(farmID, "res-metric-0")
+	resDeviceMetric1ID := initializer.newFarmID(farmID, "res-metric-1")
+	resDeviceMetric2ID := initializer.newFarmID(farmID, "res-metric-2")
+	resDeviceMetric3ID := initializer.newFarmID(farmID, "res-metric-3")
+	resDeviceMetric4ID := initializer.newFarmID(farmID, "res-metric-4")
+	resDeviceMetric5ID := initializer.newFarmID(farmID, "res-metric-5")
+	resDeviceMetric6ID := initializer.newFarmID(farmID, "res-metric-6")
+	resDeviceMetric7ID := initializer.newFarmID(farmID, "res-metric-7")
+	resDeviceMetric8ID := initializer.newFarmID(farmID, "res-metric-8")
+	resDeviceMetric9ID := initializer.newFarmID(farmID, "res-metric-9")
+	resDeviceMetric10ID := initializer.newFarmID(farmID, "res-metric-10")
+	resDeviceMetric11ID := initializer.newFarmID(farmID, "res-metric-11")
+	resDeviceMetric12ID := initializer.newFarmID(farmID, "res-metric-12")
+	resDeviceMetric13ID := initializer.newFarmID(farmID, "res-metric-13")
+	resDeviceMetric14ID := initializer.newFarmID(farmID, "res-metric-14")
+	reservoirDeviceID := initializer.newFarmID(farmID, common.CONTROLLER_TYPE_RESERVOIR)
+	reservoirDevice.SetID(reservoirDeviceID)
 	reservoirDevice.SetType(common.CONTROLLER_TYPE_RESERVOIR)
 	reservoirDevice.SetDescription("Manages and monitors reservoir water and nutrients")
 	reservoirDevice.SetConfigs([]config.DeviceConfigItem{
-		{ID: resDeviceEnableID, UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: common.CONFIG_RESERVOIR_ENABLE_KEY, Value: "true"},
-		{ID: resDeviceNotifyID, UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: common.CONFIG_RESERVOIR_NOTIFY_KEY, Value: "true"},
-		{ID: resDeviceUriID, UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: common.CONFIG_RESERVOIR_URI_KEY},
-		{ID: resDeviceGallonsID, UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: common.CONFIG_RESERVOIR_GALLONS_KEY, Value: common.DEFAULT_GALLONS},
-		{ID: resDeviceWaterChangeEnableID, UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: common.CONFIG_RESERVOIR_WATERCHANGE_ENABLE_KEY, Value: "false"},
-		{ID: resDeviceWaterChangeNotifyID, UserID: adminUser.GetID(), DeviceID: reservoirDevice.GetID(), Key: common.CONFIG_RESERVOIR_WATERCHANGE_NOTIFY_KEY, Value: "false"}})
+		{ID: resDeviceEnableID, UserID: adminUser.GetID(), DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_ENABLE_KEY, Value: "true"},
+		{ID: resDeviceNotifyID, UserID: adminUser.GetID(), DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_NOTIFY_KEY, Value: "true"},
+		{ID: resDeviceUriID, UserID: adminUser.GetID(), DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_URI_KEY},
+		{ID: resDeviceGallonsID, UserID: adminUser.GetID(), DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_GALLONS_KEY, Value: common.DEFAULT_GALLONS},
+		{ID: resDeviceWaterChangeEnableID, UserID: adminUser.GetID(), DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_WATERCHANGE_ENABLE_KEY, Value: "false"},
+		{ID: resDeviceWaterChangeNotifyID, UserID: adminUser.GetID(), DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_WATERCHANGE_NOTIFY_KEY, Value: "false"}})
 	reservoirDevice.SetMetrics([]config.Metric{
 		{ID: resDeviceMetric0ID, Key: common.METRIC_RESERVOIR_MEMORY_KEY, Name: "Available System Memory", DataType: common.DATATYPE_INT, Unit: "bytes", Enable: true, Notify: true, AlarmLow: 500, AlarmHigh: 100000},
 		{ID: resDeviceMetric1ID, Key: common.METRIC_RESERVOIR_TEMP_KEY, Name: "Water Temperature", DataType: common.DATATYPE_FLOAT, Unit: "°", Enable: true, Notify: true, AlarmLow: 61, AlarmHigh: 67},
@@ -294,8 +336,10 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	yearlyID := initializer.newFarmID(farmID, "res-chan-5-sched-yearly")
 	reservoirDevice.SetChannels([]config.Channel{
 		{ID: resChannel0ID, ChannelID: common.CHANNEL_RESERVOIR_DRAIN_ID, Name: common.CHANNEL_RESERVOIR_DRAIN, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
-		{ID: resChannel1ID, ChannelID: common.CHANNEL_RESERVOIR_CHILLER_ID, Name: common.CHANNEL_RESERVOIR_CHILLER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
-		{ID: resChannel2ID, ChannelID: common.CHANNEL_RESERVOIR_HEATER_ID, Name: common.CHANNEL_RESERVOIR_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
+		{ID: resChannel1ID, ChannelID: common.CHANNEL_RESERVOIR_CHILLER_ID, Name: common.CHANNEL_RESERVOIR_CHILLER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []config.Condition{{ID: resChannel1ConditionID, MetricID: resDeviceMetric2ID, Comparator: ">", Threshold: 62.0}}},
+		{ID: resChannel2ID, ChannelID: common.CHANNEL_RESERVOIR_HEATER_ID, Name: common.CHANNEL_RESERVOIR_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []config.Condition{{ID: resChannel2ConditionID, MetricID: resDeviceMetric2ID, Comparator: "<", Threshold: 60.0}}},
 		{ID: resChannel3ID, ChannelID: common.CHANNEL_RESERVOIR_POWERHEAD_ID, Name: common.CHANNEL_RESERVOIR_POWERHEAD, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0},
 		{ID: resChannel4ID, ChannelID: common.CHANNEL_RESERVOIR_AUX_ID, Name: common.CHANNEL_RESERVOIR_AUX, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 60, AlgorithmID: 0}, // Schedule: []config.Schedule{
 		// 	{StartDate: sevenPM, EndDate: &endDate, Frequency: common.SCHEDULE_FREQUENCY_WEEKLY, Interval: 2, Count: 5, Days: &days},
@@ -313,24 +357,31 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	doserDeviceUriID := initializer.newFarmID(farmID, "doser-uri")
 	doserDeviceGallonsID := initializer.newFarmID(farmID, "doser-gallons")
 	doserChannel0ID := initializer.newFarmID(farmID, "doser-chan-0")
+	doserChannel0ConditionID := initializer.newFarmID(farmID, "doser-chan-0-cond-1")
+	doserChannel1ConditionID := initializer.newFarmID(farmID, "doser-chan-1-cond-1")
+	doserChannel2ConditionID := initializer.newFarmID(farmID, "doser-chan-2-cond-1")
 	doserChannel1ID := initializer.newFarmID(farmID, "doser-chan-1")
 	doserChannel2ID := initializer.newFarmID(farmID, "doser-chan-2")
 	doserChannel3ID := initializer.newFarmID(farmID, "doser-chan-3")
 	doserChannel4ID := initializer.newFarmID(farmID, "doser-chan-4")
 	doserChannel5ID := initializer.newFarmID(farmID, "doser-chan-5")
 	doserChannel6ID := initializer.newFarmID(farmID, "doser-chan-6")
-	doserDevice.SetID(initializer.newFarmID(farmID, common.CONTROLLER_TYPE_DOSER))
+	doserDeviceID := initializer.newFarmID(farmID, common.CONTROLLER_TYPE_DOSER)
+	doserDevice.SetID(doserDeviceID)
 	doserDevice.SetType(common.CONTROLLER_TYPE_DOSER)
 	doserDevice.SetDescription("Nutrient dosing and expansion I/O device")
 	doserDevice.SetConfigs([]config.DeviceConfigItem{
-		{ID: doserDeviceEnableID, UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: common.CONFIG_DOSER_ENABLE_KEY, Value: "true"},
-		{ID: doserDeviceNotifyID, UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: common.CONFIG_DOSER_NOTIFY_KEY, Value: "true"},
-		{ID: doserDeviceUriID, UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: common.CONFIG_DOSER_URI_KEY},
-		{ID: doserDeviceGallonsID, UserID: adminUser.GetID(), DeviceID: doserDevice.GetID(), Key: common.CONFIG_DOSER_GALLONS_KEY, Value: common.DEFAULT_GALLONS}})
+		{ID: doserDeviceEnableID, UserID: adminUser.GetID(), DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_ENABLE_KEY, Value: "true"},
+		{ID: doserDeviceNotifyID, UserID: adminUser.GetID(), DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_NOTIFY_KEY, Value: "true"},
+		{ID: doserDeviceUriID, UserID: adminUser.GetID(), DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_URI_KEY},
+		{ID: doserDeviceGallonsID, UserID: adminUser.GetID(), DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_GALLONS_KEY, Value: common.DEFAULT_GALLONS}})
 	doserDevice.SetChannels([]config.Channel{
-		{ID: doserChannel0ID, ChannelID: common.CHANNEL_DOSER_PHDOWN_ID, Name: common.CHANNEL_DOSER_PHDOWN, Enable: true, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1},
-		{ID: doserChannel1ID, ChannelID: common.CHANNEL_DOSER_PHUP_ID, Name: common.CHANNEL_DOSER_PHUP, Enable: false, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1},
-		{ID: doserChannel2ID, ChannelID: common.CHANNEL_DOSER_OXIDIZER_ID, Name: common.CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 2},
+		{ID: doserChannel0ID, ChannelID: common.CHANNEL_DOSER_PHDOWN_ID, Name: common.CHANNEL_DOSER_PHDOWN, Enable: true, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
+			Conditions: []config.Condition{{ID: doserChannel0ConditionID, MetricID: resDeviceMetric2ID, Comparator: ">", Threshold: 6.1}}},
+		{ID: doserChannel1ID, ChannelID: common.CHANNEL_DOSER_PHUP_ID, Name: common.CHANNEL_DOSER_PHUP, Enable: false, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
+			Conditions: []config.Condition{{ID: doserChannel1ConditionID, MetricID: resDeviceMetric2ID, Comparator: "<", Threshold: 5.4}}},
+		{ID: doserChannel2ID, ChannelID: common.CHANNEL_DOSER_OXIDIZER_ID, Name: common.CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 2,
+			Conditions: []config.Condition{{ID: doserChannel2ConditionID, MetricID: resDeviceMetric5ID, Comparator: "<", Threshold: 300.0}}},
 		{ID: doserChannel3ID, ChannelID: common.CHANNEL_DOSER_TOPOFF_ID, Name: common.CHANNEL_DOSER_TOPOFF, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0},
 		{ID: doserChannel4ID, ChannelID: common.CHANNEL_DOSER_NUTE1_ID, Name: common.CHANNEL_DOSER_NUTE1, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0},
 		{ID: doserChannel5ID, ChannelID: common.CHANNEL_DOSER_NUTE2_ID, Name: common.CHANNEL_DOSER_NUTE2, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0},
@@ -339,10 +390,10 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	farm := config.NewFarm()
 	farm.SetID(farmID)
 	if initializer.appMode == common.MODE_CLUSTER {
-		farm.StateStore = state.RAFT_STORE
-		farm.ConfigStore = config.RAFT_MEMORY_STORE
-		farm.DataStore = datastore.GORM_STORE
-		farm.Consistency = common.CONSISTENCY_CACHED
+		farm.SetStateStore(state.RAFT_STORE)
+		farm.SetConfigStore(config.RAFT_MEMORY_STORE)
+		farm.SetDataStore(datastore.GORM_STORE)
+		farm.SetConsistency(common.CONSISTENCY_CACHED)
 	}
 	//  else {
 	// 	farm.StateStore = state.GORM_STORE
@@ -353,12 +404,6 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 	farm.SetDevices([]config.Device{*serverDevice, *roomDevice, *reservoirDevice, *doserDevice})
 	initializer.farmDAO.Save(farm)
 
-	permission := &config.Permission{
-		UserID: adminUser.GetID(),
-		RoleID: assignedRole.GetID(),
-		FarmID: farm.GetID()}
-	initializer.permissionDAO.Save(permission)
-
 	// Create conditions now that metric ids have been saved to the databsae.
 	// GORM has trouble managing tables  with multiple foreign keys
 	farmConfig, err := initializer.farmDAO.Get(farm.GetID(), common.CONSISTENCY_LOCAL)
@@ -366,81 +411,10 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 		return nil, err
 	}
 
-	devices := farmConfig.GetDevices()
-	persistedRoom := devices[1]
-	persistedReservoir := devices[2]
-	persistedDoser := devices[3]
-	roomChannels := persistedRoom.GetChannels()
-	reservoirChannels := persistedReservoir.GetChannels()
-	doserChannels := persistedDoser.GetChannels()
-
-	roomChannels[1].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "room-chan-1-cond-1"),
-			MetricID:   roomDevice.GetMetrics()[1].GetID(),
-			Comparator: ">",
-			Threshold:  85.0}})
-
-	roomChannels[2].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "room-chan-2-cond-1"),
-			MetricID:   roomDevice.GetMetrics()[1].GetID(),
-			Comparator: "<",
-			Threshold:  70.0}})
-
-	roomChannels[3].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "room-chan-3-cond-1"),
-			MetricID:   roomDevice.GetMetrics()[3].GetID(),
-			Comparator: ">",
-			Threshold:  55.0}})
-
-	roomChannels[5].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "room-chan-5-cond-1"),
-			MetricID:   roomDevice.GetMetrics()[14].GetID(),
-			Comparator: "<",
-			Threshold:  1200.0}})
-
-	reservoirChannels[1].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "res-chan-1-cond-1"),
-			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
-			Comparator: ">",
-			Threshold:  62.0}})
-
-	reservoirChannels[2].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "res-chan-2-cond-1"),
-			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
-			Comparator: "<",
-			Threshold:  60.0}})
-
-	doserChannels[0].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "doser-chan-0-cond-1"),
-			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
-			Comparator: ">",
-			Threshold:  6.1}})
-
-	doserChannels[1].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "doser-chan-1-cond-1"),
-			MetricID:   reservoirDevice.GetMetrics()[2].GetID(),
-			Comparator: "<",
-			Threshold:  5.4}})
-
-	doserChannels[2].SetConditions([]config.Condition{
-		{
-			ID:         initializer.newFarmID(farmID, "doser-chan-2-cond-1"),
-			MetricID:   reservoirDevice.GetMetrics()[5].GetID(),
-			Comparator: "<",
-			Threshold:  300.0}})
-
 	// Water change workflow
 	drainStep := config.NewWorkflowStep()
 	drainStep.SetID(initializer.newFarmID(farmID, "drainStep"))
-	drainStep.SetDeviceID(persistedReservoir.GetID())
+	drainStep.SetDeviceID(reservoirDeviceID)
 	drainStep.SetChannelID(reservoirDevice.GetChannels()[0].GetID()) // CHANNEL_RESERVOIR_DRAIN
 	// drainStep.SetDuration(300) // seconds; 5 minutes
 	// drainStep.SetWait(300)     // seconds; 5 minutes
@@ -449,7 +423,7 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 
 	fillStep := config.NewWorkflowStep()
 	fillStep.SetID(initializer.newFarmID(farmID, "fillStep"))
-	fillStep.SetDeviceID(persistedReservoir.GetID())
+	fillStep.SetDeviceID(reservoirDeviceID)
 	fillStep.SetChannelID(reservoirDevice.GetChannels()[6].GetID()) // CHANNEL_RESERVOIR_FAUCET
 	// fillStep.SetDuration(300) // seconds; 5 minutes
 	// fillStep.SetWait(300)     // seconds; 5 minutes
@@ -458,7 +432,7 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 
 	phDownStep := config.NewWorkflowStep()
 	phDownStep.SetID(initializer.newFarmID(farmID, "phDownStep"))
-	phDownStep.SetDeviceID(persistedDoser.GetID())
+	phDownStep.SetDeviceID(doserDeviceID)
 	phDownStep.SetChannelID(doserDevice.GetChannels()[0].GetID()) // CHANNEL_DOSER_PHDOWN
 	// phDownStep.SetDuration(60)  // seconds
 	// phDownStep.SetWait(300)     // seconds; 5 minutes
@@ -467,7 +441,7 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 
 	nutePart1Step := config.NewWorkflowStep()
 	nutePart1Step.SetID(initializer.newFarmID(farmID, "nutePart1Step"))
-	nutePart1Step.SetDeviceID(persistedDoser.GetID())
+	nutePart1Step.SetDeviceID(doserDeviceID)
 	nutePart1Step.SetChannelID(doserDevice.GetChannels()[4].GetID()) // CHANNEL_DOSER_NUTE1
 	// nutePart1Step.SetDuration(30)  // seconds
 	// nutePart1Step.SetWait(300)     // seconds; 5 minutes
@@ -476,7 +450,7 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 
 	nutePart2Step := config.NewWorkflowStep()
 	nutePart2Step.SetID(initializer.newFarmID(farmID, "nutePart2Step"))
-	nutePart2Step.SetDeviceID(persistedDoser.GetID())
+	nutePart2Step.SetDeviceID(doserDeviceID)
 	nutePart2Step.SetChannelID(doserDevice.GetChannels()[5].GetID()) // CHANNEL_DOSER_NUTE2
 	// nutePart2Step.SetDuration(30)  // seconds
 	// nutePart2Step.SetWait(300)     // seconds; 5 minutes
@@ -485,7 +459,7 @@ func (initializer *GormInitializer) BuildConfig(adminUser config.UserConfig, ass
 
 	nutePart3Step := config.NewWorkflowStep()
 	nutePart3Step.SetID(initializer.newFarmID(farmID, "nutePart3Step"))
-	nutePart3Step.SetDeviceID(persistedDoser.GetID())
+	nutePart3Step.SetDeviceID(doserDeviceID)
 	nutePart3Step.SetChannelID(doserDevice.GetChannels()[6].GetID()) // CHANNEL_DOSER_NUTE3
 	// nutePart3Step.SetDuration(30)  // seconds
 	// nutePart3Step.SetWait(300)     // seconds; 5 minutes

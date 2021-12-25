@@ -34,7 +34,7 @@ func TestFarmAssociations(t *testing.T) {
 	user := config.NewUser()
 	user.SetEmail("root@localhost")
 	user.SetPassword("$ecret")
-	user.SetRoles([]config.Role{*role})
+	user.SetRoles([]config.RoleConfig{role})
 
 	farm := config.NewFarm()
 	farm.SetName("Test Farm")
@@ -61,6 +61,49 @@ func TestFarmAssociations(t *testing.T) {
 
 	assert.Equal(t, 1, len(persisted.GetUsers()[0].GetRoles()))
 	assert.Equal(t, "test", persisted.GetUsers()[0].GetRoles()[0].GetName())
+
+	currentTest.Cleanup()
+}
+
+func TestGetByIds(t *testing.T) {
+
+	currentTest := NewIntegrationTest()
+	currentTest.gorm.AutoMigrate(&config.Permission{})
+	currentTest.gorm.AutoMigrate(&config.User{})
+	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.Organization{})
+	currentTest.gorm.AutoMigrate(&config.Farm{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
+	currentTest.gorm.AutoMigrate(&config.Channel{})
+	currentTest.gorm.AutoMigrate(&config.Condition{})
+	currentTest.gorm.AutoMigrate(&config.Schedule{})
+	currentTest.gorm.AutoMigrate(&config.Workflow{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
+
+	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm)
+
+	farm1 := config.NewFarm()
+	farm1.SetName("Test Farm")
+	farm1.SetMode("test")
+	farm1.SetInterval(60)
+
+	farm2 := config.NewFarm()
+	farm2.SetName("Test Farm 2")
+	farm2.SetMode("test2")
+	farm2.SetInterval(59)
+
+	err := farmDAO.Save(farm1)
+	assert.Nil(t, err)
+
+	err = farmDAO.Save(farm2)
+	assert.Nil(t, err)
+
+	farms, err := farmDAO.GetByIds([]uint64{
+		farm1.GetID(),
+		farm2.GetID()}, DEFAULT_CONSISTENCY_LEVEL)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 2, len(farms))
 
 	currentTest.Cleanup()
 }

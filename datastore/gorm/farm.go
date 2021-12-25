@@ -20,9 +20,7 @@ func NewFarmDAO(logger *logging.Logger, db *gorm.DB) dao.FarmDAO {
 }
 
 func (dao *GormFarmDAO) Delete(farm config.FarmConfig) error {
-
 	dao.logger.Debugf("Deleting farm record: %s", farm.GetName())
-
 	for _, device := range farm.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			dao.db.Where("channel_id = ?", channel.GetID()).Delete(&config.Condition{})
@@ -32,21 +30,15 @@ func (dao *GormFarmDAO) Delete(farm config.FarmConfig) error {
 		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.Channel{})
 		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.Metric{})
 		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.WorkflowStep{})
-
 		dao.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS state_%d", device.GetID()))
 	}
 	dao.db.Where("farm_id = ?", farm.GetID()).Delete(&config.Device{})
 	dao.db.Where("farm_id = ?", farm.GetID()).Delete(&config.Permission{})
 	dao.db.Where("farm_id = ?", farm.GetID()).Delete(&config.Workflow{})
-
 	return dao.db.Delete(farm).Error
 }
 
 func (dao *GormFarmDAO) Save(farm config.FarmConfig) error {
-	// f := *farm.(*config.Farm)
-	// if farm.GetID() == 0 {
-	// 	farm.SetID(dao.idGenerator.NewID(farm.GetName()))
-	// }
 	dao.logger.Debugf("Saving farm record: %s", farm.GetName())
 	return dao.db.Save(farm).Error
 }
@@ -67,8 +59,6 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmCo
 		Preload("Workflows.Conditions").
 		Preload("Workflows.Schedules").
 		Preload("Workflows.Steps").
-		// Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
-		// Where("permissions.farm_id = ?", farmID).
 		First(&farm, farmID).Error; err != nil {
 		return nil, err
 	}
@@ -78,7 +68,39 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmCo
 	return &farm, nil
 }
 
-func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
+func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]config.FarmConfig, error) {
+	dao.logger.Debugf("Getting farms: %+v", farmIds)
+	var farms []config.Farm
+	if err := dao.db.
+		Preload("Devices").
+		Preload("Users").
+		Preload("Users.Roles").
+		Preload("Devices.Configs").
+		Preload("Devices.Metrics").
+		Preload("Devices.Channels").
+		Preload("Devices.Channels.Conditions").
+		Preload("Devices.Channels.Schedule").
+		Preload("Workflows").
+		Preload("Workflows.Conditions").
+		Preload("Workflows.Schedules").
+		Preload("Workflows.Steps").
+		Where("id IN (?)", farmIds).
+		Find(&farms).Error; err != nil {
+		return nil, err
+	}
+	farmConfigs := make([]config.FarmConfig, len(farms))
+	for i, farm := range farms {
+		if err := farm.ParseConfigs(); err != nil {
+			return nil, err
+		}
+		farmConfig := new(config.Farm)
+		*farmConfig = farm
+		farmConfigs[i] = farmConfig
+	}
+	return farmConfigs, nil
+}
+
+func (dao *GormFarmDAO) GetAll() ([]config.FarmConfig, error) {
 	dao.logger.Debug("Getting all farms")
 	var farms []config.Farm
 	if err := dao.db.
@@ -97,16 +119,19 @@ func (dao *GormFarmDAO) GetAll() ([]config.Farm, error) {
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
+	farmConfigs := make([]config.FarmConfig, len(farms))
 	for i, farm := range farms {
-		farms[i] = farm
-		if err := farms[i].ParseConfigs(); err != nil {
+		if err := farm.ParseConfigs(); err != nil {
 			return nil, err
 		}
+		farmConfig := new(config.Farm)
+		*farmConfig = farm
+		farmConfigs[i] = farmConfig
 	}
-	return farms, nil
+	return farmConfigs, nil
 }
 
-func (dao *GormFarmDAO) GetByUserID(userID uint64) ([]config.Farm, error) {
+func (dao *GormFarmDAO) GetByUserID(userID uint64) ([]config.FarmConfig, error) {
 	dao.logger.Debug("Getting all farms for user: %d", userID)
 	var farms []config.Farm
 	if err := dao.db.
@@ -122,18 +147,21 @@ func (dao *GormFarmDAO) GetByUserID(userID uint64) ([]config.Farm, error) {
 		Preload("Workflows.Conditions").
 		Preload("Workflows.Schedules").
 		Preload("Workflows.Steps").
-		Joins("JOIN permissions on farms.organization_id = permissions.organization_id AND permissions.farm_id = farms.id").
+		Joins("JOIN permissions on permissions.farm_id = farms.id").
 		Where("permissions.user_id = ?", userID).
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
+	farmConfigs := make([]config.FarmConfig, len(farms))
 	for i, farm := range farms {
-		farms[i] = farm
-		if err := farms[i].ParseConfigs(); err != nil {
+		if err := farm.ParseConfigs(); err != nil {
 			return nil, err
 		}
+		farmConfig := new(config.Farm)
+		*farmConfig = farm
+		farmConfigs[i] = farmConfig
 	}
-	return farms, nil
+	return farmConfigs, nil
 }
 
 func (dao *GormFarmDAO) Count() (int64, error) {

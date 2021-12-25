@@ -4,19 +4,25 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	logging "github.com/op/go-logging"
 )
 
 type FarmClient struct {
-	session              service.Session
-	hub                  *FarmHub
-	conn                 *websocket.Conn
-	send                 chan config.FarmConfig
-	state                chan state.FarmStateMap
+	logger           *logging.Logger
+	hub              *FarmHub
+	conn             *websocket.Conn
+	send             chan config.FarmConfig
+	state            chan state.FarmStateMap
 	deviceState      chan map[string]state.DeviceStateMap
 	deviceStateDelta chan map[string]state.DeviceStateDeltaMap
+	user             common.UserAccount
+}
+
+func (c *FarmClient) getUser() common.UserAccount {
+	return c.user
 }
 
 func (c *FarmClient) disconnect() {
@@ -32,7 +38,7 @@ func (c *FarmClient) readPump() {
 	//c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	//c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		c.session.GetLogger().Debug("[FarmClient.readPump] pumping...")
+		c.logger.Debug("[FarmClient.readPump] pumping...")
 		var configuration config.FarmConfig
 		err := c.conn.ReadJSON(&configuration)
 		if err != nil {
@@ -51,13 +57,13 @@ func (c *FarmClient) writePump() {
 		c.conn.Close()
 	}()
 	for {
-		c.session.GetLogger().Debug("[FarmClient.writePump] pumping...")
+		c.logger.Debug("[FarmClient.writePump] pumping...")
 		select {
 		case message, ok := <-c.send:
 			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
-				c.session.GetLogger().Warning("[FarmClient.writePump] hub closed the channel")
+				c.logger.Warning("[FarmClient.writePump] hub closed the channel")
 				c.hub.unregister <- c
 				return
 			}
@@ -65,13 +71,13 @@ func (c *FarmClient) writePump() {
 			// DEBUG - TODO: REMOVE
 			//b, e := json.Marshal(message)
 			//if e != nil {
-			//	c.session.GetLogger().Errorf("Error marshalling config: %s", e.Error())
+			//	c.logger.Errorf("Error marshalling config: %s", e.Error())
 			//}
-			//c.session.GetLogger().Debugf("[FarmClient.writePump] message: %s", b)
+			//c.logger.Debugf("[FarmClient.writePump] message: %s", b)
 
 			err := c.conn.WriteJSON(message)
 			if err != nil {
-				c.session.GetLogger().Errorf("[FarmClient.writePump] Error: %s", err.Error())
+				c.logger.Errorf("[FarmClient.writePump] Error: %s", err.Error())
 				return
 			}
 			// Add queued messages
@@ -91,13 +97,13 @@ func (c *FarmClient) writePump() {
 			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
-				c.session.GetLogger().Warning("[FarmClient.writePump] hub closed the channel")
+				c.logger.Warning("[FarmClient.writePump] hub closed the channel")
 				c.hub.unregister <- c
 				return
 			}
 			err := c.conn.WriteJSON(message)
 			if err != nil {
-				c.session.GetLogger().Errorf("[FarmClient.writePump] Error: %s", err.Error())
+				c.logger.Errorf("[FarmClient.writePump] Error: %s", err.Error())
 				return
 			}
 			// Add queued messages
@@ -110,13 +116,13 @@ func (c *FarmClient) writePump() {
 			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
-				c.session.GetLogger().Warning("[FarmClient.writePump] hub closed the channel")
+				c.logger.Warning("[FarmClient.writePump] hub closed the channel")
 				c.hub.unregister <- c
 				return
 			}
 			err := c.conn.WriteJSON(message)
 			if err != nil {
-				c.session.GetLogger().Errorf("[FarmClient.writePump] Error: %s", err.Error())
+				c.logger.Errorf("[FarmClient.writePump] Error: %s", err.Error())
 				return
 			}
 			// Add queued messages
@@ -129,13 +135,13 @@ func (c *FarmClient) writePump() {
 			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
-				c.session.GetLogger().Warning("[FarmClient.writePump] hub closed the channel")
+				c.logger.Warning("[FarmClient.writePump] hub closed the channel")
 				c.hub.unregister <- c
 				return
 			}
 			err := c.conn.WriteJSON(message)
 			if err != nil {
-				c.session.GetLogger().Errorf("[FarmClient.writePump] Error: %s", err.Error())
+				c.logger.Errorf("[FarmClient.writePump] Error: %s", err.Error())
 				return
 			}
 			// Add queued messages

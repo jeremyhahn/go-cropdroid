@@ -23,9 +23,8 @@ type DefaultServiceRegistry struct {
 	conditionService    ConditionService
 	deviceFactory       DeviceFactory
 	deviceServices      map[uint64][]DeviceService
-	deviceServicesMutex *sync.RWMutex
 	eventLogService     EventLogService
-	//farmFactory         FarmFactory
+	farmFactory         FarmFactory
 	farmServices        map[uint64]FarmService
 	farmServicesMutex   *sync.RWMutex
 	farmProvisioner     provisioner.FarmProvisioner
@@ -34,6 +33,8 @@ type DefaultServiceRegistry struct {
 	mailer              common.Mailer
 	metricService       MetricService
 	notificationService NotificationService
+	organizationService OrganizationService
+	roleService         RoleService
 	scheduleService     ScheduleService
 	userService         UserService
 	workflowService     WorkflowService
@@ -49,8 +50,8 @@ var (
 
 func NewServiceRegistry(app *app.App) ServiceRegistry {
 	return &DefaultServiceRegistry{
-		app:                 app,
-		deviceServicesMutex: &sync.RWMutex{}}
+		app:               app,
+		farmServicesMutex: &sync.RWMutex{}}
 }
 
 func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
@@ -69,6 +70,8 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
 
 	//serviceRegistry.SetMailer(NewMailer(farm.logger, farm.buildSmtp()))
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer
+
+	roleService := NewRoleService(_app.Logger, daos.GetRoleDAO())
 
 	authServices := make(map[int]AuthService, 2)
 	authService := NewLocalAuthService(_app, daos.GetPermissionDAO(),
@@ -89,17 +92,18 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
 		channelService:      channelService,
 		conditionService:    conditionService,
 		deviceServices:      make(map[uint64][]DeviceService, 0),
-		deviceServicesMutex: &sync.RWMutex{},
 		farmServicesMutex:   &sync.RWMutex{},
 		farmServices:        make(map[uint64]FarmService, 0),
 		metricService:       metricService,
 		notificationService: notificationService,
 		scheduleService:     scheduleService,
+		roleService:         roleService,
 		workflowService:     workflowService,
 		workflowStepService: workflowStepService}
 
-	registry.SetUserService(NewUserService(_app, daos.GetUserDAO(), daos.GetOrganizationDAO(), daos.GetRoleDAO(),
-		daos.GetFarmDAO(), mappers.GetUserMapper(), authServices, registry))
+	registry.SetUserService(NewUserService(_app, daos.GetUserDAO(), daos.GetOrganizationDAO(),
+		daos.GetRoleDAO(), daos.GetPermissionDAO(), daos.GetFarmDAO(),
+		mappers.GetUserMapper(), authServices, registry))
 
 	return registry
 }
@@ -205,13 +209,13 @@ func (registry *DefaultServiceRegistry) GetEventLogService() EventLogService {
 	return registry.eventLogService
 }
 
-// func (registry *DefaultServiceRegistry) SetFarmFactory(farmFactory FarmFactory) {
-// 	registry.farmFactory = farmFactory
-// }
+func (registry *DefaultServiceRegistry) SetFarmFactory(farmFactory FarmFactory) {
+	registry.farmFactory = farmFactory
+}
 
-// func (registry *DefaultServiceRegistry) GetFarmFactory() FarmFactory {
-// 	return registry.farmFactory
-// }
+func (registry *DefaultServiceRegistry) GetFarmFactory() FarmFactory {
+	return registry.farmFactory
+}
 
 func (registry *DefaultServiceRegistry) AddFarmService(farmService FarmService) error {
 	registry.farmServicesMutex.Lock()
@@ -243,8 +247,8 @@ func (registry *DefaultServiceRegistry) GetFarmService(farmID uint64) FarmServic
 }
 
 func (registry *DefaultServiceRegistry) RemoveFarmService(farmID uint64) {
-	registry.farmServicesMutex.RLock()
-	defer registry.farmServicesMutex.RUnlock()
+	registry.farmServicesMutex.Lock()
+	defer registry.farmServicesMutex.Unlock()
 	delete(registry.farmServices, farmID)
 }
 
@@ -310,6 +314,22 @@ func (registry *DefaultServiceRegistry) SetUserService(userService UserService) 
 
 func (registry *DefaultServiceRegistry) GetUserService() UserService {
 	return registry.userService
+}
+
+func (registry *DefaultServiceRegistry) SetOrganizationService(organizationService OrganizationService) {
+	registry.organizationService = organizationService
+}
+
+func (registry *DefaultServiceRegistry) GetOrganizationService() OrganizationService {
+	return registry.organizationService
+}
+
+func (registry *DefaultServiceRegistry) SetRoleService(roleService RoleService) {
+	registry.roleService = roleService
+}
+
+func (registry *DefaultServiceRegistry) GetRoleService() RoleService {
+	return registry.roleService
 }
 
 func (registry *DefaultServiceRegistry) SetWorkflowService(workflowService WorkflowService) {

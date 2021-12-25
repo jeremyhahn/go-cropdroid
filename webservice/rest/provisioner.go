@@ -37,7 +37,7 @@ func (restService *DefaultProvisionerRestService) RegisterEndpoints(
 	router *mux.Router, baseURI, baseFarmURI string) []string {
 
 	provisionerEndpoint := fmt.Sprintf("%s/provisioner", baseURI)
-	provisionEndpoint := fmt.Sprintf("%s/provision", provisionerEndpoint)
+	provisionEndpoint := fmt.Sprintf("%s/provision/{orgId}", provisionerEndpoint)
 	deprovisionEndpoint := fmt.Sprintf("%s/deprovision/{farmID}", provisionerEndpoint)
 	router.Handle(provisionEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middlewareService.Validate),
@@ -59,9 +59,17 @@ func (restService *DefaultProvisionerRestService) Provision(w http.ResponseWrite
 	}
 	defer session.Close()
 
-	params := &provisioner.ProvisionerParams{}
+	params := mux.Vars(r)
+	orgID, err := strconv.ParseUint(params["orgId"], 10, 64)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	provisionerParams := &provisioner.ProvisionerParams{
+		OrganizationID: orgID}
 	user := session.GetUser()
-	farmConfig, err := restService.farmProvisioner.Provision(user, params)
+	farmConfig, err := restService.farmProvisioner.Provision(user, provisionerParams)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

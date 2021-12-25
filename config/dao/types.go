@@ -2,27 +2,50 @@ package dao
 
 import "github.com/jeremyhahn/go-cropdroid/config"
 
+type UserDAO interface {
+	Get(orgID, userID uint64) (config.UserConfig, error)
+	//GetAll(orgID uint64) ([]config.UserConfig, error)
+	GetByEmail(email string) (config.UserConfig, error)
+	Create(user config.UserConfig) error
+	Save(user config.UserConfig) error // used by test only
+	Delete(user config.UserConfig) error
+}
+
+type RoleDAO interface {
+	Create(role config.RoleConfig) error // used by test only
+	Save(role config.RoleConfig) error   // used by test only
+	//GetByUserAndOrgID(userID, orgID int) (config.RoleConfig, error)
+	GetByUserAndOrgID(userID, orgID int) ([]config.Role, error)
+	GetByName(name string) (config.RoleConfig, error)
+	GetAll() ([]config.RoleConfig, error)
+}
+
+type PermissionDAO interface {
+	GetUsers(orgID uint64) ([]config.UserConfig, error)
+	GetFarms(orgID uint64) ([]config.FarmConfig, error)
+	Save(permission config.PermissionConfig) error
+	Get(id uint64) (config.PermissionConfig, error)
+	Delete(permission config.PermissionConfig) error
+	Update(permission config.PermissionConfig) error
+}
+
 type OrganizationDAO interface {
 	First() (config.OrganizationConfig, error) // used by test only
-	GetAll() ([]config.Organization, error)    // used by test only
-	//Get(orgID uint64) (config.OrganizationConfig, error)
-	GetByUserID(userID uint64, shallow bool) ([]config.OrganizationConfig, error)
-	//GetByName(name string) (config.OrganizationConfig, error)
 	Get(id uint64) (config.OrganizationConfig, error)
-	//Find(orgID int) ([]config.Organization, error)
+	GetAll() ([]config.OrganizationConfig, error)
+	GetByUserID(userID uint64, shallow bool) ([]config.OrganizationConfig, error)
+	GetUsers(id uint64) ([]config.UserConfig, error)
 	Save(organization config.OrganizationConfig) error
-	CreateUserRole(org config.OrganizationConfig, user config.UserConfig, role config.RoleConfig) error // used by test only
+	Delete(organization config.OrganizationConfig) error
 }
 
 type FarmDAO interface {
 	Count() (int64, error) // used by test only
-	//Create(farm config.FarmConfig) error
 	Delete(farm config.FarmConfig) error
-	//DeleteById(farmID uint64) error
-	//First() (config.FarmConfig, error)
 	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
-	GetAll() ([]config.Farm, error)
-	GetByUserID(userID uint64) ([]config.Farm, error)
+	GetAll() ([]config.FarmConfig, error)
+	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]config.FarmConfig, error)
+	GetByUserID(userID uint64) ([]config.FarmConfig, error)
 	Save(farm config.FarmConfig) error
 }
 
@@ -38,26 +61,6 @@ type DeviceConfigDAO interface {
 	Save(config config.DeviceConfigConfig) error
 	Get(deviceID uint64, name string) (*config.DeviceConfigItem, error)
 	GetAll(deviceID uint64) ([]config.DeviceConfigItem, error)
-}
-
-type UserDAO interface {
-	Get(orgID, userID uint64) (config.UserConfig, error)
-	GetByEmail(email string) (config.UserConfig, error)
-	Create(user config.UserConfig) error
-	Save(user config.UserConfig) error // used by test only
-}
-
-type RoleDAO interface {
-	Create(role config.RoleConfig) error // used by test only
-	Save(role config.RoleConfig) error   // used by test only
-	//GetByUserAndOrgID(userID, orgID int) (config.RoleConfig, error)
-	GetByUserAndOrgID(userID, orgID int) ([]config.Role, error)
-	GetByName(name string) (config.RoleConfig, error)
-}
-
-type AlgorithmDAO interface {
-	Create(config.AlgorithmConfig) error // used by test only
-	GetAll() ([]config.Algorithm, error)
 }
 
 type ChannelDAO interface {
@@ -76,11 +79,16 @@ type ConditionDAO interface {
 	GetByOrgUserAndChannelID(orgID, userID, channelID uint64) ([]config.Condition, error)
 }
 
-type ConfigDAO interface {
-	Save(config config.DeviceConfigConfig) error
-	Get(deviceID int, name string) (*config.DeviceConfigItem, error)
-	GetAll(deviceID int) ([]config.DeviceConfigItem, error)
+type AlgorithmDAO interface {
+	Create(config.AlgorithmConfig) error // used by test only
+	GetAll() ([]config.Algorithm, error)
 }
+
+// type ConfigDAO interface {
+// 	Save(config config.DeviceConfigConfig) error
+// 	Get(deviceID int, name string) (*config.DeviceConfigItem, error)
+// 	GetAll(deviceID int) ([]config.DeviceConfigItem, error)
+// }
 
 type MetricDAO interface {
 	Save(metric config.MetricConfig) error
@@ -117,10 +125,4 @@ type RegistrationDAO interface {
 	Save(registration config.RegistrationConfig) error
 	Get(id uint64) (config.RegistrationConfig, error)
 	Delete(registration config.RegistrationConfig) error
-}
-
-type PermissionDAO interface {
-	Save(permission config.PermissionConfig) error
-	Get(id uint64) (config.PermissionConfig, error)
-	Delete(permission config.PermissionConfig) error
 }

@@ -112,7 +112,7 @@ func TestChannelGetByUserOrgAndDeviceID(t *testing.T) {
 	user := config.NewUser()
 	user.SetEmail("root@localhost")
 	user.SetPassword("$ecret")
-	user.SetRoles([]config.Role{*role})
+	user.SetRoles([]config.RoleConfig{role})
 
 	channel1 := config.NewChannel()
 	channel1.SetDeviceID(1)

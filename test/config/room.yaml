@@ -1,0 +1,352 @@
+type: room
+interval: 0
+description: Manages and monitors room climate
+enable: true
+notify: true
+uri: ""
+hwVersion: ""
+fwVersion: ""
+configs:
+  room.enable: "true"
+  room.notify: "true"
+  room.uri: ""
+  room.video: ""
+metrics:
+  - id: 738077000
+    deviceID: 2408904937
+    datatype: 0
+    name: Vapor Pressure Deficit
+    key: vpd
+    enable: true
+    notify: false
+    unit: ""
+    alarmLow: -2
+    alarmHigh: 2
+  - id: 754854619
+    deviceID: 2408904937
+    datatype: 0
+    name: Carbon Dioxide
+    key: co2
+    enable: true
+    notify: false
+    unit: ppm
+    alarmLow: 800
+    alarmHigh: 1300
+  - id: 767169042
+    deviceID: 2408904937
+    datatype: 0
+    name: Floor Heat Index
+    key: heatIndex2
+    enable: true
+    notify: false
+    unit: bytes
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 771632238
+    deviceID: 2408904937
+    datatype: 0
+    name: Pod 1 Water Temperature
+    key: water0
+    enable: true
+    notify: true
+    unit: °
+    alarmLow: 61
+    alarmHigh: 67
+  - id: 783946661
+    deviceID: 2408904937
+    datatype: 0
+    name: Floor Humidity
+    key: humidity2
+    enable: true
+    notify: false
+    unit: '%'
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 788409857
+    deviceID: 2408904937
+    datatype: 0
+    name: Pod 2 Water Temperature
+    key: water1
+    enable: true
+    notify: true
+    unit: °
+    alarmLow: 61
+    alarmHigh: 67
+  - id: 800724280
+    deviceID: 2408904937
+    datatype: 0
+    name: Floor Air Temperature
+    key: tempF2
+    enable: true
+    notify: false
+    unit: °
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 805187476
+    deviceID: 2408904937
+    datatype: 1
+    name: Pod 2 Water Leak
+    key: leak1
+    enable: true
+    notify: false
+    unit: mV
+    alarmLow: -1
+    alarmHigh: 1
+  - id: 817501899
+    deviceID: 2408904937
+    datatype: 0
+    name: Canopy Heat Index
+    key: heatIndex1
+    enable: true
+    notify: false
+    unit: °
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 834279518
+    deviceID: 2408904937
+    datatype: 0
+    name: Canopy Humidity
+    key: humidity1
+    enable: true
+    notify: false
+    unit: '%'
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 838742714
+    deviceID: 2408904937
+    datatype: 1
+    name: Light Sensor
+    key: photo
+    enable: true
+    notify: false
+    unit: mV
+    alarmLow: 800
+    alarmHigh: 100
+  - id: 851057137
+    deviceID: 2408904937
+    datatype: 0
+    name: Canopy Air Temperature
+    key: tempF1
+    enable: false
+    notify: true
+    unit: °
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 855520333
+    deviceID: 2408904937
+    datatype: 1
+    name: Pod 1 Water Leak
+    key: leak0
+    enable: true
+    notify: false
+    unit: mV
+    alarmLow: -1
+    alarmHigh: 1
+  - id: 867834756
+    deviceID: 2408904937
+    datatype: 0
+    name: Ceiling Heat Index
+    key: heatIndex0
+    enable: true
+    notify: true
+    unit: °
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 884612375
+    deviceID: 2408904937
+    datatype: 0
+    name: Ceiling Humidity
+    key: humidity0
+    enable: true
+    notify: true
+    unit: '%'
+    alarmLow: 40
+    alarmHigh: 70
+  - id: 901389994
+    deviceID: 2408904937
+    datatype: 0
+    name: Ceiling Air Temperature
+    key: tempF0
+    enable: true
+    notify: true
+    unit: °
+    alarmLow: 71
+    alarmHigh: 85
+  - id: 918167613
+    deviceID: 2408904937
+    datatype: 1
+    name: Available System Memory
+    key: mem
+    enable: true
+    notify: true
+    unit: bytes
+    alarmLow: 500
+    alarmHigh: 100000
+channels:
+  - id: 1946951936
+    device: 2408904937
+    channel: 3
+    name: Dehumidifier
+    enable: true
+    notify: true
+    conditions:
+      - id: 3064106673
+        workflow: 0
+        channel: 1946951936
+        metric: 867834756
+        comparator: '>'
+        threshold: 55
+    schedule: []
+    duration: 0
+    debounce: 10
+    backoff: 0
+    algorithm: 0
+  - id: 1963729555
+    device: 2408904937
+    channel: 2
+    name: Heater
+    enable: true
+    notify: true
+    conditions:
+      - id: 2567670672
+        workflow: 0
+        channel: 1963729555
+        metric: 884612375
+        comparator: <
+        threshold: 70
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 1980507174
+    device: 2408904937
+    channel: 1
+    name: Air Conditioner
+    enable: true
+    notify: true
+    conditions:
+      - id: 2905350431
+        workflow: 0
+        channel: 1980507174
+        metric: 901389994
+        comparator: '>'
+        threshold: 85
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 1997284793
+    device: 2408904937
+    channel: 0
+    name: Lighting
+    enable: true
+    notify: true
+    conditions: []
+    schedule:
+      - id: 3050983949
+        workflow: 0
+        channelId: 1997284793
+        startDate: 2021-12-11T19:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+    duration: 64800
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2047617650
+    device: 2408904937
+    channel: 5
+    name: Co2
+    enable: true
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2064395269
+    device: 2408904937
+    channel: 4
+    name: Ventilation
+    enable: true
+    notify: true
+    conditions: []
+    schedule:
+      - id: 1126396126
+        workflow: 0
+        channelId: 2064395269
+        startDate: 2021-12-11T17:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - id: 1143173745
+        workflow: 0
+        channelId: 2064395269
+        startDate: 2021-12-11T18:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - id: 1159951364
+        workflow: 0
+        channelId: 2064395269
+        startDate: 2021-12-11T15:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - id: 1176728983
+        workflow: 0
+        channelId: 2064395269
+        startDate: 2021-12-11T16:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - id: 1193506602
+        workflow: 0
+        channelId: 2064395269
+        startDate: 2021-12-11T13:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - id: 1210284221
+        workflow: 0
+        channelId: 2064395269
+        startDate: 2021-12-11T14:00:00-05:00
+        endDate: null
+        frequency: 1
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+    duration: 900
+    debounce: 0
+    backoff: 0
+    algorithm: 0

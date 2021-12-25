@@ -52,11 +52,12 @@ func (s *GormFarmConfigStore) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.
 	return config, err
 }
 
+func (s *GormFarmConfigStore) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) []config.FarmConfig {
+	configs, _ := s.farmDAO.GetByIds(farmIds, CONSISTENCY_LEVEL)
+	return configs
+}
+
 func (s *GormFarmConfigStore) GetAll() []config.FarmConfig {
 	configs, _ := s.farmDAO.GetAll()
-	farmConfigs := make([]config.FarmConfig, len(configs))
-	for i, conf := range configs {
-		farmConfigs[i] = &conf
-	}
-	return farmConfigs
+	return configs
 }

@@ -14,6 +14,7 @@ func TestOrganizationCRUD(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
 	currentTest.gorm.AutoMigrate(&config.Organization{})
+	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
@@ -94,7 +95,7 @@ func TestOrganizationGetByUserID(t *testing.T) {
 
 	orgConfig := &config.Organization{
 		Name:  testOrgName,
-		Farms: []config.Farm{*farmConfig}}
+		Farms: []config.Farm{*farmConfig.(*config.Farm)}}
 
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, orgDAO)
@@ -140,7 +141,7 @@ func TestOrganizationGetAll(t *testing.T) {
 
 	orgConfig := &config.Organization{
 		Name:  testOrgName,
-		Farms: []config.Farm{*farmConfig}}
+		Farms: []config.Farm{*farmConfig.(*config.Farm)}}
 
 	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -154,7 +155,7 @@ func TestOrganizationGetAll(t *testing.T) {
 	farmConfig2.SetName(testFarmName2)
 	orgConfig2 := &config.Organization{
 		Name:  testOrgName2,
-		Farms: []config.Farm{*farmConfig2}}
+		Farms: []config.Farm{*farmConfig2.(*config.Farm)}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
@@ -188,17 +189,20 @@ func TestOrganizationEnchilada(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.License{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 
+	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
+	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
+	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
+	permissionDAO := NewPermissionDAO(currentTest.logger, currentTest.gorm)
+
 	org := createTestOrganization()
 	currentTest.logger.Infof("Org: %+v", org)
 
-	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
 	err := orgDAO.Save(org)
 	assert.Nil(t, err)
 	assert.NotNil(t, org.GetID())
 
 	role := config.NewRole()
 	role.SetName("admin")
-	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
 	err = roleDAO.Save(role)
 	assert.Nil(t, err)
 
@@ -206,13 +210,16 @@ func TestOrganizationEnchilada(t *testing.T) {
 	user.SetEmail("root@localhost")
 	user.SetPassword("test")
 
-	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	err = userDAO.Create(user)
 	assert.Nil(t, err)
 
 	// Gorm doesn't handle multiple many-to-many fields in one entity,
 	// create the user/role/org associations manually
-	err = orgDAO.CreateUserRole(org, user, role)
+	permission := config.NewPermission()
+	permission.SetOrgID(org.GetID())
+	permission.SetUserID(user.GetID())
+	permission.SetRoleID(role.GetID())
+	err = permissionDAO.Save(permission)
 	assert.Nil(t, err)
 
 	allOrgs, err := orgDAO.GetAll()
@@ -254,7 +261,7 @@ func TestOrganizationEnchilada(t *testing.T) {
 	currentTest.Cleanup()
 }
 
-func createTestOrganization() *config.Organization {
+func createTestOrganization() config.OrganizationConfig {
 
 	org := config.NewOrganization()
 	org.SetName("Test Org")
@@ -378,7 +385,7 @@ func createTestOrganization() *config.Organization {
 	farm1.SetInterval(58)
 	farm1.SetDevices(devices)
 
-	farms := []config.Farm{*farm1}
+	farms := []config.FarmConfig{farm1}
 
 	org.SetFarms(farms)
 

@@ -1,0 +1,25 @@
+interval: 60
+timezone: America/New_York
+mode: virtual
+default_role: admin
+default_permission: all
+datastore: memory
+datastore_cdc: false
+datadir: ./db
+www_user: www-data
+enable_registrations: false
+enable_default_farm: false
+node_id: 1
+redirect_http_https: false
+ssl: false
+port: 8091
+smtp:
+  enable: false
+  host:
+  port:
+  username:
+  password:
+  recipient:
+license:
+organizations:
+farms:

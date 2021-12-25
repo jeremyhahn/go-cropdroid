@@ -117,13 +117,14 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 	for _, farmConfig := range farmConfigs {
 
 		// Make a copy of the farmConfig
-		var conf *config.Farm = &config.Farm{}
-		*conf = farmConfig
+		//var conf config.FarmConfig = config.NewFarm()
+		//conf = farmConfig.(*config.Farm)
 
 		farmFactory := builder.BuildFarmFactory(farmConfig.GetStateStore(),
 			farmConfig.GetConfigStore(), farmConfig.GetDataStore())
 
-		_, err := farmFactory.BuildClusterService(conf)
+		//_, err := farmFactory.BuildClusterService(conf)
+		_, err := farmFactory.BuildClusterService(farmConfig)
 		if err != nil {
 			builder.app.Logger.Fatalf("Error loading farm config: %s", err)
 		}
@@ -177,6 +178,11 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 		}
 	}()
 
+	organizationService := service.NewOrganizationService(
+		builder.app.Logger, builder.idGenerator,
+		builder.datastoreRegistry.GetOrganizationDAO())
+	builder.serviceRegistry.SetOrganizationService(organizationService)
+
 	// Build JWT service
 	jsonWriter := rest.NewJsonWriter()
 	rsaKeyPair, err := app.CreateRsaKeyPair(builder.app.Logger, builder.app.KeyDir, rsa.PSSSaltLengthAuto)
@@ -188,9 +194,10 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, config.ServerConfig,
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	jwtService := service.CreateJsonWebTokenService(builder.app, orgDAO, farmDAO, defaultRole,
-		builder.mapperRegistry.GetDeviceMapper(), builder.serviceRegistry, jsonWriter,
-		525960, rsaKeyPair) // 1 year jwt expiration
+	jwtService := service.CreateJsonWebTokenService(builder.app,
+		builder.idGenerator, orgDAO, farmDAO, defaultRole,
+		builder.mapperRegistry.GetDeviceMapper(), builder.serviceRegistry,
+		jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}

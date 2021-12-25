@@ -18,17 +18,20 @@ import (
 )
 
 var (
-	ErrFarmConfigNotFound   = errors.New("farm config not found")
-	ErrChannelNotFound      = errors.New("channel not found")
-	ErrMetricNotFound       = errors.New("metric not found")
-	ErrScheduleNotFound     = errors.New("channel schedule not found")
-	ErrConditionNotFound    = errors.New("channel condition not found")
-	ErrNoDeviceState        = errors.New("no device state")
-	ErrCreateService        = errors.New("failed to create service")
-	ErrDeviceNotFound       = errors.New("device not found")
-	ErrWorkflowNotFound     = errors.New("workflow not found")
-	ErrWorkflowStepNotFound = errors.New("workflow step not found")
-	//ErrDeviceDisabled     = errors.New("Device disabled")
+	ErrFarmConfigNotFound       = errors.New("farm config not found")
+	ErrChannelNotFound          = errors.New("channel not found")
+	ErrMetricNotFound           = errors.New("metric not found")
+	ErrScheduleNotFound         = errors.New("channel schedule not found")
+	ErrConditionNotFound        = errors.New("channel condition not found")
+	ErrNoDeviceState            = errors.New("no device state")
+	ErrCreateService            = errors.New("failed to create service")
+	ErrDeviceNotFound           = errors.New("device not found")
+	ErrWorkflowNotFound         = errors.New("workflow not found")
+	ErrWorkflowStepNotFound     = errors.New("workflow step not found")
+	ErrPermissionDenied         = errors.New("permission denied")
+	ErrDeleteAdminAccount       = errors.New("admin account can't be deleted")
+	ErrChangeAdminRole          = errors.New("admin role can't be changed")
+	ErrResetPasswordUnsupported = errors.New("reset password feature unsupported by auth store")
 )
 
 type AlgorithmHandler interface {
@@ -77,20 +80,64 @@ type Middleware interface {
 	CreateSession(w http.ResponseWriter, r *http.Request) (Session, error)
 }
 
+type OrganizationService interface {
+	Create(organization config.OrganizationConfig) error
+	GetAll(session Session) ([]config.OrganizationConfig, error)
+	GetUsers(session Session) ([]config.UserConfig, error)
+	Delete(session Session) error
+}
+
+type FarmService interface {
+	BuildDeviceServices() ([]DeviceService, error) // only used by builder/farm.go
+	GetFarmID() uint64
+	GetChannels() *FarmChannels
+	GetConfig() config.FarmConfig
+	GetConfigClusterID() uint64
+	GetConsistencyLevel() int
+	GetPublicKey() string
+	GetState() state.FarmStateMap
+	//OnLeaderUpdated(info raftio.LeaderInfo)
+	InitializeState(saveToStateStore bool) error
+	IsRunning() bool
+	Poll()
+	//PollCluster(raftCluster cluster.RaftCluster)
+	PublishConfig(farmConfig config.FarmConfig) error
+	PublishState(farmState state.FarmStateMap) error
+	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error
+	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
+	Run()
+	RunCluster()
+	RunWorkflow(workflow config.WorkflowConfig)
+	SetConfig(farmConfig config.FarmConfig) error
+	SetDeviceConfig(deviceConfig config.DeviceConfig) error
+	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
+	SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error
+	SetMetricValue(deviceType string, key string, value float64) error
+	SetSwitchValue(deviceType string, channelID int, value int) error
+	Stop()
+	WatchConfig() <-chan config.FarmConfig
+	WatchState() <-chan state.FarmStateMap
+	WatchDeviceState() <-chan map[string]state.DeviceStateMap
+	WatchDeviceDeltas() <-chan map[string]state.DeviceStateDeltaMap
+	WatchFarmStateChange()
+}
+
 type AuthService interface {
-	//Get(email string) (common.UserAccount, error)
-	Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error)
+	Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error)
 	Register(userCredentials *UserCredentials, baseURI string) (common.UserAccount, error)
 	Activate(registrationID uint64) (common.UserAccount, error)
+	ResetPassword(userCredentials *UserCredentials) error
 }
 
 type UserService interface {
-	CreateUser(user common.UserAccount)
-	GetCurrentUser() (common.UserAccount, error)
-	//GetUserByID(userId int) (common.UserAccount, error)
+	CreateUser(user common.UserAccount) error
+	UpdateUser(user common.UserAccount) error // replaced with SetPermnission?
+	Delete(session Session, userID uint64) error
+	DeletePermission(session Session, userID uint64) error
 	GetUserByEmail(email string) (common.UserAccount, error)
-	//GetRole(orgID int) (config.RoleConfig, error)
-	Refresh(userID uint64) (common.UserAccount, []config.OrganizationConfig, error)
+	SetPermission(session Session, permission config.PermissionConfig) error
+	// probably needs to be moved to auth service; not implemented in google_auth yet
+	Refresh(userID uint64) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error)
 	AuthService
 }
 
@@ -128,8 +175,8 @@ type ServiceRegistry interface {
 	SetDeviceService(farmID uint64, deviceService DeviceService) (DeviceService, error)
 	SetEventLogService(EventLogService)
 	GetEventLogService() EventLogService
-	// SetFarmFactory(FarmFactory FarmFactory)
-	// GetFarmFactory() FarmFactory
+	SetFarmFactory(FarmFactory FarmFactory)
+	GetFarmFactory() FarmFactory
 	AddFarmService(farmService FarmService) error
 	SetFarmServices(map[uint64]FarmService)
 	GetFarmServices() map[uint64]FarmService
@@ -149,6 +196,10 @@ type ServiceRegistry interface {
 	GetNotificationService() NotificationService
 	SetScheduleService(ScheduleService)
 	GetScheduleService() ScheduleService
+	SetOrganizationService(organizationService OrganizationService)
+	GetOrganizationService() OrganizationService
+	SetRoleService(roleService RoleService)
+	GetRoleService() RoleService
 	SetUserService(UserService)
 	GetUserService() UserService
 	SetWorkflowService(WorkflowService)
@@ -182,42 +233,6 @@ type ChangefeedService interface {
 	OnDeviceStateChange(changefeed datastore.Changefeed)
 }
 
-type FarmService interface {
-	BuildDeviceServices() ([]DeviceService, error) // only used by builder/farm.go
-	GetFarmID() uint64
-	GetChannels() *FarmChannels
-	GetConfig() config.FarmConfig
-	GetConfigClusterID() uint64
-	GetConsistencyLevel() int
-	GetPublicKey() string
-	GetState() state.FarmStateMap
-	//OnLeaderUpdated(info raftio.LeaderInfo)
-	InitializeState(saveToStateStore bool) error
-	IsRunning() bool
-	Poll()
-	//PollCluster(raftCluster cluster.RaftCluster)
-	PublishConfig(farmConfig config.FarmConfig) error
-	PublishState(farmState state.FarmStateMap) error
-	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error
-	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
-	Run()
-	RunCluster()
-	RunWorkflow(workflow config.WorkflowConfig)
-	SetConfig(farmConfig config.FarmConfig) error
-	SetDeviceConfig(deviceConfig config.DeviceConfig) error
-	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
-	SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error
-	SetMetricValue(deviceType string, key string, value float64) error
-	SetSwitchValue(deviceType string, channelID int, value int) error
-	//SetState(state state.FarmStateMap
-	Stop()
-	WatchConfig() <-chan config.FarmConfig
-	WatchState() <-chan state.FarmStateMap
-	WatchDeviceState() <-chan map[string]state.DeviceStateMap
-	WatchDeviceDeltas() <-chan map[string]state.DeviceStateDeltaMap
-	WatchFarmStateChange()
-}
-
 type DeviceService interface {
 	GetDeviceConfig() config.DeviceConfig
 	SetMetricValue(key string, value float64) error
@@ -239,4 +254,8 @@ type DeviceService interface {
 	ManageChannels(deviceConfig config.DeviceConfig,
 		farmState state.FarmStateMap, channels []config.ChannelConfig) []error
 	//RegisterObserver(observer DeviceObserver)
+}
+
+type RoleService interface {
+	GetAll() ([]config.RoleConfig, error)
 }

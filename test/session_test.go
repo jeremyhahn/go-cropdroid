@@ -91,7 +91,7 @@ func NewUnitTestSession() (*app.App, service.Session) {
 	// farmState := state.CreateFarmState(farmID, deviceState)
 
 	//session := service.CreateSession(logger, farmService, &model.User{
-	session := service.CreateSession(logger, nil, nil, nil, &model.User{
+	session := service.CreateSession(logger, nil, nil, nil, 0, 0, &model.User{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "$ecret"})
@@ -108,10 +108,9 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 	metricMap["humidity0"] = fakeValue
 	deviceState := state.CreateDeviceStateMap(metricMap, []int{0})
 
-	metrics := []config.Metric{
-		config.Metric{
-			ID:  1,
-			Key: "humidity0"}}
+	metrics := []config.Metric{{
+		ID:  1,
+		Key: "humidity0"}}
 
 	condition := &config.Condition{
 		ID:         1,
@@ -120,15 +119,14 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 		Comparator: ">",
 		Threshold:  55.0}
 
-	channels := []config.Channel{
-		config.Channel{
-			ID:         1,
-			DeviceID:   1,
-			ChannelID:  testChannelID,
-			Name:       "test",
-			Enable:     true,
-			Notify:     true,
-			Conditions: []config.Condition{*condition}}}
+	channels := []config.Channel{{
+		ID:         1,
+		DeviceID:   1,
+		ChannelID:  testChannelID,
+		Name:       "test",
+		Enable:     true,
+		Notify:     true,
+		Conditions: []config.Condition{*condition}}}
 
 	device := config.Device{
 		ID:   1,
@@ -136,21 +134,20 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 		// Configs: map[string]string{
 		// 	fmt.Sprintf("%s.notify", deviceType): "true",
 		// },
-		Configs: []config.DeviceConfigItem{
-			config.DeviceConfigItem{
-				Key:   fmt.Sprintf("%s.notify", deviceType),
-				Value: "true"},
+		Configs: []config.DeviceConfigItem{{
+			Key:   fmt.Sprintf("%s.notify", deviceType),
+			Value: "true"},
 		},
 		Metrics:  metrics,
 		Channels: channels}
 
 	farmConfig := &config.Farm{
-		ID:             farmID,
-		OrganizationID: 0,
-		Mode:           "virtual",
-		Name:           "Test Farm",
-		Interval:       50,
-		Devices:        []config.Device{device}}
+		ID: farmID,
+		//OrganizationID: 0,
+		Mode:     "virtual",
+		Name:     "Test Farm",
+		Interval: 50,
+		Devices:  []config.Device{device}}
 
 	/*
 		serverConfig := &config.Server{

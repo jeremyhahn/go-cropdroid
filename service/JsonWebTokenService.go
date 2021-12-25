@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -18,6 +19,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
@@ -25,6 +27,7 @@ import (
 
 type JsonWebTokenServiceImpl struct {
 	app             *app.App
+	idGenerator     util.IdGenerator
 	orgDAO          dao.OrganizationDAO
 	farmDAO         dao.FarmDAO
 	deviceMapper    mapper.DeviceMapper
@@ -38,26 +41,23 @@ type JsonWebTokenServiceImpl struct {
 	Middleware
 }
 
+// Claim structs are condensed models concerned only
+// with users, roles, permissions, and licensing between
+// the client and server. They get exchanged with every
+// request and are used to generate a "Session" for working
+// with services in the "service" package.
 type farmClaim struct {
-	ID   uint64 `json:"id"`
-	Name string `json:"name"`
-	//Interval int    `json:"interval"`
-	//Mode     string `json:"mode"`
-	//Devices []string `json:"devices"`
+	ID    uint64   `json:"id"`
+	Name  string   `json:"name"`
 	Roles []string `json:"roles"`
 }
 
 type organizationClaim struct {
 	ID      uint64               `json:"id"`
 	Name    string               `json:"name"`
-	Farms   []*farmClaim         `json:"farms"`
+	Farms   []farmClaim          `json:"farms"`
 	Roles   []string             `json:"roles"`
 	License config.LicenseConfig `json:"license"`
-}
-
-type deviceClaim struct {
-	ID   int    `json:"id"`
-	Type string `json:"type"`
 }
 
 type JsonWebTokenClaims struct {
@@ -65,28 +65,34 @@ type JsonWebTokenClaims struct {
 	UserID        uint64 `json:"uid"`
 	Email         string `json:"email"`
 	Organizations string `json:"organizations"`
+	Farms         string `json:"farms"`
 	jwt.StandardClaims
 }
 
-func NewJsonWebTokenService(_app *app.App, orgDAO dao.OrganizationDAO,
-	farmDAO dao.FarmDAO, defaultRole config.RoleConfig, deviceMapper mapper.DeviceMapper,
+// Creates a new JsonWebTokenService with default configuration
+func NewJsonWebTokenService(_app *app.App, idGenerator util.IdGenerator,
+	orgDAO dao.OrganizationDAO, farmDAO dao.FarmDAO,
+	defaultRole config.RoleConfig, deviceMapper mapper.DeviceMapper,
 	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter) (JsonWebTokenService, error) {
 
 	keypair, err := app.NewRsaKeyPair(_app.Logger, _app.KeyDir)
 	if err != nil {
 		return nil, err
 	}
-	return CreateJsonWebTokenService(_app, orgDAO, farmDAO, defaultRole,
+	return CreateJsonWebTokenService(_app, idGenerator, orgDAO, farmDAO, defaultRole,
 		deviceMapper, serviceRegistry, jsonWriter, 60, keypair), nil // 1 hour expiration
 }
 
-func CreateJsonWebTokenService(_app *app.App, orgDAO dao.OrganizationDAO,
-	farmDAO dao.FarmDAO, defaultRole config.RoleConfig,
-	deviceMapper mapper.DeviceMapper, serviceRegistry ServiceRegistry,
-	jsonWriter common.HttpWriter, expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
+// Createa a new JsonWebBokenService with custom configuration
+func CreateJsonWebTokenService(_app *app.App, idGenerator util.IdGenerator,
+	orgDAO dao.OrganizationDAO, farmDAO dao.FarmDAO,
+	defaultRole config.RoleConfig, deviceMapper mapper.DeviceMapper,
+	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter,
+	expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
 
 	return &JsonWebTokenServiceImpl{
 		app:             _app,
+		idGenerator:     idGenerator,
 		farmDAO:         farmDAO,
 		deviceMapper:    deviceMapper,
 		serviceRegistry: serviceRegistry,
@@ -96,198 +102,137 @@ func CreateJsonWebTokenService(_app *app.App, orgDAO dao.OrganizationDAO,
 		defaultRole:     defaultRole}
 }
 
+// Creates a new "Session" object that stores the requested organization/farm context
+// and membership.
 func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 	r *http.Request) (Session, error) {
 
 	_, claims, err := service.parseToken(w, r)
 	if err != nil {
-		//http.Error(w, "Invalid token", http.StatusBadRequest)
 		return nil, err
 	}
 	service.app.Logger.Debugf("Claims: %+v", claims)
 
-	var roles []config.Role
-	var farmConfig config.FarmConfig
+	orgClaims, err := service.parseOrganizationClaims(claims.Organizations)
+	if err != nil {
+		return nil, err
+	}
+
+	farmClaims, err := service.parseFarmClaims(claims.Farms)
+	if err != nil {
+		return nil, err
+	}
+
+	roles := make([]config.RoleConfig, 0)
 	var isFarmMember = false
 
-	params := mux.Vars(r)
-	orgID := uint64(0)
+	// The organizationID the user is requesting to operate on
+	requestedOrgID := uint64(0)
 
-	if params["organizationID"] != "" {
-		organizationID, err := strconv.ParseUint(params["organizationID"], 10, 64)
+	// If an organizationID REST parameter is present, scope the session
+	// to the requested organization
+	params := mux.Vars(r)
+	orgIdParam := params["organizationID"]
+	if orgIdParam != "" {
+		organizationID, err := strconv.ParseUint(orgIdParam, 10, 64)
 		if err != nil {
 			errmsg := fmt.Errorf("Missing expected organizationID HTTP GET parameter: %s",
-				params["organizationID"])
+				orgIdParam)
 			service.app.Logger.Error(errmsg)
-			return nil, fmt.Errorf("%s", errmsg)
+			return nil, errmsg
 		}
-		orgID = organizationID
+		requestedOrgID = organizationID
 	}
 
-	farmID, err := strconv.ParseUint(params["farmID"], 10, 64)
-	// if err != nil {
-	// 	errmsg := fmt.Sprintf("Missing expected farmID HTTP GET parameter: %s", params["farmID"])
-	// 	service.app.Logger.Error(errmsg)
-	// 	return nil, fmt.Errorf("%s", errmsg)
-	// }
-
-	var organizations []organizationClaim
-	err = json.Unmarshal([]byte(claims.Organizations), &organizations)
-	if err != nil {
-		errmsg := fmt.Errorf("Error deserializing organization claims: %s", err)
-		service.app.Logger.Error(errmsg)
-		return nil, fmt.Errorf("%s", errmsg)
+	// Make sure user belongs to the requested organization
+	if requestedOrgID > 0 && !service.isOrgMember(orgClaims, requestedOrgID) {
+		return nil, fmt.Errorf("not a member of requested org %d", requestedOrgID)
 	}
 
-	if orgID == 0 && farmID > 0 {
+	// If a farmID REST parameter is present, scope the session to the
+	// requested farm. Errors are ignored in case the farmID is null
+	// as is the case with a new system with only a default user and
+	// without any farms configured.
+	requestedFarmID, _ := strconv.ParseUint(params["farmID"], 10, 64)
 
-		farmService := service.serviceRegistry.GetFarmService(farmID)
+	// If the user doesn't belong to any organizations but does belong to farms,
+	// get the roles the user has been assigned for the farm being requested
+	if requestedOrgID == 0 && requestedFarmID > 0 {
+		farmService := service.serviceRegistry.GetFarmService(requestedFarmID)
 		if farmService == nil {
-			return nil, fmt.Errorf("Farm not found: %d", farmID)
+			return nil, fmt.Errorf("Farm not found: %d", requestedFarmID)
 		}
-		farmConfig = farmService.GetConfig()
-
-		for _, user := range farmConfig.GetUsers() {
+		for _, user := range farmService.GetConfig().GetUsers() {
 			if user.GetEmail() == claims.Email {
 				isFarmMember = true
 				roles = user.GetRoles()
 				break
 			}
 		}
-
-	} else if orgID > 0 && farmID > 0 {
-
-		var isOrgMember = false
-
-		for _, org := range organizations {
-			if orgID == org.ID {
-				isOrgMember = true
-				break
-			}
-		}
-		if !isOrgMember {
-			errmsg := fmt.Sprintf("Not a member of this organization. Your access request has been logged.")
-			service.app.Logger.Errorf("[UNAUTHORIZED] Unauthorized access attempt to organization: user=%s, org=%d", claims.Email, orgID)
-			http.Error(w, errmsg, http.StatusBadRequest)
-			return nil, fmt.Errorf("%s", errmsg)
-		}
-		orgs := service.app.Config.GetOrganizations()
-		//var roles []config.RoleConfig
-		//currentConfiguredOrgIDs := make([]int, 0)
-		//currentConfiguredFarmIDs := make([]int, 0)
-		for _, org := range orgs {
-			if org.GetID() == orgID {
-				for _, user := range org.GetUsers() {
-					if user.GetEmail() == claims.Email {
-						isFarmMember = true
-						roles = user.GetRoles()
-						break
-					}
-				}
-				for _, farm := range org.GetFarms() {
-					if farm.GetID() == farmID {
-						farmConfig = &farm
-						for _, user := range farm.GetUsers() {
-							if user.GetEmail() == claims.Email {
-								isFarmMember = true
-								roles = user.GetRoles()
-								break
-							}
-						}
-					}
-					//currentConfiguredFarmIDs = append(currentConfiguredFarmIDs, farm.GetID())
-				}
-			}
-			//currentConfiguredOrgIDs = append(currentConfiguredOrgIDs, org.GetID())
-		}
 	} else {
-		// No orgs or farms assigned to user, therefore no role or permissions either
-		roles = append(roles, *service.defaultRole.(*config.Role))
+		// Get the roles the user has been assigned from the organization
+		// and all of the farms the user has been granted permissions within
+	ORGS_LOOP:
+		for _, org := range orgClaims {
+			if org.ID == requestedOrgID {
+				for _, role := range org.Roles {
+					roles = append(roles, &config.Role{Name: role})
+				}
+				for _, farm := range org.Farms {
+					if farm.ID == requestedFarmID {
+						isFarmMember = true
+						for _, role := range farm.Roles {
+							roles = append(roles, &config.Role{
+								ID:   service.idGenerator.NewID(role),
+								Name: role})
+						}
+						break ORGS_LOOP
+					}
+				}
+			}
+		}
 	}
 
-	if !isFarmMember && farmID > 0 {
-		errmsg := fmt.Sprintf("Not a member of this farm. Your access request has been logged.")
-		service.app.Logger.Errorf("[UNAUTHORIZED] Unauthorized access attempt to farm: user=%s, farm=%d", claims.Email, farmID)
-		http.Error(w, errmsg, http.StatusBadRequest)
+	// Assign a default role if no roles were found in orgs or farms
+	// The default user always gets admin, everyone else is assigned
+	// the system configurable default role.
+	if len(roles) == 0 {
+		if claims.Email == common.DEFAULT_USER {
+			roles = append(roles, &config.Role{
+				ID:   service.idGenerator.NewID(common.ROLE_ADMIN),
+				Name: common.ROLE_ADMIN})
+		} else {
+			roles = append(roles, service.defaultRole)
+		}
 	}
 
+	// Make sure the user is a member of the farm being requested
+	if !isFarmMember && requestedFarmID > 0 {
+		service.app.Logger.Errorf("[UNAUTHORIZED] Unauthorized access attempt to farm: user=%s, farm=%d", claims.Email, requestedFarmID)
+		return nil, errors.New("Not a member of this farm. Your access request has been logged.")
+	}
+
+	// Create the session
 	commonRoles := make([]common.Role, len(roles))
 	for i, role := range roles {
+		roleName := role.GetName()
 		commonRoles[i] = &model.Role{
-			ID:   role.GetID(),
-			Name: role.GetName()}
+			ID:   service.idGenerator.NewID(roleName),
+			Name: roleName}
 	}
-
 	user := &model.User{
 		ID:    claims.UserID,
 		Email: claims.Email,
 		Roles: commonRoles}
 
-	// TODO map[index] instead of loop
-	for _, farmService := range service.serviceRegistry.GetFarmServices() {
-		if farmService.GetFarmID() == farmID {
-			return CreateSession(service.app.Logger, service.orgDAO,
-				service.farmDAO, farmService, user), nil
-		}
-	}
+	farmService := service.serviceRegistry.GetFarmService(requestedFarmID)
 
-	// farmService, err := CreateFarmService(service.app, service.farmDAO, service.app.FarmStore,
-	// 	 farmConfig, service.deviceMapper, service.serviceRegistry)
-	// if err != nil {
-	// 	service.app.Logger.Errorf("Error: %s", err)
-	// 	return nil, err
-	// }
-	// return CreateSession(service.app.Logger, farmService, user), nil
-
-	return CreateSession(service.app.Logger, service.orgDAO, service.farmDAO, nil, user), nil
-	//return nil, errors.New("Farm not found in service registry")
+	return CreateSession(service.app.Logger, orgClaims,
+		farmClaims, farmService, requestedOrgID, requestedFarmID, user), nil
 }
 
-func (service *JsonWebTokenServiceImpl) parseClaims(r *http.Request, extractor request.Extractor) (*jwt.Token, *JsonWebTokenClaims, error) {
-	token, err := request.ParseFromRequest(r, extractor,
-		func(token *jwt.Token) (interface{}, error) {
-			return service.rsaKeyPair.GetPublicKey(), nil
-		})
-	if err != nil {
-		return nil, nil, err
-	}
-	claims := &JsonWebTokenClaims{}
-	_, err = jwt.ParseWithClaims(token.Raw, claims,
-		func(token *jwt.Token) (interface{}, error) {
-			return service.rsaKeyPair.GetPublicKey(), nil
-		})
-	if err != nil {
-		return nil, nil, err
-	}
-	service.app.Logger.Debugf("claims: %+v", claims)
-	return token, claims, nil
-}
-
-func (service *JsonWebTokenServiceImpl) parseToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, *JsonWebTokenClaims, error) {
-	var token *jwt.Token
-	var claims *JsonWebTokenClaims
-	var err error
-	if _, ok := r.URL.Query()["access_token"]; ok {
-		t, c, e := service.parseClaims(r, request.OAuth2Extractor)
-		token = t
-		claims = c
-		err = e
-	} else {
-		t, c, e := service.parseClaims(r, request.AuthorizationHeaderExtractor)
-		token = t
-		claims = c
-		err = e
-	}
-	if err != nil {
-		errmsg := err.Error()
-		service.app.Logger.Errorf("Error: %s", errmsg)
-		return nil, nil, errors.New(errmsg)
-	}
-	service.app.Logger.Debugf("token=%+v", token)
-	return token, claims, err
-}
-
-// GenerateToken parses an authentication HTTP request for UserCredentials and returns a JWT token or error if unsuccessful
+// GenerateToken parses an authentication HTTP request for UserCredentials and returns
+// a JWT token or error if unsuccessful
 func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req *http.Request) {
 
 	service.app.Logger.Debugf("url: %s, method: %s, remoteAddress: %s, requestUri: %s",
@@ -296,7 +241,7 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 	var user UserCredentials
 	err := json.NewDecoder(req.Body).Decode(&user)
 
-	service.app.Logger.Debugf("Decoded requested user: %v+", user)
+	service.app.Logger.Debugf("Decoded userCredentials: %v+", user)
 
 	if err != nil {
 		service.app.Logger.Errorf("Error: %s", err)
@@ -306,7 +251,7 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 	}
 
 	userService := service.serviceRegistry.GetUserService()
-	userAccount, orgs, err := userService.Login(&user)
+	userAccount, orgs, farms, err := userService.Login(&user)
 	if err != nil {
 		service.app.Logger.Errorf("GenerateToken login error: %s", err)
 		service.jsonWriter.Write(w, http.StatusForbidden,
@@ -315,7 +260,7 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 	}
 
 	if len(userAccount.GetRoles()) == 0 {
-		// Must be a new user
+		// Must be a new user that hasn't been assigned to any roles yet
 		userAccount.SetRoles([]common.Role{service.defaultRole.(*config.Role)})
 	}
 
@@ -323,48 +268,54 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 	service.app.Logger.Debugf("userAccount: %+v", userAccount)
 	service.app.Logger.Debugf("orgs: %+v", orgs)
 	service.app.Logger.Debugf("org.len: %+v", len(orgs))
-	service.app.Logger.Debugf("org[0].Farms.len: %+v", len(orgs[0].GetFarms()))
+	service.app.Logger.Debugf("farms.len: %+v", len(farms))
 
 	roleClaims := make([]string, len(userAccount.GetRoles()))
 	for j, role := range userAccount.GetRoles() {
 		roleClaims[j] = role.GetName()
 	}
 
-	orgClaims := make([]*organizationClaim, len(orgs))
+	orgClaims := make([]organizationClaim, len(orgs))
 	for i, org := range orgs {
-		farmClaims := make([]*farmClaim, len(org.GetFarms()))
+		farmClaims := make([]farmClaim, len(org.GetFarms()))
 		for j, farm := range org.GetFarms() {
-			farmClaims[j] = &farmClaim{
+			farmClaims[j] = farmClaim{
 				ID:   farm.GetID(),
 				Name: farm.GetName()}
 			// Not sending roles here to keep JWT compact; imposes
 			// logic to default farm roles to org roles on the client
 			//Roles: roleClaims}
 		}
-		orgClaims[i] = &organizationClaim{
+		orgClaims[i] = organizationClaim{
 			ID:    org.GetID(),
 			Name:  org.GetName(),
 			Farms: farmClaims,
 			Roles: roleClaims}
 	}
-
-	/*
-		if err = service.app.ValidateLicense(); err != nil {
-			// Running in unlicensed / free mode
-		}
-	*/
-
 	orgClaimsJson, err := json.Marshal(orgClaims)
 	if err != nil {
 		service.jsonWriter.Write(w, http.StatusInternalServerError, viewmodel.JsonWebToken{Error: "Error marshaling organization"})
 		return
 	}
 
+	farmClaims := make([]farmClaim, len(farms))
+	for i, farm := range farms {
+		farmClaims[i] = farmClaim{
+			ID:   farm.GetID(),
+			Name: farm.GetName()}
+	}
+	farmClaimsJson, err := json.Marshal(farmClaims)
+	if err != nil {
+		service.jsonWriter.Write(w, http.StatusInternalServerError, viewmodel.JsonWebToken{Error: "Error marshaling farms"})
+		return
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, JsonWebTokenClaims{
-		//ServerID: service.app.Config.GetID(),
+		ServerID:      service.app.Config.GetID(),
 		UserID:        userAccount.GetID(),
 		Email:         userAccount.GetEmail(),
 		Organizations: string(orgClaimsJson),
+		Farms:         string(farmClaimsJson),
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    common.APPNAME,
 			IssuedAt:  time.Now().Unix(),
@@ -382,12 +333,13 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 	service.jsonWriter.Write(w, http.StatusOK, jwtViewModel)
 }
 
+// Renews a JWT token with a fresh expiration date
 func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req *http.Request) {
 	token, claims, err := service.parseToken(w, req)
 	if err == nil {
 		if token.Valid {
 			userService := service.serviceRegistry.GetUserService()
-			userAccount, orgs, err := userService.Refresh(claims.UserID)
+			userAccount, orgs, farms, err := userService.Refresh(claims.UserID)
 			if err != nil {
 				service.app.Logger.Errorf("Error refreshing token: %s", err)
 				service.jsonWriter.Write(w, http.StatusUnauthorized, viewmodel.JsonWebToken{Error: "Invalid token"})
@@ -406,14 +358,21 @@ func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req 
 
 			orgClaims := make([]*organizationClaim, len(orgs))
 			for i, org := range orgs {
-				farmClaims := make([]*farmClaim, len(org.GetFarms()))
+				farmClaims := make([]farmClaim, len(org.GetFarms()))
 				for j, farm := range org.GetFarms() {
-					farmClaims[j] = &farmClaim{
-						ID:   farm.GetID(),
-						Name: farm.GetName()}
-					// Not sending roles here to keep JWT compact; imposes
-					// logic to default farm roles to org roles on the client
-					//Roles: roleClaims}
+
+					roles := make([]string, 0)
+					for _, user := range farm.GetUsers() {
+						if user.GetID() == userAccount.GetID() {
+							for _, role := range user.GetRoles() {
+								roles = append(roles, role.GetName())
+							}
+						}
+					}
+					farmClaims[j] = farmClaim{
+						ID:    farm.GetID(),
+						Name:  farm.GetName(),
+						Roles: roles}
 				}
 				orgClaims[i] = &organizationClaim{
 					ID:    org.GetID(),
@@ -421,25 +380,39 @@ func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req 
 					Farms: farmClaims,
 					Roles: roleClaims}
 			}
-
-			/*
-				if err = service.app.ValidateLicense(); err != nil {
-					// Running in unlicensed / free mode
-				}
-			*/
-
 			orgClaimsJson, err := json.Marshal(orgClaims)
 			if err != nil {
 				service.jsonWriter.Write(w, http.StatusInternalServerError, viewmodel.JsonWebToken{Error: "Error marshaling organization"})
 				return
 			}
 
+			farmClaims := make([]farmClaim, len(farms))
+			for i, farm := range farms {
+				roles := make([]string, 0)
+				for _, user := range farm.GetUsers() {
+					if user.GetID() == userAccount.GetID() {
+						for _, role := range user.GetRoles() {
+							roles = append(roles, role.GetName())
+						}
+					}
+				}
+				farmClaims[i] = farmClaim{
+					ID:    farm.GetID(),
+					Name:  farm.GetName(),
+					Roles: roles}
+			}
+			farmClaimsJson, err := json.Marshal(farmClaims)
+			if err != nil {
+				service.jsonWriter.Write(w, http.StatusInternalServerError, viewmodel.JsonWebToken{Error: "Error marshaling farms"})
+				return
+			}
+
 			token := jwt.NewWithClaims(jwt.SigningMethodRS256, JsonWebTokenClaims{
-				//ServerID: service.app.Config.GetID(),
-				UserID: userAccount.GetID(),
-				Email:  userAccount.GetEmail(),
-				//Organizations: orgClaims,
+				ServerID:      service.app.Config.GetID(),
+				UserID:        userAccount.GetID(),
+				Email:         userAccount.GetEmail(),
 				Organizations: string(orgClaimsJson),
+				Farms:         string(farmClaimsJson),
 				StandardClaims: jwt.StandardClaims{
 					Issuer:    common.APPNAME,
 					IssuedAt:  time.Now().Unix(),
@@ -470,6 +443,7 @@ func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req 
 	}
 }
 
+// Validates the raw JWT token to ensure it's not expired or contains any invalid claims
 func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	token, claims, err := service.parseToken(w, r)
 	if err == nil {
@@ -488,25 +462,10 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 				http.Error(w, errmsg, http.StatusBadRequest)
 				return
 			}
-			/*
-				var organizations []organizationClaim
-				err = json.Unmarshal([]byte(claims.Organizations), &organizations)
-				if err != nil {
-					service.app.Logger.Errorf("Error deserializing organization claims: %s", err)
-					return
-				}
-				if len(organizations) == 0 {
-					errmsg := "Invalid request. organization claim required"
-					service.app.Logger.Errorf("%s", errmsg)
-					service.app.Logger.Errorf("token: %+v", token.Raw)
-					http.Error(w, errmsg, http.StatusBadRequest)
-					return
-				}
-			*/
 			next(w, r)
 		} else {
-			service.app.Logger.Errorf("Invalid token: %s", token.Raw)
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			service.app.Logger.Errorf("invalid token: %s", token.Raw)
+			http.Error(w, "invalid token", http.StatusUnauthorized)
 		}
 	} else {
 		errmsg := err.Error()
@@ -516,4 +475,85 @@ func (service *JsonWebTokenServiceImpl) Validate(w http.ResponseWriter, r *http.
 		service.app.Logger.Errorf("Error: %s", errmsg)
 		http.Error(w, errmsg, http.StatusBadRequest)
 	}
+}
+
+// Used to determine if the specified organization is a member of any of the specified organizationClaims
+func (service *JsonWebTokenServiceImpl) isOrgMember(orgClaims []organizationClaim, orgID uint64) bool {
+	for _, org := range orgClaims {
+		if org.ID == orgID {
+			return true
+		}
+	}
+	return false
+}
+
+// Parses a list of organizationClaims from a json string
+func (service *JsonWebTokenServiceImpl) parseOrganizationClaims(orgJson string) ([]organizationClaim, error) {
+	var orgClaims []organizationClaim
+	reader := strings.NewReader(orgJson)
+	decoder := json.NewDecoder(reader)
+	if err := decoder.Decode(&orgClaims); err != nil {
+		service.app.Logger.Errorf("parseOrganizationClaims error: %s", err)
+		return []organizationClaim{}, err
+	}
+	return orgClaims, nil
+}
+
+// Parses a list of organizationClaims from a json string
+func (service *JsonWebTokenServiceImpl) parseFarmClaims(farmJson string) ([]farmClaim, error) {
+	var farmClaims []farmClaim
+	reader := strings.NewReader(farmJson)
+	decoder := json.NewDecoder(reader)
+	if err := decoder.Decode(&farmClaims); err != nil {
+		service.app.Logger.Errorf("parseFarmClaims error: %s", err)
+		return []farmClaim{}, err
+	}
+	return farmClaims, nil
+}
+
+// Parses the JsonWebTokenClaims from the HTTP request
+func (service *JsonWebTokenServiceImpl) parseClaims(r *http.Request, extractor request.Extractor) (*jwt.Token, *JsonWebTokenClaims, error) {
+	token, err := request.ParseFromRequest(r, extractor,
+		func(token *jwt.Token) (interface{}, error) {
+			return service.rsaKeyPair.GetPublicKey(), nil
+		})
+	if err != nil {
+		return nil, nil, err
+	}
+	claims := &JsonWebTokenClaims{}
+	_, err = jwt.ParseWithClaims(token.Raw, claims,
+		func(token *jwt.Token) (interface{}, error) {
+			return service.rsaKeyPair.GetPublicKey(), nil
+		})
+	if err != nil {
+		return nil, nil, err
+	}
+	service.app.Logger.Debugf("claims: %+v", claims)
+	return token, claims, nil
+}
+
+// Parses the JsonWebTokenClaims from the HTTP request using either an OAuth2 or
+// Authorization header based on their presence in the HTTP request.
+func (service *JsonWebTokenServiceImpl) parseToken(w http.ResponseWriter, r *http.Request) (*jwt.Token, *JsonWebTokenClaims, error) {
+	var token *jwt.Token
+	var claims *JsonWebTokenClaims
+	var err error
+	if _, ok := r.URL.Query()["access_token"]; ok {
+		t, c, e := service.parseClaims(r, request.OAuth2Extractor)
+		token = t
+		claims = c
+		err = e
+	} else {
+		t, c, e := service.parseClaims(r, request.AuthorizationHeaderExtractor)
+		token = t
+		claims = c
+		err = e
+	}
+	if err != nil {
+		errmsg := err.Error()
+		service.app.Logger.Errorf("parseToken error: %s", errmsg)
+		return nil, nil, errors.New(errmsg)
+	}
+	service.app.Logger.Debugf("token=%+v", token)
+	return token, claims, err
 }

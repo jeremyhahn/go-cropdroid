@@ -1,0 +1,45 @@
+id: 3893763056
+replicas: 0
+consistency: 0
+state_store: 0
+config_store: 0
+data_store: 0
+mode: virtual
+name: First Room
+interval: 60
+smtp:
+  enable: false
+  host: smtp.gmail.com
+  port: 587
+  username: myuser@gmail.com
+  password: $ecret!
+  recipient: 1234567890@vtext.com
+timezone: America/New_York
+private_key: ""
+public_key: ""
+devices:
+users:
+workflows:
+
+
+# configs:
+#   - key: name
+#     value: First Room
+#   - key: interval
+#     value: 60
+#   - key: timezone
+#     value: America/New_York
+#   - key: mode
+#     value: virtual
+#   - key: smtp.enable
+#     value: false
+#   - key: smtp.host
+#     value:
+#   - key: smtp.port
+#     value:
+#   - key: smtp.username
+#     value:
+#   - key: smtp.password
+#     value: 
+#   - key: smtp.recipient
+#     value:

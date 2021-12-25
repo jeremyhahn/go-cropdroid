@@ -6,9 +6,10 @@ import (
 )
 
 type ProvisionerParams struct {
-	ConfigStore int
-	StateStore  int
-	DataStore   int
+	OrganizationID uint64
+	ConfigStore    int
+	StateStore     int
+	DataStore      int
 }
 
 type FarmProvisioner interface {

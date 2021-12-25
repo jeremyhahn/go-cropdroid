@@ -31,13 +31,19 @@ func NewIdGenerator(datastoreEngine string) IdGenerator {
 
 // Returns a new 64-bit FNV-1a hash from a string
 func (hasher *Fnv1aHasher) NewID(str string) uint64 {
-	id := hasher.createClusterHash([]byte(str))
+	return hasher.createClusterHash([]byte(str))
+}
+
+// Returns a new 64-bit FNV-1a hash from a byte array
+func (hasher *Fnv1aHasher) createClusterHash(bytes []byte) uint64 {
 	if hasher.is64bit {
-		return id
+		clusterHash := fnv.New64a()
+		clusterHash.Write(bytes)
+		return clusterHash.Sum64()
 	}
-	// Clear Most Significant Bit
-	id &^= (1 << 63)
-	return id
+	clusterHash := fnv.New32a()
+	clusterHash.Write(bytes)
+	return uint64(clusterHash.Sum32())
 }
 
 // Returns a new 64-bit FNV-1a hash as little endian byte array
@@ -51,11 +57,4 @@ func (hasher *Fnv1aHasher) StringBytes(str string) []byte {
 	bytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(bytes, hasher.NewID(str))
 	return bytes
-}
-
-// Returns a new 64-bit FNV-1a hash from a byte array
-func (hasher *Fnv1aHasher) createClusterHash(bytes []byte) uint64 {
-	clusterHash := fnv.New64a()
-	clusterHash.Write(bytes)
-	return clusterHash.Sum64()
 }

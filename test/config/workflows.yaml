@@ -1,0 +1,56 @@
+workflows:
+  - id: 2892576014
+    farm: 3893763056
+    name: Automated Water Changes
+    conditions: []
+    schedules: []
+    steps:
+      - id: 181424359
+        workflow: 2892576014
+        device: 4040846963
+        channel: 2334132728
+        webhook: ""
+        duration: 5
+        wait: 10
+        state: 0
+      - id: 203459909
+        workflow: 2892576014
+        device: 1047919795
+        channel: 2064395271
+        webhook: ""
+        duration: 5
+        wait: 10
+        state: 0
+      - id: 260710650
+        workflow: 2892576014
+        device: 1047919795
+        channel: 1393845234
+        webhook: ""
+        duration: 5
+        wait: 10
+        state: 0
+      - id: 2624624424
+        workflow: 2892576014
+        device: 4040846963
+        channel: 2384465585
+        webhook: ""
+        duration: 5
+        wait: 10
+        state: 0
+      - id: 3126216168
+        workflow: 2892576014
+        device: 4040846963
+        channel: 2418020823
+        webhook: ""
+        duration: 5
+        wait: 10
+        state: 0
+      - id: 3738249750
+        workflow: 2892576014
+        device: 4040846963
+        channel: 2350910347
+        webhook: ""
+        duration: 5
+        wait: 10
+        state: 0
+    lastCompleted: null

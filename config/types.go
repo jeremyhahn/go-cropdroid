@@ -31,9 +31,9 @@ var (
 type ServerConfig interface {
 	GetID() int
 	SetID(int)
-	GetOrganizations() []Organization
-	SetOrganizations([]Organization)
-	GetOrganization(id uint64) (*Organization, error)
+	GetOrganizations() []OrganizationConfig
+	SetOrganizations([]OrganizationConfig)
+	GetOrganization(id uint64) (OrganizationConfig, error)
 	SetInterval(int)
 	GetInterval() int
 	SetTimezone(string)
@@ -45,7 +45,7 @@ type ServerConfig interface {
 	GetLicense() *License
 	SetLicense(license *License)
 	GetFarms() []Farm
-	SetFarms(farms []Farm)
+	SetFarms(farms []FarmConfig)
 	AddFarm(farm FarmConfig)
 }
 
@@ -54,12 +54,12 @@ type OrganizationConfig interface {
 	SetID(uint64)
 	GetName() string
 	SetName(string)
-	AddFarm(farm Farm)
-	SetFarms(farms []Farm)
-	GetFarms() []Farm
-	GetFarm(id uint64) (*Farm, error)
-	SetUsers(users []User)
-	GetUsers() []User
+	AddFarm(farm FarmConfig)
+	SetFarms(farms []FarmConfig)
+	GetFarms() []FarmConfig
+	GetFarm(id uint64) (FarmConfig, error)
+	SetUsers(users []UserConfig)
+	GetUsers() []UserConfig
 	GetLicense() *License
 	SetLicense(*License)
 }
@@ -284,9 +284,9 @@ type UserConfig interface {
 	GetEmail() string
 	SetPassword(string)
 	GetPassword() string
-	SetRoles(roles []Role)
-	GetRoles() []Role
-	AddRole(role Role)
+	SetRoles(roles []RoleConfig)
+	GetRoles() []RoleConfig
+	AddRole(role RoleConfig)
 	RedactPassword()
 }
 

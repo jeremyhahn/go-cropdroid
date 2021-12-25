@@ -6,6 +6,7 @@ type FarmConfigStorer interface {
 	Cache(farmID uint64, farmConfig config.FarmConfig)
 	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
 	GetAll() []config.FarmConfig
+	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) []config.FarmConfig
 	Len() int
 	Put(farmID uint64, farmConfig config.FarmConfig) error
 }

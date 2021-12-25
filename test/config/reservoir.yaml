@@ -1,0 +1,268 @@
+type: reservoir
+interval: 0
+description: Manages and monitors reservoir water and nutrients
+enable: true
+notify: true
+uri: ""
+hwVersion: ""
+fwVersion: ""
+configs:
+  reservoir.enable: "true"
+  reservoir.gallons: "50"
+  reservoir.notify: "true"
+  reservoir.uri: ""
+  reservoir.waterchange.enable: "false"
+  reservoir.waterchange.notify: "false"
+metrics:
+  - id: 840144416
+    datatype: 0
+    name: Dissolved Oxygen (DO)
+    key: do_mgL
+    enable: true
+    notify: false
+    unit: mg/L
+    alarmLow: 5
+    alarmHigh: 30
+  - id: 856922035
+    datatype: 0
+    name: Dissolved Oxygen (DO)
+    key: do_per
+    enable: true
+    notify: false
+    unit: '%'
+    alarmLow: 0
+    alarmHigh: 0
+  - id: 873699654
+    datatype: 0
+    name: Total Dissolved Solids (TDS)
+    key: tds
+    enable: true
+    notify: false
+    unit: ppm
+    alarmLow: 700
+    alarmHigh: 900
+  - id: 890477273
+    datatype: 0
+    name: Oxygen Reduction Potential (ORP)
+    key: orp
+    enable: true
+    notify: false
+    unit: mV
+    alarmLow: 250
+    alarmHigh: 375
+  - id: 907254892
+    datatype: 0
+    name: pH
+    key: ph
+    enable: true
+    notify: true
+    unit: ""
+    alarmLow: 5.4
+    alarmHigh: 6.2
+  - id: 924032511
+    datatype: 0
+    name: Electrical Conductivity (EC)
+    key: ec
+    enable: true
+    notify: true
+    unit: mV
+    alarmLow: 850
+    alarmHigh: 1300
+  - id: 940810130
+    datatype: 1
+    name: Available System Memory
+    key: mem
+    enable: true
+    notify: true
+    unit: bytes
+    alarmLow: 500
+    alarmHigh: 100000
+  - id: 957587749
+    datatype: 0
+    name: Water Temperature
+    key: resTemp
+    enable: true
+    notify: true
+    unit: °
+    alarmLow: 61
+    alarmHigh: 67
+  - id: 1075031082
+    datatype: 0
+    name: Salinity
+    key: sal
+    enable: true
+    notify: false
+    unit: ppt
+    alarmLow: 0
+    alarmHigh: 0
+  - id: 1091808701
+    datatype: 0
+    name: Specific Gravity
+    key: sg
+    enable: true
+    notify: false
+    unit: ppt
+    alarmLow: 0
+    alarmHigh: 0
+  - id: 3940978115
+    datatype: 1
+    name: Upper Float
+    key: upperFloat
+    enable: true
+    notify: false
+    unit: ""
+    alarmLow: -1
+    alarmHigh: 1
+  - id: 3991310972
+    datatype: 0
+    name: Environment Humidity
+    key: envHumidity
+    enable: true
+    notify: false
+    unit: '%'
+    alarmLow: 40
+    alarmHigh: 80
+  - id: 4008088591
+    datatype: 0
+    name: Environment Temp
+    key: envTemp
+    enable: true
+    notify: false
+    unit: °
+    alarmLow: 40
+    alarmHigh: 80
+  - id: 4024866210
+    datatype: 1
+    name: Lower Float
+    key: lowerFloat
+    enable: true
+    notify: false
+    unit: ""
+    alarmLow: -1
+    alarmHigh: 1
+  - id: 4041643829
+    datatype: 0
+    name: Environment Heat Index
+    key: envHeatIndex
+    enable: true
+    notify: false
+    unit: '%'
+    alarmLow: 40
+    alarmHigh: 80
+channels:
+  - id: 1326734758
+    channel: 4
+    name: Auxiliary
+    enable: true
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 60
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 1360289996
+    channel: 2
+    name: Heater
+    enable: true
+    notify: true
+    conditions:
+      - id: 2575483581
+        workflow: 0
+        channel: 1360289996
+        metric: 907254892
+        comparator: <
+        threshold: 60
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 1377067615
+    channel: 3
+    name: Powerhead
+    enable: true
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 1393845234
+    channel: 0
+    name: Drain
+    enable: false
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 1410622853
+    channel: 1
+    name: Chiller
+    enable: true
+    notify: true
+    conditions:
+      - id: 3411994778
+        workflow: 0
+        channel: 1410622853
+        metric: 907254892
+        comparator: '>'
+        threshold: 62
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2064395270
+    channel: 5
+    name: Top-off
+    enable: true
+    notify: true
+    conditions: []
+    schedule:
+      - workflow: 0
+        startDate: 2021-12-11T21:00:00-05:00
+        endDate: null
+        frequency: 4
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - workflow: 0
+        startDate: 2021-12-11T21:00:00-05:00
+        endDate: null
+        frequency: 3
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+      - workflow: 0
+        startDate: 2021-12-11T09:00:00-05:00
+        endDate: null
+        frequency: 2
+        interval: 0
+        count: 0
+        days: null
+        lastExecuted: 0001-01-01T00:00:00Z
+        executionCount: 0
+    duration: 120
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2064395271
+    channel: 6
+    name: Faucet
+    enable: false
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 0

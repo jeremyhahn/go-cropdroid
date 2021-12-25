@@ -1,6 +1,7 @@
 package gorm
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -35,6 +36,8 @@ func NewIntegrationTest() *DatastoreTest {
 		log.Fatal(err)
 	}
 	Location = location
+
+	os.Remove(fmt.Sprintf("/tmp/%s.db", TestSuiteName))
 
 	//database := NewGormDB(logger, createMemoryParams())
 	database := NewGormDB(logger, createSqliteParams())

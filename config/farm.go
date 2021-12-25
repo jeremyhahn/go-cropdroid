@@ -7,27 +7,28 @@ import (
 )
 
 type Farm struct {
-	ID             uint64     `gorm:"primaryKey" yaml:"id" json:"id"`
-	OrganizationID uint64     `yaml:"orgId" json:"orgId"`
-	Replicas       int        `yaml:"replicas" json:"replicas"`
-	Consistency    int        `gorm:"consistency" yaml:"consistency" json:"consistency"`
-	StateStore     int        `gorm:"state_store" yaml:"state_store" json:"state_store"`
-	ConfigStore    int        `gorm:"config_store" yaml:"config_store" json:"config_store"`
-	DataStore      int        `gorm:"data_store" yaml:"data_store" json:"data_store"`
-	Mode           string     `gorm:"-" yaml:"mode" json:"mode"`
-	Name           string     `gorm:"-" yaml:"name" json:"name"`
-	Interval       int        `gorm:"-" yaml:"interval" json:"interval"`
-	Smtp           *Smtp      `gorm:"-" yaml:"smtp" json:"smtp"`
-	Timezone       string     `gorm:"-" yaml:"timezone" json:"timezone"`
-	PrivateKey     string     `gorm:"private_key" yaml:"private_key" json:"private_key"`
-	PublicKey      string     `gorm:"public_key" yaml:"public_key" json:"public_key"`
-	Devices        []Device   `yaml:"devices" json:"devices"`
-	Users          []User     `gorm:"many2many:permissions" yaml:"users" json:"users"`
-	Workflows      []Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
-	FarmConfig     `yaml:"-" json:"-"`
+	ID uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	//OrganizationID uint64 `yaml:"orgId" json:"orgId"`
+	//Organization   Organization `yaml:"org" json:"org"`
+	Replicas    int        `yaml:"replicas" json:"replicas"`
+	Consistency int        `gorm:"consistency" yaml:"consistency" json:"consistency"`
+	StateStore  int        `gorm:"state_store" yaml:"state_store" json:"state_store"`
+	ConfigStore int        `gorm:"config_store" yaml:"config_store" json:"config_store"`
+	DataStore   int        `gorm:"data_store" yaml:"data_store" json:"data_store"`
+	Mode        string     `gorm:"-" yaml:"mode" json:"mode"`
+	Name        string     `gorm:"-" yaml:"name" json:"name"`
+	Interval    int        `gorm:"-" yaml:"interval" json:"interval"`
+	Smtp        *Smtp      `gorm:"-" yaml:"smtp" json:"smtp"`
+	Timezone    string     `gorm:"-" yaml:"timezone" json:"timezone"`
+	PrivateKey  string     `gorm:"private_key" yaml:"private_key" json:"private_key"`
+	PublicKey   string     `gorm:"public_key" yaml:"public_key" json:"public_key"`
+	Devices     []Device   `yaml:"devices" json:"devices"`
+	Users       []User     `gorm:"many2many:permissions" yaml:"users" json:"users"`
+	Workflows   []Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
+	FarmConfig  `yaml:"-" json:"-"`
 }
 
-func NewFarm() *Farm {
+func NewFarm() FarmConfig {
 	return &Farm{
 		//Interval: 60,
 		Devices: make([]Device, 0),
@@ -39,8 +40,8 @@ func CreateFarm(name string, orgID uint64, interval int,
 
 	return &Farm{
 		//Interval:       60,
-		OrganizationID: orgID,
-		Devices:        devices}
+		//	OrganizationID: orgID,
+		Devices: devices}
 }
 
 func (farm *Farm) SetID(id uint64) {
@@ -51,13 +52,13 @@ func (farm *Farm) GetID() uint64 {
 	return farm.ID
 }
 
-func (farm *Farm) SetOrganizationID(id uint64) {
-	farm.OrganizationID = id
-}
+// func (farm *Farm) SetOrganizationID(id uint64) {
+// 	farm.OrganizationID = id
+// }
 
-func (farm *Farm) GetOrganizationID() uint64 {
-	return farm.OrganizationID
-}
+// func (farm *Farm) GetOrganizationID() uint64 {
+// 	return farm.OrganizationID
+// }
 
 func (farm *Farm) SetReplicas(count int) {
 	farm.Replicas = count

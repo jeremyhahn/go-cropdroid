@@ -70,45 +70,54 @@ func (service *LocalAuthService) Get(email string) (common.UserAccount, error) {
 	return service.mapper.MapUserEntityToModel(userEntity), nil
 }
 
+// ResetPassword looks the user up from the database, encrypts the UserCredentials.Password
+// and updates the database with the encrypted value.
+func (service *LocalAuthService) ResetPassword(userCredentials *UserCredentials) error {
+	userEntity, err := service.userDAO.GetByEmail(userCredentials.Email)
+	if err != nil {
+		return err
+	}
+	encrypted, err := service.encryptPassword(userCredentials.Password)
+	if err != nil {
+		return err
+	}
+	userEntity.SetPassword(string(encrypted))
+	return service.userDAO.Save(userEntity)
+}
+
 // Login takes a set of credentials and returns a list of organizations with the farms
 // the user has permission to access, minimally populated. No device or workflow data
 // will be contained with the farm(s).
-func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error) {
+func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %s", userCredentials.Email)
 
 	userEntity, err := service.userDAO.GetByEmail(userCredentials.Email)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
-		return nil, nil, ErrInvalidCredentials
+		return nil, nil, nil, ErrInvalidCredentials
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(userEntity.GetPassword()), []byte(userCredentials.Password))
 	if err != nil {
-		return nil, nil, ErrInvalidCredentials
+		return nil, nil, nil, ErrInvalidCredentials
 	}
 	userEntity.RedactPassword()
 
-	if userCredentials.OrgName != "" {
-		organizations, err := service.orgDAO.GetByUserID(userEntity.GetID(), true)
-		if err != nil {
-			service.app.Logger.Errorf("Error looking up organization user: %s", err)
-			return nil, nil, err
-		}
-		return service.mapper.MapUserEntityToModel(userEntity), organizations, nil
+	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID(), true)
+	if err != nil {
+		service.app.Logger.Errorf("Error looking up organization user: %s", err)
+		return nil, nil, nil, err
 	}
 
 	farms, err := service.farmDAO.GetByUserID(userEntity.GetID())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	orgs := []config.OrganizationConfig{
-		&config.Organization{
-			ID:    0,
-			Farms: farms}}
-	return service.mapper.MapUserEntityToModel(userEntity), orgs, nil
+
+	return service.mapper.MapUserEntityToModel(userEntity), organizations, farms, nil
 }
 
 // Registers a new user and sends an email with an activation button in HTML format.
@@ -132,7 +141,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 	if persistedUser != nil {
 		return nil, ErrUserAlreadyExists
 	}
-	encrypted, err := bcrypt.GenerateFromPassword([]byte(userCredentials.Password), bcrypt.DefaultCost)
+	encrypted, err := service.encryptPassword(userCredentials.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -261,4 +270,8 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	}
 
 	return userAccount, nil
+}
+
+func (service *LocalAuthService) encryptPassword(password string) ([]byte, error) {
+	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 }

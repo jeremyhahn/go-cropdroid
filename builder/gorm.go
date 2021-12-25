@@ -56,7 +56,7 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	service.ServiceRegistry, []rest.RestService, chan uint64, error) {
 
 	var restServices []rest.RestService
-	var farmConfigs []config.Farm
+	var farmConfigs []config.FarmConfig
 
 	datastoreRegistry := gorm.NewGormRegistry(builder.app.Logger, builder.app.GormDB)
 	mapperRegistry := mapper.CreateRegistry()
@@ -101,7 +101,7 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 		gormFarmConfigStore, builder.deviceStateStore, gormDeviceConfigStore,
 		builder.deviceDataStore, mapperRegistry.GetDeviceMapper(),
 		changefeeders, farmProvisionerChan, farmTickerProvisionerChan, builder.idGenerator)
-	//serviceRegistry.SetFarmFactory(farmFactory)
+	serviceRegistry.SetFarmFactory(farmFactory)
 
 	farmProvisioner := provisioner.NewGormFarmProvisioner(
 		builder.app.Logger, builder.app.GORM, builder.app.Location,
@@ -131,7 +131,7 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	//builder.app.Config.SetFarms(farmConfigs)
 
 	for _, farmConfig := range farmConfigs {
-		farmFactory.BuildService(&farmConfig)
+		farmFactory.BuildService(farmConfig)
 		//builder.app.Config..AddFarm(&farmConfig)
 	}
 
@@ -174,6 +174,11 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 		}
 	}()
 
+	organizationService := service.NewOrganizationService(
+		builder.app.Logger, builder.idGenerator,
+		datastoreRegistry.GetOrganizationDAO())
+	serviceRegistry.SetOrganizationService(organizationService)
+
 	// Build JWT service
 	jsonWriter := rest.NewJsonWriter()
 	rsaKeyPair, err := app.CreateRsaKeyPair(builder.app.Logger, builder.app.KeyDir, rsa.PSSSaltLengthAuto)
@@ -185,9 +190,10 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	jwtService := service.CreateJsonWebTokenService(builder.app, orgDAO,
-		farmDAO, defaultRole, mapperRegistry.GetDeviceMapper(),
-		serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
+	jwtService := service.CreateJsonWebTokenService(builder.app,
+		builder.idGenerator, orgDAO, farmDAO, defaultRole,
+		mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter,
+		525960, rsaKeyPair) // 1 year jwt expiration
 	//jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)

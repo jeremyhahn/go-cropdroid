@@ -16,7 +16,7 @@ const (
 
 type Initializer interface {
 	Initialize(includeFarmConfig bool) error
-	BuildConfig(config.UserConfig, config.RoleConfig) (config.FarmConfig, error)
+	BuildConfig(orgID uint64, user config.UserConfig, role config.RoleConfig) (config.FarmConfig, error)
 }
 
 type ChangefeedCallback func(Changefeed)

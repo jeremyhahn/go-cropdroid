@@ -25,7 +25,7 @@ func TestUserRoleRelationship(t *testing.T) {
 	user := config.NewUser()
 	user.SetEmail("root@localhost")
 	user.SetPassword("$ecret")
-	user.SetRoles([]config.Role{*role})
+	user.SetRoles([]config.RoleConfig{role})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	err := userDAO.Create(user)

@@ -25,7 +25,12 @@ type GMailer struct {
 
 func NewMailer(app *app.App, smtpConfig config.SmtpConfig) common.Mailer {
 	if smtpConfig == nil {
-		smtpConfig = app.Config.Smtp
+		if app.Config.Smtp != nil {
+			smtpConfig = app.Config.Smtp
+		} else {
+			smtpConfig = &config.Smtp{
+				Enable: false}
+		}
 	}
 	return &GMailer{
 		app:       app,
@@ -50,7 +55,7 @@ func (mailer *GMailer) Send(subject, message string) error {
 	mailer.app.Logger.Debugf("subject=[%s] %s, message=%s", subject, message)
 
 	if mailer.host == "" || mailer.port <= 0 || mailer.username == "" || mailer.password == "" || mailer.recipient == "" {
-		err := fmt.Errorf("Invalid SMTP configuration")
+		err := fmt.Errorf("invalid SMTP configuration")
 		mailer.app.Logger.Error(err)
 		return err
 	}

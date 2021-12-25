@@ -1,7 +1,11 @@
 package config
 
 import (
-	"fmt"
+	"errors"
+)
+
+var (
+	ErrOrganizationNotFound = errors.New("organization not found")
 )
 
 type Server struct {
@@ -101,29 +105,41 @@ func (config *Server) SetLicense(license *License) {
 	config.License = license
 }
 
-func (config *Server) SetOrganizations(orgs []Organization) {
-	config.Organizations = orgs
+func (config *Server) SetOrganizations(orgs []OrganizationConfig) {
+	orgStructs := make([]Organization, len(orgs))
+	for _, org := range orgs {
+		orgStructs = append(orgStructs, *org.(*Organization))
+	}
+	config.Organizations = orgStructs
 }
 
-func (config *Server) GetOrganizations() []Organization {
-	return config.Organizations
+func (config *Server) GetOrganizations() []OrganizationConfig {
+	orgConfigs := make([]OrganizationConfig, len(config.Organizations))
+	for _, org := range config.Organizations {
+		orgConfigs = append(orgConfigs, &org)
+	}
+	return orgConfigs
 }
 
-func (config *Server) GetOrganization(id uint64) (*Organization, error) {
+func (config *Server) GetOrganization(id uint64) (OrganizationConfig, error) {
 	for _, org := range config.Organizations {
 		if org.GetID() == id {
 			return &org, nil
 		}
 	}
-	return nil, fmt.Errorf("Organization id not found: %d", id)
+	return nil, ErrOrganizationNotFound
 }
 
 func (config *Server) GetFarms() []Farm {
 	return config.Farms
 }
 
-func (config *Server) SetFarms(farms []Farm) {
-	config.Farms = farms
+func (config *Server) SetFarms(farms []FarmConfig) {
+	farmStructs := make([]Farm, len(farms))
+	for _, farm := range farms {
+		farmStructs = append(farmStructs, *farm.(*Farm))
+	}
+	config.Farms = farmStructs
 }
 
 func (config *Server) AddFarm(farm FarmConfig) {

@@ -42,7 +42,7 @@ func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB, location *time.
 
 func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount, params *ProvisionerParams) (config.FarmConfig, error) {
 	userConfig := provisioner.userMapper.MapUserModelToEntity(userAccount)
-	farmConfig, err := provisioner.initializer.BuildConfig(userConfig, userAccount.GetRoles()[0])
+	farmConfig, err := provisioner.initializer.BuildConfig(params.OrganizationID, userConfig, userAccount.GetRoles()[0])
 	if err != nil {
 		return nil, err
 	}

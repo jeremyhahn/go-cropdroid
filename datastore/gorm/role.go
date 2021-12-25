@@ -50,27 +50,17 @@ func (dao *GormRoleDAO) GetByName(name string) (config.RoleConfig, error) {
 	return &role, nil
 }
 
-/*
-func (dao *GormRoleDAO) Create(res config.RoleConfig) error {
-	return dao.db.Create(res).Error
-}
-
-func (dao *GormRoleDAO) Save(res config.RoleConfig) error {
-	return dao.db.Save(res).Error
-}
-
-func (dao *GormRoleDAO) Update(res config.RoleConfig) error {
-	return dao.db.Update(res).Error
-}
-
-func (dao *GormRoleDAO) Get(name string) (config.RoleConfig, error) {
-	var Roles []entity.Role
-	if err := dao.db.Where("name = ?", name).Find(&Roles).Error; err != nil {
+func (dao *GormRoleDAO) GetAll() ([]config.RoleConfig, error) {
+	dao.logger.Debug("Getting all roles")
+	var roles []config.Role
+	if err := dao.db.Order("name asc").Find(&roles).Error; err != nil {
 		return nil, err
 	}
-	if len(Roles) == 0 {
-		return nil, errors.New(fmt.Sprintf("Role '%s' not found in database", name))
+	roleConfigs := make([]config.RoleConfig, len(roles))
+	for i, role := range roles {
+		roleConfig := new(config.Role)
+		*roleConfig = role
+		roleConfigs[i] = roleConfig
 	}
-	return &Roles[0], nil
+	return roleConfigs, nil
 }
-*/

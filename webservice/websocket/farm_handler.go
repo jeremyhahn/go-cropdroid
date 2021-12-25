@@ -62,13 +62,14 @@ func (ph *FarmHandler) OnConnect(w http.ResponseWriter, r *http.Request) {
 	ph.logger.Debug("[FarmHandler.OnConnect] Accepting connection from ", conn.RemoteAddr())
 
 	client := &FarmClient{
-		hub:                  ph.hub,
-		conn:                 conn,
-		send:                 make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
-		state:                make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
+		logger:           ph.logger,
+		hub:              ph.hub,
+		conn:             conn,
+		send:             make(chan config.FarmConfig, common.BUFFERED_CHANNEL_SIZE),
+		state:            make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
 		deviceState:      make(chan map[string]state.DeviceStateMap, common.BUFFERED_CHANNEL_SIZE),
 		deviceStateDelta: make(chan map[string]state.DeviceStateDeltaMap, common.BUFFERED_CHANNEL_SIZE),
-		session:              session}
+		user:             session.GetUser()}
 
 	client.hub.register <- client
 	go client.writePump()

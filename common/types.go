@@ -29,6 +29,7 @@ type UserAccount interface {
 	GetRoles() []Role
 	SetRoles([]Role)
 	AddRole(Role)
+	HasRole(name string) bool
 }
 
 type Role interface {

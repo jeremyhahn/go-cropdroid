@@ -15,23 +15,24 @@ import (
 type FarmFactory interface {
 	BuildService(farmConfig config.FarmConfig) (FarmService, error)
 	BuildClusterService(farmConfig config.FarmConfig) (FarmService, error)
+	GetFarms(session Session) ([]config.FarmConfig, error)
 	GetFarmProvisionerChan() chan config.FarmConfig
 	GetDeviceIndexMap() map[uint64]config.DeviceConfig
 	GetChannelIndexMap() map[int]config.ChannelConfig
 }
 
 type DefaultFarmFactory struct {
-	app                       *app.App
-	farmStateStore            state.FarmStorer
-	farmConfigStore           store.FarmConfigStorer
-	deviceConfigStore         store.DeviceConfigStorer
-	deviceStateStore          state.DeviceStorer
-	deviceDataStore           datastore.DeviceDataStore
-	consistencyLevel          int
-	deviceMapper              mapper.DeviceMapper
-	changefeeders             map[string]datastore.Changefeeder
-	deviceIndexMap            map[uint64]config.DeviceConfig
-	channelIndexMap           map[int]config.ChannelConfig
+	app               *app.App
+	farmStateStore    state.FarmStorer
+	farmConfigStore   store.FarmConfigStorer
+	deviceConfigStore store.DeviceConfigStorer
+	deviceStateStore  state.DeviceStorer
+	deviceDataStore   datastore.DeviceDataStore
+	consistencyLevel  int
+	deviceMapper      mapper.DeviceMapper
+	changefeeders     map[string]datastore.Changefeeder
+	// deviceIndexMap            map[uint64]config.DeviceConfig
+	// channelIndexMap           map[int]config.ChannelConfig
 	datastoreRegistry         datastore.DatastoreRegistry
 	serviceRegistry           ServiceRegistry
 	farmProvisionerChan       chan config.FarmConfig
@@ -49,16 +50,16 @@ func NewFarmFactory(app *app.App, datastoreRegistry datastore.DatastoreRegistry,
 	idGenerator util.IdGenerator) FarmFactory {
 
 	return &DefaultFarmFactory{
-		app:                       app,
-		farmStateStore:            farmStateStore,
-		farmConfigStore:           farmConfigStore,
-		deviceStateStore:          deviceStateStore,
-		deviceConfigStore:         deviceConfigStore,
-		deviceDataStore:           deviceDataStore,
-		deviceMapper:              deviceMapper,
-		changefeeders:             changefeeders,
-		deviceIndexMap:            make(map[uint64]config.DeviceConfig, 0),
-		channelIndexMap:           make(map[int]config.ChannelConfig, 0),
+		app:               app,
+		farmStateStore:    farmStateStore,
+		farmConfigStore:   farmConfigStore,
+		deviceStateStore:  deviceStateStore,
+		deviceConfigStore: deviceConfigStore,
+		deviceDataStore:   deviceDataStore,
+		deviceMapper:      deviceMapper,
+		changefeeders:     changefeeders,
+		// deviceIndexMap:            make(map[uint64]config.DeviceConfig, 0),
+		// channelIndexMap:           make(map[int]config.ChannelConfig, 0),
 		datastoreRegistry:         datastoreRegistry,
 		serviceRegistry:           serviceRegistry,
 		farmProvisionerChan:       farmProvisionerChan,
@@ -145,10 +146,26 @@ func (ff *DefaultFarmFactory) GetFarmProvisionerChan() chan config.FarmConfig {
 	return ff.farmProvisionerChan
 }
 
-func (ff *DefaultFarmFactory) GetDeviceIndexMap() map[uint64]config.DeviceConfig {
-	return ff.deviceIndexMap
-}
+// func (ff *DefaultFarmFactory) GetDeviceIndexMap() map[uint64]config.DeviceConfig {
+// 	return ff.deviceIndexMap
+// }
 
-func (ff *DefaultFarmFactory) GetChannelIndexMap() map[int]config.ChannelConfig {
-	return ff.channelIndexMap
+// func (ff *DefaultFarmFactory) GetChannelIndexMap() map[int]config.ChannelConfig {
+// 	return ff.channelIndexMap
+// }
+
+// Returns all of the farms the user has access to within the current session
+func (ff *DefaultFarmFactory) GetFarms(session Session) ([]config.FarmConfig, error) {
+	farmIds := session.GetFarmMembership()
+	// If requestedFarmID and requestedOrganizationID are 0
+	// then this is probably a new user who hasnt been given
+	// permissions to any orgs or farms yet, so there is no
+	// way to get a farmService to perform a lookup for the
+	// consistency level
+	var consistencyLevel = common.CONSISTENCY_LOCAL
+	farmService := session.GetFarmService()
+	if farmService != nil {
+		consistencyLevel = farmService.GetConsistencyLevel()
+	}
+	return ff.farmConfigStore.GetByIds(farmIds, consistencyLevel), nil
 }

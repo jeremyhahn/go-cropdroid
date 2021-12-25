@@ -45,9 +45,9 @@ func (mapper *DefaultConfigMapper) MapFromFileConfig(yamlConfig config.Server) (
 					Roles:    _roles}
 			}
 			_farms[j] = config.Farm{
-				ID:             farm.ID,
-				OrganizationID: farm.OrganizationID,
-				Users:          farmUsers}
+				ID: farm.ID,
+				//OrganizationID: farm.OrganizationID,
+				Users: farmUsers}
 		}
 
 		orgUsers := make([]config.User, len(org.Users))

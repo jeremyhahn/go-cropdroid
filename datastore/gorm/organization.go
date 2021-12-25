@@ -19,7 +19,11 @@ func NewOrganizationDAO(logger *logging.Logger, db *gorm.DB) dao.OrganizationDAO
 
 func (dao *GormOrganizationDAO) Save(organization config.OrganizationConfig) error {
 	dao.logger.Debugf("Creating organization record")
-	return dao.db.Save(organization).Error
+	return dao.db.Omit("Users").Save(organization).Error
+}
+
+func (dao *GormOrganizationDAO) Delete(organization config.OrganizationConfig) error {
+	return dao.db.Delete(organization).Error
 }
 
 func (dao *GormOrganizationDAO) First() (config.OrganizationConfig, error) {
@@ -46,12 +50,12 @@ func (dao *GormOrganizationDAO) First() (config.OrganizationConfig, error) {
 		if err := farm.ParseConfigs(); err != nil {
 			return nil, err
 		}
-		org.Farms[i] = farm
+		org.Farms[i] = *farm.(*config.Farm)
 	}
 	return &org, nil
 }
 
-func (dao *GormOrganizationDAO) GetAll() ([]config.Organization, error) {
+func (dao *GormOrganizationDAO) GetAll() ([]config.OrganizationConfig, error) {
 	dao.logger.Debugf("Fetching all organizations")
 	var orgs []config.Organization
 	if err := dao.db.
@@ -72,20 +76,17 @@ func (dao *GormOrganizationDAO) GetAll() ([]config.Organization, error) {
 		Find(&orgs).Error; err != nil {
 		return nil, err
 	}
+	orgConfigs := make([]config.OrganizationConfig, len(orgs))
 	for i, org := range orgs {
 		for j, farm := range org.GetFarms() {
 			farm.ParseConfigs()
-			orgs[i].Farms[j] = farm
+			orgs[i].Farms[j] = *farm.(*config.Farm)
 		}
+		orgConfig := new(config.Organization)
+		*orgConfig = org
+		orgConfigs[i] = orgConfig
 	}
-	return orgs, nil
-}
-
-func (dao *GormOrganizationDAO) CreateUserRole(org config.OrganizationConfig, user config.UserConfig, role config.RoleConfig) error {
-	return dao.db.Create(&config.Permission{
-		UserID:         user.GetID(),
-		RoleID:         role.GetID(),
-		OrganizationID: org.GetID()}).Error
+	return orgConfigs, nil
 }
 
 func (dao *GormOrganizationDAO) Get(id uint64) (config.OrganizationConfig, error) {
@@ -153,65 +154,32 @@ func (dao *GormOrganizationDAO) GetByUserID(userID uint64, shallow bool) ([]conf
 	}
 	configs := make([]config.OrganizationConfig, len(orgs))
 	for i, org := range orgs {
-		configs[i] = &org
 		for j, farm := range org.Farms {
 			farm.ParseConfigs()
 			orgs[i].Farms[j] = farm
 		}
+		orgConfig := new(config.Organization)
+		*orgConfig = org
+		configs[i] = orgConfig
 	}
 	return configs, nil
 }
 
-/*
-func (dao *GormOrganizationDAO) Find(orgID int) ([]config.Organization, error) {
-	dao.logger.Debugf("Updating organization record")
-	var orgs []config.Organization
-	if err := dao.db.Preload("Farms").Find(&orgs, orgID).Error; err != nil {
+func (dao *GormOrganizationDAO) GetUsers(id uint64) ([]config.UserConfig, error) {
+	dao.logger.Debugf("Fetching users for organization ID: %d", id)
+	var org config.Organization
+	if err := dao.db.
+		Preload("Users").
+		Preload("Users.Roles").
+		//Preload("Farms.Users").Preload("Farms.Users.Roles").
+		First(&org, id).Error; err != nil {
 		return nil, err
 	}
-	return orgs, nil
-}*/
-
-// func (dao *GormOrganizationDAO) Get(orgID uint64) (config.OrganizationConfig, error) {
-// 	dao.logger.Debugf("Updating organization record")
-// 	var org config.Organization
-// 	if err := dao.db.Preload("Farms").Preload("Users").Preload("Users.Roles").
-// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-// 		Preload("Farms.Devices").
-// 		Preload("Farms.Devices.Configs").Preload("Farms.Devices.Metrics").Preload("Farms.Devices.Channels").
-// 		Preload("Farms.Devices.Channels.Conditions").
-// 		Preload("Farms.Devices.Channels.Schedule").
-// 		First(&org, orgID).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	for i, farm := range org.GetFarms() {
-// 		farm.ParseConfigs()
-// 		org.Farms[i] = farm
-// 	}
-
-// 	return &org, nil
-// }
-
-// func (dao *GormOrganizationDAO) GetByName(name string) (config.OrganizationConfig, error) {
-// 	dao.logger.Debugf("Fetching organization: %s", name)
-// 	var org config.Organization
-// 	if err := dao.db.
-// 		Preload("Farms").
-// 		Preload("Users").
-// 		Preload("Users.Roles").
-// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-// 		Preload("Farms.Devices").
-// 		Preload("Farms.Devices.Configs").
-// 		Preload("Farms.Devices.Metrics").
-// 		Preload("Farms.Devices.Channels").
-// 		Preload("Farms.Devices.Channels.Conditions").
-// 		Preload("Farms.Devices.Channels.Schedule").
-// 		Preload("Farms.Workflows").
-// 		Preload("Farms.Workflows.Conditions").
-// 		Preload("Farms.Workflows.Schedules").
-// 		Preload("Farms.Workflows.Steps").
-// 		First(&org, "name = ?", name).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	return &org, nil
-// }
+	users := make([]config.UserConfig, len(org.Users))
+	for i, user := range org.Users {
+		userConfig := new(config.User)
+		*userConfig = user
+		users[i] = userConfig
+	}
+	return users, nil
+}

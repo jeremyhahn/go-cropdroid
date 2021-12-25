@@ -11,18 +11,20 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"golang.org/x/crypto/bcrypt"
 	oauth2 "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
 
 type GoogleAuthService struct {
-	app     *app.App
-	orgDAO  dao.OrganizationDAO
-	userDAO dao.UserDAO
-	roleDAO dao.RoleDAO
-	farmDAO dao.FarmDAO
-	mapper  mapper.UserMapper
+	app         *app.App
+	idGenerator util.IdGenerator
+	orgDAO      dao.OrganizationDAO
+	userDAO     dao.UserDAO
+	roleDAO     dao.RoleDAO
+	farmDAO     dao.FarmDAO
+	mapper      mapper.UserMapper
 	AuthService
 }
 
@@ -31,12 +33,13 @@ func NewGoogleAuthService(app *app.App, orgDAO dao.OrganizationDAO,
 	userMapper mapper.UserMapper) AuthService {
 
 	return &GoogleAuthService{
-		app:     app,
-		orgDAO:  orgDAO,
-		userDAO: userDAO,
-		roleDAO: roleDAO,
-		farmDAO: farmDAO,
-		mapper:  userMapper}
+		app:         app,
+		idGenerator: util.NewIdGenerator(app.DataStoreEngine),
+		orgDAO:      orgDAO,
+		userDAO:     userDAO,
+		roleDAO:     roleDAO,
+		farmDAO:     farmDAO,
+		mapper:      userMapper}
 }
 
 func (service *GoogleAuthService) Get(email string) (common.UserAccount, error) {
@@ -50,7 +53,11 @@ func (service *GoogleAuthService) Get(email string) (common.UserAccount, error) 
 	return service.mapper.MapUserEntityToModel(userEntity), nil
 }
 
-func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, error) {
+func (service *GoogleAuthService) ResetPassword(userCredentials *UserCredentials) error {
+	return ErrResetPasswordUnsupported
+}
+
+func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %+v", userCredentials)
 
@@ -59,12 +66,12 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 	oauth2Service, err := oauth2.NewService(context, option.WithoutAuthentication())
 	if err != nil {
 		service.app.Logger.Error(err)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	tokenInfo, err := oauth2Service.Tokeninfo().IdToken(idToken).Do()
 	if err != nil {
 		service.app.Logger.Errorf("Error: %s", err)
-		return nil, nil, ErrInvalidCredentials
+		return nil, nil, nil, ErrInvalidCredentials
 	}
 
 	service.app.Logger.Debugf("tokenInfo: %+v", tokenInfo)
@@ -80,12 +87,12 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 			Email:    tokenInfo.Email,
 			Password: idToken}, "")
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		userAccount.SetRoles([]common.Role{
 			&model.Role{
@@ -125,7 +132,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 
 		//newOrg := &config.Organization{ID: 0, Farms: []config.Farm{*farmConfig.(*config.Farm)}}
 		newOrg := &config.Organization{ID: 0}
-		return userAccount, []config.OrganizationConfig{newOrg}, nil
+		return userAccount, []config.OrganizationConfig{newOrg}, nil, nil
 	}
 
 	/*
@@ -154,21 +161,16 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID(), true)
 	if err != nil {
 		service.app.Logger.Errorf("Database error: %s", err)
-		return nil, nil, ErrInternalDatabase
+		return nil, nil, nil, ErrInternalDatabase
 	}
-	if len(organizations) == 0 {
-		farms, err := service.farmDAO.GetByUserID(userEntity.GetID())
-		if err != nil {
-			return nil, nil, err
-		}
-		org := &config.Organization{
-			ID:    0,
-			Farms: farms}
-		organizations = append(organizations, org)
+
+	farms, err := service.farmDAO.GetByUserID(userEntity.GetID())
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	userEntity.SetPassword(idToken)
-	return service.mapper.MapUserEntityToModel(userEntity), organizations, nil
+	return service.mapper.MapUserEntityToModel(userEntity), organizations, farms, nil
 }
 
 func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
@@ -196,6 +198,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	// }
 	//roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
 	userConfig := &config.User{
+		ID:       service.idGenerator.NewID(email),
 		Email:    email,
 		Password: string(encrypted)}
 	//	Roles:    []config.Role{*roleConfig.(*config.Role)}}
@@ -214,6 +217,8 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 }
 
 func (service *GoogleAuthService) Activate(registrationID uint64) (common.UserAccount, error) {
+	// Google already verified the email address, no need
+	// to perform registration/activation process
 	err := errors.New("GoogleAuthService.Activate not implemented")
 	service.app.Logger.Error(err)
 	return nil, err

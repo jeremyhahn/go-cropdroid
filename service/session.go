@@ -4,15 +4,19 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	logging "github.com/op/go-logging"
 )
 
 type Session interface {
 	GetLogger() *logging.Logger
 	SetLogger(*logging.Logger)
-	GetFarms() ([]config.Farm, error)
+	GetFarmMembership() []uint64
+	GetOrganizationMembership() []uint64
+	GetRequestedOrganizationID() uint64
+	GetRequestedFarmID() uint64
+	HasRole(string) bool
+	IsMemberOfOrganization(orgID uint64) bool
+	IsMemberOfFarm(farmID uint64) bool
 	GetFarmService() FarmService
 	SetFarmService(FarmService)
 	GetUser() common.UserAccount
@@ -21,32 +25,33 @@ type Session interface {
 }
 
 type DefaultSession struct {
-	logger      *logging.Logger
-	orgID       uint64
-	orgDAO      dao.OrganizationDAO
-	farmDAO     dao.FarmDAO
-	farmService FarmService
-	user        common.UserAccount
+	logger          *logging.Logger
+	requestedOrgID  uint64
+	requestedFarmID uint64
+	orgClaims       []organizationClaim
+	farmClaims      []farmClaim
+	farmService     FarmService
+	user            common.UserAccount
 	Session
 }
 
-func CreateSession(logger *logging.Logger, orgDAO dao.OrganizationDAO,
-	farmDAO dao.FarmDAO, farmService FarmService,
-	user common.UserAccount) Session {
+func CreateSession(logger *logging.Logger, orgClaims []organizationClaim,
+	farmClaims []farmClaim, farmService FarmService, requestedOrgID,
+	requestedFarmID uint64, user common.UserAccount) Session {
 
 	return &DefaultSession{
-		logger:      logger,
-		orgID:       0,
-		orgDAO:      orgDAO,
-		farmDAO:     farmDAO,
-		farmService: farmService,
-		user:        user}
+		logger:          logger,
+		requestedOrgID:  requestedOrgID,
+		requestedFarmID: requestedFarmID,
+		orgClaims:       orgClaims,
+		farmClaims:      farmClaims,
+		farmService:     farmService,
+		user:            user}
 }
 
 func CreateSystemSession(logger *logging.Logger, farmService FarmService) Session {
 	return &DefaultSession{
 		logger:      logger,
-		orgID:       0,
 		farmService: farmService}
 }
 
@@ -58,9 +63,50 @@ func (session *DefaultSession) SetLogger(logger *logging.Logger) {
 	session.logger = logger
 }
 
-func (session *DefaultSession) GetFarms() ([]config.Farm, error) {
+func (session *DefaultSession) GetRequestedOrganizationID() uint64 {
+	return session.requestedOrgID
+}
 
-	return session.farmDAO.GetByUserID(session.GetUser().GetID())
+func (session *DefaultSession) GetRequestedFarmID() uint64 {
+	return session.requestedFarmID
+}
+
+func (session *DefaultSession) HasRole(role string) bool {
+	return session.user.HasRole(role)
+}
+
+func (session *DefaultSession) IsMemberOfOrganization(organizationID uint64) bool {
+	for _, orgClaim := range session.orgClaims {
+		if orgClaim.ID == organizationID {
+			return true
+		}
+	}
+	return false
+}
+
+func (session *DefaultSession) IsMemberOfFarm(farmID uint64) bool {
+	for _, farmClaim := range session.farmClaims {
+		if farmClaim.ID == farmID {
+			return true
+		}
+	}
+	return false
+}
+
+func (session *DefaultSession) GetOrganizationMembership() []uint64 {
+	ids := make([]uint64, len(session.orgClaims))
+	for i, orgClaim := range session.orgClaims {
+		ids[i] = orgClaim.ID
+	}
+	return ids
+}
+
+func (session *DefaultSession) GetFarmMembership() []uint64 {
+	ids := make([]uint64, len(session.farmClaims))
+	for i, farmClaim := range session.farmClaims {
+		ids[i] = farmClaim.ID
+	}
+	return ids
 }
 
 func (session *DefaultSession) GetFarmService() FarmService {

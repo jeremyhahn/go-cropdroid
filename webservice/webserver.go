@@ -1,3 +1,4 @@
+//go:build !cluster
 // +build !cluster
 
 package webservice
@@ -190,9 +191,14 @@ func (server *Webserver) buildRoutes() {
 	//router.HandleFunc("/api/v1/register/unsubscribe/{token}", registrationService.Unsubscribe)
 	router.HandleFunc("/api/v1/login", server.jsonWebTokenService.GenerateToken)
 	router.HandleFunc("/api/v1/login/refresh", server.jsonWebTokenService.RefreshToken)
+	endpointList = append(endpointList, "/endpoints")
+	endpointList = append(endpointList, "/system")
+	endpointList = append(endpointList, "/api/v1/pubkey")
 	endpointList = append(endpointList, "/api/v1/register")
 	endpointList = append(endpointList, "/api/v1/register/activate")
+	//endpointList = append(endpointList, "/api/v1/unsubscribe")
 	endpointList = append(endpointList, "/api/v1/login")
+	endpointList = append(endpointList, "/api/v1/login/refresh")
 
 	router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}", baseFarmURI), server.sendNotification)
 	router.HandleFunc(fmt.Sprintf("%s/notification/{type}/{message}/{priority}", baseFarmURI), server.sendNotification)

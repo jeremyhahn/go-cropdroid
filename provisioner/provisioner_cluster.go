@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package provisioner
@@ -41,7 +42,7 @@ func NewRaftFarmProvisioner(logger *logging.Logger, gossip cluster.GossipCluster
 
 func (provisioner *RaftFarmProvisioner) Provision(userAccount common.UserAccount, params *ProvisionerParams) (config.FarmConfig, error) {
 	userConfig := provisioner.userMapper.MapUserModelToEntity(userAccount)
-	farmConfig, err := provisioner.initializer.BuildConfig(userConfig, userAccount.GetRoles()[0])
+	farmConfig, err := provisioner.initializer.BuildConfig(params.OrganizationID, userConfig, userAccount.GetRoles()[0])
 	if err != nil {
 		return nil, err
 	}

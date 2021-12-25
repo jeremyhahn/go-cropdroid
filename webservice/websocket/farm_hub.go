@@ -15,7 +15,10 @@ type FarmHub struct {
 	farmService         service.FarmService
 }
 
-func NewFarmHub(logger *logging.Logger, notificationService service.NotificationService, farmService service.FarmService) *FarmHub {
+func NewFarmHub(logger *logging.Logger,
+	notificationService service.NotificationService,
+	farmService service.FarmService) *FarmHub {
+
 	return &FarmHub{
 		logger: logger,
 		//broadcast:           make(chan config.FarmConfig),
@@ -32,16 +35,16 @@ func (h *FarmHub) Run() {
 
 		select {
 		case client := <-h.register:
-			client.session.GetLogger().Debugf("[FarmHub.Run] Registering new client: address=%s, user=%s. %d clients connected to farm hub %d",
-				client.conn.RemoteAddr(), client.session.GetUser().GetEmail(), len(h.clients), h.farmService.GetFarmID())
+			h.logger.Debugf("[FarmHub.Run] Registering new client: address=%s, user=%s. %d clients connected to farm hub %d",
+				client.conn.RemoteAddr(), client.getUser().GetEmail(), len(h.clients), h.farmService.GetFarmID())
 			h.clients[client] = true
-			//client.session.GetLogger().Debugf("Sending config: %s", client.session.GetFarmService().GetConfig())
-			client.send <- client.session.GetFarmService().GetConfig()
+			//h.logger.Debugf("Sending config: %s", client.session.GetFarmService().GetConfig())
+			client.send <- h.farmService.GetConfig()
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				h.logger.Debugf("[FarmHub.Run] Unregistering client address=%s, user=%s",
-					client.conn.RemoteAddr(), client.session.GetUser().GetEmail())
+					client.conn.RemoteAddr(), client.getUser().GetEmail())
 				client.disconnect()
 				delete(h.clients, client)
 				close(client.send)

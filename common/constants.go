@@ -23,6 +23,7 @@ const (
 	//FARM_MAX_SIZE         = 10000
 	HOURS_IN_A_YEAR                    = 8766
 	DEFAULT_FARM_CONFIG_HISTORY_LENGTH = 5
+	DEFAULT_CROP_NAME                  = "Crop"
 
 	DATASTORE_TYPE_SQLITE   = "sqlite"
 	DATASTORE_TYPE_POSTGRES = "postgres"
@@ -75,10 +76,11 @@ const (
 	//FARM_ACCESS_OWNER = "owner" // allow access only to owned farms
 	FARM_ACCESS_ALL = "all" // allow access to all farms
 
+	DEFAULT_USER_ID_64  = uint64(7335774445529891924) // FNV1a_64 "admin" hash
+	DEFAULT_USER_ID_32  = uint64(885536276)           // FNV1a_32 "admin" hash
 	DEFAULT_USER        = "admin"
 	DEFAULT_PASSWORD    = "cropdroid"
 	DEFAULT_ROLE        = "admin"
-	DEFAULT_ROLE_ID     = 1
 	DEFAULT_FARM_ACCESS = FARM_ACCESS_ALL
 
 	ROLE_ADMIN      = "admin"

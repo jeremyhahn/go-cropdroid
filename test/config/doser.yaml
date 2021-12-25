@@ -1,0 +1,117 @@
+type: doser
+interval: 0
+description: Nutrient dosing and expansion I/O device
+enable: true
+notify: true
+uri: ""
+hwVersion: ""
+fwVersion: ""
+configs:
+  doser.enable: "true"
+  doser.gallons: "50"
+  doser.notify: "true"
+  doser.uri: ""
+metrics: []
+channels:
+  - id: 2334132728
+    device: 4040846963
+    channel: 5
+    name: Nutrient Part 2
+    enable: false
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 30
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2350910347
+    device: 4040846963
+    channel: 4
+    name: Nutrient Part 1
+    enable: false
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 30
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2384465585
+    device: 4040846963
+    channel: 6
+    name: Nutrient Part 3
+    enable: false
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 30
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2401243204
+    device: 4040846963
+    channel: 1
+    name: pH UP
+    enable: false
+    notify: true
+    conditions:
+      - id: 3287683493
+        workflow: 0
+        channel: 2401243204
+        metric: 907254892
+        comparator: <
+        threshold: 5.4
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 10
+    algorithm: 1
+  - id: 2418020823
+    device: 4040846963
+    channel: 0
+    name: pH DOWN
+    enable: true
+    notify: true
+    conditions:
+      - id: 4029357252
+        workflow: 0
+        channel: 2418020823
+        metric: 907254892
+        comparator: '>'
+        threshold: 6.1
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 10
+    algorithm: 1
+  - id: 2434798442
+    device: 4040846963
+    channel: 3
+    name: Top-off
+    enable: false
+    notify: true
+    conditions: []
+    schedule: []
+    duration: 120
+    debounce: 0
+    backoff: 0
+    algorithm: 0
+  - id: 2451576061
+    device: 4040846963
+    channel: 2
+    name: Oxidizer
+    enable: false
+    notify: true
+    conditions:
+      - id: 2173591490
+        workflow: 0
+        channel: 2451576061
+        metric: 890477273
+        comparator: <
+        threshold: 300
+    schedule: []
+    duration: 0
+    debounce: 0
+    backoff: 0
+    algorithm: 2

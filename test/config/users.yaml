@@ -1,0 +1,8 @@
+users:
+  - id: 885536276
+    email: admin
+    password: $2a$10$HTqJhERfOfjGBJd6kF5gcOZAk82WjSLypy6OWZ0BzVSVsnRI/jxuO
+    roles:
+      - id: 885536276
+        name: admin
+    orgs: []

@@ -48,3 +48,12 @@ func (user *User) SetRoles(roles []common.Role) {
 func (user *User) AddRole(role common.Role) {
 	user.Roles = append(user.Roles, role)
 }
+
+func (user *User) HasRole(name string) bool {
+	for _, role := range user.Roles {
+		if role.GetName() == name {
+			return true
+		}
+	}
+	return false
+}

@@ -1,20 +1,22 @@
 package gorm
 
 import (
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
 )
 
 type GormDaoRegistry struct {
 	logger          *logging.Logger
 	gormDB          GormDB
+	idGenerator     util.IdGenerator
 	permissionDAO   dao.PermissionDAO
 	registrationDAO dao.RegistrationDAO
 	orgDAO          dao.OrganizationDAO
 	farmDAO         dao.FarmDAO
 	deviceDAO       dao.DeviceDAO
-	deviceConfigDAO dao.DeviceConfigDAO
+	deviceConfigDAO dao.DeviceSettingDAO
 	metricDAO       dao.MetricDAO
 	channelDAO      dao.ChannelDAO
 	scheduleDAO     dao.ScheduleDAO
@@ -25,20 +27,22 @@ type GormDaoRegistry struct {
 	roleDAO         dao.RoleDAO
 	workflowDAO     dao.WorkflowDAO
 	workflowStepDAO dao.WorkflowStepDAO
-	datastore.DatastoreRegistry
+	dao.Registry
 }
 
-func NewGormRegistry(logger *logging.Logger, gormDB GormDB) datastore.DatastoreRegistry {
+func NewGormRegistry(logger *logging.Logger, gormDB GormDB) dao.Registry {
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	db := gormDB.CloneConnection()
 	return &GormDaoRegistry{
 		logger:          logger,
 		gormDB:          gormDB,
+		idGenerator:     idGenerator,
 		permissionDAO:   NewPermissionDAO(logger, db),
 		registrationDAO: NewRegistrationDAO(logger, db),
-		orgDAO:          NewOrganizationDAO(logger, db),
-		farmDAO:         NewFarmDAO(logger, db),
+		orgDAO:          NewOrganizationDAO(logger, db, idGenerator),
+		farmDAO:         NewFarmDAO(logger, db, idGenerator),
 		deviceDAO:       NewDeviceDAO(logger, db),
-		deviceConfigDAO: NewDeviceConfigDAO(logger, db),
+		deviceConfigDAO: NewDeviceSettingDAO(logger, db),
 		metricDAO:       NewMetricDAO(logger, db),
 		channelDAO:      NewChannelDAO(logger, db),
 		scheduleDAO:     NewScheduleDAO(logger, db),
@@ -70,7 +74,7 @@ func (registry *GormDaoRegistry) SetFarmDAO(dao dao.FarmDAO) {
 // Retuns a FarmDAO with a new connection to the database
 func (registry *GormDaoRegistry) NewFarmDAO() dao.FarmDAO {
 	db := registry.gormDB.CloneConnection()
-	return NewFarmDAO(registry.logger, db)
+	return NewFarmDAO(registry.logger, db, registry.idGenerator)
 }
 
 // Gets the global DeviceDAO from the registry
@@ -88,11 +92,11 @@ func (registry *GormDaoRegistry) SetDeviceDAO(dao dao.DeviceDAO) {
 	registry.deviceDAO = dao
 }
 
-func (registry *GormDaoRegistry) GetDeviceConfigDAO() dao.DeviceConfigDAO {
+func (registry *GormDaoRegistry) GetDeviceConfigDAO() dao.DeviceSettingDAO {
 	return registry.deviceConfigDAO
 }
 
-func (registry *GormDaoRegistry) SetDeviceConfigDAO(dao dao.DeviceConfigDAO) {
+func (registry *GormDaoRegistry) SetDeviceConfigDAO(dao dao.DeviceSettingDAO) {
 	registry.deviceConfigDAO = dao
 }
 

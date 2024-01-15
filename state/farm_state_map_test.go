@@ -67,7 +67,7 @@ func TestUnserialize(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, fs)
 	assert.NotNil(t, fs.Devices)
-	assert.Equal(t, 562173130332602369, fs.Id)
+	assert.Equal(t, uint64(562173130332602369), fs.ID)
 	assert.Equal(t, 2318.75, fs.Devices["room"].GetMetrics()["co2"])
 	assert.Equal(t, float64(60), fs.Devices["room"].GetMetrics()["humidity0"])
 	assert.Equal(t, 1, fs.Devices["room"].GetChannels()[0])

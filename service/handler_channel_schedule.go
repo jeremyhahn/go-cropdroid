@@ -12,8 +12,8 @@ import (
 
 type ChannelScheduleHandler struct {
 	logger          *logging.Logger
-	deviceConfig    config.DeviceConfig
-	channelConfig   config.ChannelConfig
+	deviceConfig    *config.Device
+	channelConfig   *config.Channel
 	farmState       state.FarmStateMap
 	farmService     FarmService
 	deviceService   DeviceService
@@ -21,8 +21,8 @@ type ChannelScheduleHandler struct {
 	ScheduleHandler
 }
 
-func NewChannelScheduleHandler(logger *logging.Logger, deviceConfig config.DeviceConfig,
-	channelConfig config.ChannelConfig, farmState state.FarmStateMap,
+func NewChannelScheduleHandler(logger *logging.Logger, deviceConfig *config.Device,
+	channelConfig *config.Channel, farmState state.FarmStateMap,
 	deviceService DeviceService, scheduleService ScheduleService,
 	farmService FarmService) ScheduleHandler {
 
@@ -40,7 +40,7 @@ func (h *ChannelScheduleHandler) Handle() error {
 
 	//eventType := "Scheduled Channel"
 
-	var activeSchedule config.ScheduleConfig
+	var activeSchedule *config.Schedule
 
 	if !h.channelConfig.IsEnabled() {
 		return nil
@@ -62,13 +62,17 @@ func (h *ChannelScheduleHandler) Handle() error {
 			continue
 		}
 
-		if h.scheduleService.IsScheduled(&schedule, h.channelConfig.GetDuration()) {
-			activeSchedule = &schedule
+		if h.scheduleService.IsScheduled(schedule, h.channelConfig.GetDuration()) {
+			activeSchedule = schedule
 			break
 		}
 	}
 
-	if activeSchedule != nil {
+	// if activeSchedule == nil {
+	// 	return errors.New("activeSchedule not found")
+	// }
+
+	if activeSchedule != nil && activeSchedule.GetID() != 0 {
 		h.logger.Debugf("%s scheduled ON condition met. Current position: %d", h.channelConfig.GetName(), position)
 		if position == common.SWITCH_OFF {
 

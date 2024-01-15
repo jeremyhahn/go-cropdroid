@@ -1,127 +1,40 @@
 package gorm
 
 import (
-	"fmt"
 	"testing"
-	"time"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/util"
 
 	"github.com/stretchr/testify/assert"
+
+	dstest "github.com/jeremyhahn/go-cropdroid/test/datastore"
 )
 
 func TestOrganizationCRUD(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
 
-	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
+	orgDAO := NewOrganizationDAO(currentTest.logger,
+		currentTest.gorm, currentTest.idGenerator)
 	assert.NotNil(t, orgDAO)
 
-	org, err := orgDAO.First()
-	assert.NotNil(t, err)
-	assert.Nil(t, org)
-
-	err = orgDAO.Save(&config.Organization{
-		Name: "Test Org"})
-	assert.Nil(t, err)
-
-	assert.NotNil(t, orgDAO)
-
-	org, err = orgDAO.First()
-	assert.Nil(t, err)
-	assert.Equal(t, "Test Org", org.GetName())
-
-	currentTest.Cleanup()
-}
-
-func TestOrganizationGetByUserID(t *testing.T) {
-
-	currentTest := NewIntegrationTest()
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
-	currentTest.gorm.AutoMigrate(&config.Organization{})
-	currentTest.gorm.AutoMigrate(&config.Channel{})
-	currentTest.gorm.AutoMigrate(&config.Metric{})
-
-	testOrgName := "Test Org"
-	testMode := "virtual"
-	testFarmName := "Test Farm"
-
-	farmConfig := config.NewFarm()
-	farmConfig.SetDevices([]config.Device{
-		{
-			Type: "server",
-			Configs: []config.DeviceConfigItem{
-				{
-					Key:   "name",
-					Value: testFarmName},
-				{
-					Key:   "interval",
-					Value: "55"},
-				{
-					Key:   "mode",
-					Value: testMode},
-				{
-					Key:   "timezone",
-					Value: "America/New_York"},
-				{
-					Key:   "smtp.enable",
-					Value: "true"},
-				{
-					Key:   "smtp.host",
-					Value: "127.0.0.1"},
-				{
-					Key:   "smtp.port",
-					Value: "587"},
-				{
-					Key:   "smtp.username",
-					Value: "foo"},
-				{
-					Key:   "smtp.password",
-					Value: "bar"},
-				{
-					Key:   "smtp.recipient",
-					Value: "user@domain.com"},
-			}}})
-
-	orgConfig := &config.Organization{
-		Name:  testOrgName,
-		Farms: []config.Farm{*farmConfig.(*config.Farm)}}
-
-	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
-	assert.NotNil(t, orgDAO)
-
-	err := orgDAO.Save(orgConfig)
-	assert.Nil(t, err)
-
-	assert.Equal(t, orgConfig.GetID() > 0, true)
-
-	persistedOrg, err := orgDAO.First()
-	assert.Nil(t, err)
-	assert.Equal(t, orgConfig.GetID(), persistedOrg.GetID())
-	assert.Equal(t, testOrgName, persistedOrg.GetName())
-
-	assert.Equal(t, 1, len(persistedOrg.GetFarms()))
-
-	farm := persistedOrg.GetFarms()[0]
-	assert.Equal(t, testFarmName, farm.GetName())
-	assert.Equal(t, testMode, farm.GetMode())
-
-	currentTest.Cleanup()
+	dstest.TestOrganizationCRUD(t, orgDAO)
 }
 
 func TestOrganizationGetAll(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.User{})
@@ -129,19 +42,39 @@ func TestOrganizationGetAll(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Device{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
 
-	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
+	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
+	assert.NotNil(t, orgDAO)
+
+	dstest.TestOrganizationGetAll(t, orgDAO)
+}
+
+func TestOrganizationDelete(t *testing.T) {
+
+	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
+	currentTest.gorm.AutoMigrate(&config.Permission{})
+	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.User{})
+	currentTest.gorm.AutoMigrate(&config.Farm{})
+	currentTest.gorm.AutoMigrate(&config.Device{})
+	currentTest.gorm.AutoMigrate(&config.Organization{})
+
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
+	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
 	assert.NotNil(t, orgDAO)
 
 	// create first org
 	testOrgName := "Test Org"
 	testFarmName := "Test Farm"
 
-	farmConfig := config.NewFarm()
-	farmConfig.SetName(testFarmName)
+	farm := config.NewFarm()
+	farm.SetName(testFarmName)
 
 	orgConfig := &config.Organization{
 		Name:  testOrgName,
-		Farms: []config.Farm{*farmConfig.(*config.Farm)}}
+		Farms: []*config.Farm{farm}}
 
 	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -151,35 +84,40 @@ func TestOrganizationGetAll(t *testing.T) {
 	testOrgName2 := "Test Org 2"
 	testFarmName2 := "Test Org - Farm 1"
 
-	farmConfig2 := config.NewFarm()
-	farmConfig2.SetName(testFarmName2)
+	farm2 := config.NewFarm()
+	farm2.SetName(testFarmName2)
 	orgConfig2 := &config.Organization{
 		Name:  testOrgName2,
-		Farms: []config.Farm{*farmConfig2.(*config.Farm)}}
+		Farms: []*config.Farm{farm2}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
 
 	// make sure orgs are returned fully hydrated
-	orgs, err := orgDAO.GetAll()
+	orgs, err := orgDAO.GetAll(DEFAULT_CONSISTENCY_LEVEL)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(orgs))
 	assert.Equal(t, 1, len(orgs[0].GetFarms()))
 	assert.Equal(t, 1, len(orgs[1].GetFarms()))
 
-	fmt.Printf("persisted farms: %+v\n", orgs[0].GetFarms())
+	err = orgDAO.Delete(orgConfig)
+	assert.Nil(t, err)
 
-	currentTest.Cleanup()
+	orgs, err = orgDAO.GetAll(DEFAULT_CONSISTENCY_LEVEL)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(orgs))
 }
 
 func TestOrganizationEnchilada(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.DeviceConfigItem{})
+	currentTest.gorm.AutoMigrate(&config.DeviceSetting{})
 	currentTest.gorm.AutoMigrate(&config.Metric{})
 	currentTest.gorm.AutoMigrate(&config.Condition{})
 	currentTest.gorm.AutoMigrate(&config.Schedule{})
@@ -188,14 +126,17 @@ func TestOrganizationEnchilada(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.Farm{})
 	currentTest.gorm.AutoMigrate(&config.License{})
 	currentTest.gorm.AutoMigrate(&config.Organization{})
+	currentTest.gorm.AutoMigrate(&config.Workflow{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
 
-	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm)
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
+
+	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	permissionDAO := NewPermissionDAO(currentTest.logger, currentTest.gorm)
 
-	org := createTestOrganization()
-	currentTest.logger.Infof("Org: %+v", org)
+	org := dstest.CreateTestOrganization(idGenerator)
 
 	err := orgDAO.Save(org)
 	assert.Nil(t, err)
@@ -210,184 +151,69 @@ func TestOrganizationEnchilada(t *testing.T) {
 	user.SetEmail("root@localhost")
 	user.SetPassword("test")
 
-	err = userDAO.Create(user)
+	err = userDAO.Save(user)
 	assert.Nil(t, err)
 
-	// Gorm doesn't handle multiple many-to-many fields in one entity,
-	// create the user/role/org associations manually
+	farmID := org.GetFarms()[0].GetID()
 	permission := config.NewPermission()
+	permission.SetFarmID(farmID)
 	permission.SetOrgID(org.GetID())
 	permission.SetUserID(user.GetID())
 	permission.SetRoleID(role.GetID())
 	err = permissionDAO.Save(permission)
 	assert.Nil(t, err)
 
-	allOrgs, err := orgDAO.GetAll()
+	allOrgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(allOrgs))
 
-	currentTest.logger.Infof("Persisted Organization: %+v", allOrgs[0])
-
 	persistedOrg := allOrgs[0]
-	assert.Equal(t, "Test Org", persistedOrg.GetName())
+	assert.Equal(t, org.GetName(), persistedOrg.GetName())
 
 	farms := persistedOrg.GetFarms()
 	assert.NotNil(t, farms)
-	assert.Equal(t, 1, len(farms))
-	assert.Equal(t, "Fake Farm", farms[0].GetName())
+	assert.Equal(t, 2, len(farms))
+	assert.Equal(t, dstest.FARM1_NAME, farms[0].GetName())
 	assert.Equal(t, "test", farms[0].GetMode())
-	assert.Equal(t, 58, farms[0].GetInterval())
+	assert.Equal(t, dstest.FARM2_NAME, farms[1].GetName())
+	assert.Equal(t, "test2", farms[1].GetMode())
 
-	devices := farms[0].GetDevices()
-	assert.Equal(t, 2, len(devices))
-	assert.Equal(t, 10, len(devices[0].GetConfigs()))
-	assert.Equal(t, 3, len(devices[1].GetConfigs()))
+	farm1 := farms[0]
+	serverDevice, err := farm1.GetDevice(dstest.SERVER_TYPE)
+	assert.Nil(t, err)
+	assert.NotNil(t, serverDevice)
 
-	configEnable := devices[1].GetConfigs()[0]
-	assert.Equal(t, "fakedevice.enable", configEnable.GetKey())
+	device1, err := farm1.GetDevice(dstest.DEVICE1_TYPE)
+	assert.Nil(t, err)
+	assert.NotNil(t, device1)
+
+	assert.Equal(t, 2, len(farm1.GetDevices()))
+	assert.Equal(t, 10, len(serverDevice.GetSettings()))
+	assert.Equal(t, 3, len(device1.GetSettings()))
+
+	configEnableKey := "fakedevice.enable"
+	configEnable := device1.GetSetting(configEnableKey)
+	assert.NotNil(t, configEnable)
+
+	//configEnable := devices[1].GetSettings()[0]
+	assert.Equal(t, configEnableKey, configEnable.GetKey())
 	assert.Equal(t, "true", configEnable.GetValue())
-	assert.Equal(t, true, devices[1].IsEnabled())
+	assert.Equal(t, true, device1.IsEnabled())
 
-	configNotify := devices[1].GetConfigs()[1]
-	assert.Equal(t, "fakedevice.notify", configNotify.GetKey())
+	configNotifyKey := "fakedevice.notify"
+	//configNotify := devices[1].GetSettings()[1]
+	configNotify := device1.GetSetting(configNotifyKey)
+	assert.Equal(t, configNotifyKey, configNotify.GetKey())
 	assert.Equal(t, "false", configNotify.GetValue())
-	assert.Equal(t, false, devices[1].IsNotify())
+	assert.Equal(t, false, device1.IsNotify())
 
-	configURI := devices[1].GetConfigs()[2]
-	assert.Equal(t, "fakedevice.uri", configURI.GetKey())
+	configUriKey := "fakedevice.uri"
+	//configURI := devices[1].GetSettings()[2]
+	configURI := device1.GetSetting(configUriKey)
+	assert.Equal(t, configUriKey, configURI.GetKey())
 	assert.Equal(t, "http://mydevice.mydomain.com", configURI.GetValue())
-	assert.Equal(t, "http://mydevice.mydomain.com", devices[1].GetURI())
+	assert.Equal(t, "http://mydevice.mydomain.com", device1.GetURI())
 
-	currentTest.Cleanup()
-}
-
-func createTestOrganization() config.OrganizationConfig {
-
-	org := config.NewOrganization()
-	org.SetName("Test Org")
-
-	schedule1 := config.NewSchedule()
-	days := "MO,WE,FR"
-	endDate := time.Now().AddDate(0, 1, 0)
-	schedule1.SetStartDate(time.Now())
-	schedule1.SetEndDate(&endDate)
-	schedule1.SetFrequency(1) // daily
-	schedule1.SetInterval(60) // seconds
-	schedule1.SetCount(1)     // total number of times to run
-	schedule1.SetDays(&days)
-	schedule1.SetLastExecuted(time.Now())
-	schedule1.SetExecutionCount(1)
-
-	schedules := []config.Schedule{*schedule1}
-
-	metric1 := config.NewMetric()
-	metric1.SetName("Fake Temperature")
-	metric1.SetKey("sensor1")
-	metric1.SetEnable(true)
-	metric1.SetNotify(true)
-	metric1.SetUnit("°")
-	metric1.SetAlarmLow(50.8)
-	metric1.SetAlarmHigh(100.0)
-
-	metric2 := config.NewMetric()
-	metric2.SetName("Fake Relative Humidity")
-	metric2.SetKey("sensor2")
-	metric2.SetEnable(true)
-	metric2.SetNotify(true)
-	metric2.SetUnit("%")
-	metric2.SetAlarmLow(30.0)
-	metric2.SetAlarmHigh(70.0)
-
-	condition1 := config.NewCondition()
-	//condition1.SetMetricID(metric1.GetID()) // TODO: How to get this to persist?!
-	condition1.SetComparator(">")
-	condition1.SetThreshold(120.0)
-
-	conditions := []config.Condition{*condition1}
-
-	channel1 := config.NewChannel()
-	channel1.SetName("Test Channel 1")
-	channel1.SetEnable(true)
-	channel1.SetNotify(true)
-	channel1.SetConditions(conditions)
-	channel1.SetSchedule(schedules)
-	channel1.SetDuration(1)
-	channel1.SetDebounce(2)
-	channel1.SetBackoff(3)
-	//channel1.SetAlgorithm()
-
-	enableConfigItem := config.NewDeviceConfigItem()
-	enableConfigItem.SetKey("fakedevice.enable")
-	enableConfigItem.SetValue("true")
-
-	notifyConfigItem := config.NewDeviceConfigItem()
-	notifyConfigItem.SetKey("fakedevice.notify")
-	notifyConfigItem.SetValue("false")
-
-	uriConfigItem := config.NewDeviceConfigItem()
-	uriConfigItem.SetKey("fakedevice.uri")
-	uriConfigItem.SetValue("http://mydevice.mydomain.com")
-
-	serverDevice := config.Device{
-		Type: "server",
-		Configs: []config.DeviceConfigItem{
-			{
-				Key:   "name",
-				Value: "Fake Farm"},
-			{
-				Key:   "interval",
-				Value: "58"},
-			{
-				Key:   "mode",
-				Value: "test"},
-			{
-				Key:   "timezone",
-				Value: "America/New_York"},
-			{
-				Key:   "smtp.enable",
-				Value: "true"},
-			{
-				Key:   "smtp.host",
-				Value: "127.0.0.1"},
-			{
-				Key:   "smtp.port",
-				Value: "587"},
-			{
-				Key:   "smtp.username",
-				Value: "foo"},
-			{
-				Key:   "smtp.password",
-				Value: "bar"},
-			{
-				Key:   "smtp.recipient",
-				Value: "user@domain.com"},
-		}}
-
-	configs := []config.DeviceConfigItem{*enableConfigItem, *notifyConfigItem, *uriConfigItem}
-	metrics := []config.Metric{*metric1, *metric2}
-	channels := []config.Channel{*channel1}
-
-	device1 := config.NewDevice()
-	device1.SetType("fakedevice")
-	device1.SetInterval(59)
-	device1.SetDescription("This is a fake device used for testing")
-	device1.SetHardwareVersion("hw-v0.0.1a")
-	device1.SetFirmwareVersion("fw-v0.0.1a")
-	device1.SetConfigs(configs)
-	device1.SetMetrics(metrics)
-	device1.SetChannels(channels)
-
-	devices := []config.Device{serverDevice, *device1}
-
-	farm1 := config.NewFarm()
-	farm1.SetMode("test")
-	farm1.SetName("Fake Farm")
-	farm1.SetInterval(58)
-	farm1.SetDevices(devices)
-
-	farms := []config.FarmConfig{farm1}
-
-	org.SetFarms(farms)
-
-	return org
+	// dstest.TestOrganizationEnchilada(t, orgDAO,
+	// 	roleDAO, userDAO, permissionDAO, org)
 }

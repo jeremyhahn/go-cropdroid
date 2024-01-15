@@ -36,7 +36,7 @@ type JsonWebTokenServiceImpl struct {
 	rsaKeyPair      app.KeyPair
 	jsonWriter      common.HttpWriter
 	farmProvisioner provisioner.FarmProvisioner
-	defaultRole     config.RoleConfig
+	defaultRole     *config.Role
 	JsonWebTokenService
 	Middleware
 }
@@ -53,11 +53,11 @@ type farmClaim struct {
 }
 
 type organizationClaim struct {
-	ID      uint64               `json:"id"`
-	Name    string               `json:"name"`
-	Farms   []farmClaim          `json:"farms"`
-	Roles   []string             `json:"roles"`
-	License config.LicenseConfig `json:"license"`
+	ID      uint64         `json:"id"`
+	Name    string         `json:"name"`
+	Farms   []farmClaim    `json:"farms"`
+	Roles   []string       `json:"roles"`
+	License config.License `json:"license"`
 }
 
 type JsonWebTokenClaims struct {
@@ -72,7 +72,7 @@ type JsonWebTokenClaims struct {
 // Creates a new JsonWebTokenService with default configuration
 func NewJsonWebTokenService(_app *app.App, idGenerator util.IdGenerator,
 	orgDAO dao.OrganizationDAO, farmDAO dao.FarmDAO,
-	defaultRole config.RoleConfig, deviceMapper mapper.DeviceMapper,
+	defaultRole *config.Role, deviceMapper mapper.DeviceMapper,
 	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter) (JsonWebTokenService, error) {
 
 	keypair, err := app.NewRsaKeyPair(_app.Logger, _app.KeyDir)
@@ -86,7 +86,7 @@ func NewJsonWebTokenService(_app *app.App, idGenerator util.IdGenerator,
 // Createa a new JsonWebBokenService with custom configuration
 func CreateJsonWebTokenService(_app *app.App, idGenerator util.IdGenerator,
 	orgDAO dao.OrganizationDAO, farmDAO dao.FarmDAO,
-	defaultRole config.RoleConfig, deviceMapper mapper.DeviceMapper,
+	defaultRole *config.Role, deviceMapper mapper.DeviceMapper,
 	serviceRegistry ServiceRegistry, jsonWriter common.HttpWriter,
 	expiration int64, rsaKeyPair app.KeyPair) JsonWebTokenService {
 
@@ -123,7 +123,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 		return nil, err
 	}
 
-	roles := make([]config.RoleConfig, 0)
+	roles := make([]*config.Role, 0)
 	var isFarmMember = false
 
 	// The organizationID the user is requesting to operate on
@@ -162,7 +162,8 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 		if farmService == nil {
 			return nil, fmt.Errorf("Farm not found: %d", requestedFarmID)
 		}
-		for _, user := range farmService.GetConfig().GetUsers() {
+		farmConfig := farmService.GetConfig()
+		for _, user := range farmConfig.GetUsers() {
 			if user.GetEmail() == claims.Email {
 				isFarmMember = true
 				roles = user.GetRoles()
@@ -261,7 +262,7 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 
 	if len(userAccount.GetRoles()) == 0 {
 		// Must be a new user that hasn't been assigned to any roles yet
-		userAccount.SetRoles([]common.Role{service.defaultRole.(*config.Role)})
+		userAccount.SetRoles([]common.Role{service.defaultRole})
 	}
 
 	service.app.Logger.Debugf("user: %+v", user)
@@ -311,7 +312,7 @@ func (service *JsonWebTokenServiceImpl) GenerateToken(w http.ResponseWriter, req
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, JsonWebTokenClaims{
-		ServerID:      service.app.Config.GetID(),
+		ServerID:      service.app.NodeID,
 		UserID:        userAccount.GetID(),
 		Email:         userAccount.GetEmail(),
 		Organizations: string(orgClaimsJson),
@@ -348,7 +349,7 @@ func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req 
 
 			if len(userAccount.GetRoles()) == 0 {
 				// Must be a new user
-				userAccount.SetRoles([]common.Role{service.defaultRole.(*config.Role)})
+				userAccount.SetRoles([]common.Role{service.defaultRole})
 			}
 
 			roleClaims := make([]string, len(userAccount.GetRoles()))
@@ -408,7 +409,7 @@ func (service *JsonWebTokenServiceImpl) RefreshToken(w http.ResponseWriter, req 
 			}
 
 			token := jwt.NewWithClaims(jwt.SigningMethodRS256, JsonWebTokenClaims{
-				ServerID:      service.app.Config.GetID(),
+				ServerID:      service.app.NodeID,
 				UserID:        userAccount.GetID(),
 				Email:         userAccount.GetEmail(),
 				Organizations: string(orgClaimsJson),

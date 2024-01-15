@@ -1,3 +1,4 @@
+//go:build cluster && pebble
 // +build cluster,pebble
 
 package cluster
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/lni/dragonboat/v3"
@@ -16,38 +18,34 @@ import (
 	"github.com/lni/dragonboat/v3/logger"
 	"github.com/lni/dragonboat/v3/raftio"
 
-	statemachine "github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
+	"github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
 	"github.com/jeremyhahn/go-cropdroid/common"
 
-	sm "github.com/lni/dragonboat/v3/statemachine"
-)
+	"github.com/jeremyhahn/go-cropdroid/cluster/util"
 
-const (
-	CONTROL_PLANE_CLUSTER_ID = 0
-	QUORUM_MIN_NODES         = 3
-	QUORUM_MAX_NODES         = 7
+	sm "github.com/lni/dragonboat/v3/statemachine"
 )
 
 var (
 	ErrOffline = errors.New("Cluster offline")
 )
 
-type RaftCluster interface {
+type RaftNode interface {
 	AddNode(clusterID uint64, address string, retryCount int) (uint64, string, error)
-	CreateFarmStateCluster(id uint64, sm statemachine.FarmStateMachine) error
-	CreateFarmConfigCluster(clusterID uint64, sm statemachine.FarmConfigMachine) error
-	CreateDeviceStateCluster(id uint64, sm statemachine.DeviceStateMachine) error
+	CreateRegularCluster(clusterID uint64, join bool, stateMachineFunc sm.CreateStateMachineFunc) error
+	CreateConcurrentCluster(clusterID uint64, join bool, stateMachineFunc sm.CreateConcurrentStateMachineFunc) error
+	CreateOnDiskCluster(clusterID uint64, join bool, stateMachineFunc sm.CreateOnDiskStateMachineFunc) error
 	GetConfig() config.Config
 	GetClusterCount() int
 	GetClusterInfo(clusterID uint64) *ClusterInfo
 	GetClusterInfos() []*ClusterInfo
 	GetClusterStatus() []*ClusterStatus
-	GetHashring() *Consistent
+	GetHashring() *util.Consistent
 	GetLeaderID(clusterID uint64) (uint64, bool, error)
 	GetLeaderInfo(clusterID uint64) *ClusterInfo
 	GetNodeCount() int
 	GetNodeHost() *dragonboat.NodeHost
-	GetParams() *ClusterParams
+	GetParams() *util.ClusterParams
 	GetPeers() map[uint64]string
 	Hash(key string) uint64
 	IsLeader(clusterID uint64) bool
@@ -83,19 +81,21 @@ type ClusterInfo struct {
 }
 
 type Raft struct {
-	nodeHost     *dragonboat.NodeHost
-	params       *ClusterParams
-	session      map[uint64]*client.Session
-	config       config.Config
-	peers        map[uint64]string
-	index        map[string]uint64 // map node address to raft node id
-	proposalChan map[uint64]chan []byte
-	timeout      time.Duration
-	hashring     *Consistent // raft group leaders on this raft
-	RaftCluster
+	nodeHost          *dragonboat.NodeHost
+	params            *util.ClusterParams
+	session           map[uint64]*client.Session
+	sessionMutex      *sync.RWMutex
+	config            config.Config
+	peers             map[uint64]string
+	index             map[string]uint64 // map node address to raft node id
+	proposalChan      map[uint64]chan []byte
+	proposalChanMutex *sync.RWMutex
+	timeout           time.Duration
+	hashring          *util.Consistent // raft group leaders on this raft
+	RaftNode
 }
 
-func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
+func NewRaftNode(params *util.ClusterParams, hashring *util.Consistent) RaftNode {
 
 	// As a summary, when -
 	//  - starting a brand new Raft cluster, set join to false and specify all initial
@@ -107,7 +107,7 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	//    initialMembers map to be empty. This applies to both initial member nodes
 	//    and those joined later.
 
-	params.logger.Debugf("Starting raft server with pebble backend: %+v", params)
+	params.Logger.Debugf("Starting raft server with pebble backend: %+v", params)
 
 	/*
 		if len(params.peers) == 0 {
@@ -115,24 +115,24 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 		}*/
 
 	var nodeAddr string
-	raftNodeID := params.nodeID + uint64(1)
+	raftNodeID := params.NodeID + uint64(1)
 	initialMembers := make(map[uint64]string)
-	if !params.join {
+	if !params.Join {
 		// Bootsrap the cluster
-		for i, peer := range params.raft {
+		for i, peer := range params.Raft {
 			initialMembers[uint64(i+1)] = peer
 			hashring.Add(peer)
 		}
 	} else {
-		params.logger.Fatal("Adding additional raft members needs to be debugged... raft_pebble.go#131")
-		nodeAddr = params.raft[0]
+		params.Logger.Fatal("Adding additional raft members needs to be debugged... raft_pebble.go#NewRaftCluster()")
+		nodeAddr = params.Raft[0]
 		hashring.Add(nodeAddr)
 	}
 	if nodeAddr == "" {
 		nodeAddr = initialMembers[raftNodeID]
 	}
 
-	fmt.Fprintf(os.Stdout, "Raft node address: %s\n", nodeAddr)
+	fmt.Fprintf(os.Stdout, "Raft node=%d, address=%s\n", raftNodeID, nodeAddr)
 
 	// change the log verbosity
 	logger.GetLogger("raft").SetLevel(logger.ERROR)
@@ -141,28 +141,33 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 	logger.GetLogger("grpc").SetLevel(logger.WARNING)
 
 	rc := config.Config{
-		NodeID:             raftNodeID,
-		ElectionRTT:        5,
+		NodeID: raftNodeID,
+		//ElectionRTT:        5,
+		//HeartbeatRTT:       1,
+		ElectionRTT:        10,
 		HeartbeatRTT:       1,
 		CheckQuorum:        true,
 		SnapshotEntries:    10,
 		CompactionOverhead: 5,
-		ClusterID:          params.clusterID,
+		ClusterID:          params.ClusterID,
 	}
 
 	r := &Raft{
-		params:       params,
-		proposalChan: make(map[uint64]chan []byte, 2),
-		config:       rc,
-		peers:        initialMembers,
-		timeout:      3 * time.Second,
+		params:            params,
+		proposalChan:      make(map[uint64]chan []byte, 2),
+		proposalChanMutex: &sync.RWMutex{},
+		config:            rc,
+		peers:             initialMembers,
+		//timeout:           3 * time.Second,
+		timeout:      3600 * time.Second,
 		session:      make(map[uint64]*client.Session, 1),
+		sessionMutex: &sync.RWMutex{},
 		hashring:     hashring}
 
 	nhc := config.NodeHostConfig{
-		WALDir:            fmt.Sprintf("%s/node%d", params.dataDir, r.config.NodeID),
-		NodeHostDir:       fmt.Sprintf("%s/node%d", params.dataDir, r.config.NodeID),
-		RTTMillisecond:    200,
+		WALDir:            fmt.Sprintf("%s/node%d", params.DataDir, r.config.NodeID),
+		NodeHostDir:       fmt.Sprintf("%s/node%d", params.DataDir, r.config.NodeID),
+		RTTMillisecond:    100,
 		RaftAddress:       nodeAddr,
 		RaftEventListener: r,
 	}
@@ -172,18 +177,19 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 		panic(err)
 	}
 	r.nodeHost = nh
-	r.session[params.clusterID] = nh.GetNoOPSession(params.clusterID)
-	r.proposalChan[params.clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+	r.session[params.ClusterID] = nh.GetNoOPSession(params.ClusterID)
+	r.proposalChan[params.ClusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
 
-	if err := nh.StartOnDiskCluster(initialMembers, params.join, statemachine.NewSystemDiskKV, rc); err != nil {
-		params.logger.Fatalf("Failed to create system raft cluster: %s", err)
+	systemSM := statemachine.NewServerConfigMachine(params.Logger, params.IdGenerator, params.DataDir, params.ClusterID, params.NodeID)
+	if err := nh.StartOnDiskCluster(initialMembers, params.Join, systemSM.CreateServerConfigMachine, rc); err != nil {
+		params.Logger.Fatalf("Failed to create system raft cluster: %s", err)
 	}
 
-	if isLeader := r.WaitForClusterReady(params.clusterID); isLeader == true {
+	if isLeader := r.WaitForClusterReady(params.ClusterID); isLeader == true {
 		r.hashring.Inc(nodeAddr)
 	} else {
-		leaderID, _, _ := r.nodeHost.GetLeaderID(params.clusterID)
-		for nodeID, raftAddress := range r.GetClusterInfo(params.clusterID).Nodes {
+		leaderID, _, _ := r.nodeHost.GetLeaderID(params.ClusterID)
+		for nodeID, raftAddress := range r.GetClusterInfo(params.ClusterID).Nodes {
 			r.hashring.Add(raftAddress)
 			if nodeID == leaderID {
 				r.hashring.Inc(raftAddress)
@@ -197,28 +203,28 @@ func NewRaftCluster(params *ClusterParams, hashring *Consistent) RaftCluster {
 func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 	var getLeaderFunc = func() (uint64, bool, error) {
 		leaderID, ready, err := r.nodeHost.GetLeaderID(clusterID)
-		r.params.logger.Debugf("[Raft.WaitForClusterReady] clusterID=%d, leaderID: %d, nodeID=%d, ready=%t",
+		r.params.Logger.Debugf("[Raft.WaitForClusterReady] clusterID=%d, leaderID: %d, nodeID=%d, ready=%t",
 			clusterID, leaderID, r.config.NodeID, ready)
 		return leaderID, ready, err
 	}
 	leaderID, ready, err := getLeaderFunc()
 	if err != nil {
-		r.params.logger.Error(err)
+		r.params.Logger.Error(err)
 	}
 	for !ready {
-		r.params.logger.Infof("[Raft.WaitForClusterReady] Waiting for cluster %d to become ready...", clusterID)
+		r.params.Logger.Infof("[Raft.WaitForClusterReady] Waiting for cluster %d to become ready...", clusterID)
 		time.Sleep(1 * time.Second)
 		_, ready, _ = getLeaderFunc()
 	}
-	if r.params.raftRequestedLeaderID > 0 && leaderID != uint64(r.params.raftRequestedLeaderID) {
-		r.params.logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader", r.params.raftRequestedLeaderID)
-		err = r.nodeHost.RequestLeaderTransfer(r.params.clusterID, uint64(r.params.raftRequestedLeaderID))
+	if r.params.RaftOptions.RequestedLeaderID > 0 && leaderID != uint64(r.params.RaftOptions.RequestedLeaderID) {
+		r.params.Logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader", r.params.RaftOptions.RequestedLeaderID)
+		err = r.nodeHost.RequestLeaderTransfer(r.params.ClusterID, uint64(r.params.RaftOptions.RequestedLeaderID))
 		if err != nil {
-			r.params.logger.Error(err)
+			r.params.Logger.Error(err)
 		}
 	}
 	for leaderID == 0 {
-		r.params.logger.Infof("[Raft.WaitForClusterReady] Waiting on cluster %d leader election...", clusterID)
+		r.params.Logger.Infof("[Raft.WaitForClusterReady] Waiting on cluster %d leader election...", clusterID)
 		time.Sleep(1 * time.Second)
 		leaderID, _, _ = getLeaderFunc()
 	}
@@ -228,14 +234,14 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 	return false
 }
 
-func (r *Raft) GetHashring() *Consistent {
+func (r *Raft) GetHashring() *util.Consistent {
 	return r.hashring
 }
 
 func (r *Raft) AddNode(clusterID uint64, address string, retryCount int) (uint64, string, error) {
 	nodeID := uint64(r.GetNodeCount() + 1)
-	r.params.logger.Errorf("[Raft.AddNode] Adding new node, id=%d, address=%s to cluster %d", nodeID, address, clusterID)
-	if r.IsLeader(r.params.clusterID) {
+	r.params.Logger.Errorf("[Raft.AddNode] Adding new node, id=%d, address=%s to cluster %d", nodeID, address, clusterID)
+	if r.IsLeader(r.params.ClusterID) {
 		ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
 		membership, err := r.nodeHost.SyncGetClusterMembership(ctx, clusterID)
 		cancel()
@@ -244,7 +250,7 @@ func (r *Raft) AddNode(clusterID uint64, address string, retryCount int) (uint64
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), r.timeout)
 		if err := r.nodeHost.SyncRequestAddNode(ctx, clusterID, nodeID, address, membership.ConfigChangeID); err != nil {
-			r.params.logger.Errorf("Failed to add new Raft node (clusterID=%d, nodeID=%d, retryCount=%d) Error: %s",
+			r.params.Logger.Errorf("Failed to add new Raft node (clusterID=%d, nodeID=%d, retryCount=%d) Error: %s",
 				clusterID, nodeID, retryCount, err)
 			time.Sleep(1 * time.Second)
 			r.AddNode(clusterID, address, retryCount+1)
@@ -259,17 +265,17 @@ func (r *Raft) AddNode(clusterID uint64, address string, retryCount int) (uint64
 					//	r.AddNode(clusterID, address, retryCount+1)
 					//  time.Sleep(1 * time.Second)
 					//}
-					r.params.logger.Errorf("Failed to add new node (clusterID=%d, nodeID=%d, address=%s): %s", clusterID, nodeID, address, err)
+					r.params.Logger.Errorf("Failed to add new node (clusterID=%d, nodeID=%d, address=%s): %s", clusterID, nodeID, address, err)
 					return err
 				}
 			} else {
-				diskkv := state.NewDiskKV(r.params.dataDir)
+				diskkv := state.NewDiskKV(r.params.DataDir)
 				if err := r.nodeHost.StartOnDiskCluster(r.peers, r.params.join, diskkv.CreateStateMachine, newConfig); err != nil {
 					//if err == dragonboat.ErrClusterAlreadyExist && retryCount < 5 {
 					//  r.AddNode(clusterID, address, retryCount+1)
 					//  time.Sleep(1 * time.Second)
 					//}
-					r.params.logger.Errorf("Failed to add new node: %s", err)
+					r.params.Logger.Errorf("Failed to add new node: %s", err)
 					return err
 				}
 			}*/
@@ -279,6 +285,116 @@ func (r *Raft) AddNode(clusterID uint64, address string, retryCount int) (uint64
 	return nodeID, address, nil
 }
 
+func (r *Raft) CreateRegularCluster(clusterID uint64, join bool, stateMachineFunc sm.CreateStateMachineFunc) error {
+	newConfig := r.config
+	newConfig.ClusterID = clusterID
+
+	r.sessionMutex.Lock()
+	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+	r.sessionMutex.Unlock()
+
+	r.proposalChanMutex.Lock()
+	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+	r.proposalChanMutex.Unlock()
+
+	if err := r.nodeHost.StartCluster(r.peers, false, stateMachineFunc, newConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func (r *Raft) CreateConcurrentCluster(clusterID uint64, join bool, stateMachineFunc sm.CreateConcurrentStateMachineFunc) error {
+	newConfig := r.config
+	newConfig.ClusterID = clusterID
+
+	r.sessionMutex.Lock()
+	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+	r.sessionMutex.Unlock()
+
+	r.proposalChanMutex.Lock()
+	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+	r.proposalChanMutex.Unlock()
+
+	if err := r.nodeHost.StartConcurrentCluster(r.peers, false, stateMachineFunc, newConfig); err != nil {
+		r.params.Logger.Error(os.Stderr, "failed to add IConcurrentStateMachine cluster %s, error=%v\n", clusterID, err)
+		return err
+	}
+	return nil
+}
+
+func (r *Raft) CreateOnDiskCluster(clusterID uint64, join bool, stateMachineFunc sm.CreateOnDiskStateMachineFunc) error {
+	newConfig := r.config
+	newConfig.ClusterID = clusterID
+
+	r.sessionMutex.Lock()
+	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+	r.sessionMutex.Unlock()
+
+	r.proposalChanMutex.Lock()
+	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+	r.proposalChanMutex.Unlock()
+
+	if err := r.nodeHost.StartOnDiskCluster(r.peers, join, stateMachineFunc, newConfig); err != nil {
+		r.params.Logger.Error("failed to create IOnDiskStateMachine cluster %d, error=%v\n", clusterID, err)
+		return err
+	}
+	return nil
+}
+
+// func (r *Raft) CreateFarmConfigCluster(clusterID uint64, sm statemachine.FarmConfigMachine) error {
+// 	newConfig := r.config
+// 	newConfig.ClusterID = clusterID
+// 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+// 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+// 	if err := r.nodeHost.StartOnDiskCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
+// 		//if err := r.nodeHost.StartOnDiskCluster(r.peers, false, statemachine.NewDiskKV, newConfig); err != nil {
+// 		//if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
+// 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
+// 		return err
+// 	}
+// 	return nil
+// }
+
+// func (r *Raft) CreateFarmStateCluster(clusterID uint64, sm statemachine.FarmStateMachine) error {
+// 	newConfig := r.config
+// 	newConfig.ClusterID = clusterID
+
+// 	r.sessionMutex.Lock()
+// 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+// 	r.sessionMutex.Unlock()
+
+// 	r.proposalChanMutex.Lock()
+// 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+// 	r.proposalChanMutex.Unlock()
+
+// 	//if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateStateMachine, newConfig); err != nil {
+// 	if err := r.nodeHost.StartConcurrentCluster(r.peers, false, sm.CreateFarmStateMachine, newConfig); err != nil {
+// 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
+// 		return err
+// 	}
+// 	return nil
+// }
+
+// func (r *Raft) CreateDeviceStateCluster(clusterID uint64, sm statemachine.DeviceStateMachine) error {
+// 	newConfig := r.config
+// 	newConfig.ClusterID = clusterID
+
+// 	r.sessionMutex.Lock()
+// 	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
+// 	r.sessionMutex.Unlock()
+
+// 	r.proposalChanMutex.Lock()
+// 	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
+// 	r.proposalChanMutex.Unlock()
+
+// 	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateDeviceStateMachine, newConfig); err != nil {
+// 		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
+// 		return err
+// 	}
+// 	return nil
+// }
+
 func (r *Raft) DeleteNode(clusterID, nodeID uint64, address string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
 	err := r.nodeHost.SyncRequestDeleteNode(ctx, clusterID, nodeID, 0)
@@ -287,49 +403,10 @@ func (r *Raft) DeleteNode(clusterID, nodeID uint64, address string) error {
 	return err
 }
 
-func (r *Raft) CreateFarmConfigCluster(clusterID uint64, sm statemachine.FarmConfigMachine) error {
-	newConfig := r.config
-	newConfig.ClusterID = clusterID
-	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
-	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	if err := r.nodeHost.StartOnDiskCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
-		//if err := r.nodeHost.StartOnDiskCluster(r.peers, false, statemachine.NewDiskKV, newConfig); err != nil {
-		//if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateFarmConfigMachine, newConfig); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
-		return err
-	}
-	return nil
-}
-
-func (r *Raft) CreateFarmStateCluster(clusterID uint64, sm statemachine.FarmStateMachine) error {
-	newConfig := r.config
-	newConfig.ClusterID = clusterID
-	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
-	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	//if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateStateMachine, newConfig); err != nil {
-	if err := r.nodeHost.StartConcurrentCluster(r.peers, false, sm.CreateFarmStateMachine, newConfig); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
-		return err
-	}
-	return nil
-}
-
-func (r *Raft) CreateDeviceStateCluster(clusterID uint64, sm statemachine.DeviceStateMachine) error {
-	newConfig := r.config
-	newConfig.ClusterID = clusterID
-	r.session[clusterID] = r.nodeHost.GetNoOPSession(clusterID)
-	r.proposalChan[clusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
-	if err := r.nodeHost.StartCluster(r.peers, false, sm.CreateDeviceStateMachine, newConfig); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to add cluster, %v\n", err)
-		return err
-	}
-	return nil
-}
-
 func (r *Raft) Shutdown() error {
-	if err := r.nodeHost.StopNode(r.params.clusterID, r.config.NodeID); err != nil {
-		r.params.logger.Error("Error shutting down Raft node. clusterID: %d, nodeID=%d, error=%s",
-			r.params.clusterID, r.config.NodeID, err)
+	if err := r.nodeHost.StopNode(r.params.ClusterID, r.config.NodeID); err != nil {
+		r.params.Logger.Error("Error shutting down Raft node. clusterID: %d, nodeID=%d, error=%s",
+			r.params.ClusterID, r.config.NodeID, err)
 	}
 	//for clusterID, _ := range r.session {
 	//for clusterID, session := range r.session {
@@ -344,7 +421,7 @@ func (r *Raft) Shutdown() error {
 	//r.nodeHost.SyncCloseSession(ctx, session)
 	//cancel()
 	//if err := r.nodeHost.StopCluster(clusterID); err != nil {
-	//	r.params.logger.Error("Error shutting down Raft cluster %d. Error: ", clusterID, err)
+	//	r.params.Logger.Error("Error shutting down Raft cluster %d. Error: ", clusterID, err)
 	//}
 	//delete(r.session, clusterID)
 	//}
@@ -352,7 +429,7 @@ func (r *Raft) Shutdown() error {
 	return nil
 }
 
-func (r *Raft) GetParams() *ClusterParams {
+func (r *Raft) GetParams() *util.ClusterParams {
 	return r.params
 }
 
@@ -377,10 +454,10 @@ func (r *Raft) IsLeader(clusterID uint64) bool {
 
 func (r *Raft) GetNodeCount() int {
 	ctx, cancel := context.WithTimeout(context.Background(), r.timeout)
-	membership, err := r.nodeHost.GetClusterMembership(ctx, r.params.clusterID)
+	membership, err := r.nodeHost.GetClusterMembership(ctx, r.params.ClusterID)
 	cancel()
 	if err != nil {
-		r.params.logger.Error(err)
+		r.params.Logger.Error(err)
 		return 0
 	}
 	return len(membership.Nodes)
@@ -459,7 +536,7 @@ func (r *Raft) GetLeaderInfo(clusterID uint64) *ClusterInfo {
 	opt := dragonboat.NodeHostInfoOption{SkipLogInfo: true}
 	membership := r.nodeHost.GetNodeHostInfo(opt)
 	for _, member := range membership.ClusterInfoList {
-		if member.IsLeader && member.NodeID == r.config.NodeID && clusterID == r.params.clusterID {
+		if member.IsLeader && member.NodeID == r.config.NodeID && clusterID == r.params.ClusterID {
 			return &ClusterInfo{
 				ClusterID:         member.ClusterID,
 				NodeID:            member.NodeID,
@@ -478,7 +555,7 @@ func (r *Raft) GetLeaderInfo(clusterID uint64) *ClusterInfo {
 func (r *Raft) LeaderUpdated(info raftio.LeaderInfo) {
 	clusterInfo := r.GetClusterInfo(info.ClusterID)
 	if clusterInfo != nil {
-		r.params.logger.Warningf("Raft cluster membership updated! info=%+v, clusterInfo=%+v",
+		r.params.Logger.Warningf("Raft cluster membership updated! info=%+v, clusterInfo=%+v",
 			info, clusterInfo)
 	}
 }
@@ -488,7 +565,9 @@ func (r *Raft) GetNodeHost() *dragonboat.NodeHost {
 }
 
 func (r *Raft) SyncPropose(clusterID uint64, cmd []byte) error {
+	r.sessionMutex.RLock()
 	session, ok := r.session[clusterID]
+	r.sessionMutex.RUnlock()
 	if !ok {
 		return common.ErrClusterNotFound
 	}
@@ -496,12 +575,11 @@ func (r *Raft) SyncPropose(clusterID uint64, cmd []byte) error {
 	result, err := r.nodeHost.SyncPropose(ctx, session, cmd)
 	cancel()
 	if err != nil {
-		r.params.logger.Errorf("[Raft.SyncPropose] Error: %s", err)
+		r.params.Logger.Errorf("[Raft.SyncPropose] Error: %s", err)
 		return err
 	}
-	r.params.logger.Debugf("[Raft.SyncPropose] Raft confirmation: clusterID=%d, nodeID=%d, message=%s, result=%+v",
+	r.params.Logger.Debugf("[Raft.SyncPropose] Raft confirmation: clusterID=%d, nodeID=%d, message=%s, result=%+v",
 		clusterID, r.config.NodeID, string(cmd), result)
-
 	return nil
 }
 
@@ -513,9 +591,39 @@ func (r *Raft) SyncRead(clusterID uint64, query interface{}) (interface{}, error
 }
 
 func (r *Raft) ReadLocal(clusterID uint64, query interface{}) (interface{}, error) {
-	return r.nodeHost.StaleRead(clusterID, query)
+	requestState, err := r.nodeHost.ReadIndex(clusterID, r.timeout)
+	if err != nil {
+		return nil, err
+	}
+	select {
+	case requestResult := <-requestState.ResultC():
+		if requestResult.Completed() {
+			return r.nodeHost.ReadLocalNode(requestState, query)
+		}
+		if requestResult.Aborted() {
+			return nil, errors.New("read request aborted")
+		}
+		if requestResult.Dropped() {
+			return nil, errors.New("read request dropped")
+		}
+		if requestResult.Rejected() {
+			return nil, errors.New("read request rejected")
+		}
+		if requestResult.Terminated() {
+			return nil, errors.New("read request terminated")
+		}
+		if requestResult.Timeout() {
+			return nil, errors.New("read request timeout")
+		}
+	}
+	return nil, errors.New("read request unknown error")
+
+	//return r.nodeHost.StaleRead(clusterID, query)
 }
 
+// GetLeaderID returns the leader node ID of the specified Raft cluster based
+// on local node's knowledge. The returned boolean value indicates whether the
+// leader information is available.
 func (r *Raft) GetLeaderID(clusterID uint64) (uint64, bool, error) {
 	return r.nodeHost.GetLeaderID(clusterID)
 }

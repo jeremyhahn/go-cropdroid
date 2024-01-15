@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	ErrFarmConfigNotFound       = errors.New("farm config not found")
+	//ErrFarmNotFound             = errors.New("farm config not found")
 	ErrChannelNotFound          = errors.New("channel not found")
 	ErrMetricNotFound           = errors.New("metric not found")
 	ErrScheduleNotFound         = errors.New("channel schedule not found")
@@ -47,15 +47,15 @@ type ConditionHandler interface {
 }
 
 type FarmChannels struct {
-	FarmConfigChan         chan config.FarmConfig
-	FarmConfigChangeChan   chan config.FarmConfig
-	FarmStateChan          chan state.FarmStateMap
-	FarmStateChangeChan    chan state.FarmStateMap
-	FarmErrorChan          chan common.FarmError
-	FarmNotifyChan         chan common.FarmNotification
-	DeviceConfigChangeChan chan config.DeviceConfig
-	DeviceStateChangeChan  chan common.DeviceStateChange
-	DeviceStateDeltaChan   chan map[string]state.DeviceStateDeltaMap
+	FarmConfigChan        chan config.Farm
+	FarmConfigChangeChan  chan config.Farm
+	FarmStateChan         chan state.FarmStateMap
+	FarmStateChangeChan   chan state.FarmStateMap
+	FarmErrorChan         chan common.FarmError
+	FarmNotifyChan        chan common.FarmNotification
+	DeviceChangeChan      chan config.Device
+	DeviceStateChangeChan chan common.DeviceStateChange
+	DeviceStateDeltaChan  chan map[string]state.DeviceStateDeltaMap
 	// MetricChangedChan      chan common.MetricValueChanged
 	//SwitchChangedChan chan common.SwitchValueChanged
 }
@@ -81,9 +81,9 @@ type Middleware interface {
 }
 
 type OrganizationService interface {
-	Create(organization config.OrganizationConfig) error
-	GetAll(session Session) ([]config.OrganizationConfig, error)
-	GetUsers(session Session) ([]config.UserConfig, error)
+	Create(organization *config.Organization) error
+	GetAll(session Session) ([]*config.Organization, error)
+	GetUsers(session Session) ([]*config.User, error)
 	Delete(session Session) error
 }
 
@@ -91,31 +91,32 @@ type FarmService interface {
 	BuildDeviceServices() ([]DeviceService, error) // only used by builder/farm.go
 	GetFarmID() uint64
 	GetChannels() *FarmChannels
-	GetConfig() config.FarmConfig
-	GetConfigClusterID() uint64
+	GetConfig() *config.Farm
+	//GetConfigClusterID() uint64
 	GetConsistencyLevel() int
 	GetPublicKey() string
 	GetState() state.FarmStateMap
+	GetStateID() uint64
 	//OnLeaderUpdated(info raftio.LeaderInfo)
 	InitializeState(saveToStateStore bool) error
 	IsRunning() bool
 	Poll()
 	//PollCluster(raftCluster cluster.RaftCluster)
-	PublishConfig(farmConfig config.FarmConfig) error
+	PublishConfig(farmConfig *config.Farm) error
 	PublishState(farmState state.FarmStateMap) error
 	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error
 	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
 	Run()
 	RunCluster()
-	RunWorkflow(workflow config.WorkflowConfig)
-	SetConfig(farmConfig config.FarmConfig) error
-	SetDeviceConfig(deviceConfig config.DeviceConfig) error
+	RunWorkflow(workflow *config.Workflow)
+	SetConfig(farmConfig *config.Farm) error
+	SetDeviceConfig(deviceConfig *config.Device) error
 	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
 	SetConfigValue(session Session, farmID, deviceID uint64, key, value string) error
 	SetMetricValue(deviceType string, key string, value float64) error
 	SetSwitchValue(deviceType string, channelID int, value int) error
 	Stop()
-	WatchConfig() <-chan config.FarmConfig
+	WatchConfig() <-chan config.Farm
 	WatchState() <-chan state.FarmStateMap
 	WatchDeviceState() <-chan map[string]state.DeviceStateMap
 	WatchDeviceDeltas() <-chan map[string]state.DeviceStateDeltaMap
@@ -123,7 +124,7 @@ type FarmService interface {
 }
 
 type AuthService interface {
-	Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error)
+	Login(userCredentials *UserCredentials) (common.UserAccount, []*config.Organization, []*config.Farm, error)
 	Register(userCredentials *UserCredentials, baseURI string) (common.UserAccount, error)
 	Activate(registrationID uint64) (common.UserAccount, error)
 	ResetPassword(userCredentials *UserCredentials) error
@@ -134,10 +135,11 @@ type UserService interface {
 	UpdateUser(user common.UserAccount) error // replaced with SetPermnission?
 	Delete(session Session, userID uint64) error
 	DeletePermission(session Session, userID uint64) error
-	GetUserByEmail(email string) (common.UserAccount, error)
-	SetPermission(session Session, permission config.PermissionConfig) error
+	//Get(email string) (common.UserAccount, error)
+	Get(userID uint64) (common.UserAccount, error)
+	SetPermission(session Session, permission *config.Permission) error
 	// probably needs to be moved to auth service; not implemented in google_auth yet
-	Refresh(userID uint64) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error)
+	Refresh(userID uint64) (common.UserAccount, []*config.Organization, []*config.Farm, error)
 	AuthService
 }
 
@@ -209,23 +211,23 @@ type ServiceRegistry interface {
 }
 
 type ConfigService interface {
-	GetServerConfig() config.ServerConfig
+	GetServerConfig() config.Server
 	//SetValue(deviceID int, key, value string) error
 	Sync()
 	SetValue(session Session, farmID, deviceID uint64, key, value string) error
-	SetDeviceConfig(deviceConfig config.DeviceConfig)
+	SetDevice(deviceConfig config.Device)
 	NotifyConfigChange(farmID uint64)
-	OnMetricChange(metric config.MetricConfig)
-	OnChannelChange(channel config.ChannelConfig)
-	OnDeviceConfigChange(deviceConfig config.DeviceConfigConfig)
-	OnConditionChange(condition config.ConditionConfig)
-	OnScheduleChange(schedule config.ScheduleConfig)
+	OnMetricChange(metric config.Metric)
+	OnChannelChange(channel config.Channel)
+	OnDeviceChange(deviceConfig config.DeviceSetting)
+	OnConditionChange(condition config.Condition)
+	OnScheduleChange(schedule config.Schedule)
 }
 
 type ChangefeedService interface {
 	Subscribe()
 	FeedCount() int
-	OnDeviceConfigConfigChange(changefeed datastore.Changefeed)
+	OnDeviceConfigChange(changefeed datastore.Changefeed)
 	OnChannelConfigChange(changefeed datastore.Changefeed)
 	OnConditionConfigChange(changefeed datastore.Changefeed)
 	OnScheduleConfigChange(changefeed datastore.Changefeed)
@@ -234,10 +236,10 @@ type ChangefeedService interface {
 }
 
 type DeviceService interface {
-	GetDeviceConfig() config.DeviceConfig
+	//GetDevice() config.Device
 	SetMetricValue(key string, value float64) error
 	GetDeviceType() string
-	GetConfig() (config.DeviceConfig, error)
+	GetConfig() (*config.Device, error)
 	GetID() uint64
 	GetState() (state.DeviceStateMap, error)
 	GetView() (common.DeviceView, error)
@@ -245,17 +247,17 @@ type DeviceService interface {
 	GetDevice() (common.Device, error)
 	Manage(farmState state.FarmStateMap)
 	Poll() error
-	SetConfig(config config.DeviceConfig) error
+	SetConfig(config *config.Device) error
 	SetMode(mode string, device device.IOSwitcher)
 	Stop()
 	Switch(channelID, position int, logMessage string) (*common.Switch, error)
 	TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error)
-	ManageMetrics(config config.DeviceConfig, farmState state.FarmStateMap) []error
-	ManageChannels(deviceConfig config.DeviceConfig,
-		farmState state.FarmStateMap, channels []config.ChannelConfig) []error
+	ManageMetrics(config config.Device, farmState state.FarmStateMap) []error
+	ManageChannels(deviceConfig config.Device,
+		farmState state.FarmStateMap, channels []config.Channel) []error
 	//RegisterObserver(observer DeviceObserver)
 }
 
 type RoleService interface {
-	GetAll() ([]config.RoleConfig, error)
+	GetAll() ([]*config.Role, error)
 }

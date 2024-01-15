@@ -31,7 +31,7 @@ LDFLAGS+= -X github.com/jeremyhahn/go-$(APP)/app.Image=${IMAGE_NAME}
 ROCKSDB_HOME    ?= /rocksdb
 ROCKSDB_INCLUDE ?= $(ROCKSDB_HOME)/include
 
-.PHONY: deps 
+.PHONY: deps
 
 default: build-standalone
 
@@ -175,7 +175,6 @@ build-cluster-rocksdb-debug-static:
 	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
 	GOOS=linux CGO_ENABLED=1 $(GOBIN)/go build -a --tags="cluster rocksdb" -gcflags "all=-N -l" -o $(APP) -v --ldflags '-extldflags -static ${LDFLAGS}'
 
-
 # build-cluster-rocksdb-arm64:
 # 	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
 # 	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
@@ -188,7 +187,6 @@ build-cluster-rocksdb-debug-static:
 # 	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
 # 	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
 
-
 clean:
 	$(GOBIN)/go clean
 	rm -rf $(APP) \
@@ -198,9 +196,11 @@ clean:
 		db/$(APP).db \
 		db/cluster
 
+tests: unittest integrationtest datastore-tests
+
 unittest:
 	cd app && $(GOBIN)/go test -v
-	cd cluster && $(GOBIN)/go test -v
+#	cd cluster && $(GOBIN)/go test -v
 	cd datastore/gorm && $(GOBIN)/go test -v
 	cd device && $(GOBIN)/go test -v
 	cd mapper && $(GOBIN)/go test -v
@@ -209,6 +209,87 @@ unittest:
 
 integrationtest:
 	cd datastore/gorm && $(GOBIN)/go test -v -tags integration
+
+datastore-tests: gorm-datastore-tests raft-datastore-tests
+
+gorm-datastore-tests:
+	go test -v -timeout 30s -run TestOrganization* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestFarm* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestDevice* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestDeviceSetting* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestChannel* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestCondition* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestMetric* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestSchedule* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestWorkflow* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestAlgorithm* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+	go test -v -timeout 30s -run TestRegistration* github.com/jeremyhahn/go-cropdroid/datastore/gorm
+
+raft-datastore-tests: raft-datastore-algorithm-tests \
+	raft-datastore-channel-tests \
+	raft-datastore-condition-tests \
+	raft-datastore-device-tests \
+	raft-datastore-farm-tests \
+	raft-datastore-metric-tests \
+	raft-datastore-org-tests \	
+	raft-datastore-permission-tests \
+	raft-datastore-registration-tests \
+	raft-datastore-schedule-tests \
+	raft-datastore-server-tests \
+	raft-datastore-user-tests \
+	raft-datastore-workflow-tests \
+
+raft-datastore-algorithm-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestAlgorithmCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-channel-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestChannelCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestChannelGetByDevice$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-condition-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestConditionCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-device-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestDeviceCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestDeviceSettingsCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-farm-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestFarmAssociations$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestFarmGetByIds$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestFarmGetAll$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestFarmGet$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-metric-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestMetricCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestMetricGetByDevice$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-org-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestOrganizationCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestOrganizationGetAll$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestOrganizationDelete$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestOrganizationEnchilada$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-permission-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestUserRoleRelationship$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestPermissions$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestGetOrganizations$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-registration-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestRegistrationCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-schedule-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestScheduleCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-server-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestServerCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-user-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestUserCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestRoleCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+
+raft-datastore-workflow-tests:
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestWorkflowCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
+	go test -v -timeout 30s -tags cluster,pebble -run ^TestWorkflowStepCRUD$$ github.com/jeremyhahn/go-cropdroid/cluster
 
 standalone:
 	./$(APP) standalone --debug --ssl=false --port 8091

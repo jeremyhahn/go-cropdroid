@@ -1,10 +1,9 @@
 package gorm
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
@@ -19,58 +18,64 @@ func NewDeviceDAO(logger *logging.Logger, db *gorm.DB) dao.DeviceDAO {
 	return &GormDeviceDAO{logger: logger, db: db}
 }
 
-func (dao *GormDeviceDAO) Save(device config.DeviceConfig) error {
+func (dao *GormDeviceDAO) Save(device *config.Device) error {
 	dao.logger.Debugf("Creating device record")
 	return dao.db.Save(device).Error
 }
 
-func (dao *GormDeviceDAO) Get(id uint64) (config.DeviceConfig, error) {
-	dao.logger.Debugf("Getting device %d", id)
-	var devices []config.Device
-	if err := dao.db.
-		Preload("Configs").
-		Preload("Metrics").
-		Preload("Channels").
-		First(&devices, id).Error; err != nil {
-		return nil, err
-	}
-	if err := devices[0].ParseConfigs(); err != nil {
-		return nil, err
-	}
-	return &devices[0], nil
-}
+// FarmID is used to maintain interface compatibility with Raft
+func (dao *GormDeviceDAO) Get(farmID, deviceID uint64,
+	CONSISTENCY_LEVEL int) (*config.Device, error) {
 
-func (dao *GormDeviceDAO) GetByFarmId(farmID uint64) ([]config.Device, error) {
-	dao.logger.Debugf("Getting devices for farm id %d", farmID)
-	var devices []config.Device
+	dao.logger.Debugf("Getting device %d", deviceID)
+	var devices []*config.Device
 	if err := dao.db.
-		Preload("Configs").
+		Preload("Settings").
 		Preload("Metrics").
 		Preload("Channels").
-		Where("farm_id = ?", farmID).
-		Order("id asc").
-		Find(&devices).Error; err != nil {
+		First(&devices, deviceID).Error; err != nil {
 		return nil, err
 	}
 	if len(devices) == 0 {
-		return nil, fmt.Errorf("Unable to locate devices belonging to farm id %d", farmID)
+		return nil, datastore.ErrNotFound
 	}
-	for i, device := range devices {
-		device.ParseConfigs()
-		devices[i] = device
+	if err := devices[0].ParseSettings(); err != nil {
+		return nil, err
 	}
-	return devices, nil
+	return devices[0], nil
 }
 
-func (dao *GormDeviceDAO) Count() (int64, error) {
-	dao.logger.Debugf("Getting device count")
-	var device config.Device
-	var count int64
-	if err := dao.db.Model(&device).Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return count, nil
-}
+// func (dao *GormDeviceDAO) GetByOrgAndFarmID(orgID, farmID uint64) ([]config.Device, error) {
+// 	dao.logger.Debugf("Getting devices for farm id %d", farmID)
+// 	var devices []config.Device
+// 	if err := dao.db.
+// 		Preload("Settings").
+// 		Preload("Metrics").
+// 		Preload("Channels").
+// 		Where("farm_id = ?", farmID).
+// 		Order("id asc").
+// 		Find(&devices).Error; err != nil {
+// 		return nil, err
+// 	}
+// 	if len(devices) == 0 {
+// 		return nil, fmt.Errorf("Unable to locate devices belonging to farm id %d", farmID)
+// 	}
+// 	for i, device := range devices {
+// 		device.ParseSettings()
+// 		devices[i] = device
+// 	}
+// 	return devices, nil
+// }
+
+// func (dao *GormDeviceDAO) Count() (int64, error) {
+// 	dao.logger.Debugf("Getting device count")
+// 	var device config.Device
+// 	var count int64
+// 	if err := dao.db.Model(&device).Count(&count).Error; err != nil {
+// 		return 0, err
+// 	}
+// 	return count, nil
+// }
 
 /*
 func (dao *GormDeviceDAO) GetByOrgId(orgId int) ([]config.Device, error) {

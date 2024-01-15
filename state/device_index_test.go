@@ -9,7 +9,7 @@ import (
 
 func TestDeviceIndex(t *testing.T) {
 
-	deviceConfig := &config.Device{
+	deviceConfig := config.Device{
 		ID:          1,
 		FarmID:      uint64(1),
 		Type:        "Test",
@@ -32,7 +32,7 @@ func TestDeviceIndex(t *testing.T) {
 
 func BenchmarkDeviceIndex(b *testing.B) {
 
-	deviceConfig := &config.Device{
+	deviceConfig := config.Device{
 		ID:          1,
 		FarmID:      1,
 		Type:        "Test",

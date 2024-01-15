@@ -135,16 +135,16 @@ func (restService *DefaultScheduleRestService) Create(w http.ResponseWriter, r *
 
 	session.GetLogger().Debug("Decoding JSON request")
 
-	var schedule config.Schedule
+	var schedule *config.Schedule
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&schedule); err != nil {
+	if err := decoder.Decode(schedule); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
 	session.GetLogger().Debugf("schedule=%+v", schedule)
 
-	persisted, err := restService.scheduleService.Create(session, &schedule)
+	persisted, err := restService.scheduleService.Create(session, schedule)
 	if err != nil {
 		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
@@ -165,16 +165,16 @@ func (restService *DefaultScheduleRestService) Update(w http.ResponseWriter, r *
 
 	session.GetLogger().Debug("Decoding JSON request")
 
-	var schedule config.Schedule
+	var schedule *config.Schedule
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&schedule); err != nil {
+	if err := decoder.Decode(schedule); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
 	session.GetLogger().Debugf("schedule=%+v", schedule)
 
-	if err = restService.scheduleService.Update(session, &schedule); err != nil {
+	if err = restService.scheduleService.Update(session, schedule); err != nil {
 		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return

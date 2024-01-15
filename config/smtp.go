@@ -1,16 +1,15 @@
 package config
 
 type Smtp struct {
-	Enable     bool   `yaml:"enable" json:"enable"`
-	Host       string `yaml:"host" json:"host"`
-	Port       int    `yaml:"port" json:"port"`
-	Username   string `yaml:"username" json:"username"`
-	Password   string `yaml:"password" json:"password"`
-	Recipient  string `yaml:"recipient" json:"recipient"`
-	SmtpConfig `yaml:"-" json:"-"`
+	Enable    bool   `yaml:"enable" json:"enable"`
+	Host      string `yaml:"host" json:"host"`
+	Port      int    `yaml:"port" json:"port"`
+	Username  string `yaml:"username" json:"username"`
+	Password  string `yaml:"password" json:"password"`
+	Recipient string `yaml:"recipient" json:"recipient"`
 }
 
-func NewSmtp() SmtpConfig {
+func NewSmtp() *Smtp {
 	return &Smtp{}
 }
 

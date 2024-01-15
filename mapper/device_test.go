@@ -21,81 +21,81 @@ func TestDeviceMapStateToEntity(t *testing.T) {
 	state.SetMetrics(metrics)
 	state.SetChannels(channels)
 
-	config := config.Device{
+	config := &config.Device{
 		ID:          1,
 		Type:        "test",
 		Description: "Fake device used for unit testing",
-		Configs: []config.DeviceConfigItem{
-			config.DeviceConfigItem{
+		Settings: []*config.DeviceSetting{
+			{
 				Key:   "enable",
 				Value: "true"},
-			config.DeviceConfigItem{
+			{
 				Key:   "notify",
 				Value: "true"},
-			config.DeviceConfigItem{
+			{
 				Key:   "uri",
 				Value: ""}},
-		Metrics: []config.Metric{
-			config.Metric{
-				ID:           1,
-				DeviceID: 2,
-				Name:         "Available Memory",
-				Key:          "mem",
-				Enable:       true,
-				Notify:       true,
-				Unit:         "bytes",
-				AlarmLow:     1000,
-				AlarmHigh:    10000},
-			config.Metric{
-				ID:           2,
-				DeviceID: 2,
-				Name:         "Fake Temp Sensor",
-				Key:          "sensor1",
-				Enable:       true,
-				Notify:       true,
-				Unit:         "°",
-				AlarmLow:     92.34,
-				AlarmHigh:    65.12}},
-		Channels: []config.Channel{
-			config.Channel{
-				ID:           1,
-				DeviceID: 2,
-				ChannelID:    0,
-				Name:         "Test Channel 1",
-				Enable:       true,
-				Notify:       true,
-				Conditions:   nil,
-				Schedule:     nil,
-				Duration:     1,
-				Debounce:     2,
-				Backoff:      3,
-				AlgorithmID:  4},
-			config.Channel{
-				ID:           2,
-				DeviceID: 3,
-				ChannelID:    1,
-				Name:         "Test Channel 2",
-				Enable:       false,
-				Notify:       false,
-				Conditions:   nil,
-				Schedule:     nil,
-				Duration:     1,
-				Debounce:     2,
-				Backoff:      3,
-				AlgorithmID:  4},
-			config.Channel{
-				ID:           3,
-				DeviceID: 4,
-				ChannelID:    2,
-				Name:         "Test Channel 3",
-				Enable:       false,
-				Notify:       false,
-				Conditions:   nil,
-				Schedule:     nil,
-				Duration:     1,
-				Debounce:     2,
-				Backoff:      3,
-				AlgorithmID:  4}}}
+		Metrics: []*config.Metric{
+			{
+				ID:        1,
+				DeviceID:  2,
+				Name:      "Available Memory",
+				Key:       "mem",
+				Enable:    true,
+				Notify:    true,
+				Unit:      "bytes",
+				AlarmLow:  1000,
+				AlarmHigh: 10000},
+			{
+				ID:        2,
+				DeviceID:  2,
+				Name:      "Fake Temp Sensor",
+				Key:       "sensor1",
+				Enable:    true,
+				Notify:    true,
+				Unit:      "°",
+				AlarmLow:  92.34,
+				AlarmHigh: 65.12}},
+		Channels: []*config.Channel{
+			{
+				ID:          1,
+				DeviceID:    2,
+				ChannelID:   0,
+				Name:        "Test Channel 1",
+				Enable:      true,
+				Notify:      true,
+				Conditions:  nil,
+				Schedule:    nil,
+				Duration:    1,
+				Debounce:    2,
+				Backoff:     3,
+				AlgorithmID: 4},
+			{
+				ID:          2,
+				DeviceID:    3,
+				ChannelID:   1,
+				Name:        "Test Channel 2",
+				Enable:      false,
+				Notify:      false,
+				Conditions:  nil,
+				Schedule:    nil,
+				Duration:    1,
+				Debounce:    2,
+				Backoff:     3,
+				AlgorithmID: 4},
+			{
+				ID:          3,
+				DeviceID:    4,
+				ChannelID:   2,
+				Name:        "Test Channel 3",
+				Enable:      false,
+				Notify:      false,
+				Conditions:  nil,
+				Schedule:    nil,
+				Duration:    1,
+				Debounce:    2,
+				Backoff:     3,
+				AlgorithmID: 4}}}
 
 	device, err := mapper.MapStateToDevice(state, config)
 	assert.Nil(t, err)
@@ -139,27 +139,27 @@ func TestDeviceMapConfigToModel(t *testing.T) {
 		Type:        "test",
 		Description: "Fake microdevice used for testing"}
 
-	configEntities := []config.DeviceConfigItem{
-		config.DeviceConfigItem{
+	settingEntities := []*config.DeviceSetting{
+		{
 			Key:   "test.enable",
 			Value: "true"},
-		config.DeviceConfigItem{
+		{
 			Key:   "test.notify",
 			Value: "true"},
-		config.DeviceConfigItem{
+		{
 			Key:   "test.uri",
 			Value: "true"},
-		config.DeviceConfigItem{
+		{
 			Key:   "key1",
 			Value: "key1.value1"},
-		config.DeviceConfigItem{
+		{
 			Key:   "key2",
 			Value: "key2.value"},
-		config.DeviceConfigItem{
+		{
 			Key:   "test.key2",
 			Value: "test.key2.value"}}
 
-	deviceModel, err := mapper.MapConfigToModel(deviceEntity, configEntities)
+	deviceModel, err := mapper.MapConfigToModel(deviceEntity, settingEntities)
 	assert.Nil(t, err)
 	assert.Equal(t, deviceEntity.GetID(), deviceModel.GetID())
 	assert.Equal(t, deviceEntity.GetType(), deviceModel.GetType())
@@ -168,7 +168,7 @@ func TestDeviceMapConfigToModel(t *testing.T) {
 	//assert.Equal(t, deviceEntity.GetFirmwareVersion(), deviceModel.GetFirmwareVersion())
 
 	configMap := deviceModel.GetConfigs()
-	assert.Equal(t, len(configEntities), len(configMap))
+	assert.Equal(t, len(settingEntities), len(configMap))
 	assert.Equal(t, configMap["key1"], "key1.value1")
 	assert.Equal(t, configMap["key2"], "key2.value")
 	assert.Equal(t, configMap["test.key2"], "test.key2.value")

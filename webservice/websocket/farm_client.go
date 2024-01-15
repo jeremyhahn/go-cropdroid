@@ -14,7 +14,7 @@ type FarmClient struct {
 	logger           *logging.Logger
 	hub              *FarmHub
 	conn             *websocket.Conn
-	send             chan config.FarmConfig
+	send             chan config.Farm
 	state            chan state.FarmStateMap
 	deviceState      chan map[string]state.DeviceStateMap
 	deviceStateDelta chan map[string]state.DeviceStateDeltaMap
@@ -39,7 +39,7 @@ func (c *FarmClient) readPump() {
 	//c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		c.logger.Debug("[FarmClient.readPump] pumping...")
-		var configuration config.FarmConfig
+		var configuration config.Farm
 		err := c.conn.ReadJSON(&configuration)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {

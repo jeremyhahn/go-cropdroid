@@ -17,29 +17,28 @@ func NewRoleDAO(logger *logging.Logger, db *gorm.DB) dao.RoleDAO {
 	return &GormRoleDAO{logger: logger, db: db}
 }
 
-func (dao *GormRoleDAO) Create(role config.RoleConfig) error {
-	return dao.db.Create(role).Error
+func (dao *GormRoleDAO) Save(role *config.Role) error {
+	return dao.db.Save(&role).Error
 }
 
-func (dao *GormRoleDAO) Save(role config.RoleConfig) error {
-	return dao.db.Save(role).Error
+func (dao *GormRoleDAO) Delete(role *config.Role) error {
+	return dao.db.Delete(role).Error
 }
 
-func (dao *GormRoleDAO) GetByUserAndOrgID(userID, orgID int) ([]config.Role, error) {
-	dao.logger.Debugf("Getting role for user %d and org %d", userID, orgID)
-	var roles []config.Role
+// This method is only here for sake of completeness for the interface. This method
+// is only used by the Raft datastore.
+func (dao *GormRoleDAO) Get(roleID uint64, CONSISTENCY_LEVEL int) (*config.Role, error) {
+	dao.logger.Debugf("Getting role %s", roleID)
+	var role *config.Role
 	if err := dao.db.
-		Table("roles").
-		Select("roles.id, roles.name").
-		Joins("JOIN permissions on roles.id = permissions.role_id AND permissions.user_id = ? and permissions.organization_id = ?", userID, orgID).
-		Find(&roles).Error; err != nil {
-
+		First(&role, roleID).Error; err != nil {
+		dao.logger.Errorf("[RoleDAO.Get] %s", err.Error())
 		return nil, err
 	}
-	return roles, nil
+	return role, nil
 }
 
-func (dao *GormRoleDAO) GetByName(name string) (config.RoleConfig, error) {
+func (dao *GormRoleDAO) GetByName(name string, CONSISTENCY_LEVEL int) (*config.Role, error) {
 	dao.logger.Debugf("Getting role %s", name)
 	var role config.Role
 	if err := dao.db.
@@ -50,17 +49,11 @@ func (dao *GormRoleDAO) GetByName(name string) (config.RoleConfig, error) {
 	return &role, nil
 }
 
-func (dao *GormRoleDAO) GetAll() ([]config.RoleConfig, error) {
+func (dao *GormRoleDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Role, error) {
 	dao.logger.Debug("Getting all roles")
-	var roles []config.Role
+	var roles []*config.Role
 	if err := dao.db.Order("name asc").Find(&roles).Error; err != nil {
 		return nil, err
 	}
-	roleConfigs := make([]config.RoleConfig, len(roles))
-	for i, role := range roles {
-		roleConfig := new(config.Role)
-		*roleConfig = role
-		roleConfigs[i] = roleConfig
-	}
-	return roleConfigs, nil
+	return roles, nil
 }

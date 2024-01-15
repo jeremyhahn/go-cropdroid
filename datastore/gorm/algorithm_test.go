@@ -3,6 +3,7 @@ package gorm
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,8 @@ import (
 func TestAlgorithmCRUD(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.LogMode(true)
 	currentTest.gorm.AutoMigrate(&config.Algorithm{})
 
@@ -23,13 +26,13 @@ func TestAlgorithmCRUD(t *testing.T) {
 	algorithm2 := config.NewAlgorithm()
 	algorithm2.SetName("Test Algorithm 2")
 
-	err := algorithmDAO.Create(algorithm1)
+	err := algorithmDAO.Save(algorithm1)
 	assert.Nil(t, err)
 
-	err = algorithmDAO.Create(algorithm2)
+	err = algorithmDAO.Save(algorithm2)
 	assert.Nil(t, err)
 
-	algorithmConfigs, err := algorithmDAO.GetAll()
+	algorithmConfigs, err := algorithmDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(algorithmConfigs))
 
@@ -38,6 +41,4 @@ func TestAlgorithmCRUD(t *testing.T) {
 
 	assert.Equal(t, algorithm2.ID, algorithmConfigs[1].ID)
 	assert.Equal(t, algorithm2.Name, algorithmConfigs[1].Name)
-
-	currentTest.Cleanup()
 }

@@ -17,7 +17,7 @@ func NewDeviceIndex(len int) DeviceIndex {
 			mutex: &sync.RWMutex{}}}
 }
 
-func CreateDeviceIndex(items map[uint64]config.DeviceConfig) DeviceIndex {
+func CreateDeviceIndex(items map[uint64]config.Device) DeviceIndex {
 	genericItems := make(map[uint64]interface{}, len(items))
 	for i := range items {
 		genericItems[i] = items[i]
@@ -32,22 +32,22 @@ func (store *DeviceIndexMap) Len() int {
 	return len(store.items)
 }
 
-func (store *DeviceIndexMap) Put(id uint64, v config.DeviceConfig) {
+func (store *DeviceIndexMap) Put(id uint64, v config.Device) {
 	store.BigGenericStateStore.Put(id, v)
 }
 
-func (store *DeviceIndexMap) Get(id uint64) (config.DeviceConfig, bool) {
+func (store *DeviceIndexMap) Get(id uint64) (config.Device, bool) {
 	if item, ok := store.BigGenericStateStore.Get(id); ok {
-		return item.(config.DeviceConfig), true
+		return item.(config.Device), true
 	}
-	return nil, false
+	return config.Device{}, false
 }
 
-func (store *DeviceIndexMap) GetAll() []config.DeviceConfig {
-	items := make([]config.DeviceConfig, len(store.BigGenericStateStore.items))
+func (store *DeviceIndexMap) GetAll() []config.Device {
+	items := make([]config.Device, len(store.BigGenericStateStore.items))
 	i := 0
 	for _, v := range store.BigGenericStateStore.items {
-		items[i] = v.(config.DeviceConfig)
+		items[i] = v.(config.Device)
 		i++
 	}
 	return items

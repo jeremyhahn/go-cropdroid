@@ -111,11 +111,11 @@ func (server *Webserver) Run() {
 	server.router.PathPrefix("/").Handler(fs)
 	http.Handle("/", server.httpServer.Handler)
 
-	sPort := fmt.Sprintf(":%d", server.app.Config.WebPort)
-	if server.app.Config.SSLFlag {
+	sPort := fmt.Sprintf(":%d", server.app.WebPort)
+	if server.app.SSLFlag {
 
-		server.app.Logger.Debugf("Starting web services on TLS port %d", server.app.Config.WebPort)
-		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.Config.WebPort))
+		server.app.Logger.Debugf("Starting web services on TLS port %d", server.app.WebPort)
+		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.WebPort))
 
 		certfile := fmt.Sprintf("%s/cert.pem", server.app.KeyDir)
 		keyfile := fmt.Sprintf("%s/key.pem", server.app.KeyDir)
@@ -137,7 +137,7 @@ func (server *Webserver) Run() {
 
 		server.app.DropPrivileges()
 
-		if server.app.Config.RedirectHttpToHttps {
+		if server.app.RedirectHttpToHttps {
 			server.app.Logger.Debugf("[Webserver] Redirecting HTTP to HTTPS")
 			go http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "https://"+r.Host+sPort+r.URL.String(), http.StatusMovedPermanently)
@@ -152,8 +152,8 @@ func (server *Webserver) Run() {
 
 	} else {
 
-		server.app.Logger.Infof("Starting web services on port %d", server.app.Config.WebPort)
-		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.Config.WebPort))
+		server.app.Logger.Infof("Starting web services on port %d", server.app.WebPort)
+		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.WebPort))
 
 		ipv4Listener, err := net.Listen("tcp4", sPort)
 		if err != nil {
@@ -383,7 +383,7 @@ func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.Config)
+	rest.NewJsonWriter().Write(w, http.StatusOK, server.app)
 }
 
 func (server *Webserver) endpoints(w http.ResponseWriter, r *http.Request) {
@@ -399,7 +399,7 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 		changefeedCount = changefeedService.FeedCount()
 	}
 	systemStatus := &model.System{
-		Mode:                    server.app.Config.Mode,
+		Mode:                    server.app.Mode,
 		NotificationQueueLength: server.registry.GetNotificationService().QueueSize(),
 		Farms:                   len(server.registry.GetFarmServices()),
 		Changefeeds:             changefeedCount,

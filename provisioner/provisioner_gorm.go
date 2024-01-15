@@ -17,16 +17,16 @@ type GormFarmProvisioner struct {
 	db                    *gorm.DB
 	location              *time.Location
 	farmDAO               dao.FarmDAO
-	farmProvisionerChan   chan config.FarmConfig
-	farmDeprovisionerChan chan config.FarmConfig
+	farmProvisionerChan   chan config.Farm
+	farmDeprovisionerChan chan config.Farm
 	userMapper            mapper.UserMapper
 	initializer           datastore.Initializer
 	FarmProvisioner
 }
 
 func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB, location *time.Location,
-	farmDAO dao.FarmDAO, farmProvisionerChan chan config.FarmConfig,
-	farmDeprovisionerChan chan config.FarmConfig, userMapper mapper.UserMapper,
+	farmDAO dao.FarmDAO, farmProvisionerChan chan config.Farm,
+	farmDeprovisionerChan chan config.Farm, userMapper mapper.UserMapper,
 	initializer datastore.Initializer) FarmProvisioner {
 
 	return &GormFarmProvisioner{
@@ -40,35 +40,29 @@ func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB, location *time.
 		initializer:           initializer}
 }
 
-func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount, params *ProvisionerParams) (config.FarmConfig, error) {
-	userConfig := provisioner.userMapper.MapUserModelToEntity(userAccount)
+func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount, params *common.ProvisionerParams) (*config.Farm, error) {
+	userConfig := provisioner.userMapper.MapUserModelToConfig(userAccount)
 	farmConfig, err := provisioner.initializer.BuildConfig(params.OrganizationID, userConfig, userAccount.GetRoles()[0])
 	if err != nil {
 		return nil, err
 	}
 	if provisioner.farmProvisionerChan != nil {
 		select {
-		case provisioner.farmProvisionerChan <- farmConfig:
+		case provisioner.farmProvisionerChan <- *farmConfig:
 		default:
 			provisioner.logger.Debugf("[FarmProvisioner.Provision] Waiting for provisioning request to complete. user=%s", userAccount.GetEmail())
 		}
 	}
-	return farmConfig, provisioner.farmDAO.Save(farmConfig.(*config.Farm))
+	return farmConfig, provisioner.farmDAO.Save(farmConfig)
 }
 
 func (provisioner *GormFarmProvisioner) Deprovision(
 	userAccount common.UserAccount, farmID uint64) error {
 
-	// farmConfig, err := provisioner.farmDAO.Get(farmID, common.CONSISTENCY_CACHED)
-	// if err != nil {
-	// 	return err
-	// }
-	// return provisioner.farmDAO.Delete(farmConfig)
-
-	farmConfig, err := provisioner.farmDAO.Get(farmID, common.CONSISTENCY_CACHED)
+	farmConfig, err := provisioner.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	provisioner.farmDeprovisionerChan <- farmConfig
+	provisioner.farmDeprovisionerChan <- *farmConfig
 	return nil
 }

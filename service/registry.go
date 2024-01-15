@@ -6,14 +6,14 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
 )
 
 type DefaultServiceRegistry struct {
 	app                 *app.App
-	datastoreRegistry   datastore.DatastoreRegistry
+	datastoreRegistry   dao.Registry
 	mapperRegistry      mapper.MapperRegistry
 	algorithmService    AlgorithmService
 	authService         AuthService
@@ -54,7 +54,7 @@ func NewServiceRegistry(app *app.App) ServiceRegistry {
 		farmServicesMutex: &sync.RWMutex{}}
 }
 
-func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
+func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	mappers mapper.MapperRegistry) ServiceRegistry {
 
 	algorithmService := NewAlgorithmService(daos.GetAlgorithmDAO())
@@ -78,7 +78,7 @@ func CreateServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
 		daos.GetRegistrationDAO(), daos.GetOrganizationDAO(),
 		daos.GetFarmDAO(), daos.GetUserDAO(), daos.GetRoleDAO(),
 		mappers.GetUserMapper())
-	gas := NewGoogleAuthService(_app, daos.GetOrganizationDAO(),
+	gas := NewGoogleAuthService(_app, daos.GetPermissionDAO(),
 		daos.GetUserDAO(), daos.GetRoleDAO(), daos.GetFarmDAO(),
 		mappers.GetUserMapper())
 	authServices[common.AUTH_TYPE_LOCAL] = authService

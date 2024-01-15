@@ -19,8 +19,10 @@ type MicroDeviceMapper struct {
 type DeviceMapper interface {
 	GetMetricMapper() MetricMapper
 	GetChannelMapper() ChannelMapper
-	MapStateToDevice(state state.DeviceStateMap, configuration config.Device) (common.Device, error)
-	MapConfigToModel(deviceEntity config.DeviceConfig, configEntities []config.DeviceConfigItem) (common.Device, error)
+	MapStateToDevice(state state.DeviceStateMap,
+		configuration *config.Device) (common.Device, error)
+	MapConfigToModel(deviceEntity *config.Device,
+		configEntities []*config.DeviceSetting) (common.Device, error)
 }
 
 func NewDeviceMapper(metricMapper MetricMapper, channelMapper ChannelMapper) DeviceMapper {
@@ -37,12 +39,12 @@ func (mapper *MicroDeviceMapper) GetChannelMapper() ChannelMapper {
 	return mapper.channelMapper
 }
 
-func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, device config.Device) (common.Device, error) {
+func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, device *config.Device) (common.Device, error) {
 	configuredMetrics := device.GetMetrics()
 	metrics := make([]common.Metric, len(configuredMetrics))
 	for i, metricConfig := range configuredMetrics {
 		if value, ok := state.GetMetrics()[metricConfig.GetKey()]; ok {
-			metric := mapper.metricMapper.MapConfigToModel(&metricConfig)
+			metric := mapper.metricMapper.MapConfigToModel(metricConfig)
 			metric.SetValue(value)
 			metrics[i] = metric
 		} else {
@@ -56,8 +58,8 @@ func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, de
 	channels := make([]common.Channel, len(configuredChannels))
 	channelState := state.GetChannels()
 	for i, channelConfig := range configuredChannels {
-		channel := mapper.channelMapper.MapConfigToModel(&channelConfig)
-		channel.SetValue(channelState[channelConfig.ChannelID])
+		channel := mapper.channelMapper.MapConfigToModel(channelConfig)
+		channel.SetValue(channelState[channelConfig.GetChannelID()])
 		channels[i] = channel
 	}
 	return &model.Device{
@@ -74,11 +76,11 @@ func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, de
 		Channels:        channels}, nil
 }
 
-func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity config.DeviceConfig,
-	configEntities []config.DeviceConfigItem) (common.Device, error) {
+func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity *config.Device,
+	settingEntities []*config.DeviceSetting) (common.Device, error) {
 
-	configs := make(map[string]string, len(configEntities))
-	for _, entity := range configEntities {
+	configs := make(map[string]string, len(settingEntities))
+	for _, entity := range settingEntities {
 		configs[entity.GetKey()] = entity.GetValue()
 	}
 	return &model.Device{

@@ -18,46 +18,47 @@ import (
 )
 
 type GoogleAuthService struct {
-	app         *app.App
-	idGenerator util.IdGenerator
-	orgDAO      dao.OrganizationDAO
-	userDAO     dao.UserDAO
-	roleDAO     dao.RoleDAO
-	farmDAO     dao.FarmDAO
-	mapper      mapper.UserMapper
+	app           *app.App
+	idGenerator   util.IdGenerator
+	permissionDAO dao.PermissionDAO
+	userDAO       dao.UserDAO
+	roleDAO       dao.RoleDAO
+	farmDAO       dao.FarmDAO
+	mapper        mapper.UserMapper
 	AuthService
 }
 
-func NewGoogleAuthService(app *app.App, orgDAO dao.OrganizationDAO,
+func NewGoogleAuthService(app *app.App, permissionDAO dao.PermissionDAO,
 	userDAO dao.UserDAO, roleDAO dao.RoleDAO, farmDAO dao.FarmDAO,
 	userMapper mapper.UserMapper) AuthService {
 
 	return &GoogleAuthService{
-		app:         app,
-		idGenerator: util.NewIdGenerator(app.DataStoreEngine),
-		orgDAO:      orgDAO,
-		userDAO:     userDAO,
-		roleDAO:     roleDAO,
-		farmDAO:     farmDAO,
-		mapper:      userMapper}
+		app:           app,
+		idGenerator:   util.NewIdGenerator(app.DataStoreEngine),
+		permissionDAO: permissionDAO,
+		userDAO:       userDAO,
+		roleDAO:       roleDAO,
+		farmDAO:       farmDAO,
+		mapper:        userMapper}
 }
 
-func (service *GoogleAuthService) Get(email string) (common.UserAccount, error) {
-	userEntity, err := service.userDAO.GetByEmail(email)
-	if err != nil && err.Error() != ErrRecordNotFound.Error() {
-		return nil, ErrInvalidCredentials
-	}
-	if err != nil {
-		return nil, err
-	}
-	return service.mapper.MapUserEntityToModel(userEntity), nil
-}
+// func (service *GoogleAuthService) Get(userID uint64) (common.UserAccount, error) {
+// 	userEntity, err := service.userDAO.Get(userID)
+// 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
+// 		return nil, ErrInvalidCredentials
+// 	}
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return service.mapper.MapUserEntityToModel(userEntity), nil
+// }
 
 func (service *GoogleAuthService) ResetPassword(userCredentials *UserCredentials) error {
 	return ErrResetPasswordUnsupported
 }
 
-func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error) {
+func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (common.UserAccount,
+	[]*config.Organization, []*config.Farm, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %+v", userCredentials)
 
@@ -73,10 +74,10 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 		service.app.Logger.Errorf("Error: %s", err)
 		return nil, nil, nil, ErrInvalidCredentials
 	}
-
 	service.app.Logger.Debugf("tokenInfo: %+v", tokenInfo)
 
-	userEntity, err := service.userDAO.GetByEmail(tokenInfo.Email)
+	userID := service.idGenerator.NewID(tokenInfo.Email)
+	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 
 	// Create a new trial account if this is a new user
 	if err != nil && err.Error() == ErrRecordNotFound.Error() {
@@ -90,7 +91,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 			return nil, nil, nil, err
 		}
 
-		roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
+		roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN, common.CONSISTENCY_LOCAL)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -103,11 +104,11 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 
 		// if service.app.Mode == common.MODE_STANDALONE {
 		// 	provisionerParams.StateStore = state.MEMORY_STORE
-		// 	provisionerParams.ConfigStore = config.GORM_STORE
+		// 	provisionerParams.ServerStore = config.GORM_STORE
 		// 	provisionerParams.DataStore = datastore.GORM_STORE
 		// } else {
 		// 	provisionerParams.StateStore = state.RAFT_STORE
-		// 	provisionerParams.ConfigStore = config.RAFT_MEMORY_STORE
+		// 	provisionerParams.ServerStore = config.RAFT_MEMORY_STORE
 		// 	provisionerParams.DataStore = datastore.GORM_STORE
 		// }
 
@@ -132,12 +133,12 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 
 		//newOrg := &config.Organization{ID: 0, Farms: []config.Farm{*farmConfig.(*config.Farm)}}
 		newOrg := &config.Organization{ID: 0}
-		return userAccount, []config.OrganizationConfig{newOrg}, nil, nil
+		return userAccount, []*config.Organization{newOrg}, nil, nil
 	}
 
 	/*
 		organizations := make([]config.OrganizationConfig, 0)
-		for _, org := range service.app.Config.Organizations {
+		for _, org := range service.app.Organizations {
 			for _, user := range org.Users {
 				if user.Email == tokenInfo.Email {
 					organizations = append(organizations, &org)
@@ -147,7 +148,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 		}
 		if len(organizations) == 0 {
 			org := config.Organization{ID: 0, Farms: make([]config.Farm, 0)}
-			for _, farm := range service.app.Config.Farms {
+			for _, farm := range service.app.Farms {
 				for _, user := range farm.Users {
 					if user.Email == tokenInfo.Email {
 						org.Farms = append(org.Farms, farm)
@@ -158,30 +159,31 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 			organizations = append(organizations, &org)
 		}*/
 
-	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID(), true)
+	organizations, err := service.permissionDAO.GetOrganizations(userEntity.GetID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		service.app.Logger.Errorf("Database error: %s", err)
 		return nil, nil, nil, ErrInternalDatabase
 	}
 
-	farms, err := service.farmDAO.GetByUserID(userEntity.GetID())
+	farms, err := service.farmDAO.GetByUserID(userEntity.GetID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	userEntity.SetPassword(idToken)
-	return service.mapper.MapUserEntityToModel(userEntity), organizations, farms, nil
+	return service.mapper.MapUserConfigToModel(userEntity), organizations, farms, nil
 }
 
 func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	baseURI string) (common.UserAccount, error) {
 
-	if !service.app.Config.EnableRegistrations {
+	if !service.app.EnableRegistrations {
 		return nil, ErrRegistrationDisabled
 	}
 	email := userCredentials.Email
 	token := userCredentials.Password
-	_, err := service.userDAO.GetByEmail(email)
+	userID := service.idGenerator.NewID(email)
+	_, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
@@ -203,7 +205,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 		Password: string(encrypted)}
 	//	Roles:    []config.Role{*roleConfig.(*config.Role)}}
 
-	err = service.userDAO.Create(userConfig) // creates userConfig.id
+	err = service.userDAO.Save(userConfig) // creates userConfig.id
 	if err != nil {
 		return nil, err
 	}

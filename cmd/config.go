@@ -38,16 +38,16 @@ var configCmd = &cobra.Command{
 
 		if InitDB {
 
-			App.GormDB = gorm.NewGormDB(App.Logger, App.GORMInitParams)
-			App.GORM = App.GormDB.Connect(true)
-			App.GORM.LogMode(App.DebugFlag)
+			gormdb := gorm.NewGormDB(App.Logger, App.GORMInitParams)
+			db := gormdb.Connect(true)
+			db.LogMode(App.DebugFlag)
 
 			idGenerator := util.NewIdGenerator(App.DataStoreEngine)
 
-			switch App.Config.Mode {
-			case common.MODE_STANDALONE, "virtual":
-				if err := gorm.NewGormInitializer(App.Logger, App.GormDB, idGenerator, App.Location,
-					App.Config.Mode).Initialize(App.Config.EnableDefaultFarm); err != nil {
+			switch App.Mode {
+			case common.CONFIG_MODE_VIRTUAL:
+				if err := gorm.NewGormInitializer(App.Logger, gormdb, idGenerator, App.Location,
+					App.Mode).Initialize(App.EnableDefaultFarm); err != nil {
 					log.Fatal(err)
 				}
 			// case common.MODE_CLOUD:
@@ -55,7 +55,7 @@ var configCmd = &cobra.Command{
 			// 		log.Fatal(err)
 			// 	}
 			default:
-				App.Logger.Fatalf("Unsupported mode: %s", App.Config.Mode)
+				App.Logger.Fatalf("Unsupported mode: %s", App.Mode)
 			}
 
 			log.Println("Database initialized")
@@ -75,7 +75,7 @@ var configCmd = &cobra.Command{
 				DataStoreEngine == "postgres" || DataStoreEngine == "cockroach" {
 
 				App.InitLogFile(os.Getuid(), os.Getgid())
-				App.InitGormDB()
+
 				_, _, _, _, err := builder.NewGormConfigBuilder(App, DataStore,
 					AppStateTTL, AppStateTick).Build()
 				if err != nil {
@@ -84,9 +84,9 @@ var configCmd = &cobra.Command{
 				//spew.Dump(serverConfig)
 				var data []byte
 				if ConfigOutputFormat == "yaml" {
-					data, err = yaml.Marshal(App.Config)
+					data, err = yaml.Marshal(App)
 				} else if ConfigOutputFormat == "json" {
-					data, err = json.Marshal(App.Config)
+					data, err = json.Marshal(App)
 				} else {
 					App.Logger.Fatal("Unsupported output format: %s", ConfigOutputFormat)
 				}
@@ -95,7 +95,7 @@ var configCmd = &cobra.Command{
 				}
 				fmt.Printf("%+v\n", string(data))
 			} else {
-				fmt.Printf("%+v\n", App.Config)
+				fmt.Printf("%+v\n", App)
 			}
 		}
 
@@ -104,9 +104,9 @@ var configCmd = &cobra.Command{
 			var data []byte
 			var err error
 			if DataStoreEngine == "yaml" {
-				data, err = yaml.Marshal(App.Config)
+				data, err = yaml.Marshal(App)
 			} else if DataStoreEngine == "json" {
-				data, err = json.Marshal(App.Config)
+				data, err = json.Marshal(App)
 			} else {
 				App.Logger.Fatalf("Unsupported datastore type: %s", DataStoreEngine)
 			}

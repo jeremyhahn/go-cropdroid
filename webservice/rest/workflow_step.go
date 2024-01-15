@@ -132,16 +132,16 @@ func (restService *DefaultWorkflowStepRestService) Create(w http.ResponseWriter,
 
 	session.GetLogger().Debug("Decoding JSON request")
 
-	var workflowStep config.WorkflowStep
+	var workflowStep *config.WorkflowStep
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&workflowStep); err != nil {
+	if err := decoder.Decode(workflowStep); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
 	session.GetLogger().Debugf("workflowStep=%+v", workflowStep)
 
-	persisted, err := restService.workflowStepService.Create(session, &workflowStep)
+	persisted, err := restService.workflowStepService.Create(session, workflowStep)
 	if err != nil {
 		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
@@ -162,16 +162,16 @@ func (restService *DefaultWorkflowStepRestService) Update(w http.ResponseWriter,
 
 	session.GetLogger().Debug("Decoding JSON request")
 
-	var workflowStep config.WorkflowStep
+	var workflowStep *config.WorkflowStep
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&workflowStep); err != nil {
+	if err := decoder.Decode(workflowStep); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
 	session.GetLogger().Debugf("workflowStep=%+v", workflowStep)
 
-	if err = restService.workflowStepService.Update(session, &workflowStep); err != nil {
+	if err = restService.workflowStepService.Update(session, workflowStep); err != nil {
 		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)
 		return

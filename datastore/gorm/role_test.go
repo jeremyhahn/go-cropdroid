@@ -3,6 +3,7 @@ package gorm
 import (
 	"testing"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -10,6 +11,8 @@ import (
 func TestRole_GetByUserAndOrgID_SingleRole(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
@@ -26,7 +29,7 @@ func TestRole_GetByUserAndOrgID_SingleRole(t *testing.T) {
 		Name: "analyst"})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
-	userDAO.Create(&config.User{
+	userDAO.Save(&config.User{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "foo"})
@@ -36,17 +39,19 @@ func TestRole_GetByUserAndOrgID_SingleRole(t *testing.T) {
 		RoleID:         1,
 		OrganizationID: 0})
 
-	roles, err := roleDAO.GetByUserAndOrgID(1, 0)
+	roles, err := roleDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(roles))
+	assert.Equal(t, 3, len(roles))
 	assert.Equal(t, "admin", roles[0].GetName())
-
-	currentTest.Cleanup()
+	assert.Equal(t, "analyst", roles[1].GetName())
+	assert.Equal(t, "cultivator", roles[2].GetName())
 }
 
 func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.User{})
 	currentTest.gorm.AutoMigrate(&config.Role{})
@@ -63,7 +68,7 @@ func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 		Name: "analyst"})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
-	userDAO.Create(&config.User{
+	userDAO.Save(&config.User{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "foo"})
@@ -77,18 +82,19 @@ func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 		RoleID:         3,
 		OrganizationID: 0})
 
-	roles, err := roleDAO.GetByUserAndOrgID(1, 0)
+	roles, err := roleDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(roles))
+	assert.Equal(t, 3, len(roles))
 	assert.Equal(t, "admin", roles[0].GetName())
 	assert.Equal(t, "analyst", roles[1].GetName())
-
-	currentTest.Cleanup()
+	assert.Equal(t, "cultivator", roles[2].GetName())
 }
 
 func TestRole_GetAll(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
+	defer currentTest.Cleanup()
+
 	currentTest.gorm.AutoMigrate(&config.Role{})
 
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
@@ -102,12 +108,10 @@ func TestRole_GetAll(t *testing.T) {
 		ID:   3,
 		Name: "analyst"})
 
-	roles, err := roleDAO.GetAll()
+	roles, err := roleDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(roles))
 	assert.Equal(t, "admin", roles[0].GetName())
-	assert.Equal(t, "cultivator", roles[1].GetName())
-	assert.Equal(t, "analyst", roles[2].GetName())
-
-	currentTest.Cleanup()
+	assert.Equal(t, "analyst", roles[1].GetName())
+	assert.Equal(t, "cultivator", roles[2].GetName())
 }

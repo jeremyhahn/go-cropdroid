@@ -2,19 +2,27 @@ package store
 
 import "github.com/jeremyhahn/go-cropdroid/config"
 
-type FarmConfigStorer interface {
-	Cache(farmID uint64, farmConfig config.FarmConfig)
-	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
-	GetAll() []config.FarmConfig
-	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) []config.FarmConfig
+type OrganizationStorer interface {
+	Get(organizationID uint64, CONSISTENCY_LEVEL int) (config.Organization, error)
+	GetAll(CONSISTENCY_LEVEL int) []config.Farm
+	GetByIds(organizationID []uint64, CONSISTENCY_LEVEL int) []config.Organization
 	Len() int
-	Put(farmID uint64, farmConfig config.FarmConfig) error
+	Put(organizationID uint64, organization config.Organization) error
 }
 
-type DeviceConfigStorer interface {
-	Cache(deviceID uint64, farmConfig config.DeviceConfig)
-	Get(deviceID uint64, CONSISTENCY_LEVEL int) (config.DeviceConfig, error)
-	GetAll(deviceID uint64) []config.DeviceConfig
+type FarmStorer interface {
+	Cache(farmID uint64, farm config.Farm)
+	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.Farm, error)
+	GetAll() []config.Farm
+	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) []config.Farm
 	Len() int
-	Put(deviceID uint64, deviceConfig config.DeviceConfig) error
+	Put(farmID uint64, farm config.Farm) error
+}
+
+type DeviceStorer interface {
+	Cache(deviceID uint64, farm config.Device)
+	Get(deviceID uint64, CONSISTENCY_LEVEL int) (config.Device, error)
+	GetAll(deviceID uint64) []config.Device
+	Len() int
+	Put(deviceID uint64, device config.Device) error
 }

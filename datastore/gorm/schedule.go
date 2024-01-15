@@ -17,23 +17,19 @@ func NewScheduleDAO(logger *logging.Logger, db *gorm.DB) dao.ScheduleDAO {
 	return &GormScheduleDAO{logger: logger, db: db}
 }
 
-func (dao *GormScheduleDAO) Create(schedule config.ScheduleConfig) error {
-	//entity := dao.mapConfigToEntity(schedule)
-	return dao.db.Create(schedule).Error
-}
-
-func (dao *GormScheduleDAO) Save(schedule config.ScheduleConfig) error {
-	//entity := dao.mapConfigToEntity(schedule)
+func (dao *GormScheduleDAO) Save(farmID, deviceID uint64, schedule *config.Schedule) error {
 	return dao.db.Save(schedule).Error
 }
 
-func (dao *GormScheduleDAO) Delete(schedule config.ScheduleConfig) error {
+func (dao *GormScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.Schedule) error {
 	return dao.db.Delete(schedule).Error
 }
 
-func (dao *GormScheduleDAO) GetByChannelID(id uint64) ([]config.Schedule, error) {
-	var entities []config.Schedule
-	if err := dao.db.Where("channel_id = ?", id).Find(&entities).Error; err != nil {
+func (dao *GormScheduleDAO) GetByChannelID(farmID, deviceID,
+	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Schedule, error) {
+
+	var entities []*config.Schedule
+	if err := dao.db.Where("channel_id = ?", channelID).Find(&entities).Error; err != nil {
 		return nil, err
 	}
 	return entities, nil
@@ -63,7 +59,7 @@ func decodeStringToArray(str *string) []string {
 	return days
 }
 
-func (dao *GormScheduleDAO) mapConfigToEntity(schedule config.ScheduleConfig) *config.Schedule {
+func (dao *GormScheduleDAO) mapConfigToEntity(schedule config.Schedule) *config.Schedule {
 	return &config.Schedule{
 		ID:        schedule.GetID(),
 		ChannelID: schedule.GetChannelID(),
@@ -76,7 +72,7 @@ func (dao *GormScheduleDAO) mapConfigToEntity(schedule config.ScheduleConfig) *c
 	//Days:      encodeArrayToString(schedule.GetDays())}
 }
 
-func (dao *GormScheduleDAO) mapEntityToConfig(entity *config.Schedule) config.ScheduleConfig {
+func (dao *GormScheduleDAO) mapEntityToConfig(entity *config.Schedule) config.Schedule {
 	return &config.Schedule{
 		ID: config.GetID(),
 		//ChannelID: config.GetChannelID(),
@@ -90,7 +86,7 @@ func (dao *GormScheduleDAO) mapEntityToConfig(entity *config.Schedule) config.Sc
 }
 
 /*
-func (dao *GormScheduleDAO) Get(id int) (config.ScheduleConfig, error) {
+func (dao *GormScheduleDAO) Get(id int) (config.Schedule, error) {
 	var schedule config.Schedule
 	if err := dao.db.First(&schedule, id).Error; err != nil {
 		return nil, err
@@ -111,7 +107,7 @@ func (dao *GormScheduleDAO) GetByUserOrgAndDeviceID(orgID, deviceID int) ([]conf
 		return nil, err
 	}
 
-	//	schedules := make([]config.ScheduleConfig, len(entities))
+	//	schedules := make([]config.Schedule, len(entities))
 	//	for i, entity := range entities {
 	//		schedules[i] = &entity
 	//	}
@@ -120,7 +116,7 @@ func (dao *GormScheduleDAO) GetByUserOrgAndDeviceID(orgID, deviceID int) ([]conf
 	return entities, nil
 }
 
-func (dao *GormScheduleDAO) Update(schedule config.ScheduleConfig) error {
+func (dao *GormScheduleDAO) Update(schedule config.Schedule) error {
 	return dao.db.Update(schedule).Error
 }
 

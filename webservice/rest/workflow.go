@@ -163,9 +163,9 @@ func (restService *DefaultWorkflowRestService) Create(w http.ResponseWriter, r *
 	logger := session.GetLogger()
 	logger.Debug("Decoding JSON request")
 
-	var workflow config.Workflow
+	var workflow *config.Workflow
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&workflow); err != nil {
+	if err := decoder.Decode(workflow); err != nil {
 		logger.Errorf("session: %s, error: %s", session, err)
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
@@ -173,7 +173,7 @@ func (restService *DefaultWorkflowRestService) Create(w http.ResponseWriter, r *
 
 	logger.Debugf("workflow=%+v", workflow)
 
-	persisted, err := restService.workflowService.Create(session, &workflow)
+	persisted, err := restService.workflowService.Create(session, workflow)
 	if err != nil {
 		logger.Errorf("session: %s, error: %s", session, err)
 		restService.jsonWriter.Error200(w, err)

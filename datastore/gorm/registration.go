@@ -21,26 +21,23 @@ func NewRegistrationDAO(logger *logging.Logger, db *gorm.DB) dao.RegistrationDAO
 
 // Saves a new registraion record to the database. The uint64 ID is shifted left
 // because sqlite max int is a signed integer.
-func (registrationDAO *GormRegistrationDAO) Save(registration config.RegistrationConfig) error {
-	reg := *registration.(*config.Registration)
-	reg.ID &^= (1 << 63)
+func (registrationDAO *GormRegistrationDAO) Save(registration *config.Registration) error {
 	registrationDAO.logger.Debugf(fmt.Sprintf("Saving registration record: %+v", registration))
-	return registrationDAO.db.Save(reg).Error
+	return registrationDAO.db.Save(registration).Error
 }
 
 // Gets a new registration record from the database. The uint64 ID is shifted left
 // because sqlite max int is a signed integer.
-func (registrationDAO *GormRegistrationDAO) Get(id uint64) (config.RegistrationConfig, error) {
-	id &^= (1 << 63)
-	registrationDAO.logger.Debugf("Getting registration id: %d", id)
+func (registrationDAO *GormRegistrationDAO) Get(registrationID uint64, CONSISTENCY_LEVEL int) (*config.Registration, error) {
+	registrationDAO.logger.Debugf("Getting registration id: %d", registrationID)
 	var entity config.Registration
-	if err := registrationDAO.db.First(&entity, id).Error; err != nil {
+	if err := registrationDAO.db.First(&entity, registrationID).Error; err != nil {
 		return nil, err
 	}
 	return &entity, nil
 }
 
-func (registrationDAO *GormRegistrationDAO) Delete(registration config.RegistrationConfig) error {
+func (registrationDAO *GormRegistrationDAO) Delete(registration *config.Registration) error {
 	registrationDAO.logger.Debugf(fmt.Sprintf("Deleting registration record: %+v", registration))
 	return registrationDAO.db.Delete(registration).Error
 }

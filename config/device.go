@@ -6,29 +6,29 @@ import (
 )
 
 type Device struct {
-	ID              uint64             `gorm:"primaryKey" yaml:"id" json:"id"`
-	FarmID          uint64             `yaml:"farmId" json:"farmId"`
-	Type            string             `yaml:"type" json:"type"`
-	Interval        int                `yaml:"interval" json:"interval"`
-	Description     string             `yaml:"description" json:"description"`
-	Enable          bool               `gorm:"-" yaml:"enable" json:"enable"`
-	Notify          bool               `gorm:"-" yaml:"notify" json:"notify"`
-	URI             string             `gorm:"-" yaml:"uri" json:"uri"`
-	HardwareVersion string             `gorm:"hw_version" yaml:"hwVersion" json:"hwVersion"`
-	FirmwareVersion string             `gorm:"fw_version" yaml:"fwVersion" json:"fwVersion"`
-	ConfigMap       map[string]string  `gorm:"-" yaml:"configs" json:"configs"`
-	Configs         []DeviceConfigItem `yaml:"-" json:"-"`
-	Metrics         []Metric           `yaml:"metrics" json:"metrics"`
-	Channels        []Channel          `yaml:"channels" json:"channels"`
-	DeviceConfig    `yaml:"-" json:"-"`
+	ID              uint64            `gorm:"primaryKey" yaml:"id" json:"id"`
+	FarmID          uint64            `yaml:"farmId" json:"farmId"`
+	Type            string            `yaml:"type" json:"type"`
+	Interval        int               `yaml:"interval" json:"interval"`
+	Description     string            `yaml:"description" json:"description"`
+	Enable          bool              `gorm:"-" yaml:"enable" json:"enable"`
+	Notify          bool              `gorm:"-" yaml:"notify" json:"notify"`
+	URI             string            `gorm:"-" yaml:"uri" json:"uri"`
+	HardwareVersion string            `gorm:"hw_version" yaml:"hwVersion" json:"hwVersion"`
+	FirmwareVersion string            `gorm:"fw_version" yaml:"fwVersion" json:"fwVersion"`
+	ConfigMap       map[string]string `gorm:"-" yaml:"configMap" json:"configMap"`
+	//Configs         []DeviceConfigItem `yaml:"-" json:"-"`
+	Settings []*DeviceSetting `yaml:"settings" json:"settings"`
+	Metrics  []*Metric        `yaml:"metrics" json:"metrics"`
+	Channels []*Channel       `yaml:"channels" json:"channels"`
 }
 
 func NewDevice() *Device {
 	return &Device{
 		ConfigMap: make(map[string]string, 0),
-		Configs:   make([]DeviceConfigItem, 0),
-		Metrics:   make([]Metric, 0),
-		Channels:  make([]Channel, 0)}
+		Settings:  make([]*DeviceSetting, 0),
+		Metrics:   make([]*Metric, 0),
+		Channels:  make([]*Channel, 0)}
 }
 
 func (device *Device) GetID() uint64 {
@@ -107,52 +107,63 @@ func (device *Device) GetConfigMap() map[string]string {
 	return device.ConfigMap
 }
 
-func (device *Device) GetConfigs() []DeviceConfigItem {
-	return device.Configs
+func (device *Device) GetSettings() []*DeviceSetting {
+	return device.Settings
 }
 
-func (device *Device) SetConfigs(configs []DeviceConfigItem) {
-	device.Configs = configs
+// Only used by test/datastore to allow looking up configs
+// in an order agnostic manner.
+func (device *Device) GetSetting(key string) *DeviceSetting {
+	for _, setting := range device.Settings {
+		if setting.GetKey() == key {
+			return setting
+		}
+	}
+	return nil
 }
 
-func (device *Device) SetConfig(deviceConfig DeviceConfigConfig) {
-	id := deviceConfig.GetID()
-	value := deviceConfig.GetValue()
-	for i, configItem := range device.Configs {
+func (device *Device) SetSettings(settings []*DeviceSetting) {
+	device.Settings = settings
+}
+
+func (device *Device) SetSetting(deviceSetting *DeviceSetting) {
+	id := deviceSetting.GetID()
+	value := deviceSetting.GetValue()
+	for i, configItem := range device.Settings {
 		if configItem.GetID() == id {
-			device.Configs[i].Value = value
+			device.Settings[i].Value = value
 			device.ConfigMap[configItem.GetKey()] = value
 			return
 		}
 	}
-	device.Configs = append(device.Configs, *deviceConfig.(*DeviceConfigItem))
-	device.ConfigMap[deviceConfig.GetKey()] = deviceConfig.GetValue()
+	device.Settings = append(device.Settings, deviceSetting)
+	device.ConfigMap[deviceSetting.GetKey()] = deviceSetting.GetValue()
 }
 
 func (device *Device) GetMetric(key string) (*Metric, error) {
 	for _, metric := range device.Metrics {
 		if metric.GetKey() == key {
-			return &metric, nil
+			return metric, nil
 		}
 	}
 	return nil, fmt.Errorf("Metric key not found: %s", key)
 }
 
-func (device *Device) GetMetrics() []Metric {
+func (device *Device) GetMetrics() []*Metric {
 	return device.Metrics
 }
 
-func (device *Device) SetMetric(metric MetricConfig) {
+func (device *Device) SetMetric(metric *Metric) {
 	for i, m := range device.Metrics {
 		if m.GetID() == metric.GetID() {
-			device.Metrics[i] = *metric.(*Metric)
+			device.Metrics[i] = metric
 			return
 		}
 	}
-	device.Metrics = append(device.Metrics, *metric.(*Metric))
+	device.Metrics = append(device.Metrics, metric)
 }
 
-func (device *Device) SetMetrics(metrics []Metric) {
+func (device *Device) SetMetrics(metrics []*Metric) {
 	device.Metrics = metrics
 }
 
@@ -160,29 +171,29 @@ func (device *Device) GetChannel(id int) (*Channel, error) {
 	if id < 0 || id > len(device.Channels) {
 		return nil, fmt.Errorf("Channel ID not found: %d", id)
 	}
-	return &device.Channels[id], nil
+	return device.Channels[id], nil
 }
 
-func (device *Device) GetChannels() []Channel {
+func (device *Device) GetChannels() []*Channel {
 	return device.Channels
 }
 
-func (device *Device) SetChannel(channel ChannelConfig) {
+func (device *Device) SetChannel(channel *Channel) {
 	for i, c := range device.Channels {
 		if c.GetID() == channel.GetID() {
-			device.Channels[i] = *channel.(*Channel)
+			device.Channels[i] = channel
 			return
 		}
 	}
-	device.Channels = append(device.Channels, *channel.(*Channel))
+	device.Channels = append(device.Channels, channel)
 }
 
-func (device *Device) SetChannels(channels []Channel) {
+func (device *Device) SetChannels(channels []*Channel) {
 	device.Channels = channels
 }
 
-func (device *Device) ParseConfigs() error {
-	configs := device.GetConfigs()
+func (device *Device) ParseSettings() error {
+	configs := device.GetSettings()
 	if device.ConfigMap == nil {
 		device.ConfigMap = make(map[string]string, len(configs))
 	}

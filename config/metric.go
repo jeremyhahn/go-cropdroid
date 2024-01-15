@@ -1,24 +1,25 @@
 package config
 
 type Metric struct {
-	ID           uint64  `gorm:"primaryKey" yaml:"id" json:"id"`
-	DeviceID     uint64  `yaml:"deviceID" json:"device_id"`
-	DataType     int     `gorm:"column:datatype" yaml:"datatype" json:"datatype"`
-	Name         string  `yaml:"name" json:"name"`
-	Key          string  `yaml:"key" json:"key"`
-	Enable       bool    `yaml:"enable" json:"enable"`
-	Notify       bool    `yaml:"notify" json:"notify"`
-	Unit         string  `yaml:"unit" json:"unit"`
-	AlarmLow     float64 `yaml:"alarmLow" json:"alarmLow"`
-	AlarmHigh    float64 `yaml:"alarmHigh" json:"alarmHigh"`
-	MetricConfig `yaml:"-" json:"-"`
+	ID        uint64  `gorm:"primaryKey" yaml:"id" json:"id"`
+	DeviceID  uint64  `yaml:"deviceID" json:"device_id"`
+	DataType  int     `gorm:"column:datatype" yaml:"datatype" json:"datatype"`
+	Name      string  `yaml:"name" json:"name"`
+	Key       string  `yaml:"key" json:"key"`
+	Enable    bool    `yaml:"enable" json:"enable"`
+	Notify    bool    `yaml:"notify" json:"notify"`
+	Unit      string  `yaml:"unit" json:"unit"`
+	AlarmLow  float64 `yaml:"alarmLow" json:"alarmLow"`
+	AlarmHigh float64 `yaml:"alarmHigh" json:"alarmHigh"`
 }
 
 func NewMetric() *Metric {
 	return &Metric{}
 }
 
-func CreateMetric(id uint64, name string, enable bool, notify bool) MetricConfig {
+func CreateMetric(id uint64, name string, enable bool,
+	notify bool) *Metric {
+
 	return &Metric{
 		ID:     id,
 		Name:   name,

@@ -16,7 +16,7 @@ var versionCmd = &cobra.Command{
 	Short: "Prints the software version",
 	Long:  `Displays software build and version details`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Name:\t\t\t%s\n", app.Name)
+		fmt.Printf("Name:\t\t\t%s\n", App.Name)
 		fmt.Printf("Git Tag:\t\t%s\n", app.GitTag)
 		fmt.Printf("Git Hash:\t\t%s\n", app.GitHash)
 		fmt.Printf("Build User:\t\t%s\n", app.BuildUser)

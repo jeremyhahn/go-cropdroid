@@ -11,13 +11,13 @@
         "editor.snippetSuggestions": "none",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.organizeImports": true
+            "source.organizeImports": "explicit"
         },
     },
     "gopls": {
         "build.buildFlags": ["-tags=cluster,pebble"],
         "usePlaceholders": true, // add parameter placeholders when completing a function
         "enhancedHover": true,   // experimental to improve quality of hover (will be on by default soon)
-    }
-    //"go.testTags": "cluster,pebble"
+    },
+    "go.testTags": "cluster,pebble"
 }

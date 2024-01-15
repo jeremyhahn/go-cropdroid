@@ -19,7 +19,7 @@ type Channel struct {
 	Backoff        int                `yaml:"backoff" json:"backoff"`
 	AlgorithmID    uint64             `yaml:"algorithm" json:"algorithmId"`
 	Value          int                `yaml:"value" json:"value"`
-	config.Channel `json:"-"`
+	common.Channel `json:"-" yaml:"-"`
 }
 
 func NewChannel() common.Channel {
@@ -87,7 +87,11 @@ func (channel *Channel) SetSchedule(schedule []config.Schedule) {
 }
 
 func (channel *Channel) GetSchedule() []config.Schedule {
-	return channel.Schedule
+	scheduleConfigs := make([]config.Schedule, len(channel.Schedule))
+	for i, sched := range channel.Schedule {
+		scheduleConfigs[i] = sched
+	}
+	return scheduleConfigs
 }
 
 func (channel *Channel) SetDuration(duration int) {

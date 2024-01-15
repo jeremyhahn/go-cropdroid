@@ -3,126 +3,136 @@ package dao
 import "github.com/jeremyhahn/go-cropdroid/config"
 
 type UserDAO interface {
-	Get(orgID, userID uint64) (config.UserConfig, error)
-	//GetAll(orgID uint64) ([]config.UserConfig, error)
-	GetByEmail(email string) (config.UserConfig, error)
-	Create(user config.UserConfig) error
-	Save(user config.UserConfig) error // used by test only
-	Delete(user config.UserConfig) error
+	Delete(user *config.User) error
+	Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error)
+	Save(user *config.User) error
 }
 
 type RoleDAO interface {
-	Create(role config.RoleConfig) error // used by test only
-	Save(role config.RoleConfig) error   // used by test only
-	//GetByUserAndOrgID(userID, orgID int) (config.RoleConfig, error)
-	GetByUserAndOrgID(userID, orgID int) ([]config.Role, error)
-	GetByName(name string) (config.RoleConfig, error)
-	GetAll() ([]config.RoleConfig, error)
+	Delete(role *config.Role) error
+	Get(roleID uint64, CONSISTENCY_LEVEL int) (*config.Role, error)
+	GetAll(CONSISTENCY_LEVEL int) ([]*config.Role, error)
+	GetByName(name string, CONSISTENCY_LEVEL int) (*config.Role, error)
+	Save(role *config.Role) error
 }
 
 type PermissionDAO interface {
-	GetUsers(orgID uint64) ([]config.UserConfig, error)
-	GetFarms(orgID uint64) ([]config.FarmConfig, error)
-	Save(permission config.PermissionConfig) error
-	Get(id uint64) (config.PermissionConfig, error)
-	Delete(permission config.PermissionConfig) error
-	Update(permission config.PermissionConfig) error
+	Delete(permission *config.Permission) error
+	GetFarms(orgID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+	GetOrganizations(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Organization, error)
+	GetUsers(orgID uint64, CONSISTENCY_LEVEL int) ([]*config.User, error)
+	Save(permission *config.Permission) error
+	Update(permission *config.Permission) error
 }
 
 type OrganizationDAO interface {
-	First() (config.OrganizationConfig, error) // used by test only
-	Get(id uint64) (config.OrganizationConfig, error)
-	GetAll() ([]config.OrganizationConfig, error)
-	GetByUserID(userID uint64, shallow bool) ([]config.OrganizationConfig, error)
-	GetUsers(id uint64) ([]config.UserConfig, error)
-	Save(organization config.OrganizationConfig) error
-	Delete(organization config.OrganizationConfig) error
+	Delete(organization *config.Organization) error
+	Get(id uint64, CONSISTENCY_LEVEL int) (*config.Organization, error)
+	GetAll(CONSISTENCY_LEVEL int) ([]*config.Organization, error)
+	GetUsers(id uint64) ([]*config.User, error)
+	Save(organization *config.Organization) error
 }
 
 type FarmDAO interface {
-	Count() (int64, error) // used by test only
-	Delete(farm config.FarmConfig) error
-	Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error)
-	GetAll() ([]config.FarmConfig, error)
-	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]config.FarmConfig, error)
-	GetByUserID(userID uint64) ([]config.FarmConfig, error)
-	Save(farm config.FarmConfig) error
+	Delete(farm *config.Farm) error
+	Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error)
+	GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+	GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+	Save(farm *config.Farm) error
 }
 
 type DeviceDAO interface {
-	Save(device config.DeviceConfig) error // Used only by integration test
-	Get(id uint64) (config.DeviceConfig, error)
-	//GetByOrgId(orgId int) ([]config.Device, error)
-	GetByFarmId(orgId uint64) ([]config.Device, error)
-	Count() (int64, error)
+	Save(device *config.Device) error
+	Get(farmID, deviceID uint64, CONSISTENCY_LEVEL int) (*config.Device, error)
 }
 
-type DeviceConfigDAO interface {
-	Save(config config.DeviceConfigConfig) error
-	Get(deviceID uint64, name string) (*config.DeviceConfigItem, error)
-	GetAll(deviceID uint64) ([]config.DeviceConfigItem, error)
+type DeviceSettingDAO interface {
+	Save(farmID uint64, deviceSetting *config.DeviceSetting) error
+	Get(farmID, deviceID uint64, name string, CONSISTENCY_LEVEL int) (*config.DeviceSetting, error)
 }
 
 type ChannelDAO interface {
-	Save(channel config.ChannelConfig) error
-	Get(channelID uint64) (config.ChannelConfig, error)
-	GetByDeviceID(deviceID uint64) ([]config.Channel, error)
-	GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Channel, error)
+	Save(farmID uint64, channel *config.Channel) error
+	GetByDevice(orgID, farmID, deviceID uint64, CONSISTENCY_LEVEL int) ([]*config.Channel, error)
+	Get(orgID, farmID, channelID uint64, CONSISTENCY_LEVEL int) (*config.Channel, error)
 }
 
 type ConditionDAO interface {
-	Create(condition config.ConditionConfig) error
-	Save(condition config.ConditionConfig) error
-	Delete(condition config.ConditionConfig) error
-	Get(id uint64) (config.ConditionConfig, error)
-	GetByChannelID(id uint64) ([]config.Condition, error)
-	GetByOrgUserAndChannelID(orgID, userID, channelID uint64) ([]config.Condition, error)
+	Save(farmID, deviceID uint64, condition *config.Condition) error
+	Delete(farmID, deviceID uint64, condition *config.Condition) error
+	Get(farmID, deviceID, channelID, conditionID uint64, CONSISTENCY_LEVEL int) (*config.Condition, error)
+	GetByChannelID(farmID, deviceID, channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Condition, error)
 }
-
-type AlgorithmDAO interface {
-	Create(config.AlgorithmConfig) error // used by test only
-	GetAll() ([]config.Algorithm, error)
-}
-
-// type ConfigDAO interface {
-// 	Save(config config.DeviceConfigConfig) error
-// 	Get(deviceID int, name string) (*config.DeviceConfigItem, error)
-// 	GetAll(deviceID int) ([]config.DeviceConfigItem, error)
-// }
 
 type MetricDAO interface {
-	Save(metric config.MetricConfig) error
-	Get(metricID uint64) (config.MetricConfig, error)
-	GetByDeviceID(deviceID uint64) ([]config.Metric, error) // Used to bootstrap sqlite config (configService.buildMetrics())
-	GetByOrgUserAndDeviceID(orgID, userID, deviceID uint64) ([]config.Metric, error)
+	Save(farmID uint64, metric *config.Metric) error
+	Get(farmID, deviceID uint64, metricID uint64, CONSISTENCY_LEVEL int) (*config.Metric, error)
+	GetByDevice(farmID, deviceID uint64, CONSISTENCY_LEVEL int) ([]*config.Metric, error)
 }
 
 type ScheduleDAO interface {
-	Create(schedule config.ScheduleConfig) error
-	Save(schedule config.ScheduleConfig) error
-	Delete(schedule config.ScheduleConfig) error
-	GetByChannelID(id uint64) ([]config.Schedule, error)
+	Save(farmID, deviceID uint64, schedule *config.Schedule) error
+	Delete(farmID, deviceID uint64, schedule *config.Schedule) error
+	GetByChannelID(farmID, deviceID, channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Schedule, error)
 }
 
 type WorkflowDAO interface {
-	Create(condition config.WorkflowConfig) error
-	Save(condition config.WorkflowConfig) error
-	Delete(condition config.WorkflowConfig) error
-	Get(id uint64) (config.WorkflowConfig, error)
-	//GetAll(farmID uint64) ([]config.Workflow, error)
-	GetByFarmID(id uint64) ([]config.Workflow, error)
+	Save(workflow *config.Workflow) error
+	Delete(workflow *config.Workflow) error
+	Get(farmID, workflowID uint64, CONSISTENCY_LEVEL int) (*config.Workflow, error)
+	GetByFarmID(farmID uint64, CONSISTENCY_LEVEL int) ([]*config.Workflow, error)
 }
 
 type WorkflowStepDAO interface {
-	Create(condition config.WorkflowStepConfig) error
-	Save(condition config.WorkflowStepConfig) error
-	Delete(condition config.WorkflowStepConfig) error
-	Get(id uint64) (config.WorkflowStepConfig, error)
-	GetByWorkflowID(id uint64) ([]config.WorkflowStep, error)
+	Save(farmID uint64, workflowStep *config.WorkflowStep) error
+	Delete(farmID uint64, workflowStep *config.WorkflowStep) error
+	Get(farmID, workflowID, workflowStepID uint64, CONSISTENCY_LEVEL int) (*config.WorkflowStep, error)
+	GetByWorkflowID(farmID, workflowID uint64, CONSISTENCY_LEVEL int) ([]*config.WorkflowStep, error)
+}
+
+type AlgorithmDAO interface {
+	Save(clgorithm *config.Algorithm) error // used by test only
+	GetAll(CONSISTENCY_LEVEL int) ([]*config.Algorithm, error)
 }
 
 type RegistrationDAO interface {
-	Save(registration config.RegistrationConfig) error
-	Get(id uint64) (config.RegistrationConfig, error)
-	Delete(registration config.RegistrationConfig) error
+	Save(registration *config.Registration) error
+	Get(registrationID uint64, CONSISTENCY_LEVEL int) (*config.Registration, error)
+	Delete(registration *config.Registration) error
+}
+
+type Registry interface {
+	GetOrganizationDAO() OrganizationDAO
+	SetOrganizationDAO(dao OrganizationDAO)
+	GetFarmDAO() FarmDAO
+	SetFarmDAO(dao FarmDAO)
+	NewFarmDAO() FarmDAO
+	GetDeviceDAO() DeviceDAO
+	NewDeviceDAO() DeviceDAO
+	SetDeviceDAO(dao DeviceDAO)
+	GetDeviceSettingDAO() DeviceSettingDAO
+	SetDeviceSettingDAO(dao DeviceSettingDAO)
+	GetMetricDAO() MetricDAO
+	SetMetricDAO(dao MetricDAO)
+	GetChannelDAO() ChannelDAO
+	SetChannelDAO(dao ChannelDAO)
+	GetScheduleDAO() ScheduleDAO
+	SetScheduleDAO(dao ScheduleDAO)
+	GetConditionDAO() ConditionDAO
+	SetConditionDAO(dao ConditionDAO)
+	GetAlgorithmDAO() AlgorithmDAO
+	SetAlgorithmDAO(dao AlgorithmDAO)
+	GetUserDAO() UserDAO
+	SetUserDAO(UserDAO)
+	GetPermissionDAO() PermissionDAO
+	SetPermissiondAO(regDAO PermissionDAO)
+	GetRegistrationDAO() RegistrationDAO
+	SetRegistrationDAO(regDAO RegistrationDAO)
+	GetRoleDAO() RoleDAO
+	SetRoleDAO(RoleDAO)
+	GetWorkflowDAO() WorkflowDAO
+	SetWorkflowDAO(WorkflowDAO)
+	GetWorkflowStepDAO() WorkflowStepDAO
+	SetWorkflowStepDAO(WorkflowStepDAO)
 }

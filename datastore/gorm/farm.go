@@ -5,28 +5,36 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
 
 type GormFarmDAO struct {
-	logger *logging.Logger
-	db     *gorm.DB
+	logger      *logging.Logger
+	db          *gorm.DB
+	idGenerator util.IdGenerator
 	dao.FarmDAO
 }
 
-func NewFarmDAO(logger *logging.Logger, db *gorm.DB) dao.FarmDAO {
-	return &GormFarmDAO{logger: logger, db: db}
+func NewFarmDAO(logger *logging.Logger, db *gorm.DB,
+	idGenerator util.IdGenerator) dao.FarmDAO {
+
+	return &GormFarmDAO{
+		logger:      logger,
+		db:          db,
+		idGenerator: idGenerator}
 }
 
-func (dao *GormFarmDAO) Delete(farm config.FarmConfig) error {
+func (dao *GormFarmDAO) Delete(farm *config.Farm) error {
 	dao.logger.Debugf("Deleting farm record: %s", farm.GetName())
 	for _, device := range farm.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			dao.db.Where("channel_id = ?", channel.GetID()).Delete(&config.Condition{})
 			dao.db.Where("channel_id = ?", channel.GetID()).Delete(&config.Schedule{})
 		}
-		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.DeviceConfigItem{})
+		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.DeviceSetting{})
 		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.Channel{})
 		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.Metric{})
 		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.WorkflowStep{})
@@ -38,19 +46,25 @@ func (dao *GormFarmDAO) Delete(farm config.FarmConfig) error {
 	return dao.db.Delete(farm).Error
 }
 
-func (dao *GormFarmDAO) Save(farm config.FarmConfig) error {
+func (dao *GormFarmDAO) Save(farm *config.Farm) error {
 	dao.logger.Debugf("Saving farm record: %s", farm.GetName())
-	return dao.db.Save(farm).Error
+	if farm.GetID() == 0 {
+		farm.SetID(dao.idGenerator.NewID(farm.GetName()))
+	}
+	if err := dao.db.Save(farm).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmConfig, error) {
+func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
 	dao.logger.Debugf("Getting farm: %d", farmID)
 	var farm config.Farm
 	if err := dao.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
-		Preload("Devices.Configs").
+		Preload("Devices.Settings").
 		Preload("Devices.Metrics").
 		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
@@ -62,20 +76,23 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.FarmCo
 		First(&farm, farmID).Error; err != nil {
 		return nil, err
 	}
-	if err := farm.ParseConfigs(); err != nil {
+	if farm.ID == 0 {
+		return nil, datastore.ErrNotFound
+	}
+	if err := farm.ParseSettings(); err != nil {
 		return nil, err
 	}
 	return &farm, nil
 }
 
-func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]config.FarmConfig, error) {
+func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
 	dao.logger.Debugf("Getting farms: %+v", farmIds)
-	var farms []config.Farm
+	var farms []*config.Farm
 	if err := dao.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
-		Preload("Devices.Configs").
+		Preload("Devices.Settings").
 		Preload("Devices.Metrics").
 		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
@@ -88,26 +105,22 @@ func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]con
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
-	farmConfigs := make([]config.FarmConfig, len(farms))
-	for i, farm := range farms {
-		if err := farm.ParseConfigs(); err != nil {
+	for _, farm := range farms {
+		if err := farm.ParseSettings(); err != nil {
 			return nil, err
 		}
-		farmConfig := new(config.Farm)
-		*farmConfig = farm
-		farmConfigs[i] = farmConfig
 	}
-	return farmConfigs, nil
+	return farms, nil
 }
 
-func (dao *GormFarmDAO) GetAll() ([]config.FarmConfig, error) {
+func (dao *GormFarmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
 	dao.logger.Debug("Getting all farms")
-	var farms []config.Farm
+	var farms []*config.Farm
 	if err := dao.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
-		Preload("Devices.Configs").
+		Preload("Devices.Settings").
 		Preload("Devices.Metrics").
 		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
@@ -119,26 +132,22 @@ func (dao *GormFarmDAO) GetAll() ([]config.FarmConfig, error) {
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
-	farmConfigs := make([]config.FarmConfig, len(farms))
-	for i, farm := range farms {
-		if err := farm.ParseConfigs(); err != nil {
+	for _, farm := range farms {
+		if err := farm.ParseSettings(); err != nil {
 			return nil, err
 		}
-		farmConfig := new(config.Farm)
-		*farmConfig = farm
-		farmConfigs[i] = farmConfig
 	}
-	return farmConfigs, nil
+	return farms, nil
 }
 
-func (dao *GormFarmDAO) GetByUserID(userID uint64) ([]config.FarmConfig, error) {
+func (dao *GormFarmDAO) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
 	dao.logger.Debug("Getting all farms for user: %d", userID)
-	var farms []config.Farm
+	var farms []*config.Farm
 	if err := dao.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
-		Preload("Devices.Configs").
+		Preload("Devices.Settings").
 		Preload("Devices.Metrics").
 		Preload("Devices.Channels").
 		Preload("Devices.Channels.Conditions").
@@ -152,16 +161,12 @@ func (dao *GormFarmDAO) GetByUserID(userID uint64) ([]config.FarmConfig, error) 
 		Find(&farms).Error; err != nil {
 		return nil, err
 	}
-	farmConfigs := make([]config.FarmConfig, len(farms))
-	for i, farm := range farms {
-		if err := farm.ParseConfigs(); err != nil {
+	for _, farm := range farms {
+		if err := farm.ParseSettings(); err != nil {
 			return nil, err
 		}
-		farmConfig := new(config.Farm)
-		*farmConfig = farm
-		farmConfigs[i] = farmConfig
 	}
-	return farmConfigs, nil
+	return farms, nil
 }
 
 func (dao *GormFarmDAO) Count() (int64, error) {
@@ -174,7 +179,7 @@ func (dao *GormFarmDAO) Count() (int64, error) {
 	return count, nil
 }
 
-// func (dao *GormFarmDAO) First() (config.FarmConfig, error) {
+// func (dao *GormFarmDAO) First() (config.Farm, error) {
 // 	dao.logger.Debugf("Getting first farm record")
 // 	var farm config.Farm
 // 	if err := dao.db.First(&farm).Error; err != nil {
@@ -186,7 +191,7 @@ func (dao *GormFarmDAO) Count() (int64, error) {
 // 	return &farm, nil
 // }
 
-// func (dao *GormFarmDAO) Create(farm config.FarmConfig) error {
+// func (dao *GormFarmDAO) Create(farm config.Farm) error {
 // 	dao.logger.Debugf("Creating farm record: %s", farm.GetName())
 // 	return dao.db.Create(farm).Error
 // }

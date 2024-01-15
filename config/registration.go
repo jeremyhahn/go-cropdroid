@@ -9,7 +9,6 @@ type Registration struct {
 	CreatedAt int64  `yaml:"created" json:"created"`
 	OrgID     uint64 `yaml:"org_id" json:"org_id"`
 	OrgName   string `yaml:"org_name" json:"org_name"`
-	RegistrationConfig
 }
 
 func NewRegistration() *Registration {
@@ -26,6 +25,10 @@ func CreateRegistration(id uint64) *Registration {
 // GetToken gets the registration token
 func (r *Registration) GetID() uint64 {
 	return r.ID
+}
+
+func (r *Registration) SetID(id uint64) {
+	r.ID = id
 }
 
 // Sets the registration email address

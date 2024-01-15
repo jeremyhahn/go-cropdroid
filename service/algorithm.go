@@ -1,12 +1,13 @@
 package service
 
 import (
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 )
 
 type AlgorithmService interface {
-	GetAll() ([]config.Algorithm, error)
+	GetAll() ([]*config.Algorithm, error)
 }
 
 type DefaultAlgorithmService struct {
@@ -18,8 +19,8 @@ func NewAlgorithmService(dao dao.AlgorithmDAO) AlgorithmService {
 	return &DefaultAlgorithmService{dao: dao}
 }
 
-func (service *DefaultAlgorithmService) GetAll() ([]config.Algorithm, error) {
-	entities, err := service.dao.GetAll()
+func (service *DefaultAlgorithmService) GetAll() ([]*config.Algorithm, error) {
+	entities, err := service.dao.GetAll(common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
 	}

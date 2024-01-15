@@ -17,7 +17,7 @@ func NewChannelIndex(len int) ChannelIndex {
 			mutex: &sync.RWMutex{}}}
 }
 
-func CreateChannelIndex(items map[uint64]config.ChannelConfig) ChannelIndex {
+func CreateChannelIndex(items map[uint64]config.Channel) ChannelIndex {
 	genericItems := make(map[uint64]interface{}, len(items))
 	for i := range items {
 		genericItems[i] = items[i]
@@ -32,21 +32,21 @@ func (store *ChannelIndexMap) Len() int {
 	return len(store.items)
 }
 
-func (store *ChannelIndexMap) Put(id uint64, v config.ChannelConfig) {
+func (store *ChannelIndexMap) Put(id uint64, v config.Channel) {
 	store.GenericStateStore.Put(uint64(id), v)
 }
 
-func (store *ChannelIndexMap) Get(id uint64) (config.ChannelConfig, bool) {
+func (store *ChannelIndexMap) Get(id uint64) (config.Channel, bool) {
 	if item, ok := store.GenericStateStore.Get(id); ok {
-		return item.(config.ChannelConfig), true
+		return item.(config.Channel), true
 	}
-	return nil, false
+	return config.Channel{}, false
 }
 
-func (store *ChannelIndexMap) GetAll() []config.ChannelConfig {
-	items := make([]config.ChannelConfig, len(store.items))
+func (store *ChannelIndexMap) GetAll() []config.Channel {
+	items := make([]config.Channel, len(store.items))
 	for k, v := range store.GenericStateStore.items {
-		items[k] = v.(config.ChannelConfig)
+		items[k] = v.(config.Channel)
 	}
 	return items
 }

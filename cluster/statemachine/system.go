@@ -1,103 +1,81 @@
-// Copyright 2017,2018 Lei Ni (nilei81@gmail.com).
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+//go:build cluster && pebble
+// +build cluster,pebble
 
 package statemachine
 
 import (
-	"encoding/binary"
-	"fmt"
 	"io"
-	"io/ioutil"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	sm "github.com/lni/dragonboat/v3/statemachine"
+	logging "github.com/op/go-logging"
 )
 
-// SystemStateMachine is the IStateMachine implementation used in the example
-// for handling all inputs not ends with "?".
-// See https://github.com/lni/dragonboat/blob/master/statemachine/rsm.go for
-// more details of the IStateMachine interface.
-type SystemStateMachine struct {
-	ClusterID uint64
-	NodeID    uint64
-	Count     uint64
+type SystemMachine interface {
+	CreateSystemDiskKV(clusterID, nodeID uint64) sm.IOnDiskStateMachine
+	sm.IOnDiskStateMachine
 }
 
-// NewSystemStateMachine creates and return a new SystemStateMachine object.
-func NewSystemStateMachine(clusterID uint64,
-	nodeID uint64) sm.IStateMachine {
-	return &SystemStateMachine{
-		ClusterID: clusterID,
-		NodeID:    nodeID,
-		Count:     0,
-	}
+type SystemDiskKV struct {
+	logger      *logging.Logger
+	idGenerator util.IdGenerator
+	dbPath      string
+	diskKV      DiskKV
+	SystemMachine
 }
 
-// Lookup performs local lookup on the SystemStateMachine instance. In this example,
-// we always return the Count value as a little endian binary encoded byte
-// slice.
-func (s *SystemStateMachine) Lookup(query interface{}) (interface{}, error) {
-	result := make([]byte, 8)
-	binary.LittleEndian.PutUint64(result, s.Count)
-	return result, nil
+func NewSystemDiskKV(logger *logging.Logger,
+	idGenerator util.IdGenerator, dbPath string,
+	clusterID, nodeID uint64) SystemMachine {
+
+	return &SystemDiskKV{
+		logger:      logger,
+		idGenerator: idGenerator,
+		diskKV: DiskKV{
+			dbPath:    dbPath,
+			clusterID: clusterID,
+			nodeID:    nodeID}}
 }
 
-// Update updates the object using the specified committed raft entry.
-func (s *SystemStateMachine) Update(data []byte) (sm.Result, error) {
-	// in this example, we print out the following message for each
-	// incoming update request. we also increase the counter by one to remember
-	// how many updates we have applied
-	s.Count++
-	fmt.Printf("from SystemStateMachine.Update(), msg: %s, count:%d\n",
-		string(data), s.Count)
-	return sm.Result{Value: uint64(len(data))}, nil
+func (d *SystemDiskKV) CreateSystemDiskKV(
+	clusterID, nodeID uint64) sm.IOnDiskStateMachine {
+
+	d.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
+	d.diskKV.clusterID = clusterID
+	d.diskKV.nodeID = nodeID
+	return d
 }
 
-// SaveSnapshot saves the current IStateMachine state into a snapshot using the
-// specified io.Writer object.
-func (s *SystemStateMachine) SaveSnapshot(w io.Writer,
-	fc sm.ISnapshotFileCollection, done <-chan struct{}) error {
-	// as shown above, the only state that can be saved is the Count variable
-	// there is no external file in this IStateMachine example, we thus leave
-	// the fc untouched
-	data := make([]byte, 8)
-	binary.LittleEndian.PutUint64(data, s.Count)
-	_, err := w.Write(data)
-	return err
+func (d *SystemDiskKV) Open(stopc <-chan struct{}) (uint64, error) {
+	return d.diskKV.Open(stopc)
 }
 
-// RecoverFromSnapshot recovers the state using the provided snapshot.
-func (s *SystemStateMachine) RecoverFromSnapshot(r io.Reader,
-	files []sm.SnapshotFile, done <-chan struct{}) error {
-	// restore the Count variable, that is the only state we maintain in this
-	// example, the input files is expected to be empty
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	v := binary.LittleEndian.Uint64(data)
-	s.Count = v
-	return nil
+func (d *SystemDiskKV) Sync() error {
+	return d.diskKV.Sync()
 }
 
-// Close closes the IStateMachine instance. There is nothing for us to cleanup
-// or release as this is a pure in memory data store. Note that the Close
-// method is not guaranteed to be called as node can crash at any time.
-func (s *SystemStateMachine) Close() error { return nil }
+func (d *SystemDiskKV) PrepareSnapshot() (interface{}, error) {
+	return d.diskKV.PrepareSnapshot()
+}
 
-// GetHash returns a uint64 representing the current object state.
-func (s *SystemStateMachine) GetHash() (uint64, error) {
-	// the only state we have is that Count variable. that uint64 value pretty much
-	// represents the state of this IStateMachine
-	return s.Count, nil
+func (d *SystemDiskKV) SaveSnapshot(ctx interface{}, w io.Writer, done <-chan struct{}) error {
+	return d.diskKV.SaveSnapshot(ctx, w, done)
+}
+
+func (d *SystemDiskKV) RecoverFromSnapshot(r io.Reader, done <-chan struct{}) error {
+	return d.diskKV.RecoverFromSnapshot(r, done)
+}
+
+func (d *SystemDiskKV) Close() error {
+	return d.diskKV.Close()
+}
+
+// Lookup expects the uint64 organization ID as the key
+func (d *SystemDiskKV) Lookup(key interface{}) (interface{}, error) {
+	return d.diskKV.Lookup(key)
+}
+
+func (d *SystemDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
+	return d.diskKV.Update(ents)
 }

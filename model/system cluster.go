@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package model
@@ -5,6 +6,7 @@ package model
 import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/cluster"
+	"github.com/jeremyhahn/go-cropdroid/cluster/util"
 )
 
 // https://github.com/google/pprof
@@ -31,7 +33,7 @@ type RaftStats struct {
 	LeaderID    int                      `json:"leaderId"`
 	IsLeader    bool                     `json:"leader"`
 	IsReady     bool                     `json:"ready"`
-	Params      *cluster.ClusterParams   `json:"params"`
+	Params      *util.ClusterParams      `json:"params"`
 	Clusters    []*cluster.ClusterStatus `json:"clusters"`
 	Hashring    *Hashring                `json:"hashring"`
 }

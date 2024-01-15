@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package service
@@ -15,7 +16,7 @@ func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 	farm.app.Logger.Debugf("Farm %d watching for incoming device state changes", farm.farmID)
 
 	clusterServiceRegisty := farm.serviceRegistry.(ClusterServiceRegistry)
-	raftCluster := clusterServiceRegisty.GetRaftCluster()
+	raftCluster := clusterServiceRegisty.GetRaftNode()
 
 	for {
 		select {
@@ -71,7 +72,7 @@ func (farm *DefaultFarmService) RunCluster() {
 	farm.running = true
 
 	clusterServiceRegisty := farm.serviceRegistry.(ClusterServiceRegistry)
-	raftCluster := clusterServiceRegisty.GetRaftCluster()
+	raftCluster := clusterServiceRegisty.GetRaftNode()
 
 	if raftCluster != nil {
 
@@ -105,12 +106,11 @@ func (farm *DefaultFarmService) RunCluster() {
 	farm.PollCluster(raftCluster)
 }
 
-func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftCluster) {
+func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftNode) {
 
-	farmConfig, err := farm.configStore.Get(farm.configClusterID, common.CONSISTENCY_CACHED)
+	farmConfig, err := farm.farmDAO.Get(farm.farmID, common.CONSISTENCY_LOCAL)
 	if err != nil || farmConfig == nil {
-		farm.app.Logger.Errorf("Farm config not found: configClusterID: %d, farmID: %d",
-			farm.configClusterID, farm.farmID)
+		farm.app.Logger.Errorf("Farm config not found: farmID: %d", farm.farmID)
 		return
 	}
 
@@ -129,15 +129,11 @@ func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftCluster) {
 	}
 }
 
-func (farm *DefaultFarmService) pollCluster(raftCluster cluster.RaftCluster) {
-
-	farm.app.Logger.Debugf("Polling farm, configClusterID=%d, farmID=%d",
-		farm.configClusterID, farm.farmID)
-
-	if isLeader := raftCluster.WaitForClusterReady(farm.configClusterID); isLeader == false {
+func (farm *DefaultFarmService) pollCluster(raftCluster cluster.RaftNode) {
+	farm.app.Logger.Debugf("Polling farm %d", farm.farmID)
+	if isLeader := raftCluster.WaitForClusterReady(farm.farmID); isLeader == false {
 		// Only the cluster leader polls the farm
 		return
 	}
-
 	farm.poll()
 }

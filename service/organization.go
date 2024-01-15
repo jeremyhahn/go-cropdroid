@@ -30,21 +30,21 @@ func NewOrganizationService(logger *logging.Logger, idGenerator util.IdGenerator
 }
 
 // Creates a new organization
-func (service *DefaultOrganizationService) Create(organization config.OrganizationConfig) error {
+func (service *DefaultOrganizationService) Create(organization *config.Organization) error {
 	organization.SetID(service.idGenerator.NewID(organization.GetName()))
 	return service.orgDAO.Save(organization)
 }
 
 // Returns a list of User entities that belong to the organization
-func (service *DefaultOrganizationService) GetAll(session Session) ([]config.OrganizationConfig, error) {
+func (service *DefaultOrganizationService) GetAll(session Session) ([]*config.Organization, error) {
 	if !session.GetUser().HasRole(common.ROLE_ADMIN) {
 		return nil, ErrPermissionDenied
 	}
-	return service.orgDAO.GetAll()
+	return service.orgDAO.GetAll(common.CONSISTENCY_LOCAL)
 }
 
 // Returns a list of User entities that belong to the organization
-func (service *DefaultOrganizationService) GetUsers(session Session) ([]config.UserConfig, error) {
+func (service *DefaultOrganizationService) GetUsers(session Session) ([]*config.User, error) {
 	if !session.HasRole(common.ROLE_ADMIN) {
 		return nil, ErrPermissionDenied
 	}

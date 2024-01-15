@@ -1,14 +1,8 @@
 package config
 
-type AlgorithmConfig interface {
-	GetID() uint64
-	GetName() string
-}
-
 type Algorithm struct {
-	ID              uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	Name            string `yaml:"name" json:"name"`
-	AlgorithmConfig `yaml:"-" json:"-"`
+	ID   uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	Name string `yaml:"name" json:"name"`
 }
 
 func NewAlgorithm() *Algorithm {

@@ -7,41 +7,39 @@ import (
 )
 
 type Farm struct {
-	ID uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	//OrganizationID uint64 `yaml:"orgId" json:"orgId"`
-	//Organization   Organization `yaml:"org" json:"org"`
-	Replicas    int        `yaml:"replicas" json:"replicas"`
-	Consistency int        `gorm:"consistency" yaml:"consistency" json:"consistency"`
-	StateStore  int        `gorm:"state_store" yaml:"state_store" json:"state_store"`
-	ConfigStore int        `gorm:"config_store" yaml:"config_store" json:"config_store"`
-	DataStore   int        `gorm:"data_store" yaml:"data_store" json:"data_store"`
-	Mode        string     `gorm:"-" yaml:"mode" json:"mode"`
-	Name        string     `gorm:"-" yaml:"name" json:"name"`
-	Interval    int        `gorm:"-" yaml:"interval" json:"interval"`
-	Smtp        *Smtp      `gorm:"-" yaml:"smtp" json:"smtp"`
-	Timezone    string     `gorm:"-" yaml:"timezone" json:"timezone"`
-	PrivateKey  string     `gorm:"private_key" yaml:"private_key" json:"private_key"`
-	PublicKey   string     `gorm:"public_key" yaml:"public_key" json:"public_key"`
-	Devices     []Device   `yaml:"devices" json:"devices"`
-	Users       []User     `gorm:"many2many:permissions" yaml:"users" json:"users"`
-	Workflows   []Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
-	FarmConfig  `yaml:"-" json:"-"`
+	ID             uint64      `gorm:"primaryKey" yaml:"id" json:"id"`
+	OrganizationID uint64      `yaml:"orgId" json:"orgId"`
+	Replicas       int         `yaml:"replicas" json:"replicas"`
+	Consistency    int         `gorm:"consistency" yaml:"consistency" json:"consistency"`
+	StateStore     int         `gorm:"state_store" yaml:"state_store" json:"state_store"`
+	ConfigStore    int         `gorm:"config_store" yaml:"config_store" json:"config_store"`
+	DataStore      int         `gorm:"data_store" yaml:"data_store" json:"data_store"`
+	Mode           string      `gorm:"-" yaml:"mode" json:"mode"`
+	Name           string      `gorm:"-" yaml:"name" json:"name"`
+	Interval       int         `gorm:"-" yaml:"interval" json:"interval"`
+	Smtp           *Smtp       `gorm:"-" yaml:"smtp" json:"smtp"`
+	Timezone       string      `gorm:"-" yaml:"timezone" json:"timezone"`
+	PrivateKey     string      `gorm:"private_key" yaml:"private_key" json:"private_key"`
+	PublicKey      string      `gorm:"public_key" yaml:"public_key" json:"public_key"`
+	Devices        []*Device   `yaml:"devices" json:"devices"`
+	Users          []*User     `gorm:"many2many:user_farm" yaml:"users" json:"users"`
+	Workflows      []*Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
 }
 
-func NewFarm() FarmConfig {
+func NewFarm() *Farm {
 	return &Farm{
 		//Interval: 60,
-		Devices: make([]Device, 0),
-		Users:   make([]User, 0)}
+		Devices: make([]*Device, 0),
+		Users:   make([]*User, 0)}
 }
 
 func CreateFarm(name string, orgID uint64, interval int,
-	users []User, devices []Device) FarmConfig {
+	users []*User, devices []*Device) *Farm {
 
 	return &Farm{
 		//Interval:       60,
-		//	OrganizationID: orgID,
-		Devices: devices}
+		OrganizationID: orgID,
+		Devices:        devices}
 }
 
 func (farm *Farm) SetID(id uint64) {
@@ -52,13 +50,13 @@ func (farm *Farm) GetID() uint64 {
 	return farm.ID
 }
 
-// func (farm *Farm) SetOrganizationID(id uint64) {
-// 	farm.OrganizationID = id
-// }
+func (farm *Farm) SetOrganizationID(id uint64) {
+	farm.OrganizationID = id
+}
 
-// func (farm *Farm) GetOrganizationID() uint64 {
-// 	return farm.OrganizationID
-// }
+func (farm *Farm) GetOrganizationID() uint64 {
+	return farm.OrganizationID
+}
 
 func (farm *Farm) SetReplicas(count int) {
 	farm.Replicas = count
@@ -68,11 +66,11 @@ func (farm *Farm) GetReplicas() int {
 	return farm.Replicas
 }
 
-func (farm *Farm) SetConsistency(level int) {
+func (farm *Farm) SetConsistencyLevel(level int) {
 	farm.Consistency = level
 }
 
-func (farm *Farm) GetConsistency() int {
+func (farm *Farm) GetConsistencyLevel() int {
 	return farm.Consistency
 }
 
@@ -156,53 +154,67 @@ func (farm *Farm) GetPublicKey() string {
 	return farm.PublicKey
 }
 
-func (farm *Farm) GetSmtp() SmtpConfig {
+func (farm *Farm) GetSmtp() *Smtp {
 	return farm.Smtp
 }
 
-func (farm *Farm) SetUsers(users []User) {
+func (farm *Farm) AddUser(user *User) {
+	farm.Users = append(farm.Users, user)
+}
+
+func (farm *Farm) RemoveUser(user *User) {
+	for i, u := range farm.Users {
+		if u.ID == user.GetID() {
+			farm.Users = append(farm.Users[:i], farm.Users[i+1:]...)
+			break
+		}
+	}
+}
+
+func (farm *Farm) SetUsers(users []*User) {
 	farm.Users = users
 }
 
-func (farm *Farm) GetUsers() []User {
+func (farm *Farm) GetUsers() []*User {
 	return farm.Users
 }
 
-func (farm *Farm) AddDevice(device Device) {
+func (farm *Farm) AddDevice(device *Device) {
 	farm.Devices = append(farm.Devices, device)
 }
 
-func (farm *Farm) GetDevices() []Device {
+func (farm *Farm) GetDevices() []*Device {
 	return farm.Devices
 }
 
-func (farm *Farm) SetDevices(devices []Device) {
+func (farm *Farm) SetDevices(devices []*Device) {
 	farm.Devices = devices
 }
 
-func (farm *Farm) SetDevice(device DeviceConfig) {
+func (farm *Farm) SetDevice(device *Device) {
 	for i, c := range farm.Devices {
 		if c.GetID() == device.GetID() {
-			farm.Devices[i] = *device.(*Device)
+			farm.Devices[i] = device
 			return
 		}
 	}
-	farm.Devices = append(farm.Devices, *device.(*Device))
+	farm.Devices = append(farm.Devices, device)
 }
 
 func (farm *Farm) GetDevice(deviceType string) (*Device, error) {
 	for _, device := range farm.Devices {
 		if device.GetType() == deviceType {
-			return &device, nil
+			return device, nil
 		}
 	}
-	return nil, fmt.Errorf("[config.Farm] Device type not found: %s", deviceType)
+	return nil, fmt.Errorf("[config.Farm] Device type not found: %s",
+		deviceType)
 }
 
 func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
 	for _, device := range farm.Devices {
 		if device.GetID() == id {
-			return &device, nil
+			return device, nil
 		}
 	}
 	return nil, fmt.Errorf("device not found: %d", id)
@@ -217,29 +229,29 @@ func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
 // 	return nil, ErrDeviceNotFound
 // }
 
-func (farm *Farm) SetWorkflows(workflows []Workflow) {
+func (farm *Farm) SetWorkflows(workflows []*Workflow) {
 	farm.Workflows = workflows
 }
 
-func (farm *Farm) GetWorkflows() []Workflow {
+func (farm *Farm) GetWorkflows() []*Workflow {
 	return farm.Workflows
 }
 
-func (farm *Farm) AddWorkflow(workflow WorkflowConfig) {
-	farm.Workflows = append(farm.Workflows, *workflow.(*Workflow))
+func (farm *Farm) AddWorkflow(workflow *Workflow) {
+	farm.Workflows = append(farm.Workflows, workflow)
 }
 
-func (farm *Farm) SetWorkflow(workflow WorkflowConfig) {
+func (farm *Farm) SetWorkflow(workflow *Workflow) {
 	for i, w := range farm.Workflows {
 		if w.GetID() == workflow.GetID() {
-			farm.Workflows[i] = *workflow.(*Workflow)
+			farm.Workflows[i] = workflow
 			return
 		}
 	}
-	farm.Workflows = append(farm.Workflows, *workflow.(*Workflow))
+	farm.Workflows = append(farm.Workflows, workflow)
 }
 
-func (farm *Farm) RemoveWorkflow(workflow WorkflowConfig) error {
+func (farm *Farm) RemoveWorkflow(workflow *Workflow) error {
 	for i, w := range farm.Workflows {
 		if w.GetID() == workflow.GetID() {
 			farm.Workflows = append(farm.Workflows[:i], farm.Workflows[i+1:]...)
@@ -249,11 +261,11 @@ func (farm *Farm) RemoveWorkflow(workflow WorkflowConfig) error {
 	return ErrWorkflowNotFound
 }
 
-func (farm *Farm) ParseConfigs() error {
+func (farm *Farm) ParseSettings() error {
 	for i, device := range farm.GetDevices() {
 		if device.GetType() == "server" {
-			smtpConfig := NewSmtp()
-			for _, item := range device.GetConfigs() {
+			smtp := NewSmtp()
+			for _, item := range device.GetSettings() {
 				key := item.GetKey()
 				value := item.GetValue()
 				switch key {
@@ -279,26 +291,26 @@ func (farm *Farm) ParseConfigs() error {
 					if err != nil {
 						return err
 					}
-					smtpConfig.SetEnable(bEnable)
+					smtp.SetEnable(bEnable)
 				case "smtp.host":
-					smtpConfig.SetHost(value)
+					smtp.SetHost(value)
 				case "smtp.port":
 					smtpPortInt, err := strconv.ParseInt(value, 10, 0)
 					if err != nil {
 						return err
 					}
-					smtpConfig.SetPort(int(smtpPortInt))
+					smtp.SetPort(int(smtpPortInt))
 				case "smtp.username":
-					smtpConfig.SetUsername(value)
+					smtp.SetUsername(value)
 				case "smtp.password":
-					smtpConfig.SetPassword(value)
+					smtp.SetPassword(value)
 				case "smtp.recipient":
-					smtpConfig.SetRecipient(value)
+					smtp.SetRecipient(value)
 				}
 			}
-			farm.Smtp = smtpConfig.(*Smtp)
+			farm.Smtp = smtp
 		}
-		if err := device.ParseConfigs(); err != nil {
+		if err := device.ParseSettings(); err != nil {
 			return err
 		}
 		farm.Devices[i] = device
@@ -311,10 +323,10 @@ func (farm *Farm) ParseConfigs() error {
 // used when unmarshalling from JSON or YAML since device.Configs json:"-" and yaml:"-"
 // is set so the results are returned as key/value pairs by the API. Probably best to refactor
 // this so the API returns a dedicated view and device.Configs doesn't get ignored.
-func (farm *Farm) HydrateConfigs() error {
+func (farm *Farm) HydrateSettings() error {
 	for i, device := range farm.GetDevices() {
 		if device.GetType() == "server" {
-			smtpConfig := NewSmtp()
+			smtp := NewSmtp()
 			for key, value := range device.GetConfigMap() {
 				switch key {
 				case "name":
@@ -339,28 +351,28 @@ func (farm *Farm) HydrateConfigs() error {
 					if err != nil {
 						return err
 					}
-					smtpConfig.SetEnable(bEnable)
+					smtp.SetEnable(bEnable)
 				case "smtp.host":
-					smtpConfig.SetHost(value)
+					smtp.SetHost(value)
 				case "smtp.port":
 					smtpPortInt, err := strconv.ParseInt(value, 10, 0)
 					if err != nil {
 						return err
 					}
-					smtpConfig.SetPort(int(smtpPortInt))
+					smtp.SetPort(int(smtpPortInt))
 				case "smtp.username":
-					smtpConfig.SetUsername(value)
+					smtp.SetUsername(value)
 				case "smtp.password":
-					smtpConfig.SetPassword(value)
+					smtp.SetPassword(value)
 				case "smtp.recipient":
-					smtpConfig.SetRecipient(value)
+					smtp.SetRecipient(value)
 				}
 			}
-			farm.Smtp = smtpConfig.(*Smtp)
+			farm.Smtp = smtp
 		}
-		if err := device.HydrateConfigs(); err != nil {
-			return err
-		}
+		// if err := device.HydrateConfigs(); err != nil {
+		// 	return err
+		// }
 		farm.Devices[i] = device
 	}
 	return nil

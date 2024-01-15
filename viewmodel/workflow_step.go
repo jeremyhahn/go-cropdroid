@@ -1,20 +1,17 @@
 package viewmodel
 
-import "github.com/jeremyhahn/go-cropdroid/config"
-
 type WorkflowStep struct {
-	ID                        uint64 `yaml:"id" json:"id"`
-	WorkflowID                uint64 `yaml:"workflow" json:"workflowId"`
-	DeviceID                  uint64 `yaml:"device" json:"deviceId"`
-	DeviceType                string `yaml:"deviceType" json:"deviceType"`
-	ChannelID                 uint64 `yaml:"channel" json:"channelId"`
-	ChannelName               string `yaml:"channelName" json:"channelName"`
-	Webhook                   string `yaml:"webhook" json:"webhook"`
-	Duration                  int    `yaml:"duration" json:"duration"`
-	Wait                      int    `yaml:"wait" json:"wait"`
-	Text                      string `yaml:"text" json:"text"`
-	State                     int    `yaml:"state" json:"state"`
-	config.WorkflowStepConfig `yaml:"-" json:"-"`
+	ID          uint64 `yaml:"id" json:"id"`
+	WorkflowID  uint64 `yaml:"workflow" json:"workflowId"`
+	DeviceID    uint64 `yaml:"device" json:"deviceId"`
+	DeviceType  string `yaml:"deviceType" json:"deviceType"`
+	ChannelID   uint64 `yaml:"channel" json:"channelId"`
+	ChannelName string `yaml:"channelName" json:"channelName"`
+	Webhook     string `yaml:"webhook" json:"webhook"`
+	Duration    int    `yaml:"duration" json:"duration"`
+	Wait        int    `yaml:"wait" json:"wait"`
+	Text        string `yaml:"text" json:"text"`
+	State       int    `yaml:"state" json:"state"`
 }
 
 func NewWorkflowStep() *WorkflowStep {

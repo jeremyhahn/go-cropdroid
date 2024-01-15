@@ -57,9 +57,9 @@ type BigStateStore interface {
 // device in every farm to find the it.
 type DeviceIndex interface {
 	Len() int
-	Put(id uint64, v config.DeviceConfig)
-	Get(id uint64) (config.DeviceConfig, bool)
-	GetAll() []config.DeviceConfig
+	Put(id uint64, v config.Device)
+	Get(id uint64) (config.Device, bool)
+	GetAll() []config.Device
 }
 
 // Channel index stores a map of id to object pointers
@@ -69,7 +69,7 @@ type DeviceIndex interface {
 // channel in every device to find it.
 type ChannelIndex interface {
 	Len() int
-	Put(id uint64, v config.ChannelConfig)
-	Get(id uint64) (config.ChannelConfig, bool)
-	GetAll() []config.ChannelConfig
+	Put(id uint64, v config.Channel)
+	Get(id uint64) (config.Channel, bool)
+	GetAll() []config.Channel
 }

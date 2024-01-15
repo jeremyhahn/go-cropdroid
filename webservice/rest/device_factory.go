@@ -32,6 +32,7 @@ func NewDeviceFactoryRestService(serviceRegistry service.ServiceRegistry,
 }
 
 func (restService *DefaultMicroFactoryRestService) RegisterEndpoints(router *mux.Router, baseURI, baseFarmURI string) []string {
+	// /farms/{farmID}/devices
 	getDevicesEndpoint := fmt.Sprintf("%s/devices", baseFarmURI)
 	router.Handle(getDevicesEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middleware.Validate),

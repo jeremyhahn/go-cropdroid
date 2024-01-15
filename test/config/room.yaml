@@ -189,13 +189,7 @@ channels:
     name: Dehumidifier
     enable: true
     notify: true
-    conditions:
-      - id: 3064106673
-        workflow: 0
-        channel: 1946951936
-        metric: 867834756
-        comparator: '>'
-        threshold: 55
+    conditions: []
     schedule: []
     duration: 0
     debounce: 10
@@ -207,13 +201,7 @@ channels:
     name: Heater
     enable: true
     notify: true
-    conditions:
-      - id: 2567670672
-        workflow: 0
-        channel: 1963729555
-        metric: 884612375
-        comparator: <
-        threshold: 70
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0
@@ -225,13 +213,7 @@ channels:
     name: Air Conditioner
     enable: true
     notify: true
-    conditions:
-      - id: 2905350431
-        workflow: 0
-        channel: 1980507174
-        metric: 901389994
-        comparator: '>'
-        threshold: 85
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0
@@ -244,18 +226,7 @@ channels:
     enable: true
     notify: true
     conditions: []
-    schedule:
-      - id: 3050983949
-        workflow: 0
-        channelId: 1997284793
-        startDate: 2021-12-11T19:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
+    schedule: []
     duration: 64800
     debounce: 0
     backoff: 0
@@ -279,73 +250,7 @@ channels:
     enable: true
     notify: true
     conditions: []
-    schedule:
-      - id: 1126396126
-        workflow: 0
-        channelId: 2064395269
-        startDate: 2021-12-11T17:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - id: 1143173745
-        workflow: 0
-        channelId: 2064395269
-        startDate: 2021-12-11T18:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - id: 1159951364
-        workflow: 0
-        channelId: 2064395269
-        startDate: 2021-12-11T15:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - id: 1176728983
-        workflow: 0
-        channelId: 2064395269
-        startDate: 2021-12-11T16:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - id: 1193506602
-        workflow: 0
-        channelId: 2064395269
-        startDate: 2021-12-11T13:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - id: 1210284221
-        workflow: 0
-        channelId: 2064395269
-        startDate: 2021-12-11T14:00:00-05:00
-        endDate: null
-        frequency: 1
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
+    schedule: []
     duration: 900
     debounce: 0
     backoff: 0

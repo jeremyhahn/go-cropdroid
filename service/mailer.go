@@ -23,13 +23,12 @@ type GMailer struct {
 	common.Mailer
 }
 
-func NewMailer(app *app.App, smtpConfig config.SmtpConfig) common.Mailer {
+func NewMailer(app *app.App, smtpConfig *config.Smtp) common.Mailer {
 	if smtpConfig == nil {
-		if app.Config.Smtp != nil {
-			smtpConfig = app.Config.Smtp
+		if app.Smtp != nil {
+			smtpConfig = app.Smtp
 		} else {
-			smtpConfig = &config.Smtp{
-				Enable: false}
+			smtpConfig = &config.Smtp{Enable: false}
 		}
 	}
 	return &GMailer{

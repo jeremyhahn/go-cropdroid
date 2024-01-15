@@ -18,34 +18,34 @@ func NewMockChannelDAO() *MockChannelDAO {
 	return &MockChannelDAO{}
 }
 
-func (dao *MockChannelDAO) Create(channel config.ChannelConfig) error {
+func (dao *MockChannelDAO) Create(channel config.Channel) error {
 	args := dao.Called(channel)
 	fmt.Printf("Creating channel record")
 	return args.Error(0)
 }
 
-func (dao *MockChannelDAO) Save(channel config.ChannelConfig) error {
+func (dao *MockChannelDAO) Save(channel config.Channel) error {
 	args := dao.Called(channel)
 	fmt.Printf("Saving channel record")
 	return args.Error(0)
 }
 
-func (dao *MockChannelDAO) Update(channel config.ChannelConfig) error {
+func (dao *MockChannelDAO) Update(channel config.Channel) error {
 	args := dao.Called(channel)
 	fmt.Printf("Updating channel record")
 	return args.Error(0)
 }
 
-func (dao *MockChannelDAO) Get(channelID int) (config.ChannelConfig, error) {
+func (dao *MockChannelDAO) Get(channelID int) (config.Channel, error) {
 	args := dao.Called(channelID)
 	fmt.Printf("Getting channel channelID=%d", channelID)
-	return args.Get(0).(config.ChannelConfig), nil
+	return args.Get(0).(config.Channel), nil
 }
 
-func (dao *MockChannelDAO) GetByDeviceNameAndID(deviceID int, name string) (config.ChannelConfig, error) {
+func (dao *MockChannelDAO) GetByDeviceNameAndID(deviceID int, name string) (config.Channel, error) {
 	args := dao.Called(deviceID, name)
 	fmt.Printf("Getting channel by device name and ID: name=%s, deviceID=%d", name, deviceID)
-	return args.Get(0).(config.ChannelConfig), nil
+	return args.Get(0).(config.Channel), nil
 }
 
 func (dao *MockChannelDAO) GetByDeviceID(deviceID int) ([]config.Channel, error) {

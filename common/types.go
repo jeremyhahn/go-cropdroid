@@ -6,13 +6,11 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
 const (
-	CONSISTENCY_CACHED = iota
-	CONSISTENCY_LOCAL
+	CONSISTENCY_LOCAL = iota
 	CONSISTENCY_QUORUM
 )
 
@@ -22,6 +20,7 @@ var (
 
 type UserAccount interface {
 	GetID() uint64
+	SetID(id uint64)
 	GetEmail() string
 	SetEmail(string)
 	GetPassword() string
@@ -30,11 +29,17 @@ type UserAccount interface {
 	SetRoles([]Role)
 	AddRole(Role)
 	HasRole(name string) bool
+	SetOrganizationRefs(ids []uint64)
+	GetOrganizationRefs() []uint64
+	SetFarmRefs(ids []uint64)
+	GetFarmRefs() []uint64
 }
 
 type Role interface {
 	GetID() uint64
+	SetID(uint64)
 	GetName() string
+	SetName(name string)
 }
 
 type HttpWriter interface {
@@ -117,8 +122,8 @@ type Server interface {
 	GetTimezone() string
 	SetMode(mode string)
 	GetMode() string
-	SetSmtp(smtp config.SmtpConfig)
-	GetSmtp() config.SmtpConfig
+	SetSmtp(smtp config.Smtp)
+	GetSmtp() config.Smtp
 	SetFarms(farms []Farm)
 	GetFarms() []Farm
 }
@@ -165,15 +170,62 @@ type Device interface {
 }
 
 type Metric interface {
-	config.MetricConfig
+	//config.MetricConfig
+	GetID() uint64
+	SetID(uint64)
+	GetDeviceID() uint64
+	SetDeviceID(uint64)
+	GetDataType() int
+	SetDataType(int)
+	GetKey() string
+	SetKey(string)
+	GetName() string
+	SetName(string)
+	IsEnabled() bool
+	SetEnable(bool)
+	IsNotify() bool
+	SetNotify(bool)
+	GetUnit() string
+	SetUnit(string)
+	GetAlarmLow() float64
+	SetAlarmLow(float64)
+	GetAlarmHigh() float64
+	SetAlarmHigh(float64)
 	SetValue(value float64)
 	GetValue() float64
 }
 
 type Channel interface {
+	GetID() uint64
+	SetID(uint64)
+	GetDeviceID() uint64
+	SetDeviceID(uint64)
+	GetChannelID() int
+	SetChannelID(int)
+	GetName() string
+	SetName(name string)
+	IsEnabled() bool
+	SetEnable(bool)
+	IsNotify() bool
+	SetNotify(bool)
+	AddCondition(condition config.Condition)
+	GetConditions() []config.Condition
+	SetConditions(conditions []config.Condition)
+	SetCondition(condition config.Condition)
+	GetSchedule() []config.Schedule
+	SetSchedule(schedule []config.Schedule)
+	SetScheduleItem(schedule config.Schedule)
+	GetDuration() int
+	SetDuration(int)
+	GetDebounce() int
+	SetDebounce(int)
+	GetBackoff() int
+	SetBackoff(int)
+	GetAlgorithmID() uint64
+	SetAlgorithmID(uint64)
 	SetValue(value int)
 	GetValue() int
-	config.ChannelConfig
+	//config.ChannelConfig
 }
 
 type InAppPurchase interface {
@@ -219,7 +271,18 @@ type DeviceObserver interface {
 	OnDeviceStateChange(diff DeviceState)
 }*/
 
-type DeviceStore interface {
-	datastore.DeviceDataStore
-	state.DeviceStorer
+// type DeviceStore interface {
+// 	//datastore.DeviceDataStore
+// 	state.DeviceStorer
+// }
+
+type ProvisionerParams struct {
+	UserID           uint64
+	RoleID           uint64
+	OrganizationID   uint64
+	FarmName         string
+	ConfigStoreType  int
+	StateStoreType   int
+	DataStoreType    int
+	ConsistencyLevel int
 }

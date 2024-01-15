@@ -9,35 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMetrMapperMapEntityToModel(t *testing.T) {
-	mapper := NewMetricMapper()
-	entity := &config.Metric{
-		ID:           1,
-		DeviceID: 2,
-		Name:         "Test Metric",
-		Key:          "test",
-		Enable:       true,
-		Notify:       true,
-		Unit:         "°",
-		AlarmLow:     12.34,
-		AlarmHigh:    56}
-	model := mapper.MapEntityToModel(entity)
-	assert.Equal(t, model.GetID(), entity.GetID())
-	assert.Equal(t, model.GetDeviceID(), entity.GetDeviceID())
-	assert.Equal(t, model.GetName(), entity.GetName())
-	assert.Equal(t, model.GetKey(), entity.GetKey())
-	assert.Equal(t, model.IsEnabled(), entity.IsEnabled())
-	assert.Equal(t, model.IsNotify(), entity.IsNotify())
-	assert.Equal(t, model.GetUnit(), entity.GetUnit())
-	assert.Equal(t, model.GetAlarmLow(), entity.GetAlarmLow())
-	assert.Equal(t, model.GetAlarmHigh(), entity.GetAlarmHigh())
-}
-
 func TestMetricMapperMapConfigToModel(t *testing.T) {
 
 	mapper := NewMetricMapper()
 
-	var metricConfig config.MetricConfig = &model.Metric{}
+	var metricConfig *config.Metric = &config.Metric{}
 	metricConfig.SetID(1)
 	metricConfig.SetDeviceID(2)
 	metricConfig.SetName("Test Metric")
@@ -48,31 +24,31 @@ func TestMetricMapperMapConfigToModel(t *testing.T) {
 	metricConfig.SetAlarmLow(12.34)
 	metricConfig.SetAlarmHigh(56.0)
 
-	metric, ok := metricConfig.(common.Metric)
-	assert.True(t, ok)
-	assert.ObjectsAreEqual(metricConfig, metric)
+	// metric, ok := metricConfig.(common.Metric)
+	// assert.True(t, ok)
+	// assert.ObjectsAreEqual(metricConfig, metric)
 
-	assert.Equal(t, metricConfig.GetID(), metric.GetID())
-	assert.Equal(t, metricConfig.GetDeviceID(), metric.GetDeviceID())
-	assert.Equal(t, metricConfig.GetName(), metric.GetName())
-	assert.Equal(t, metricConfig.GetKey(), metric.GetKey())
-	assert.Equal(t, metricConfig.IsEnabled(), metric.IsEnabled())
-	assert.Equal(t, metricConfig.IsNotify(), metric.IsNotify())
-	assert.Equal(t, metricConfig.GetUnit(), metric.GetUnit())
-	assert.Equal(t, metricConfig.GetAlarmLow(), metric.GetAlarmLow())
-	assert.Equal(t, metricConfig.GetAlarmHigh(), metric.GetAlarmHigh())
+	// assert.Equal(t, metricConfig.GetID(), metric.GetID())
+	// assert.Equal(t, metricConfig.GetDeviceID(), metric.GetDeviceID())
+	// assert.Equal(t, metricConfig.GetName(), metric.GetName())
+	// assert.Equal(t, metricConfig.GetKey(), metric.GetKey())
+	// assert.Equal(t, metricConfig.IsEnabled(), metric.IsEnabled())
+	// assert.Equal(t, metricConfig.IsNotify(), metric.IsNotify())
+	// assert.Equal(t, metricConfig.GetUnit(), metric.GetUnit())
+	// assert.Equal(t, metricConfig.GetAlarmLow(), metric.GetAlarmLow())
+	// assert.Equal(t, metricConfig.GetAlarmHigh(), metric.GetAlarmHigh())
 
 	// Mapper must return new model object to prevent config objects from being updated by model pointer.
-	metric.SetID(2)
-	assert.Equal(t, 2, metricConfig.GetID())
+	metricConfig.SetID(2)
+	assert.Equal(t, uint64(2), metricConfig.GetID())
 
 	model := mapper.MapConfigToModel(metricConfig)
 	assert.ObjectsAreEqual(metricConfig, model)
 	model.SetID(3)
-	assert.Equal(t, 2, metricConfig.GetID()) // This is the desired behavior
+	assert.Equal(t, uint64(2), metricConfig.GetID()) // This is the desired behavior
 }
 
-func TestMetricMapperMapModelToEntity(t *testing.T) {
+func TestMetricMapperMapModelToConfig(t *testing.T) {
 
 	mapper := NewMetricMapper()
 
@@ -102,30 +78,4 @@ func TestMetricMapperMapModelToEntity(t *testing.T) {
 
 	metric.SetDeviceID(20)
 	assert.NotEqual(t, metric.GetDeviceID(), config.GetDeviceID())
-}
-
-func TestMetricMapperMapEntityToConfig(t *testing.T) {
-
-	mapper := NewMetricMapper()
-	entity := &config.Metric{
-		ID:           1,
-		DeviceID: 2,
-		Name:         "Test Metric",
-		Key:          "test",
-		Enable:       true,
-		Notify:       true,
-		Unit:         "°",
-		AlarmLow:     12.34,
-		AlarmHigh:    56}
-
-	config := mapper.MapConfigToModel(entity)
-	assert.Equal(t, entity.GetID(), config.GetID())
-	assert.Equal(t, entity.GetDeviceID(), config.GetDeviceID())
-	assert.Equal(t, entity.GetName(), config.GetName())
-	assert.Equal(t, entity.GetKey(), config.GetKey())
-	assert.Equal(t, entity.IsEnabled(), config.IsEnabled())
-	assert.Equal(t, entity.IsNotify(), config.IsNotify())
-	assert.Equal(t, entity.GetUnit(), config.GetUnit())
-	assert.Equal(t, entity.GetAlarmLow(), config.GetAlarmLow())
-	assert.Equal(t, entity.GetAlarmHigh(), config.GetAlarmHigh())
 }

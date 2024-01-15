@@ -6,12 +6,12 @@ import (
 )
 
 type Server struct {
-	ID            int               `yaml:"id" json:"id"`
-	Organizations []Organization    `yaml:"organizations" json:"organizations"`
-	Interval      int               `yaml:"interval" json:"interval"`
-	Timezone      string            `yaml:"timezone" json:"timezone"`
-	Mode          string            `yaml:"mode" json:"mode"`
-	Smtp          config.SmtpConfig `yaml:"smtp" json:"smtp"`
+	ID            int            `yaml:"id" json:"id"`
+	Organizations []Organization `yaml:"organizations" json:"organizations"`
+	Interval      int            `yaml:"interval" json:"interval"`
+	Timezone      string         `yaml:"timezone" json:"timezone"`
+	Mode          string         `yaml:"mode" json:"mode"`
+	Smtp          config.Smtp    `yaml:"smtp" json:"smtp"`
 	common.Server `yaml:"-" json:"-"`
 }
 
@@ -59,10 +59,10 @@ func (config *Server) GetMode() string {
 	return config.Mode
 }
 
-func (config *Server) SetSmtp(smtp config.SmtpConfig) {
+func (config *Server) SetSmtp(smtp config.Smtp) {
 	config.Smtp = smtp
 }
 
-func (config *Server) GetSmtp() config.SmtpConfig {
+func (config *Server) GetSmtp() config.Smtp {
 	return config.Smtp
 }

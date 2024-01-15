@@ -17,19 +17,19 @@ func NewAlgorithmDAO(logger *logging.Logger, db *gorm.DB) dao.AlgorithmDAO {
 	return &GormAlgorithmDAO{logger: logger, db: db}
 }
 
-func (dao *GormAlgorithmDAO) Create(algorithm config.AlgorithmConfig) error {
-	return dao.db.Create(algorithm).Error
+func (dao *GormAlgorithmDAO) Save(algorithm *config.Algorithm) error {
+	return dao.db.Save(algorithm).Error
+}
+
+func (dao *GormAlgorithmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Algorithm, error) {
+	var algorithms []*config.Algorithm
+	if err := dao.db.Find(&algorithms).Error; err != nil {
+		return nil, err
+	}
+	return algorithms, nil
 }
 
 /*
-func (dao *GormAlgorithmDAO) Save(res entity.AlgorithmEntity) error {
-	return dao.db.Save(res).Error
-}
-
-func (dao *GormAlgorithmDAO) Update(res entity.AlgorithmEntity) error {
-	return dao.db.Update(res).Error
-}
-
 func (dao *GormAlgorithmDAO) Get(name string) (entity.AlgorithmEntity, error) {
 	var Algorithms []entity.Algorithm
 	if err := dao.db.Where("name = ?", name).Find(&Algorithms).Error; err != nil {
@@ -41,11 +41,3 @@ func (dao *GormAlgorithmDAO) Get(name string) (entity.AlgorithmEntity, error) {
 	return &Algorithms[0], nil
 }
 */
-
-func (dao *GormAlgorithmDAO) GetAll() ([]config.Algorithm, error) {
-	var algorithms []config.Algorithm
-	if err := dao.db.Find(&algorithms).Error; err != nil {
-		return nil, err
-	}
-	return algorithms, nil
-}

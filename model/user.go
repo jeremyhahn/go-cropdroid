@@ -9,6 +9,8 @@ type User struct {
 	Email              string        `json:"email"`
 	Password           string        `json:"password"`
 	Roles              []common.Role `json:"roles"`
+	OrganizationRefs   []uint64      `json:"-"`
+	FarmRefs           []uint64      `json:"-"`
 	common.UserAccount `json:"-"`
 }
 
@@ -19,6 +21,10 @@ func NewUser() common.UserAccount {
 
 func (user *User) GetID() uint64 {
 	return user.ID
+}
+
+func (user *User) SetID(id uint64) {
+	user.ID = id
 }
 
 func (user *User) GetEmail() string {
@@ -56,4 +62,20 @@ func (user *User) HasRole(name string) bool {
 		}
 	}
 	return false
+}
+
+func (user *User) SetOrganizationRefs(ids []uint64) {
+	user.OrganizationRefs = ids
+}
+
+func (user *User) GetOrganizationRefs() []uint64 {
+	return user.OrganizationRefs
+}
+
+func (user *User) SetFarmRefs(ids []uint64) {
+	user.FarmRefs = ids
+}
+
+func (user *User) GetFarmRefs() []uint64 {
+	return user.FarmRefs
 }

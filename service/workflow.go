@@ -12,12 +12,12 @@ import (
 )
 
 type WorkflowService interface {
-	GetWorkflow(session Session, workflowID uint64) (config.WorkflowConfig, error)
-	GetWorkflows(session Session) []config.Workflow
+	GetWorkflow(session Session, workflowID uint64) (*config.Workflow, error)
+	GetWorkflows(session Session) []*config.Workflow
 	GetListView(session Session, farmID uint64) ([]*viewmodel.Workflow, error)
-	Create(session Session, workflow config.WorkflowConfig) (config.WorkflowConfig, error)
-	Update(session Session, workflow config.WorkflowConfig) error
-	Delete(session Session, workflow config.WorkflowConfig) error
+	Create(session Session, workflow *config.Workflow) (*config.Workflow, error)
+	Update(session Session, workflow *config.Workflow) error
+	Delete(session Session, workflow *config.Workflow) error
 	Run(session Session, workflowID uint64) error
 }
 
@@ -37,25 +37,27 @@ func NewWorkflowService(app *app.App, dao dao.WorkflowDAO, mapper mapper.Workflo
 }
 
 // GetWorkflow retrieves a specific workflow entry from the current FarmConfig
-func (service *DefaultWorkflowService) GetWorkflow(session Session, workflowID uint64) (config.WorkflowConfig, error) {
+func (service *DefaultWorkflowService) GetWorkflow(session Session,
+	workflowID uint64) (*config.Workflow, error) {
+
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.GetID() == workflowID {
-			return &workflow, nil
+			return workflow, nil
 		}
 	}
 	return nil, ErrWorkflowNotFound
 }
 
 // GetWorkflows retrieves a list of workflow entries from the current FarmConfig
-func (service *DefaultWorkflowService) GetWorkflows(session Session) []config.Workflow {
+func (service *DefaultWorkflowService) GetWorkflows(session Session) []*config.Workflow {
 	return session.GetFarmService().GetConfig().GetWorkflows()
 }
 
 // Create a new workflow entry in the FarmConfig and datastore and publish
 // the new FarmConfig to connected clients.
-func (service *DefaultWorkflowService) Create(session Session, workflow config.WorkflowConfig) (config.WorkflowConfig, error) {
+func (service *DefaultWorkflowService) Create(session Session, workflow *config.Workflow) (*config.Workflow, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	farmConfig.AddWorkflow(workflow)
@@ -74,7 +76,7 @@ func (service *DefaultWorkflowService) GetListView(session Session, farmID uint6
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.GetFarmID() == farmID {
 			viewWorkflows = append(viewWorkflows,
-				service.mapper.MapConfigToView(&workflow))
+				service.mapper.MapConfigToView(workflow))
 		}
 	}
 	// Set workflow steps device name and channel name
@@ -105,7 +107,7 @@ func (service *DefaultWorkflowService) GetListView(session Session, farmID uint6
 
 // Update an existing workflow entry in the FarmConfig and datastore and publish
 // the new FarmConfig to connected clients.
-func (service *DefaultWorkflowService) Update(session Session, workflow config.WorkflowConfig) error {
+func (service *DefaultWorkflowService) Update(session Session, workflow *config.Workflow) error {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	farmConfig.SetWorkflow(workflow)
@@ -118,8 +120,8 @@ func (service *DefaultWorkflowService) Update(session Session, workflow config.W
 
 // Delete a workflow entry from the FarmConfig and datastore and publish
 // the new FarmConfig to connected clients.
-func (service *DefaultWorkflowService) Delete(session Session, workflow config.WorkflowConfig) error {
-	// GORM Save does not delete associations, delete it
+func (service *DefaultWorkflowService) Delete(session Session, workflow *config.Workflow) error {
+	// GORM Save does not delete associations, delete steps
 	// directly via the DAO instead :(
 	if err := service.dao.Delete(workflow); err != nil {
 		return err
@@ -140,7 +142,7 @@ func (service *DefaultWorkflowService) Run(session Session, workflowID uint64) e
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.GetID() == workflowID {
-			session.GetFarmService().RunWorkflow(&workflow)
+			session.GetFarmService().RunWorkflow(workflow)
 			return nil
 		}
 	}

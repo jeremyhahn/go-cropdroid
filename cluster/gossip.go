@@ -1,5 +1,5 @@
-//go:build cluster
-// +build cluster
+//go:build cluster && pebble
+// +build cluster,pebble
 
 package cluster
 
@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/gossip"
+	"github.com/jeremyhahn/go-cropdroid/cluster/util"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
-	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 )
 
 const (
@@ -32,38 +32,40 @@ type update struct {
 	Data   map[string]string
 }
 
-type GossipCluster interface {
-	GetHashring() *Consistent
+type GossipNode interface {
+	GetHashring() *util.Consistent
 	GetHealthScore() int
 	GetMemberCount() int
 	GetSerfStats() map[string]string
-	GetSystemRaft() RaftCluster
+	GetSystemRaft() RaftNode
 	Join()
-	Provision(farmConfig config.FarmConfig) error
+	Provision(*common.ProvisionerParams) error
 	Run()
+	SetInitializer(dao.Initializer)
 	Shutdown() error
+	GetParams() *util.ClusterParams
 }
 
 type Gossip struct {
-	mutex      *sync.RWMutex
-	stateMutex *sync.Mutex
-	raftMutex  *sync.Mutex
-	params     *ClusterParams
-	port       int
-	serf       *serf.Serf
-	state      ClusterState
-	farmDAO    dao.FarmDAO
-	eventCh    chan serf.Event
-	hashring   *Consistent         // Raft clusters on the network
-	vnodes     int                 // Number of consistent hash ring virtual nodes
-	member     serf.Member         // local node
-	nodemeta   *nodeMeta           // local node metadata (unserialized)
-	raft       RaftCluster         // control-plane / system raft
-	rafts      map[uint64][]uint64 // data-plane; map[raft_cluster_id][]raft_node_id
-	shutdownCh chan struct{}
-	hosts      map[string]uint64 // map raft address to its node id
-	nodeID     uint64            // unique id of this node in the Gossip cluster
-	GossipCluster
+	mutex       *sync.RWMutex
+	stateMutex  *sync.Mutex
+	raftMutex   *sync.Mutex
+	params      *util.ClusterParams
+	port        int
+	serf        *serf.Serf
+	state       ClusterState
+	eventCh     chan serf.Event
+	hashring    *util.Consistent    // Raft clusters on the network
+	vnodes      int                 // Number of consistent hash ring virtual nodes
+	member      serf.Member         // local node
+	nodemeta    *nodeMeta           // local node metadata (unserialized)
+	raft        RaftNode            // control-plane / system raft
+	rafts       map[uint64][]uint64 // data-plane; map[raft_cluster_id][]raft_node_id
+	shutdownCh  chan struct{}
+	hosts       map[string]uint64 // map raft address to its node id
+	nodeID      uint64            // unique id of this node in the Gossip cluster
+	initializer dao.Initializer
+	GossipNode
 }
 
 type nodeMeta struct {
@@ -98,11 +100,10 @@ func (s ClusterState) String() string {
 	}
 }
 
-// NewGossipCluster creates a new GossipCluster implementation on the heap
+// NewGossipNode creates a new GossipNode implementation on the heap
 // and returns a pointer. This operation blocks until the minimum number of
 // nodes required (3) to create an initial Raft cluster is formed.
-func NewGossipCluster(params *ClusterParams, hashring *Consistent,
-	farmDAO dao.FarmDAO) GossipCluster {
+func NewGossipNode(params *util.ClusterParams, hashring *util.Consistent) GossipNode {
 
 	cluster := &Gossip{
 		mutex:      &sync.RWMutex{},
@@ -110,9 +111,8 @@ func NewGossipCluster(params *ClusterParams, hashring *Consistent,
 		raftMutex:  &sync.Mutex{},
 		params:     params,
 		state:      ClusterBootstrapping,
-		farmDAO:    farmDAO,
 		eventCh:    make(chan serf.Event, 1024),
-		port:       params.gossipPort,
+		port:       params.GossipPort,
 		rafts:      make(map[uint64][]uint64, 0),
 		hashring:   hashring,
 		//nodes:      make(map[string]*memberlist.Node, 0),
@@ -120,30 +120,34 @@ func NewGossipCluster(params *ClusterParams, hashring *Consistent,
 		hosts:      make(map[string]uint64, 0),
 		shutdownCh: make(chan struct{})}
 
-	params.logger.Debugf("Gossip peers: %s", cluster.params.gossipPeers)
+	params.Logger.Debugf("Gossip peers: %s", cluster.params.GossipPeers)
 
 	serfConfig := serf.DefaultConfig()
 	serfConfig.Init()
-	serfConfig.NodeName = params.nodeName
+	serfConfig.NodeName = params.NodeName
 	serfConfig.EventCh = cluster.eventCh
 	serfConfig.MemberlistConfig = memberlist.DefaultLocalConfig()
-	serfConfig.MemberlistConfig.BindAddr = params.listen
+	serfConfig.MemberlistConfig.BindAddr = params.Listen
 	serfConfig.MemberlistConfig.BindPort = cluster.port
-	serfConfig.MemberlistConfig.AdvertiseAddr = params.listen
+	serfConfig.MemberlistConfig.AdvertiseAddr = params.Listen
 	serfConfig.MemberlistConfig.AdvertisePort = cluster.port
-	serfConfig.Tags["raftPort"] = strconv.Itoa(cluster.params.raftPort)
+	serfConfig.Tags["raftPort"] = strconv.Itoa(cluster.params.RaftOptions.Port)
 	//serfConfig.MemberlistConfig.SecretKey = encryptKey
 	//serfConfig.MemberlistConfig.Events = cluster
 	//serfConfig.MemberlistConfig.Delegate = cluster
 
 	s, err := serf.Create(serfConfig)
 	if err != nil {
-		params.logger.Fatal(err)
+		params.Logger.Fatal(err)
 	}
 	cluster.serf = s
-	params.logger.Debugf("Local gossip port: %d", cluster.port)
+	params.Logger.Debugf("Local gossip port: %d", cluster.port)
 
 	return cluster
+}
+
+func (cluster *Gossip) SetInitializer(initializer dao.Initializer) {
+	cluster.initializer = initializer
 }
 
 // Join the gossip network. This call blocks until enough nodes are available to
@@ -154,9 +158,9 @@ func (cluster *Gossip) Join() {
 		cluster.nodemeta = &nodeMeta{
 			Provider: cluster.params.provider,
 			Region:   cluster.params.region,
-			//ClusterID: uint64(cluster.params.clusterID),
+			//ClusterID: uint64(cluster.params.RaftOptions.SystemClusterID),
 			NodeID:    nodeID,
-			RaftPort:  cluster.params.raftPort,
+			RaftPort:  cluster.params.RaftPort,
 			Cpu:       0,
 			Memory:    0,
 			DiskAvail: 0,
@@ -164,7 +168,7 @@ func (cluster *Gossip) Join() {
 
 		bytes, err := json.Marshal(cluster.nodemeta)
 		if err != nil {
-			cluster.params.logger.Error(err)
+			cluster.params.Logger.Error(err)
 		}
 		cluster.node.Meta = bytes
 	*/
@@ -172,20 +176,10 @@ func (cluster *Gossip) Join() {
 	var contacted int
 	var err error
 
-	/*
-		var nodeID uint64
-		if cluster.params.bootstrap > 0 {
-			nodeID = uint64(len(cluster.params.peers) + 1)
-		}*/
-
-	joinCluster := func() (int, error) {
-		return cluster.serf.Join(cluster.params.gossipPeers, true) // true = dont replay events prior to join
-	}
-
-	if len(cluster.params.gossipPeers) > 0 {
-		contacted, err = joinCluster()
+	if len(cluster.params.GossipPeers) > 0 {
+		contacted, err = cluster.serf.Join(cluster.params.GossipPeers, true) // true = dont replay events prior to join
 		if err != nil {
-			cluster.params.logger.Errorf("Failed to join cluster: %s", err)
+			cluster.params.Logger.Errorf("Failed to join cluster: %s", err)
 			time.Sleep(1 * time.Second)
 			cluster.Join()
 			return
@@ -193,43 +187,40 @@ func (cluster *Gossip) Join() {
 	}
 
 	members := cluster.serf.Members()
-	for len(members) < cluster.params.bootstrap {
+	for len(members) < cluster.params.Bootstrap {
 
-		cluster.params.logger.Debugf("Waiting for enough nodes to build initial Raft quorum. %d of %d members have joined, contacted %d.",
-			cluster.serf.NumNodes(), cluster.params.bootstrap, contacted)
+		cluster.params.Logger.Debugf("Waiting for enough nodes to build initial Raft quorum. %d of %d members have joined, contacted %d.",
+			cluster.serf.NumNodes(), cluster.params.Bootstrap, contacted)
 
 		time.Sleep(1 * time.Second)
 		members = cluster.serf.Members()
 	}
 	cluster.member = cluster.serf.LocalMember()
 
-	if cluster.params.bootstrap > 0 {
+	if cluster.params.Bootstrap > 0 {
 
-		raftring := NewHashring(1)
-		//params := cluster.params
-		//params.nodeID = nodeID
-		//cluster.raft = NewRaftCluster(params, raftring)
-		cluster.raft = NewRaftCluster(cluster.params, raftring)
+		raftring := util.NewHashring(1)
+		cluster.raft = NewRaftNode(cluster.params, raftring)
 
 		for _, member := range members {
 			cluster.hashring.Add(cluster.parseMemberAddress(member))
 		}
 
 		nodeIDs := make([]uint64, 0)
-		clusterInfo := cluster.raft.GetClusterInfo(cluster.params.clusterID)
+		clusterInfo := cluster.raft.GetClusterInfo(cluster.params.RaftOptions.SystemClusterID)
 		for nid, raftAddress := range clusterInfo.Nodes {
 			cluster.hosts[raftAddress] = nid
 			nodeIDs = append(nodeIDs, nid)
 		}
 		cluster.raftMutex.Lock()
-		cluster.rafts[cluster.params.clusterID] = nodeIDs
+		cluster.rafts[cluster.params.RaftOptions.SystemClusterID] = nodeIDs
 		cluster.raftMutex.Unlock()
 	} else {
 		//node := cluster.serf.Memberlist().LocalNode()
 
-		raftAddress := fmt.Sprintf("%s:%d", cluster.member.Addr.String(), cluster.params.raftPort)
+		raftAddress := fmt.Sprintf("%s:%d", cluster.member.Addr.String(), cluster.params.RaftOptions.Port)
 
-		cluster.params.logger.Debugf("Sending EventWorkerAvailable message with Raft address: %s", raftAddress)
+		cluster.params.Logger.Debugf("Sending EventWorkerAvailable message with Raft address: %s", raftAddress)
 
 		cluster.serf.UserEvent(gossip.EventWorkerAvailable.String(), []byte(raftAddress), false)
 	}
@@ -243,7 +234,7 @@ func (cluster *Gossip) Run() {
 	for {
 		numQueuedEvents = len(cluster.eventCh)
 		if numQueuedEvents > serfEventBacklogWarning {
-			cluster.params.logger.Warningf("number of queued serf events above warning threshold.  queued_events=%d, warning_threshold=%d",
+			cluster.params.Logger.Warningf("number of queued serf events above warning threshold.  queued_events=%d, warning_threshold=%d",
 				numQueuedEvents, serfEventBacklogWarning)
 		}
 
@@ -252,18 +243,18 @@ func (cluster *Gossip) Run() {
 			switch e.EventType() {
 			case serf.EventMemberJoin:
 				memberEvent := e.(serf.MemberEvent)
-				cluster.params.logger.Debugf("EventMemberJoin: %+v", memberEvent)
+				cluster.params.Logger.Debugf("EventMemberJoin: %+v", memberEvent)
 			case serf.EventMemberLeave, serf.EventMemberFailed, serf.EventMemberReap:
 				//c.nodeFail(e.(serf.MemberEvent))
 			case serf.EventUser:
 				userEvent := e.(serf.UserEvent)
-				cluster.params.logger.Debugf("EventUser: %+v", userEvent)
+				cluster.params.Logger.Debugf("EventUser: %+v", userEvent)
 				cluster.handleEvent(userEvent)
 			case serf.EventMemberUpdate: // Ignore
 				//c.nodeUpdate(e.(serf.MemberEvent))
 			case serf.EventQuery: // Ignore
 			default:
-				cluster.params.logger.Warningf("unhandled Serf Event: %+v", e)
+				cluster.params.Logger.Warningf("unhandled Serf Event: %+v", e)
 			}
 		case <-cluster.shutdownCh:
 			return
@@ -275,17 +266,17 @@ func (cluster *Gossip) Run() {
 // The Node argument must not be modified.
 func (cluster *Gossip) join(member serf.Member) {
 
-	if cluster.params.nodeID <= 3 {
+	if cluster.params.NodeID <= 3 {
 		return // not concerned with raft bootstrap nodes
 	}
 
 	memberAddress := cluster.parseMemberAddress(member)
-	cluster.params.logger.Debugf("A node has joined: %s", memberAddress)
+	cluster.params.Logger.Debugf("A node has joined: %s", memberAddress)
 
 	//meta := cluster.parseNodeMeta(member.Tags)
 	meta := member.Tags
 
-	cluster.params.logger.Errorf("[Gossip.NotifyJoin] meta: %+v", meta)
+	cluster.params.Logger.Errorf("[Gossip.NotifyJoin] meta: %+v", meta)
 
 	raftPort, err := strconv.Atoi(meta["raftPort"])
 	if err != nil {
@@ -294,28 +285,28 @@ func (cluster *Gossip) join(member serf.Member) {
 	raftAddress := cluster.parseRaftAddress(member.Addr.String(), raftPort)
 
 	if cluster.raft == nil {
-		cluster.params.logger.Warningf("[Gossip.NotifyJoin] Aborting, cluster.raft is nil... (clusterID=%d, nodeID=%d, raftAddress=%s, cluster.state=%d)",
-			cluster.params.clusterID, cluster.params.nodeID, raftAddress, cluster.state)
+		cluster.params.Logger.Warningf("[Gossip.NotifyJoin] Aborting, cluster.raft is nil... (clusterID=%d, nodeID=%d, raftAddress=%s, cluster.state=%d)",
+			cluster.params.RaftOptions.SystemClusterID, cluster.params.NodeID, raftAddress, cluster.state)
 	} else {
-		cluster.params.logger.Warningf("[Gossip.NotifyJoin] Aborting, not the control plane leader... (clusterID=%d, nodeID=%d, raftAddress=%s, cluster.state=%d)",
-			cluster.params.clusterID, cluster.params.nodeID, raftAddress, cluster.state)
+		cluster.params.Logger.Warningf("[Gossip.NotifyJoin] Aborting, not the control plane leader... (clusterID=%d, nodeID=%d, raftAddress=%s, cluster.state=%d)",
+			cluster.params.RaftOptions.SystemClusterID, cluster.params.NodeID, raftAddress, cluster.state)
 	}
 }
 
 func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 
-	cluster.params.logger.Debugf("Received user event: %+v", e.String())
-	cluster.params.logger.Debugf("Received user event type: %+v", e.EventType)
-	cluster.params.logger.Debugf("Received user event payload: %+v", string(e.Payload))
+	cluster.params.Logger.Debugf("Received user event: %+v", e.String())
+	cluster.params.Logger.Debugf("Received user event type: %+v", e.EventType)
+	cluster.params.Logger.Debugf("Received user event payload: %+v", string(e.Payload))
 
 	switch e.Name {
 	case gossip.EventWorkerAvailable.String():
 		workerAddress := string(e.Payload)
-		if cluster.raft != nil && cluster.raft.IsLeader(CONTROL_PLANE_CLUSTER_ID) {
-			nodeID, raftAddress, err := cluster.raft.AddNode(cluster.params.clusterID, workerAddress, CONTROL_PLANE_CLUSTER_ID)
+		if cluster.raft != nil && cluster.raft.IsLeader(cluster.params.RaftOptions.SystemClusterID) {
+			nodeID, raftAddress, err := cluster.raft.AddNode(cluster.params.RaftOptions.SystemClusterID, workerAddress, 0)
 			if err != nil {
-				cluster.params.logger.Errorf("[Gossip.handleEvent] (nodeID=%d) (member=%s) Error: %s",
-					cluster.params.nodeID, workerAddress, err)
+				cluster.params.Logger.Errorf("[Gossip.handleEvent] (nodeID=%d) (member=%s) Error: %s",
+					cluster.params.NodeID, workerAddress, err)
 				return
 			}
 			workerAssignedMessage, err := json.Marshal(gossip.WorkerAssignedMessage{
@@ -323,7 +314,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 				// MemberAddress: This is the node sending the event, not needed for this op
 				RaftAddress: raftAddress})
 			if err != nil {
-				cluster.params.logger.Errorf("[Gossip.handleEvent] Error encoding worker-added message", err)
+				cluster.params.Logger.Errorf("[Gossip.handleEvent] Error encoding worker-added message", err)
 				return
 			}
 			cluster.serf.UserEvent(gossip.EventWorkerAssigned.String(), workerAssignedMessage, false)
@@ -335,7 +326,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 		var workerAssignedMessage gossip.WorkerAssignedMessage
 		err := json.Unmarshal(e.Payload, &workerAssignedMessage)
 		if err != nil {
-			cluster.params.logger.Error("[Gossip.handleMessage] worker-assigned error: %s", err)
+			cluster.params.Logger.Error("[Gossip.handleMessage] worker-assigned error: %s", err)
 			return
 		}
 
@@ -344,11 +335,11 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 			return
 		}
 
-		raftring := NewHashring(1)
+		raftring := util.NewHashring(1)
 		params := cluster.params
-		params.raft = []string{workerAssignedMessage.RaftAddress}
-		params.nodeID = workerAssignedMessage.NodeID
-		cluster.raft = NewRaftCluster(params, raftring)
+		params.Raft = []string{workerAssignedMessage.RaftAddress}
+		params.NodeID = workerAssignedMessage.NodeID
+		cluster.raft = NewRaftNode(params, raftring)
 		cluster.member = cluster.serf.LocalMember()
 		cluster.hosts[workerAssignedMessage.RaftAddress] = workerAssignedMessage.NodeID
 
@@ -358,7 +349,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 		}
 
 		nodeIDs := make([]uint64, 0)
-		clusterInfo := cluster.raft.GetClusterInfo(params.clusterID)
+		clusterInfo := cluster.raft.GetClusterInfo(params.RaftOptions.SystemClusterID)
 		for nid := range clusterInfo.Nodes {
 			//for nid, raftAddress := range clusterInfo.Nodes {
 			//cluster.nodes[raftAddress] = member[nid-1]
@@ -366,45 +357,55 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 		}
 		// Add the cluster system raft
 		cluster.raftMutex.Lock()
-		cluster.rafts[params.clusterID] = nodeIDs
+		cluster.rafts[params.RaftOptions.SystemClusterID] = nodeIDs
 		cluster.raftMutex.Unlock()
 
 	case gossip.EventProvisionRequest.String():
-		//var nodeIDs []uint64
+
 		var provisionRequest gossip.ProvisionRequest
 		err := json.Unmarshal(e.Payload, &provisionRequest)
 		if err != nil {
-			cluster.params.logger.Error("[Gossip.handleMessage] provision-request error: %s", err)
+			cluster.params.Logger.Errorf("[Gossip.handleMessage] provision-request error: %s", err)
 			return
 		}
 
-		farmConfig, err := cluster.farmDAO.Get(
-			provisionRequest.StateClusterID, common.CONSISTENCY_CACHED)
-		if err != nil {
-			cluster.params.logger.Error("[Gossip.handleMessage] provision-request error=%s", err)
-			return
-		}
+		cluster.params.Logger.Debugf("[Gossip.EventProvisionRequest] %+v", provisionRequest)
 
 		// If the node just joined the network, it will start receving provisioning requests immediately.
 		// Wait until the Raft cluster has bootstrapped before proceeding.
 		cluster.raftMutex.Lock()
-		_, ok := cluster.rafts[cluster.params.clusterID]
+		_, ok := cluster.rafts[cluster.params.RaftOptions.SystemClusterID]
 		cluster.raftMutex.Unlock()
 		for !ok {
-			cluster.params.logger.Debug("[Gossip.handleMessage] provision-request Waiting for the system Raft cluster become available...")
+			cluster.params.Logger.Debug("[Gossip.handleMessage] provision-request Waiting for the system Raft cluster become available...")
 			time.Sleep(1 * time.Second)
 		}
 
-		cluster.params.farmProvisionerChan <- farmConfig
+		provParams := &common.ProvisionerParams{
+			UserID:           provisionRequest.UserID,
+			RoleID:           provisionRequest.RoleID,
+			OrganizationID:   provisionRequest.OrganizationID,
+			FarmName:         provisionRequest.FarmName,
+			ConfigStoreType:  provisionRequest.ConfigStoreType,
+			StateStoreType:   provisionRequest.StateStoreType,
+			DataStoreType:    provisionRequest.DataStoreType,
+			ConsistencyLevel: provisionRequest.ConsistencyLevel}
+		farmConfig, err := cluster.initializer.BuildConfig(provParams)
+		if err != nil {
+			cluster.params.Logger.Errorf("[Gossip.handleMessage] Error: %s", err)
+			return
+		}
 
-		cluster.raft.WaitForClusterReady(provisionRequest.ConfigClusterID)
-		cluster.raft.WaitForClusterReady(provisionRequest.StateClusterID)
+		cluster.params.FarmProvisionerChan <- *farmConfig
+
+		// cluster.raft.WaitForClusterReady(provisionRequest.ConfigClusterID)
+		// cluster.raft.WaitForClusterReady(provisionRequest.StateClusterID)
 
 		nodeIDs := make([]uint64, 0)
 		// use the node ids from the physical nodehost insted of the new raft group
 		// clusterID so there is no need to wait for provisioning to complete on
 		// every node in the cluster before proceeding.
-		clusterInfo := cluster.raft.GetClusterInfo(cluster.params.clusterID)
+		clusterInfo := cluster.raft.GetClusterInfo(cluster.params.RaftOptions.SystemClusterID)
 		for nid, raftAddress := range clusterInfo.Nodes {
 			cluster.hosts[raftAddress] = nid
 			nodeIDs = append(nodeIDs, nid)
@@ -419,7 +420,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 		// Set config leader
 		host, err := hashring.GetLeast(strconv.Itoa(int(provisionRequest.ConfigClusterID)))
 		if err != nil {
-			cluster.params.logger.Errorf("[Gossip.handleMessage] Error: %s", err)
+			cluster.params.Logger.Errorf("[Gossip.handleMessage] Error: %s", err)
 			return
 		}
 		hashring.Inc(host)
@@ -428,7 +429,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 		// Set state leader
 		host, err = hashring.GetLeast(strconv.Itoa(int(provisionRequest.StateClusterID)))
 		if err != nil {
-			cluster.params.logger.Errorf("[Gossip.handleMessage] Error: %s", err)
+			cluster.params.Logger.Errorf("[Gossip.handleMessage] Error: %s", err)
 			return
 		}
 		hashring.Inc(host)
@@ -436,22 +437,21 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 		cluster.raft.GetNodeHost().RequestLeaderTransfer(provisionRequest.StateClusterID, cluster.hosts[host])
 
 	default:
-		cluster.params.logger.Error("Received unknown user event: %s", e.Name)
+		cluster.params.Logger.Errorf("Received unknown user event: %s", e.Name)
 	}
-
 }
 
-func (cluster *Gossip) GetSystemRaft() RaftCluster {
+func (cluster *Gossip) GetSystemRaft() RaftNode {
 	return cluster.raft
 }
 
-func (cluster *Gossip) GetHashring() *Consistent {
+func (cluster *Gossip) GetHashring() *util.Consistent {
 	return cluster.hashring
 }
 
 func (cluster *Gossip) Shutdown() error {
 	if err := cluster.serf.Leave(); err != nil {
-		cluster.params.logger.Errorf("[Gossip.Shutdown] Error: %s", err)
+		cluster.params.Logger.Errorf("[Gossip.Shutdown] Error: %s", err)
 	}
 	return cluster.serf.Shutdown()
 }
@@ -474,7 +474,7 @@ func (cluster *Gossip) GossipAddress() string {
 }
 
 func (cluster *Gossip) RaftAddress() string {
-	return fmt.Sprintf("%s:%d", cluster.member.Addr.String(), cluster.params.raftPort)
+	return fmt.Sprintf("%s:%d", cluster.member.Addr.String(), cluster.params.RaftOptions.Port)
 }
 
 func (cluster *Gossip) HasRaft(clusterID uint64) bool {
@@ -502,38 +502,55 @@ func (cluster *Gossip) isMe(clusterID, nodeID uint64) bool {
 // Provision sends a new provisioning request to the gossip network. This method
 // does not wait to confirm the cluster is ready before returning, but instead delegates
 // that responsibility to the farm provisioner channel consumer.
-func (cluster *Gossip) Provision(farmConfig config.FarmConfig) error {
+func (cluster *Gossip) Provision(params *common.ProvisionerParams) error {
 
-	cluster.params.logger.Errorf("Provision request! gossip.address=%s, raft.peers=%+v",
+	cluster.params.Logger.Errorf("Provision request! gossip.address=%s, raft.peers=%+v",
 		cluster.GossipAddress(), cluster.raft.GetPeers())
 
-	stateClusterID := uint64(farmConfig.GetID())
-	clusterID := fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmConfig.GetID())
-	configClusterID := cluster.params.idGenerator.NewID(clusterID)
+	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
+	farmID := cluster.params.IdGenerator.NewID(farmKey)
+
+	stateClusterKey := fmt.Sprintf("%s-%d", params.FarmName, farmID)
+	stateClusterID := cluster.params.IdGenerator.NewID(stateClusterKey)
 
 	bytes, err := json.Marshal(&gossip.ProvisionRequest{
-		StateClusterID:  stateClusterID,
-		ConfigClusterID: configClusterID,
-		// include nodeID so the request can get back to the user who initiated the request
-		NodeID: cluster.nodeID})
+		FarmName:         params.FarmName,
+		ConfigClusterID:  farmID,
+		StateClusterID:   stateClusterID,
+		ConfigStoreType:  params.ConfigStoreType,
+		StateStoreType:   params.StateStoreType,
+		DataStoreType:    params.DataStoreType,
+		ConsistencyLevel: params.ConsistencyLevel,
+		// include nodeID so a response can be given back
+		// to the user who initiated the request
+		NodeID: cluster.nodeID,
+		UserID: params.UserID,
+		RoleID: params.RoleID})
 	if err != nil {
 		return err
 	}
 	cluster.serf.UserEvent(gossip.EventProvisionRequest.String(), bytes, false)
 
+	cluster.raft.WaitForClusterReady(farmID)
+	cluster.raft.WaitForClusterReady(stateClusterID)
+
 	cluster.raftMutex.Lock()
 	_, ok := cluster.rafts[stateClusterID]
 	cluster.raftMutex.Unlock()
 	for !ok {
-		cluster.params.logger.Debugf("[Gossip.SyncProvision] Waiting on provisioning completion: stateClusterID=%d, configClusterID=%d",
-			stateClusterID, configClusterID)
+		cluster.params.Logger.Debugf("[Gossip.Provision] Waiting on provisioning completion: stateClusterID=%d, configClusterID=%d",
+			stateClusterID, farmID)
 		time.Sleep(1 * time.Second)
 		cluster.raftMutex.Lock()
 		_, ok = cluster.rafts[stateClusterID]
-		cluster.raftMutex.Unlock()
+		cluster.raftMutex.
+			Unlock()
 	}
-
 	return nil
+}
+
+func (cluster *Gossip) GetParams() *util.ClusterParams {
+	return cluster.params
 }
 
 func (cluster *Gossip) parseMemberAddress(member serf.Member) string {
@@ -551,7 +568,7 @@ func (cluster *Gossip) parseRaftAddress(nodeAddress string, raftPort int) string
 func (cluster *Gossip) parseNodeMeta(data []byte) nodeMeta {
 	var meta nodeMeta
 	if err := json.Unmarshal(data, &meta); err != nil {
-		cluster.params.logger.Errorf("[Gossip.parseNodeMeta] Error unpacking node metadata: %s", err)
+		cluster.params.Logger.Errorf("[Gossip.parseNodeMeta] Error unpacking node metadata: %s", err)
 		return nodeMeta{}
 	}
 	return meta

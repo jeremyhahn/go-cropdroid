@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package service
@@ -15,11 +16,11 @@ import (
 
 type ConditionService interface {
 	GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error)
-	GetConditions(session Session, channelID uint64) ([]config.ConditionConfig, error)
-	Create(session Session, condition config.ConditionConfig) (config.ConditionConfig, error)
-	Update(session Session, condition config.ConditionConfig) error
-	Delete(session Session, condition config.ConditionConfig) error
-	IsTrue(condition config.ConditionConfig, value float64) (bool, error)
+	GetConditions(session Session, channelID uint64) ([]*config.Condition, error)
+	Create(session Session, condition *config.Condition) (*config.Condition, error)
+	Update(session Session, condition *config.Condition) error
+	Delete(session Session, condition *config.Condition) error
+	IsTrue(condition *config.Condition, value float64) (bool, error)
 }
 
 type DefaultConditionService struct {
@@ -54,11 +55,11 @@ func (service *DefaultConditionService) GetListView(session Session, channelID u
 				_conditions := channel.GetConditions()
 				conditions := make([]*viewmodel.Condition, len(_conditions))
 				for i, condition := range _conditions {
-					err := func(condition config.Condition) error {
+					err := func(condition *config.Condition) error {
 						for _, device := range farmConfig.GetDevices() {
 							for _, metric := range device.GetMetrics() {
 								if metric.GetID() == condition.GetMetricID() {
-									conditions[i] = service.mapper.MapEntityToView(&condition, device.GetType(), &metric, channelID)
+									conditions[i] = service.mapper.MapConfigToView(condition, device.GetType(), metric, channelID)
 									return nil
 								}
 							}
@@ -78,7 +79,7 @@ func (service *DefaultConditionService) GetListView(session Session, channelID u
 }
 
 // GetConditions retrieves a list of condition entries from the database
-func (service *DefaultConditionService) GetConditions(session Session, channelID uint64) ([]config.ConditionConfig, error) {
+func (service *DefaultConditionService) GetConditions(session Session, channelID uint64) ([]*config.Condition, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	orgID := farmConfig.GetOrganizationID()
@@ -87,12 +88,7 @@ func (service *DefaultConditionService) GetConditions(session Session, channelID
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == channelID {
-				_conditions := channel.GetConditions()
-				conditions := make([]config.ConditionConfig, len(_conditions))
-				for i, condition := range _conditions {
-					conditions[i] = service.mapper.MapEntityToModel(&condition)
-				}
-				return conditions, nil
+				return channel.GetConditions(), nil
 			}
 		}
 	}
@@ -100,7 +96,7 @@ func (service *DefaultConditionService) GetConditions(session Session, channelID
 }
 
 // Create a new condition entry
-func (service *DefaultConditionService) Create(session Session, condition config.ConditionConfig) (config.ConditionConfig, error) {
+func (service *DefaultConditionService) Create(session Session, condition *config.Condition) (*config.Condition, error) {
 	service.logger.Debugf("Creating condition config: %+v", condition)
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
@@ -109,8 +105,8 @@ func (service *DefaultConditionService) Create(session Session, condition config
 			if channel.GetID() == condition.GetChannelID() {
 				condition.SetID(condition.Hash())
 				channel.AddCondition(condition)
-				device.SetChannel(&channel)
-				farmConfig.SetDevice(&device)
+				device.SetChannel(channel)
+				farmConfig.SetDevice(device)
 				return condition, farmService.SetConfig(farmConfig)
 			}
 		}
@@ -119,15 +115,15 @@ func (service *DefaultConditionService) Create(session Session, condition config
 }
 
 // Update an existing condition entry in the database
-func (service *DefaultConditionService) Update(session Session, condition config.ConditionConfig) error {
+func (service *DefaultConditionService) Update(session Session, condition *config.Condition) error {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == condition.GetChannelID() {
 				channel.SetCondition(condition)
-				device.SetChannel(&channel)
-				farmConfig.SetDevice(&device)
+				device.SetChannel(channel)
+				farmConfig.SetDevice(device)
 				farmService.SetConfig(farmConfig)
 				return nil
 			}
@@ -137,7 +133,7 @@ func (service *DefaultConditionService) Update(session Session, condition config
 }
 
 // Delete a condition entry from the database
-func (service *DefaultConditionService) Delete(session Session, condition config.ConditionConfig) error {
+func (service *DefaultConditionService) Delete(session Session, condition *config.Condition) error {
 	service.logger.Debugf("Deleting condition config: %+v", condition)
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
@@ -145,9 +141,13 @@ func (service *DefaultConditionService) Delete(session Session, condition config
 		for _, channel := range device.GetChannels() {
 			for i, _condition := range channel.GetConditions() {
 				if _condition.GetID() == condition.GetID() {
-					channel.Conditions = append(channel.Conditions[:i], channel.Conditions[i+1:]...)
-					device.SetChannel(&channel)
-					farmConfig.SetDevice(&device)
+					//channel.Conditions = append(channel.Conditions[:i], channel.Conditions[i+1:]...)
+					conditions := channel.GetConditions()
+					conditions = append(conditions[:i], conditions[i+1:]...)
+					channel.SetConditions(conditions)
+					//
+					device.SetChannel(channel)
+					farmConfig.SetDevice(device)
 					farmService.SetConfig(farmConfig)
 					return nil
 				}
@@ -157,7 +157,7 @@ func (service *DefaultConditionService) Delete(session Session, condition config
 	return ErrConditionNotFound
 }
 
-func (service *DefaultConditionService) IsTrue(condition config.ConditionConfig, value float64) (bool, error) {
+func (service *DefaultConditionService) IsTrue(condition *config.Condition, value float64) (bool, error) {
 	service.logger.Debugf("[DefaultConditionService.IsTrue] condition=%+v, value=%.2f", condition, value)
 	switch condition.GetComparator() {
 	case ">":

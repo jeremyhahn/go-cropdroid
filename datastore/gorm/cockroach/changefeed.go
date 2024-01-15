@@ -9,6 +9,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
+	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jinzhu/gorm"
 )
 
@@ -30,9 +31,10 @@ type changefeedRawMessageWrapper struct {
 }
 
 func NewCockroachChangefeed(app *app.App, table string) datastore.Changefeeder {
+	gormDB := gormds.NewGormDB(app.Logger, app.GORMInitParams)
 	return &CockroachChangefeed{
 		app:   app,
-		db:    app.NewGormDB(),
+		db:    gormDB.Connect(false),
 		table: table}
 }
 

@@ -15,19 +15,21 @@ const (
 	WEBSOCKET_KEEPALIVE       = 10 * time.Second
 	HTTP_CLIENT_TIMEOUT       = 10 * time.Second
 	HTTP_SERVER_READ_TIMEOUT  = 5 * time.Second
-	HTTP_SERVER_WRITE_TIMEOUT = 10 * time.Second
+	HTTP_SERVER_WRITE_TIMEOUT = 30 * time.Second //10 * time.Second
 	HTTP_SERVER_IDLE_TIMEOUT  = 120 * time.Second
 	HTTP_PUBLIC_HTML          = "public_html"
 	SWITCH_OFF                = 0
 	SWITCH_ON                 = 1
 	//FARM_MAX_SIZE         = 10000
-	HOURS_IN_A_YEAR                    = 8766
-	DEFAULT_FARM_CONFIG_HISTORY_LENGTH = 5
-	DEFAULT_CROP_NAME                  = "Crop"
+	HOURS_IN_A_YEAR = 8766
+	//DEFAULT_FARM_CONFIG_HISTORY_LENGTH = 5
+	DEFAULT_CROP_NAME = "Crop"
 
-	DATASTORE_TYPE_SQLITE   = "sqlite"
-	DATASTORE_TYPE_POSTGRES = "postgres"
-	DATASTORE_TYPE_64BIT    = "64"
+	DATASTORE_TYPE_SQLITE    = "sqlite"
+	DATASTORE_TYPE_POSTGRES  = "postgres"
+	DATASTORE_TYPE_COCKROACH = "cockroach"
+	DATASTORE_TYPE_32BIT     = "32"
+	DATASTORE_TYPE_64BIT     = "64"
 
 	DATATYPE_FLOAT  = 0
 	DATATYPE_INT    = 1
@@ -54,8 +56,10 @@ const (
 	CONFIG_SMTP_PASSWORD_KEY  = "smtp.password"
 	CONFIG_SMTP_RECIPIENT_KEY = "smtp.recipient"
 
-	CONFIG_MODE_VIRTUAL     = "virtual"
+	CONFIG_MODE_VIRTUAL = "virtual"
+	//CONFIG_MODE_STANDALONE  = "standalone"
 	CONFIG_MODE_SERVER      = "server"
+	CONFIG_MODE_CLUSTER     = "cluster"
 	CONFIG_MODE_CLOUD       = "cloud"
 	CONFIG_MODE_MAINTENANCE = "maintenance"
 
@@ -67,10 +71,6 @@ const (
 
 	ALGORITHM_PH_KEY  = "pH Down"
 	ALGORITHM_ORP_KEY = "ORP"
-
-	MODE_STANDALONE = "standalone"
-	MODE_CLUSTER    = "cluster"
-	MODE_CLOUD      = "cloud"
 
 	FARM_ACCESS_NONE = "none" // disallow access to farms
 	//FARM_ACCESS_OWNER = "owner" // allow access only to owned farms

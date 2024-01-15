@@ -24,7 +24,33 @@ func CreateUserDAO(db *gorm.DB, user common.UserAccount) dao.UserDAO {
 		db:     db}
 }
 
-// func (dao *GormUserDAO) GetAll(orgID uint64) ([]config.UserConfig, error) {
+func (dao *GormUserDAO) Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error) {
+	var user config.User
+	if err := dao.db.
+		Preload("Roles").
+		First(&user, userID).Error; err != nil {
+		dao.logger.Errorf("[UserDAO.Get] %s", err.Error())
+		return nil, err
+	}
+	return &user, nil
+}
+
+// Saves or updates a user account.
+func (dao *GormUserDAO) Save(user *config.User) error {
+	if err := dao.db.Save(user).Error; err != nil {
+		dao.logger.Errorf("[UserDAO.Save] Error:%s", err.Error())
+		return err
+	}
+	return nil
+}
+
+// Deletes a user from the database
+func (dao *GormUserDAO) Delete(user *config.User) error {
+	dao.logger.Errorf("[UserDAO.Delete] user: %+v", user)
+	return dao.db.Delete(user).Error
+}
+
+// func (dao *GormUserDAO) GetAll(orgID uint64) ([]config.User, error) {
 // 	var users []config.User
 // 	if err := dao.db.
 // 		Preload("Roles").
@@ -34,44 +60,29 @@ func CreateUserDAO(db *gorm.DB, user common.UserAccount) dao.UserDAO {
 // 		dao.logger.Errorf("[UserDAO.GetAll] Error: %s", err.Error())
 // 		return nil, err
 // 	}
-// 	userConfigs := make([]config.UserConfig, len(users))
+// 	userConfigs := make([]config.User, len(users))
 // 	for i, user := range users {
 // 		userConfigs[i] = &user
 // 	}
 // 	return userConfigs, nil
 // }
 
-func (dao *GormUserDAO) GetByEmail(email string) (config.UserConfig, error) {
-	var user config.User
-	if err := dao.db.
-		Preload("Roles").
-		First(&user, "email = ?", email).Error; err != nil {
-		dao.logger.Errorf("[UserDAO.GetByEmail] %s", err.Error())
-		return nil, err
-	}
-	return &user, nil
-}
+// func (dao *GormUserDAO) GetByEmail(email string) (config.User, error) {
+// 	var user config.User
+// 	if err := dao.db.
+// 		Preload("Roles").
+// 		First(&user, "email = ?", email).Error; err != nil {
+// 		dao.logger.Errorf("[UserDAO.GetByEmail] %s", err.Error())
+// 		return nil, err
+// 	}
+// 	return &user, nil
+// }
 
 // Saves a new user to the database.
-func (dao *GormUserDAO) Create(user config.UserConfig) error {
-	if err := dao.db.Create(user).Error; err != nil {
-		dao.logger.Errorf("[UserDAO.Create] Error:%s", err.Error())
-		return err
-	}
-	return nil
-}
-
-// Saves or updates a user account.
-func (dao *GormUserDAO) Save(user config.UserConfig) error {
-	if err := dao.db.Save(user).Error; err != nil {
-		dao.logger.Errorf("[UserDAO.Save] Error:%s", err.Error())
-		return err
-	}
-	return nil
-}
-
-// Deletes a user from the database
-func (dao *GormUserDAO) Delete(user config.UserConfig) error {
-	dao.logger.Errorf("[UserDAO.Delete] user: %+v", user)
-	return dao.db.Delete(user).Error
-}
+// func (dao *GormUserDAO) Create(user config.User) error {
+// 	if err := dao.db.Create(user).Error; err != nil {
+// 		dao.logger.Errorf("[UserDAO.Create] Error:%s", err.Error())
+// 		return err
+// 	}
+// 	return nil
+// }

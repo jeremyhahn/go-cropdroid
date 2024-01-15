@@ -5,7 +5,6 @@ type License struct {
 	UserQuota      int `yaml:"userQuota" json:"userQuota"`
 	FarmQuota      int `yaml:"farmQuota" json:"farmQuota"`
 	DeviceQuota    int `yaml:"deviceQuota" json:"deviceQuota"`
-	LicenseConfig  `yaml:"-" json:"-"`
 }
 
 func (license *License) GetUserQuota() int {

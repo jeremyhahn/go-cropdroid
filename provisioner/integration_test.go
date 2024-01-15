@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
@@ -16,11 +18,12 @@ var Location *time.Location
 var TestSuiteName = "cropdroid_service_test"
 
 type ProvisionerTest struct {
-	mutex    *sync.Mutex
-	db       gormstore.GormDB
-	gorm     *gorm.DB
-	logger   *logging.Logger
-	location *time.Location
+	mutex       *sync.Mutex
+	db          gormstore.GormDB
+	gorm        *gorm.DB
+	logger      *logging.Logger
+	location    *time.Location
+	idGenerator util.IdGenerator
 }
 
 func NewIntegrationTest() *ProvisionerTest {
@@ -51,6 +54,7 @@ func NewIntegrationTest() *ProvisionerTest {
 	CurrentTest.gorm = gormdb
 	CurrentTest.logger = logger
 	CurrentTest.location = Location
+	CurrentTest.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	return CurrentTest
 }
 

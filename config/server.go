@@ -1,147 +1,76 @@
 package config
 
-import (
-	"errors"
-)
-
-var (
-	ErrOrganizationNotFound = errors.New("organization not found")
-)
-
 type Server struct {
-	ID                  int            `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id" mapstructure:"id"`
-	Interval            int            `yaml:"interval" json:"interval" mapstructure:"interval"`
-	Timezone            string         `yaml:"timezone" json:"timezone" mapstructure:"timezone"`
-	Mode                string         `yaml:"mode" json:"mode" mapstructure:"mode"`
-	DefaultRole         string         `yaml:"default_role" json:"default_role" mapstructure:"default_role"`
-	DefaultPermission   string         `yaml:"default_permission" json:"default_permission" mapstructure:"default_permission"`
-	DataStoreEngine     string         `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
-	DataStoreCDC        bool           `yaml:"datastore_cdc" json:"datastore_cdc" mapstructure:"datastore_cdc"`
-	DataDir             string         `yaml:"datadir" json:"datadir" mapstructure:"datadir"`
-	DowngradeUser       string         `yaml:"www_user" json:"www_user" mapstructure:"www_user"`
-	EnableRegistrations bool           `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
-	EnableDefaultFarm   bool           `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
-	NodeID              int            `yaml:"node_id" json:"node_id" mapstructure:"node_id"`
-	RedirectHttpToHttps bool           `yaml:"redirect_http_https" json:"redirect_http_https" mapstructure:"redirect_http_https"`
-	SSLFlag             bool           `yaml:"ssl" json:"ssl" mapstructure:"ssl"`
-	WebPort             int            `yaml:"port" json:"port" mapstructure:"port"`
-	Smtp                *Smtp          `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
-	LicenseBlob         string         `yaml:"license" json:"license" mapstructure:"license"`
-	License             *License       `yaml:"-" json:"-" mapstructure:"-"`
-	Organizations       []Organization `yaml:"organizations" json:"organizations" mapstructure:"organizations"`
-	Farms               []Farm         `gorm:"-" yaml:"farms" json:"farms"`
-	ServerConfig        `yaml:"-" json:"-"`
+	ID               uint64
+	OrganizationRefs []uint64 `yaml:"organizationRefs" json:"organizationRefs" mapstructure:"organizations"`
+	FarmRefs         []uint64 `yaml:"farmRefs" json:"farmRefs" mapstructure:"farms"`
 }
 
-func NewServer() ServerConfig {
+func NewServer() *Server {
 	return &Server{
-		ID:            1,
-		Interval:      60,
-		Mode:          "virtual",
-		Organizations: make([]Organization, 0)}
+		OrganizationRefs: make([]uint64, 0),
+		FarmRefs:         make([]uint64, 0)}
 }
 
-func (config *Server) SetID(id int) {
-	config.ID = id
+func (server *Server) SetID(id uint64) {
+	server.ID = id
 }
 
-func (config *Server) GetID() int {
-	return config.ID
+func (server *Server) GetID() uint64 {
+	return server.ID
 }
 
-func (config *Server) SetInterval(interval int) {
-	config.Interval = interval
+func (server *Server) SetOrganizationRefs(refs []uint64) {
+	server.OrganizationRefs = refs
 }
 
-func (config *Server) GetInterval() int {
-	return config.Interval
+func (server *Server) GetOrganizationRefs() []uint64 {
+	return server.OrganizationRefs
 }
 
-func (config *Server) SetTimezone(timezone string) {
-	config.Timezone = timezone
+func (server *Server) AddOrganizationRef(orgID uint64) {
+	server.OrganizationRefs = append(server.OrganizationRefs, orgID)
 }
 
-func (config *Server) GetTimezone() string {
-	return config.Timezone
-}
-
-func (config *Server) SetMode(mode string) {
-	config.Mode = mode
-}
-
-func (config *Server) GetMode() string {
-	return config.Mode
-}
-
-func (config *Server) SetDefaultRole(role string) {
-	config.DefaultRole = role
-}
-
-func (config *Server) GetDefaultRole() string {
-	return config.DefaultRole
-}
-
-func (config *Server) SetDefaultPermission(permission string) {
-	config.DefaultPermission = permission
-}
-
-func (config *Server) GetDefaultPermission() string {
-	return config.DefaultPermission
-}
-
-func (config *Server) SetSmtp(smtp *Smtp) {
-	config.Smtp = smtp
-}
-
-func (config *Server) GetSmtp() *Smtp {
-	return config.Smtp
-}
-
-func (config *Server) GetLicense() *License {
-	return config.License
-}
-
-func (config *Server) SetLicense(license *License) {
-	config.License = license
-}
-
-func (config *Server) SetOrganizations(orgs []OrganizationConfig) {
-	orgStructs := make([]Organization, len(orgs))
-	for _, org := range orgs {
-		orgStructs = append(orgStructs, *org.(*Organization))
+func (server *Server) RemoveOrganizationRef(orgID uint64) {
+	newRefs := make([]uint64, 0)
+	for _, ref := range server.OrganizationRefs {
+		if ref == orgID {
+			continue
+		}
+		newRefs = append(newRefs, ref)
 	}
-	config.Organizations = orgStructs
+	server.OrganizationRefs = newRefs
 }
 
-func (config *Server) GetOrganizations() []OrganizationConfig {
-	orgConfigs := make([]OrganizationConfig, len(config.Organizations))
-	for _, org := range config.Organizations {
-		orgConfigs = append(orgConfigs, &org)
-	}
-	return orgConfigs
+func (server *Server) SetFarmRefs(refs []uint64) {
+	server.FarmRefs = refs
 }
 
-func (config *Server) GetOrganization(id uint64) (OrganizationConfig, error) {
-	for _, org := range config.Organizations {
-		if org.GetID() == id {
-			return &org, nil
+func (server *Server) GetFarmRefs() []uint64 {
+	return server.FarmRefs
+}
+
+func (server *Server) AddFarmRef(farmID uint64) {
+	server.FarmRefs = append(server.FarmRefs, farmID)
+}
+
+func (server *Server) HasFarmRef(farmID uint64) bool {
+	for _, id := range server.FarmRefs {
+		if id == farmID {
+			return true
 		}
 	}
-	return nil, ErrOrganizationNotFound
+	return false
 }
 
-func (config *Server) GetFarms() []Farm {
-	return config.Farms
-}
-
-func (config *Server) SetFarms(farms []FarmConfig) {
-	farmStructs := make([]Farm, len(farms))
-	for _, farm := range farms {
-		farmStructs = append(farmStructs, *farm.(*Farm))
+func (server *Server) RemoveFarmRef(farmID uint64) {
+	newRefs := make([]uint64, 0)
+	for _, ref := range server.FarmRefs {
+		if ref == farmID {
+			continue
+		}
+		newRefs = append(newRefs, ref)
 	}
-	config.Farms = farmStructs
-}
-
-func (config *Server) AddFarm(farm FarmConfig) {
-	config.Farms = append(config.Farms, *farm.(*Farm))
+	server.FarmRefs = newRefs
 }

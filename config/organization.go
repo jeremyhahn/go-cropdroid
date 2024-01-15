@@ -6,101 +6,100 @@ import (
 
 // Organization groups users and devices
 type Organization struct {
-	ID    uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	Name  string `gorm:"size:255" yaml:"name" json:"name"`
-	Farms []Farm `gorm:"many2many:permissions" yaml:"farms" json:"farms"`
+	ID   uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	Name string `gorm:"size:255" yaml:"name" json:"name"`
+	// Disabling gorm:"many2many:permissions on Farm so a permission
+	// record doesn't get saved to the database without a role or user id
+	//Farms []Farm `gorm:"many2many:permissions" yaml:"farms" json:"farms"`
+	Farms []*Farm `yaml:"farms" json:"farms"`
 	//Devices        []Device `yaml:"devices" json:"devices"`
-	Users []User `gorm:"many2many:permissions" yaml:"users" json:"users"`
+	Users []*User `gorm:"many2many:permissions" yaml:"users" json:"users"`
 	//Users              []User   `yaml:"users" json:"users"`
-	License            *License `yaml:"license" json:"license"`
-	OrganizationConfig `yaml:"-" json:"-"`
+	License *License `yaml:"license" json:"license"`
 }
 
-func NewOrganization() OrganizationConfig {
+func NewOrganization() *Organization {
 	return &Organization{
-		Farms: make([]Farm, 0),
-		Users: make([]User, 0)}
+		Farms: make([]*Farm, 0),
+		Users: make([]*User, 0)}
 }
 
-func CreateOrganization(farms []Farm, users []User) OrganizationConfig {
+func CreateOrganization(farms []*Farm, users []*User) *Organization {
 	return &Organization{
 		Farms: farms,
 		Users: users}
 }
 
 // SetID sets the unique identifier for the org
-func (o *Organization) SetID(id uint64) {
-	o.ID = id
+func (org *Organization) SetID(id uint64) {
+	org.ID = id
 }
 
 // GetID returns the unique identifier for the org
-func (o *Organization) GetID() uint64 {
-	return o.ID
+func (org *Organization) GetID() uint64 {
+	return org.ID
 }
 
 // SetName sets the org name
-func (o *Organization) SetName(name string) {
-	o.Name = name
+func (org *Organization) SetName(name string) {
+	org.Name = name
 }
 
 // GetName returns the org name
-func (o *Organization) GetName() string {
-	return o.Name
+func (org *Organization) GetName() string {
+	return org.Name
 }
 
 // SetFarms sets the farms that belong to the org
-func (o *Organization) AddFarm(farm FarmConfig) {
-	o.Farms = append(o.Farms, *farm.(*Farm))
+func (org *Organization) AddFarm(farm *Farm) {
+	org.Farms = append(org.Farms, farm)
 }
 
 // SetFarms sets the farms that belong to the org
-func (o *Organization) SetFarms(farms []FarmConfig) {
-	farmStructs := make([]Farm, len(farms))
-	for i, farm := range farms {
-		farmStructs[i] = *farm.(*Farm)
-	}
-	o.Farms = farmStructs
+func (org *Organization) SetFarms(farms []*Farm) {
+	org.Farms = farms
 }
 
 // GetFarm gets the farms that belong to the org
-func (o *Organization) GetFarms() []FarmConfig {
-	farmConfigs := make([]FarmConfig, len(o.Farms))
-	for i, farm := range o.Farms {
-		farmConfigs[i] = &farm
-	}
-	return farmConfigs
+func (org *Organization) GetFarms() []*Farm {
+	return org.Farms
 }
 
 // GetFarm returns the specified farm from the org
-func (o *Organization) GetFarm(id uint64) (FarmConfig, error) {
-	for _, farm := range o.Farms {
+func (org *Organization) GetFarm(id uint64) (*Farm, error) {
+	for _, farm := range org.Farms {
 		if farm.GetID() == id {
-			return &farm, nil
+			return farm, nil
 		}
 	}
 	return nil, fmt.Errorf("[Organization.GetFarm] Farm not found with ID: %d", id)
 }
 
-func (o *Organization) SetUsers(users []UserConfig) {
-	userStructs := make([]User, len(users))
-	for i, user := range users {
-		userStructs[i] = *user.(*User)
+func (org *Organization) AddUser(user *User) {
+	org.Users = append(org.Users, user)
+}
+
+func (org *Organization) RemoveUser(user *User) {
+	for i, u := range org.Users {
+		if u.ID == user.GetID() {
+			org.Users = append(org.Users[:i], org.Users[i+1:]...)
+			break
+		}
 	}
-	o.Users = userStructs
 }
 
-func (o *Organization) GetUsers() []UserConfig {
-	userConfigs := make([]UserConfig, len(o.Users))
-	for i, user := range o.Users {
-		userConfigs[i] = &user
-	}
-	return userConfigs
+func (org *Organization) SetUsers(users []*User) {
+	org.Users = users
 }
 
-func (o *Organization) GetLicense() *License {
-	return o.License
+func (org *Organization) GetUsers() []*User {
+	return org.Users
 }
 
-func (o *Organization) SetLicense(license *License) {
-	o.License = license
+func (org *Organization) GetLicense() *License {
+	return org.License
+}
+
+func (org *Organization) SetLicense(license *License) {
+	org.License = license
 }

@@ -17,32 +17,32 @@ func NewMockUserDAO() dao.UserDAO {
 	return &MockUserDAO{}
 }
 
-func (dao *MockUserDAO) GetById(userId int) (config.UserConfig, error) {
+func (dao *MockUserDAO) GetById(userId int) (*config.User, error) {
 	args := dao.Called(userId)
 	fmt.Printf("[MockUserDAO] GetById() userId = %d", userId)
-	return args.Get(0).(config.UserConfig), nil
+	return args.Get(0).(*config.User), nil
 }
 
-func (dao *MockUserDAO) GetByEmail(email string) (config.UserConfig, error) {
+func (dao *MockUserDAO) GetByEmail(email string) (*config.User, error) {
 	args := dao.Called(email)
 	fmt.Printf("[MockUserDAO] GetByEmail() email = %s", email)
-	return args.Get(0).(config.UserConfig), nil
+	return args.Get(0).(*config.User), nil
 }
 
-func (dao *MockUserDAO) Create(user config.UserConfig) error {
+func (dao *MockUserDAO) Create(user *config.User) error {
 	args := dao.Called(user)
 	fmt.Printf("[MockUserDAO] Create user = %+v", user)
 	return args.Error(0)
 }
 
-func (dao *MockUserDAO) Save(user config.UserConfig) error {
+func (dao *MockUserDAO) Save(user *config.User) error {
 	args := dao.Called(user)
 	fmt.Printf("[MockUserDAO] Save user=%+v", user)
 	return args.Error(0)
 }
 
-func (dao *MockUserDAO) Find() ([]config.UserConfig, error) {
+func (dao *MockUserDAO) Find() ([]*config.User, error) {
 	args := dao.Called()
 	fmt.Printf("[MockUserDAO] Find")
-	return args.Get(0).([]config.UserConfig), args.Error(0)
+	return args.Get(0).([]*config.User), args.Error(0)
 }

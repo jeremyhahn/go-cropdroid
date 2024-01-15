@@ -17,28 +17,28 @@ func NewMockDeviceDAO() *MockDeviceDAO {
 	return &MockDeviceDAO{}
 }
 
-func (dao *MockDeviceDAO) Create(device config.DeviceConfig) error {
+func (dao *MockDeviceDAO) Create(device config.Device) error {
 	args := dao.Called(device)
 	fmt.Println("Creating device record")
 	return args.Error(0)
 }
 
-func (dao *MockDeviceDAO) Save(device config.DeviceConfig) error {
+func (dao *MockDeviceDAO) Save(device config.Device) error {
 	args := dao.Called(device)
 	fmt.Println("Saving device record")
 	return args.Error(0)
 }
 
-func (dao *MockDeviceDAO) Update(device config.DeviceConfig) error {
+func (dao *MockDeviceDAO) Update(device config.Device) error {
 	args := dao.Called(device)
 	fmt.Println("Updating device record")
 	return args.Error(0)
 }
 
-func (dao *MockDeviceDAO) Get(id int) (config.DeviceConfig, error) {
+func (dao *MockDeviceDAO) Get(id int) (config.Device, error) {
 	args := dao.Called(id)
 	fmt.Printf("Getting devices for org id %d\n", id)
-	return args.Get(0).(config.DeviceConfig), nil
+	return args.Get(0).(config.Device), nil
 }
 
 func (dao *MockDeviceDAO) GetByOrgId(orgId int) ([]config.Device, error) {

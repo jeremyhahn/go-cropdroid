@@ -2,7 +2,6 @@ package mapper
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
@@ -10,10 +9,9 @@ import (
 )
 
 type ConditionMapper interface {
-	MapModelToEntity(model config.ConditionConfig) *config.Condition
-	MapEntityToModel(entity *config.Condition) *config.Condition
-	MapEntityToView(entity config.ConditionConfig, deviceType string, metric config.MetricConfig, channelID uint64) *viewmodel.Condition
-	MapViewToConfig(viewModel viewmodel.Condition) config.ConditionConfig
+	MapConfigToView(entity *config.Condition, deviceType string,
+		metric *config.Metric, channelID uint64) *viewmodel.Condition
+	MapViewToConfig(viewModel viewmodel.Condition) *config.Condition
 }
 
 type DefaultConditionMapper struct {
@@ -23,28 +21,8 @@ func NewConditionMapper() ConditionMapper {
 	return &DefaultConditionMapper{}
 }
 
-func (mapper *DefaultConditionMapper) MapModelToEntity(model config.ConditionConfig) *config.Condition {
-	return &config.Condition{
-		ID:         model.GetID(),
-		WorkflowID: model.GetWorkflowID(),
-		ChannelID:  model.GetChannelID(),
-		MetricID:   model.GetMetricID(),
-		Comparator: model.GetComparator(),
-		Threshold:  model.GetThreshold()}
-}
-
-func (mapper *DefaultConditionMapper) MapEntityToModel(entity *config.Condition) *config.Condition {
-	return &config.Condition{
-		ID:         entity.GetID(),
-		WorkflowID: entity.GetWorkflowID(),
-		ChannelID:  entity.GetChannelID(),
-		MetricID:   entity.GetMetricID(),
-		Comparator: entity.GetComparator(),
-		Threshold:  entity.GetThreshold()}
-}
-
-func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionConfig, deviceType string,
-	metric config.MetricConfig, channelID uint64) *viewmodel.Condition {
+func (mapper *DefaultConditionMapper) MapConfigToView(entity *config.Condition, deviceType string,
+	metric *config.Metric, channelID uint64) *viewmodel.Condition {
 
 	text := fmt.Sprintf("%s %s %s %.2f",
 		strings.Title(deviceType),
@@ -53,7 +31,7 @@ func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionCon
 		entity.GetComparator(),
 		entity.GetThreshold())
 	return &viewmodel.Condition{
-		ID:         fmt.Sprintf("%d", entity.GetID()),
+		ID:         entity.GetID(),
 		DeviceType: deviceType,
 		MetricID:   metric.GetID(),
 		MetricName: metric.GetName(),
@@ -64,10 +42,9 @@ func (mapper *DefaultConditionMapper) MapEntityToView(entity config.ConditionCon
 		Text:       text}
 }
 
-func (mapper *DefaultConditionMapper) MapViewToConfig(viewModel viewmodel.Condition) config.ConditionConfig {
-	id, _ := strconv.ParseUint(viewModel.GetID(), 10, 64)
+func (mapper *DefaultConditionMapper) MapViewToConfig(viewModel viewmodel.Condition) *config.Condition {
 	return &config.Condition{
-		ID:         id,
+		ID:         viewModel.GetID(),
 		WorkflowID: viewModel.GetWorkflowID(),
 		MetricID:   viewModel.GetMetricID(),
 		ChannelID:  viewModel.GetChannelID(),

@@ -8,14 +8,13 @@ import (
 )
 
 type Workflow struct {
-	ID                    uint64           `yaml:"id" json:"id"`
-	FarmID                uint64           `yaml:"farm" json:"farmId"`
-	Name                  string           `yaml:"name" json:"name"`
-	LastCompleted         *time.Time       `yaml:"lastCompleted" json:"lastCompleted"`
-	Conditions            []Condition      `yaml:"conditions" json:"conditions"`
-	Schedules             []model.Schedule `yaml:"schedules" json:"schedules"`
-	Steps                 []WorkflowStep   `yaml:"steps" json:"steps"`
-	config.WorkflowConfig `yaml:"-" json:"-"`
+	ID            uint64           `yaml:"id" json:"id"`
+	FarmID        uint64           `yaml:"farm" json:"farmId"`
+	Name          string           `yaml:"name" json:"name"`
+	LastCompleted *time.Time       `yaml:"lastCompleted" json:"lastCompleted"`
+	Conditions    []Condition      `yaml:"conditions" json:"conditions"`
+	Schedules     []model.Schedule `yaml:"schedules" json:"schedules"`
+	Steps         []WorkflowStep   `yaml:"steps" json:"steps"`
 }
 
 func NewWorkflow() *Workflow {

@@ -117,7 +117,7 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&config.User{})
 	database.db.AutoMigrate(&config.Role{})
 	database.db.AutoMigrate(&config.Device{})
-	database.db.AutoMigrate(&config.DeviceConfigItem{})
+	database.db.AutoMigrate(&config.DeviceSetting{})
 	database.db.AutoMigrate(&config.Metric{})
 	database.db.AutoMigrate(&config.Channel{})
 	database.db.AutoMigrate(&config.Condition{})
@@ -132,6 +132,7 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&config.Workflow{})
 	database.db.AutoMigrate(&config.WorkflowStep{})
 	database.db.AutoMigrate(&config.Registration{})
+
 	return nil
 }
 

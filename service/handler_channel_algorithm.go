@@ -15,9 +15,9 @@ import (
 type ChannelAlgorithmHandler struct {
 	logger       *logging.Logger
 	service      DeviceService
-	device       config.DeviceConfig
-	channel      config.ChannelConfig
-	metric       config.MetricConfig
+	device       *config.Device
+	channel      *config.Channel
+	metric       *config.Metric
 	value        float64
 	threshold    float64
 	backoffTable map[uint64]time.Time
@@ -26,12 +26,13 @@ type ChannelAlgorithmHandler struct {
 }
 
 func NewChannelAlgorithmHandler(logger *logging.Logger, idGenerator util.IdGenerator,
-	service DeviceService, device config.DeviceConfig, channel config.ChannelConfig,
-	metric config.MetricConfig, value, threshold float64,
+	service DeviceService, device *config.Device, channel *config.Channel,
+	metric *config.Metric, value, threshold float64,
 	backoffTable map[uint64]time.Time) AlgorithmHandler {
 
 	return &ChannelAlgorithmHandler{
 		logger:       logger,
+		idGenerator:  idGenerator,
 		service:      service,
 		device:       device,
 		channel:      channel,
@@ -46,10 +47,10 @@ func (h *ChannelAlgorithmHandler) Handle() (bool, error) {
 	h.logger.Debugf("Processing %s %s algorithm", deviceType, h.channel.GetName())
 	phAlgorithmID := h.idGenerator.NewID(common.ALGORITHM_PH_KEY)
 	if h.channel.GetAlgorithmID() == phAlgorithmID {
-		configs := h.device.GetConfigs()
+		settings := h.device.GetSettings()
 		gallons := 0
 		gallonsConfigKey := fmt.Sprintf("%s.gallons", deviceType)
-		for _, config := range configs {
+		for _, config := range settings {
 			if config.GetKey() == gallonsConfigKey {
 				g, err := strconv.Atoi(config.GetValue())
 				if err != nil {

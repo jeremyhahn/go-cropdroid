@@ -229,3 +229,12 @@ The following golang channels are created for each farm
 3. farm.WatchFarmStateChange
 4. farm.WatchFarmConfigChange
 5. farm.WatchDeviceStateChange
+
+
+# Known Bugs
+
+- Not getting push notifications
+- Enable/disable toggles wrong sensor
+- Conditions not ordered by time
+- Workflow steps out of order
+- Roles not loading

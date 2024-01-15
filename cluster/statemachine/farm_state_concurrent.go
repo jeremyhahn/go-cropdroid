@@ -1,4 +1,5 @@
-// +build cluster
+//go:build cluster && pebble
+// +build cluster,pebble
 
 package statemachine
 
@@ -7,10 +8,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
-	"strings"
 	"sync"
 
+	"github.com/jeremyhahn/go-cropdroid/state"
 	fs "github.com/jeremyhahn/go-cropdroid/state"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	logging "github.com/op/go-logging"
@@ -26,10 +26,10 @@ type FarmSM struct {
 	clusterID           uint64
 	nodeID              uint64
 	farmID              uint64
-	data                []fs.FarmStateMap
+	data                fs.FarmStateMap
 	dataMutex           *sync.RWMutex
 	snapshotIdentifier  uint64
-	snapshot            []fs.FarmStateMap
+	snapshot            fs.FarmStateMap
 	snapshotMutex       *sync.RWMutex
 	farmStateChangeChan chan fs.FarmStateMap
 	FarmStateMachine
@@ -45,7 +45,7 @@ func NewFarmStateMachine(logger *logging.Logger, farmID uint64,
 	return &FarmSM{
 		logger:              logger,
 		farmID:              farmID,
-		data:                make([]fs.FarmStateMap, 0),
+		data:                state.NewFarmStateMap(1),
 		farmStateChangeChan: farmStateChangeChan,
 		dataMutex:           &sync.RWMutex{},
 		snapshotMutex:       &sync.RWMutex{}}
@@ -60,42 +60,19 @@ func (s *FarmSM) CreateFarmStateMachine(clusterID, nodeID uint64) sm.IConcurrent
 }
 
 func (s *FarmSM) Lookup(query interface{}) (interface{}, error) {
-
 	s.logger.Debugf("[FarmStateMachine.Lookup] query: %+v", query)
 
 	s.dataMutex.RLock()
 	defer s.dataMutex.RUnlock()
 
-	dataLen := len(s.data)
-	if dataLen == 0 {
-		return nil, nil
+	switch v := query.(type) {
+	case string, nil:
+		if v == nil || v == "*" {
+			return s.data, nil
+		}
 	}
 
-	dataIdx := dataLen - 1
-
-	s.logger.Debugf("[FarmStateMachine.Lookup] dataLen: %d", dataLen)
-	s.logger.Debugf("[FarmStateMachine.Lookup] dataIdx: %d", dataIdx)
-
-	current := s.data[dataIdx]
-
-	s.logger.Debugf("[FarmStateMachine.Lookup] current state: %+v", current)
-
-	if query == nil {
-		return []fs.FarmStateMap{current}, nil
-	}
-	if query.(string) == "*" {
-		return s.data, nil
-	}
-	pieces := strings.Split(query.(string), ":")
-	start, err := strconv.Atoi(pieces[0])
-	if err != nil {
-		return nil, err
-	}
-	end, err := strconv.Atoi(pieces[1])
-	if err != nil {
-		return nil, err
-	}
-	return s.data[start:end], nil
+	return nil, ErrUnsupportedQuery
 }
 
 func (s *FarmSM) Update(entries []sm.Entry) ([]sm.Entry, error) {
@@ -103,26 +80,27 @@ func (s *FarmSM) Update(entries []sm.Entry) ([]sm.Entry, error) {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
 
-	dataLen := len(entries)
-	s.data = make([]fs.FarmStateMap, dataLen, dataLen)
+	// if len(entries) > 1 {
+	// 	return nil, errors.New("multiple entries not supported")
+	// }
 
-	for i, entry := range entries {
+	for _, entry := range entries {
 		var farmState fs.FarmState
 		err := json.Unmarshal(entry.Cmd, &farmState)
 		if err != nil {
 			s.logger.Errorf("[FarmStateMachine.Update] Error: %s\n", err)
 			return entries, err
 		}
-		s.data[i] = &farmState
+		s.data = &farmState
 
-		s.logger.Debugf("[FarmStateMachine.Update] farm.id: %d, store.data.len: %d, farm: %+v\n",
-			s.farmID, dataLen, string(entry.Cmd))
+		s.logger.Debugf("[FarmStateMachine.Update] farm.id: %d, farm: %+v\n",
+			s.farmID, string(entry.Cmd))
 
 		entry.Result = sm.Result{
 			Value: uint64(1),
-			Data:  nil}
+			Data:  entry.Cmd}
 	}
-	s.farmStateChangeChan <- s.data[dataLen-1]
+	s.farmStateChangeChan <- s.data
 	return entries, nil
 }
 
@@ -135,10 +113,7 @@ func (s *FarmSM) PrepareSnapshot() (interface{}, error) {
 	defer s.dataMutex.RUnlock()
 
 	s.snapshotIdentifier++
-
-	dataLen := len(s.data)
-	s.snapshot = make([]fs.FarmStateMap, dataLen, dataLen)
-	copy(s.snapshot, s.data)
+	s.snapshot = s.data
 
 	return s.snapshotIdentifier, nil
 }
@@ -162,8 +137,7 @@ func (s *FarmSM) SaveSnapshot(stateIdentifier interface{}, w io.Writer,
 		s.logger.Errorf("[FarmStateMachine.SaveSnapshot] Error: %s", err)
 		return err
 	}
-	s.logger.Infof("[FarmStateMachine.SaveSnapshot] Created new snaphot. History length: %d",
-		len(s.snapshot))
+	s.logger.Infof("[FarmStateMachine.SaveSnapshot] Created new snaphot")
 	_, err = w.Write(bytes)
 	s.snapshot = nil
 	return err
@@ -176,23 +150,18 @@ func (s *FarmSM) RecoverFromSnapshot(r io.Reader, files []sm.SnapshotFile, done 
 	if err != nil {
 		return err
 	}
-	var farmState []fs.FarmState
+	var farmState fs.FarmState
 	err = json.Unmarshal(data, &farmState)
 	if err != nil {
 		s.logger.Errorf("[FarmStateMachine.RecoverFromSnapshot] Error: %s, farmState: %+v\n", err, farmState)
 		return err
 	}
-	s.logger.Debugf("[FarmStateMachine.SaveSnapshot] Recovered from snapshot. History length: %d", len(farmState))
+	s.logger.Debugf("[FarmStateMachine.SaveSnapshot] Recovered from snapshot")
 
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
+	s.data = &farmState
 
-	if len(farmState) > 0 {
-		s.data = make([]fs.FarmStateMap, len(farmState))
-		for i, h := range farmState {
-			s.data[i] = &h
-		}
-	}
 	return nil
 }
 
@@ -202,10 +171,6 @@ func (s *FarmSM) RecoverFromSnapshot(r io.Reader, files []sm.SnapshotFile, done 
 func (s *FarmSM) Close() error { return nil }
 
 // GetHash returns a uint64 representing the current object state.
-func (s *FarmSM) GetHash() (uint64, error) {
-	dataLen := len(s.data)
-	if dataLen == 0 {
-		return 0, nil
-	}
-	return uint64(s.data[dataLen-1].GetTimestamp()), nil
-}
+// func (s *FarmSM) GetHash() (uint64, error) {
+// 	return uint64(s.data.GetTimestamp()), nil
+// }

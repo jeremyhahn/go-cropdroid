@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package webservice
@@ -45,20 +46,20 @@ type Webserver struct {
 	farmTickerSubrouter       *mux.Router
 	farmHubs                  map[uint64]*websocket.FarmHub
 	farmHubMutex              sync.Mutex
-	gossipCluster             cluster.GossipCluster
+	gossipNode                cluster.GossipNode
 	jsonWebTokenService       service.JsonWebTokenService
 	mutex                     sync.Mutex
 	notificationService       service.NotificationService
 	notificationHubs          map[int]*websocket.NotificationHub
 	notificationHubMutex      sync.Mutex
-	raftCluster               cluster.RaftCluster
+	raftNode                  cluster.RaftNode
 	registry                  service.ServiceRegistry
 	restServices              []rest.RestService
 	router                    *mux.Router
 }
 
-func NewWebserver(app *app.App, gossipCluster cluster.GossipCluster,
-	raftCluster cluster.RaftCluster, serviceRegistry service.ServiceRegistry,
+func NewWebserver(app *app.App, gossipNode cluster.GossipNode,
+	raftNode cluster.RaftNode, serviceRegistry service.ServiceRegistry,
 	restServices []rest.RestService, farmTickerProvisionerChan chan uint64) *Webserver {
 
 	webserver := &Webserver{
@@ -66,6 +67,7 @@ func NewWebserver(app *app.App, gossipCluster cluster.GossipCluster,
 		app:                       app,
 		router:                    mux.NewRouter().StrictSlash(true),
 		baseURI:                   "/api/v1",
+		registry:                  serviceRegistry,
 		restServices:              restServices,
 		eventType:                 "WebServer",
 		endpointList:              make([]string, 0),
@@ -75,8 +77,8 @@ func NewWebserver(app *app.App, gossipCluster cluster.GossipCluster,
 		farmHubMutex:              sync.Mutex{},
 		jsonWebTokenService:       serviceRegistry.GetJsonWebTokenService(),
 		notificationService:       serviceRegistry.GetNotificationService(),
-		gossipCluster:             gossipCluster,
-		raftCluster:               raftCluster,
+		gossipNode:                gossipNode,
+		raftNode:                  raftNode,
 		notificationHubs:          make(map[int]*websocket.NotificationHub),
 		notificationHubMutex:      sync.Mutex{},
 		eventLogService:           serviceRegistry.GetEventLogService()}
@@ -184,7 +186,8 @@ func (server *Webserver) buildRoutes() {
 	baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", server.baseURI)
 	//baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseOrgURI)
 
-	registrationService := rest.NewRegistrationRestService(server.app, server.registry.GetUserService(), jsonWriter)
+	registrationService := rest.NewRegistrationRestService(server.app,
+		server.registry.GetUserService(), jsonWriter)
 
 	// REST Handlers - Public Access
 	router.HandleFunc("/endpoints", server.endpoints)
@@ -379,7 +382,7 @@ func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.app.Config)
+	rest.NewJsonWriter().Write(w, http.StatusOK, server.app)
 }
 
 func (server *Webserver) endpoints(w http.ResponseWriter, r *http.Request) {
@@ -421,26 +424,26 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 			NumGC:       memstats.NumGC,
 			NumForcedGC: memstats.NumForcedGC}}
 
-	if server.gossipCluster != nil {
+	if server.gossipNode != nil {
 		systemStatus.GossipStats = &model.GossipStats{
-			NumNodes: server.gossipCluster.GetMemberCount(),
-			//HealthScore: server.gossipCluster.GetHealthScore(),
-			Serf:     server.gossipCluster.GetSerfStats(),
-			Hashring: &model.Hashring{Loads: server.gossipCluster.GetHashring().GetLoads()}}
+			NumNodes: server.gossipNode.GetMemberCount(),
+			//HealthScore: server.gossipNode.GetHealthScore(),
+			Serf:     server.gossipNode.GetSerfStats(),
+			Hashring: &model.Hashring{Loads: server.gossipNode.GetHashring().GetLoads()}}
 	}
 
-	if server.raftCluster != nil {
-		clusterID := server.raftCluster.GetParams().GetClusterID()
-		leaderID, ready, _ := server.raftCluster.GetNodeHost().GetLeaderID(clusterID)
+	if server.raftNode != nil {
+		clusterID := server.raftNode.GetParams().GetClusterID()
+		leaderID, ready, _ := server.raftNode.GetNodeHost().GetLeaderID(clusterID)
 		systemStatus.RaftStats = &model.RaftStats{
-			NumClusters: server.raftCluster.GetClusterCount(),
-			NumNodes:    server.raftCluster.GetNodeCount(),
+			NumClusters: server.raftNode.GetClusterCount(),
+			NumNodes:    server.raftNode.GetNodeCount(),
 			LeaderID:    int(leaderID),
-			IsLeader:    server.raftCluster.IsLeader(clusterID),
+			IsLeader:    server.raftNode.IsLeader(clusterID),
 			IsReady:     ready,
-			Params:      server.raftCluster.GetParams(),
-			Clusters:    server.raftCluster.GetClusterStatus(),
-			Hashring:    &model.Hashring{Loads: server.raftCluster.GetHashring().GetLoads()}}
+			Params:      server.raftNode.GetParams(),
+			Clusters:    server.raftNode.GetClusterStatus(),
+			Hashring:    &model.Hashring{Loads: server.raftNode.GetHashring().GetLoads()}}
 	}
 
 	rest.NewJsonWriter().Write(w, http.StatusOK, systemStatus)

@@ -51,7 +51,6 @@ func NewIntegrationTest() *ServiceTest {
 	database.Migrate()
 
 	app := &app.App{
-		GORM:           gormdb,
 		GORMInitParams: gormInitParams,
 		KeyDir:         "../keys",
 		Logger:         logger,

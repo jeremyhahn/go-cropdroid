@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/service"
 )
@@ -12,7 +13,7 @@ type DefaultRestServiceRegistry struct {
 	RestServiceRegistry
 }
 
-func NewRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
+func NewRestServiceRegistry(app *app.App, publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
 
 	jsonWriter := NewJsonWriter()
 	jwtService := serviceRegistry.GetJsonWebTokenService()
@@ -29,7 +30,7 @@ func NewRestServiceRegistry(publicKey string, mapperRegistry mapper.MapperRegist
 	workflowRestService := NewWorkflowRestService(serviceRegistry.GetWorkflowService(), jwtService, jsonWriter)
 	workflowStepRestService := NewWorkflowStepRestService(serviceRegistry.GetWorkflowStepService(), jwtService, jsonWriter)
 	googleRestService := NewGoogleRestService(serviceRegistry.GetGoogleAuthService(), jwtService, jsonWriter)
-	provisionerRestService := NewProvisionerRestService(farmProvisioner, jwtService, jsonWriter)
+	provisionerRestService := NewProvisionerRestService(app, serviceRegistry.GetUserService(), farmProvisioner, jwtService, jsonWriter)
 	roleRestService := NewRoleRestService(serviceRegistry.GetRoleService(), jwtService, jsonWriter)
 	organizationRestService := NewOrganizationRestService(serviceRegistry.GetOrganizationService(), jwtService, jsonWriter)
 

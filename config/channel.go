@@ -1,25 +1,24 @@
 package config
 
 type Channel struct {
-	ID            uint64      `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	DeviceID      uint64      `yaml:"device" json:"device_id"`
-	ChannelID     int         `yaml:"channel" json:"channel_id"`
-	Name          string      `yaml:"name" json:"name"`
-	Enable        bool        `yaml:"enable" json:"enable"`
-	Notify        bool        `yaml:"notify" json:"notify"`
-	Conditions    []Condition `yaml:"conditions" json:"conditions"`
-	Schedule      []Schedule  `yaml:"schedule" json:"schedule"`
-	Duration      int         `yaml:"duration" json:"duration"`
-	Debounce      int         `yaml:"debounce" json:"debounce"`
-	Backoff       int         `yaml:"backoff" json:"backoff"`
-	AlgorithmID   uint64      `yaml:"algorithm" json:"algorithm_id"`
-	ChannelConfig `yaml:"-" json:"-"`
+	ID          uint64       `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	DeviceID    uint64       `yaml:"device" json:"device_id"`
+	ChannelID   int          `yaml:"channel" json:"channel_id"`
+	Name        string       `yaml:"name" json:"name"`
+	Enable      bool         `yaml:"enable" json:"enable"`
+	Notify      bool         `yaml:"notify" json:"notify"`
+	Conditions  []*Condition `yaml:"conditions" json:"conditions"`
+	Schedule    []*Schedule  `yaml:"schedule" json:"schedule"`
+	Duration    int          `yaml:"duration" json:"duration"`
+	Debounce    int          `yaml:"debounce" json:"debounce"`
+	Backoff     int          `yaml:"backoff" json:"backoff"`
+	AlgorithmID uint64       `yaml:"algorithm" json:"algorithm_id"`
 }
 
 func NewChannel() *Channel {
 	return &Channel{
-		Conditions: make([]Condition, 0),
-		Schedule:   make([]Schedule, 0)}
+		Conditions: make([]*Condition, 0),
+		Schedule:   make([]*Schedule, 0)}
 }
 
 func (channel *Channel) SetID(id uint64) {
@@ -72,40 +71,40 @@ func (channel *Channel) IsNotify() bool {
 	return channel.Notify
 }
 
-func (channel *Channel) SetConditions(conditions []Condition) {
+func (channel *Channel) SetConditions(conditions []*Condition) {
 	channel.Conditions = conditions
 }
 
-func (channel *Channel) SetCondition(condition ConditionConfig) {
+func (channel *Channel) SetCondition(condition *Condition) {
 	for i, c := range channel.Conditions {
 		if c.GetID() == condition.GetID() {
-			channel.Conditions[i] = *condition.(*Condition)
+			channel.Conditions[i] = condition
 			return
 		}
 	}
-	channel.Conditions = append(channel.Conditions, *condition.(*Condition))
+	channel.Conditions = append(channel.Conditions, condition)
 }
 
-func (channel *Channel) AddCondition(condition ConditionConfig) {
-	channel.Conditions = append(channel.Conditions, *condition.(*Condition))
+func (channel *Channel) AddCondition(condition *Condition) {
+	channel.Conditions = append(channel.Conditions, condition)
 }
 
-func (channel *Channel) GetConditions() []Condition {
+func (channel *Channel) GetConditions() []*Condition {
 	return channel.Conditions
 }
 
-func (channel *Channel) SetSchedule(schedule []Schedule) {
+func (channel *Channel) SetSchedule(schedule []*Schedule) {
 	channel.Schedule = schedule
 }
 
-func (channel *Channel) SetScheduleItem(schedule ScheduleConfig) {
+func (channel *Channel) SetScheduleItem(schedule *Schedule) {
 	for i, s := range channel.Schedule {
 		if s.GetID() == schedule.GetID() {
-			channel.Schedule[i] = *schedule.(*Schedule)
+			channel.Schedule[i] = schedule
 			return
 		}
 	}
-	channel.Schedule = append(channel.Schedule, *schedule.(*Schedule))
+	channel.Schedule = append(channel.Schedule, schedule)
 }
 
 /*
@@ -113,7 +112,7 @@ func (channel *Channel) DeleteSchedule(schedule []Schedule, pos int) []Schedule 
 	append(schedule[:pos], schedule[pos+1:]...)
 }*/
 
-func (channel *Channel) GetSchedule() []Schedule {
+func (channel *Channel) GetSchedule() []*Schedule {
 	return channel.Schedule
 }
 

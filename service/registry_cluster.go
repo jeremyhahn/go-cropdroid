@@ -1,3 +1,4 @@
+//go:build cluster
 // +build cluster
 
 package service
@@ -5,37 +6,38 @@ package service
 import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/cluster"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
 type DefaultClusterRegistry struct {
-	gossipCluster cluster.GossipCluster
-	raftCluster   cluster.RaftCluster
+	daos       dao.Registry
+	gossipNode cluster.GossipNode
+	raftNode   cluster.RaftNode
 	DefaultServiceRegistry
 }
 
 type ClusterServiceRegistry interface {
-	GetGossipCluster() cluster.GossipCluster
-	GetRaftCluster() cluster.RaftCluster
+	GetGossipNode() cluster.GossipNode
+	GetRaftNode() cluster.RaftNode
 	ServiceRegistry
 }
 
-func CreateClusterServiceRegistry(_app *app.App, daos datastore.DatastoreRegistry,
-	mappers mapper.MapperRegistry, gossipCluster cluster.GossipCluster,
-	raftCluster cluster.RaftCluster) ClusterServiceRegistry {
+func CreateClusterServiceRegistry(_app *app.App, daos dao.Registry,
+	mappers mapper.MapperRegistry, gossipNode cluster.GossipNode,
+	raftNode cluster.RaftNode) ClusterServiceRegistry {
 
 	registry := CreateServiceRegistry(_app, daos, mappers)
 	return &DefaultClusterRegistry{
 		DefaultServiceRegistry: *registry.(*DefaultServiceRegistry),
-		gossipCluster:          gossipCluster,
-		raftCluster:            raftCluster}
+		gossipNode:             gossipNode,
+		raftNode:               raftNode}
 }
 
-func (clusterRegistry *DefaultClusterRegistry) GetGossipCluster() cluster.GossipCluster {
-	return clusterRegistry.gossipCluster
+func (clusterRegistry *DefaultClusterRegistry) GetGossipNode() cluster.GossipNode {
+	return clusterRegistry.gossipNode
 }
 
-func (clusterRegistry *DefaultClusterRegistry) GetRaftCluster() cluster.RaftCluster {
-	return clusterRegistry.raftCluster
+func (clusterRegistry *DefaultClusterRegistry) GetRaftNode() cluster.RaftNode {
+	return clusterRegistry.raftNode
 }

@@ -7,8 +7,8 @@ import (
 )
 
 type UserMapper interface {
-	MapUserEntityToModel(config config.UserConfig) common.UserAccount
-	MapUserModelToEntity(common.UserAccount) config.UserConfig
+	MapUserConfigToModel(config *config.User) common.UserAccount
+	MapUserModelToConfig(common.UserAccount) *config.User
 }
 
 type DefaultUserMapper struct {
@@ -18,7 +18,7 @@ func NewUserMapper() UserMapper {
 	return &DefaultUserMapper{}
 }
 
-func (mapper *DefaultUserMapper) MapUserEntityToModel(config config.UserConfig) common.UserAccount {
+func (mapper *DefaultUserMapper) MapUserConfigToModel(config *config.User) common.UserAccount {
 	roles := make([]common.Role, len(config.GetRoles()))
 	for i, role := range config.GetRoles() {
 		roles[i] = &model.Role{
@@ -26,22 +26,26 @@ func (mapper *DefaultUserMapper) MapUserEntityToModel(config config.UserConfig) 
 			Name: role.GetName()}
 	}
 	return &model.User{
-		ID:       config.GetID(),
-		Email:    config.GetEmail(),
-		Password: config.GetPassword(),
-		Roles:    roles}
+		ID:               config.GetID(),
+		Email:            config.GetEmail(),
+		Password:         config.GetPassword(),
+		OrganizationRefs: config.GetOrganizationRefs(),
+		FarmRefs:         config.GetFarmRefs(),
+		Roles:            roles}
 }
 
-func (mapper *DefaultUserMapper) MapUserModelToEntity(user common.UserAccount) config.UserConfig {
-	roles := make([]config.Role, len(user.GetRoles()))
+func (mapper *DefaultUserMapper) MapUserModelToConfig(user common.UserAccount) *config.User {
+	roles := make([]*config.Role, len(user.GetRoles()))
 	for i, role := range user.GetRoles() {
-		roles[i] = config.Role{
+		roles[i] = &config.Role{
 			ID:   role.GetID(),
 			Name: role.GetName()}
 	}
 	return &config.User{
-		ID:       user.GetID(),
-		Email:    user.GetEmail(),
-		Password: user.GetPassword(),
-		Roles:    roles}
+		ID:               user.GetID(),
+		Email:            user.GetEmail(),
+		Password:         user.GetPassword(),
+		OrganizationRefs: user.GetOrganizationRefs(),
+		FarmRefs:         user.GetFarmRefs(),
+		Roles:            roles}
 }

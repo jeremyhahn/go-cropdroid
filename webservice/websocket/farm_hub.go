@@ -39,7 +39,7 @@ func (h *FarmHub) Run() {
 				client.conn.RemoteAddr(), client.getUser().GetEmail(), len(h.clients), h.farmService.GetFarmID())
 			h.clients[client] = true
 			//h.logger.Debugf("Sending config: %s", client.session.GetFarmService().GetConfig())
-			client.send <- h.farmService.GetConfig()
+			client.send <- *h.farmService.GetConfig()
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {

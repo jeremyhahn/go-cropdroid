@@ -6,13 +6,12 @@ import (
 )
 
 type Condition struct {
-	ID              uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	WorkflowID      uint64  `yaml:"workflow" json:"workflow_id"`
-	ChannelID       uint64  `yaml:"channel" json:"channel_id"`
-	MetricID        uint64  `yaml:"metric" json:"metric_id"`
-	Comparator      string  `yaml:"comparator" json:"comparator"`
-	Threshold       float64 `yaml:"threshold" json:"threshold"`
-	ConditionConfig `yaml:"-" json:"-"`
+	ID         uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	WorkflowID uint64  `yaml:"workflow" json:"workflow_id"`
+	ChannelID  uint64  `yaml:"channel" json:"channel_id"`
+	MetricID   uint64  `yaml:"metric" json:"metric_id"`
+	Comparator string  `yaml:"comparator" json:"comparator"`
+	Threshold  float64 `yaml:"threshold" json:"threshold"`
 }
 
 func NewCondition() *Condition {
@@ -73,4 +72,10 @@ func (condition *Condition) Hash() uint64 {
 	clusterHash := fnv.New64a()
 	clusterHash.Write([]byte(key))
 	return clusterHash.Sum64()
+}
+
+func (condition *Condition) String() string {
+	return fmt.Sprintf("%d-%d-%d-%d-%s-%f",
+		condition.ID, condition.WorkflowID, condition.ChannelID,
+		condition.MetricID, condition.Comparator, condition.Threshold)
 }

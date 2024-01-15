@@ -8,8 +8,8 @@ type Role struct {
 	common.Role `json:"-"`
 }
 
-func NewRole(name string) common.Role {
-	return &Role{Name: name}
+func NewRole() common.Role {
+	return &Role{}
 }
 
 func (role *Role) GetID() uint64 {
@@ -18,4 +18,8 @@ func (role *Role) GetID() uint64 {
 
 func (role *Role) GetName() string {
 	return role.Name
+}
+
+func (role *Role) SetName(name string) {
+	role.Name = name
 }

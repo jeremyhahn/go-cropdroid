@@ -2,61 +2,90 @@ package config
 
 // User represents a user account in the app
 type User struct {
-	ID            uint64         `gorm:"primaryKey" yaml:"id" json:"id"`
-	Email         string         `gorm:"index" yaml:"email" json:"email"`
-	Password      string         `yaml:"password" json:"password"`
-	Roles         []Role         `gorm:"many2many:permissions" yaml:"roles" json:"roles"`
-	Organizations []Organization `gorm:"many2many:permissions" yaml:"orgs" json:"orgs"`
-	UserConfig    `yaml:"-" json:"-"`
+	ID               uint64   `gorm:"primaryKey" yaml:"id" json:"id"`
+	Email            string   `gorm:"index" yaml:"email" json:"email"`
+	Password         string   `yaml:"password" json:"password"`
+	Roles            []*Role  `gorm:"many2many:user_role" yaml:"roles" json:"roles"`
+	OrganizationRefs []uint64 `gorm:"-" yaml:"organizationRefs" json:"organizationRefs"`
+	FarmRefs         []uint64 `gorm:"-" yaml:"farmRefs" json:"farmRefs"`
 }
 
 func NewUser() *User {
-	return &User{Roles: make([]Role, 0)}
+	return &User{Roles: make([]*Role, 0)}
 }
 
 // GetID gets the users ID
-func (entity *User) GetID() uint64 {
-	return entity.ID
+func (user *User) GetID() uint64 {
+	return user.ID
 }
 
-func (entity *User) SetEmail(email string) {
-	entity.Email = email
+func (user *User) SetID(id uint64) {
+	user.ID = id
+}
+
+func (user *User) SetEmail(email string) {
+	user.Email = email
 }
 
 // GetEmail gets the users email address
-func (entity *User) GetEmail() string {
-	return entity.Email
+func (user *User) GetEmail() string {
+	return user.Email
 }
 
-func (entity *User) SetPassword(pw string) {
-	entity.Password = pw
+func (user *User) SetPassword(pw string) {
+	user.Password = pw
 }
 
 // GetPassword gets the users encrypted password
-func (entity *User) GetPassword() string {
-	return entity.Password
+func (user *User) GetPassword() string {
+	return user.Password
 }
 
-func (entity *User) GetRoles() []RoleConfig {
-	roleConfigs := make([]RoleConfig, len(entity.Roles))
-	for i, role := range entity.Roles {
-		roleConfigs[i] = &role
+func (user *User) GetRoles() []*Role {
+	return user.Roles
+}
+
+func (user *User) SetRoles(roles []*Role) {
+	user.Roles = roles
+}
+
+func (user *User) AddRole(role *Role) {
+	user.Roles = append(user.Roles, role)
+}
+
+func (user *User) RedactPassword() {
+	user.Password = "***"
+}
+
+func (user *User) SetOrganizationRefs(refs []uint64) {
+	user.OrganizationRefs = refs
+}
+
+func (user *User) GetOrganizationRefs() []uint64 {
+	return user.OrganizationRefs
+}
+
+func (user *User) AddOrganizationRef(id uint64) {
+	user.OrganizationRefs = append(user.OrganizationRefs, id)
+}
+
+func (user *User) SetFarmRefs(refs []uint64) {
+	user.FarmRefs = refs
+}
+
+func (user *User) GetFarmRefs() []uint64 {
+	return user.FarmRefs
+}
+
+func (user *User) AddFarmRef(id uint64) {
+	user.FarmRefs = append(user.FarmRefs, id)
+}
+
+func (user *User) HasFarmRef(id uint64) bool {
+	for _, ref := range user.FarmRefs {
+		if ref == id {
+			return true
+		}
 	}
-	return roleConfigs
-}
-
-func (entity *User) SetRoles(roles []RoleConfig) {
-	roleStructs := make([]Role, len(roles))
-	for i, role := range roles {
-		roleStructs[i] = *role.(*Role)
-	}
-	entity.Roles = roleStructs
-}
-
-func (entity *User) AddRole(role RoleConfig) {
-	entity.Roles = append(entity.Roles, *role.(*Role))
-}
-
-func (entity *User) RedactPassword() {
-	entity.Password = "***"
+	return false
 }

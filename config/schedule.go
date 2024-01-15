@@ -18,7 +18,6 @@ type Schedule struct {
 	Days           *string    `gorm:"type:varchar(50);default:NULL" yaml:"days" json:"days"`
 	LastExecuted   time.Time  `gorm:"type:timestamp" yaml:"lastExecuted" json:"lastExecuted"`
 	ExecutionCount int        `yaml:"executionCount" json:"executionCount"`
-	ScheduleConfig `yaml:"-" json:"-"`
 }
 
 func NewSchedule() *Schedule {
@@ -123,4 +122,21 @@ func (schedule *Schedule) Hash() uint64 {
 	clusterHash := fnv.New64a()
 	clusterHash.Write([]byte(key))
 	return clusterHash.Sum64()
+}
+
+func (schedule *Schedule) String() string {
+	days := ""
+	if schedule.Days != nil {
+		days = days
+	}
+	endDate := ""
+	if schedule.EndDate != nil {
+		endDate = schedule.EndDate.String()
+	}
+	return fmt.Sprintf("%d-%d-%s-%s-%d-%d-%d-%s-%s-%d",
+		schedule.WorkflowID, schedule.ChannelID,
+		schedule.StartDate.String(), endDate,
+		schedule.Frequency, schedule.Interval,
+		schedule.Count, days, schedule.LastExecuted.String(),
+		schedule.ExecutionCount)
 }

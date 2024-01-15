@@ -2,12 +2,10 @@ package viewmodel
 
 import (
 	"fmt"
-
-	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type Condition struct {
-	ID         string  `json:"id"`
+	ID         uint64  `json:"id"`
 	DeviceType string  `json:"deviceType"`
 	MetricID   uint64  `json:"metricId"`
 	MetricName string  `json:"metricName"`
@@ -16,10 +14,9 @@ type Condition struct {
 	Comparator string  `json:"comparator"`
 	Threshold  float64 `json:"threshold"`
 	Text       string  `json:"text"`
-	config.ConditionConfig
 }
 
-func (condition *Condition) GetID() string {
+func (condition *Condition) GetID() uint64 {
 	return condition.ID
 }
 

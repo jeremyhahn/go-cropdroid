@@ -166,13 +166,7 @@ channels:
     name: Heater
     enable: true
     notify: true
-    conditions:
-      - id: 2575483581
-        workflow: 0
-        channel: 1360289996
-        metric: 907254892
-        comparator: <
-        threshold: 60
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0
@@ -205,13 +199,7 @@ channels:
     name: Chiller
     enable: true
     notify: true
-    conditions:
-      - id: 3411994778
-        workflow: 0
-        channel: 1410622853
-        metric: 907254892
-        comparator: '>'
-        threshold: 62
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0
@@ -223,34 +211,7 @@ channels:
     enable: true
     notify: true
     conditions: []
-    schedule:
-      - workflow: 0
-        startDate: 2021-12-11T21:00:00-05:00
-        endDate: null
-        frequency: 4
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - workflow: 0
-        startDate: 2021-12-11T21:00:00-05:00
-        endDate: null
-        frequency: 3
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
-      - workflow: 0
-        startDate: 2021-12-11T09:00:00-05:00
-        endDate: null
-        frequency: 2
-        interval: 0
-        count: 0
-        days: null
-        lastExecuted: 0001-01-01T00:00:00Z
-        executionCount: 0
+    schedule: []
     duration: 120
     debounce: 0
     backoff: 0

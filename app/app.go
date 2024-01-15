@@ -1,6 +1,3 @@
-//go:build !cluster
-// +build !cluster
-
 package app
 
 import (
@@ -11,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -20,42 +18,89 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
-	"github.com/jinzhu/gorm"
+	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
-const Name = "cropdroid"
+//     	 Auth & Billing System              (gossip, dragonboat, cockroachdb - control plane) (cloud platform)
+// 			 /            \
+// 		(gossip)         (gossip)           <-- data center raft group (cockroach changefeeds create Enterprise state proposals)
+// 		   /		         \
+// 	   Cluster1            ClusterN         (ASGs & dragonboat)
+// 	    /  \                 /  \
+//     Farm1  FarmN          Farm1  FarmN
+//      / \                      / \
+//  State Config              State Config
+
+// 	Gossip Data Model:
+// 	- Timezone     (region)
+// 	- Datacenter   (availability zone)  (nodes in a datacenter can form a Raft group, datacenters sync using gossip)
+
+// 	Billing Raft Groups:
+// 	- OLTP (cockroach)
+// 	- orgs
+// 	- users
+// 	- roles
+// 	- permissions
+// 	- billing
+// 	- licensing
+// 	- provisioning
 
 type App struct {
-	Config          *config.Server
-	DebugFlag       bool
-	GormDB          gormstore.GormDB
-	GORM            *gorm.DB
-	GORMInitParams  *gormstore.GormInitParams
-	DataStoreEngine string
-	HomeDir         string
-	KeyDir          string
-	KeyPair         KeyPair
-	Location        *time.Location
-	LogDir          string
-	LogFile         string
-	Logger          *logging.Logger
-	Mailer          common.Mailer
-	Name            string
+	ClusterID               uint64 `yaml:"clusterId" json:"cluster_id" mapstructure:"cluster_id"`
+	DebugFlag               bool   `yaml:"debug" json:"debug" mapstructure:"debug"`
+	DataDir                 string `yaml:"datadir" json:"datadir" mapstructure:"datadir"`
+	DataStoreEngine         string `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
+	DataStoreCDC            bool   `yaml:"datastore_cdc" json:"datastore_cdc" mapstructure:"datastore_cdc"`
+	DefaultRole             string `yaml:"default_role" json:"default_role" mapstructure:"default_role"`
+	DefaultPermission       string `yaml:"default_permission" json:"default_permission" mapstructure:"default_permission"`
+	DefaultConsistencyLevel int    `yaml:"default_consistency_level" json:"default_consistency_level" mapstructure:"default_consistency_level"`
+	DefaultConfigStoreType  int    `yaml:"default_config_store" json:"default_config_store" mapstructure:"default_config_store"`
+	DefaultStateStoreType   int    `yaml:"default_state_store" json:"default_state_store" mapstructure:"default_state_store"`
+	DefaultDataStoreType    int    `yaml:"default_data_store" json:"default_data_store" mapstructure:"default_data_store"`
+	DowngradeUser           string `yaml:"www_user" json:"www_user" mapstructure:"www_user"`
+	EnableDefaultFarm       bool   `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
+	EnableRegistrations     bool   `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
+	//Farms               []config.Farm `gorm:"-" yaml:"farms" json:"farms"`
+	GormDB         gormstore.GormDB
+	GORMInitParams *gormstore.GormInitParams
+	HomeDir        string `yaml:"home_dir" json:"home_dir" mapstructure:"home_dir"`
+	IdGenerator    util.IdGenerator
+	Interval       int    `yaml:"interval" json:"interval" mapstructure:"interval"`
+	KeyDir         string `yaml:"key_dir" json:"key_dir" mapstructure:"key_dir"`
+	KeyPair        KeyPair
+	LicenseBlob    string          `yaml:"license" json:"license" mapstructure:"license"`
+	License        *config.License `yaml:"-" json:"-" mapstructure:"-"`
+	Location       *time.Location
+	LogDir         string `yaml:"log_dir" json:"log_dir" mapstructure:"log_dir"`
+	LogFile        string `yaml:"log_file" json:"log_file" mapstructure:"log_file"`
+	Logger         *logging.Logger
+	Mailer         common.Mailer
+	Mode           string `yaml:"mode" json:"mode" mapstructure:"mode"`
+	Name           string
+	NodeID         int `yaml:"node_id" json:"node_id" mapstructure:"node_id"`
+	//Organizations       []config.Organization `yaml:"organizations" json:"organizations" mapstructure:"organizations"`
+	RedirectHttpToHttps bool         `yaml:"redirect_http_https" json:"redirect_http_https" mapstructure:"redirect_http_https"`
+	Smtp                *config.Smtp `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
+	SSLFlag             bool         `yaml:"ssl" json:"ssl" mapstructure:"ssl"`
+	StateTTL            int          `yaml:"state_ttl" json:"state_ttl" mapstructure:"state_ttl"`
+	StateTick           int          `yaml:"state_tick" json:"state_tick" mapstructure:"state_tick"`
+	Timezone            string       `yaml:"timezone" json:"timezone" mapstructure:"timezone"`
+	WebPort             int          `yaml:"port" json:"port" mapstructure:"port"`
 }
 
 func NewApp() *App {
-	return &App{Name: Name}
+	return &App{Name: "cropdroid"}
 }
 
-func (this *App) InitGormDB() *gorm.DB {
-	this.GORM = this.NewGormDB()
-	return this.GORM
-}
+// func (this *App) InitGormDB() *gorm.DB {
+// 	this.GORM = this.NewGormDB()
+// 	return this.GORM
+// }
 
-func (this *App) NewGormDB() *gorm.DB {
-	this.GormDB = gormstore.NewGormDB(this.Logger, this.GORMInitParams)
-	return this.GormDB.Connect(false)
-}
+// func (this *App) NewGormDB() *gorm.DB {
+// 	this.GormDB = gormstore.NewGormDB(this.Logger, this.GORMInitParams)
+// 	return this.GormDB.Connect(false)
+// }
 
 func (this *App) InitLogFile(uid, gid int) *os.File {
 	var logFile string
@@ -99,11 +144,14 @@ func (this *App) InitLogFile(uid, gid int) *os.File {
 }
 
 func (this *App) DropPrivileges() {
-	if syscall.Getuid() == 0 && this.Config.DowngradeUser != "root" {
-		this.Logger.Debugf("Running as root, downgrading to user %s", this.Config.DowngradeUser)
-		user, err := user.Lookup(this.Config.DowngradeUser)
+	if runtime.GOOS != "linux" {
+		return
+	}
+	if syscall.Getuid() == 0 && this.DowngradeUser != "root" {
+		this.Logger.Debugf("Running as root, downgrading to user %s", this.DowngradeUser)
+		user, err := user.Lookup(this.DowngradeUser)
 		if err != nil {
-			log.Fatalf("setuid %s user not found! Error: %s", this.Config.DowngradeUser, err)
+			log.Fatalf("setuid %s user not found! Error: %s", this.DowngradeUser, err)
 		}
 		if err = syscall.Chdir(this.HomeDir); err != nil {
 			this.Logger.Fatalf("Unable to chdir: error=%s", err)

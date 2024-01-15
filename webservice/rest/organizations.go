@@ -93,16 +93,16 @@ func (restService *DefaultOrganizationRestService) Create(w http.ResponseWriter,
 	}
 	defer session.Close()
 
-	var org config.Organization
+	var org *config.Organization
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&org); err != nil {
+	if err := decoder.Decode(org); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
 	session.GetLogger().Debugf("organization=%+v", org)
 
-	err = restService.orgService.Create(&org)
+	err = restService.orgService.Create(org)
 	if err != nil {
 		session.GetLogger().Errorf("Error: ", err)
 		restService.jsonWriter.Error200(w, err)

@@ -122,9 +122,9 @@ func (restService *DefaultFarmRestService) SetPermission(w http.ResponseWriter, 
 
 	logger := session.GetLogger()
 
-	var permission config.Permission
+	var permission *config.Permission
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&permission); err != nil {
+	if err := decoder.Decode(permission); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
@@ -133,7 +133,7 @@ func (restService *DefaultFarmRestService) SetPermission(w http.ResponseWriter, 
 		"session.requestedFarmID=%d, permission=%d",
 		session.GetRequestedFarmID(), permission)
 
-	err = restService.userService.SetPermission(session, &permission)
+	err = restService.userService.SetPermission(session, permission)
 	if err != nil {
 		logger.Error(err)
 		BadRequestError(w, r, err, restService.jsonWriter)

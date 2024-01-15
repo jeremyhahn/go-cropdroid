@@ -1,3 +1,4 @@
+//go:build cluster && rocksdb
 // +build cluster,rocksdb
 
 package cluster
@@ -17,7 +18,7 @@ import (
 	"github.com/lni/dragonboat/v3/plugin/rocksdb"
 	"github.com/lni/dragonboat/v3/raftio"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/lni/go-cropdroid/common"
 
 	sm "github.com/lni/dragonboat/v3/statemachine"
 )

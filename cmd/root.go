@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
-	"github.com/jeremyhahn/go-cropdroid/config"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var App *app.App
-var NodeID int
+var NodeID uint64
 var AppStateTTL int
 var AppStateTick int
 var DebugFlag bool
@@ -103,11 +103,11 @@ func init() {
 
 	wd, _ := os.Getwd()
 
-	rootCmd.PersistentFlags().IntVarP(&NodeID, "node-id", "", 1, "Unique node identifier")
+	rootCmd.PersistentFlags().Uint64VarP(&NodeID, "node-id", "", 1, "Unique node identifier")
 	rootCmd.PersistentFlags().BoolVarP(&DebugFlag, "debug", "", false, "Enable debug mode")
 	rootCmd.PersistentFlags().IntVarP(&ServerID, "sid", "", 1, "Unique Server ID")
 	rootCmd.PersistentFlags().IntVarP(&Interval, "interval", "", 60, "Default poll interval (seconds)")
-	rootCmd.PersistentFlags().StringVarP(&Mode, "mode", "", "virtual", "Service mode: [ virtual | edge ]")
+	rootCmd.PersistentFlags().StringVarP(&Mode, "mode", "", "virtual", "Service mode: [ virtual | server | cloud | maintenance ]")
 	rootCmd.PersistentFlags().IntVarP(&AppStateTTL, "ttl", "", 0, "How long to keep farm in app state (seconds). 0 = never expire")
 	rootCmd.PersistentFlags().IntVarP(&AppStateTick, "gctick", "", 3600, "How often to check farm store for expired entries")
 	rootCmd.PersistentFlags().StringVarP(&HomeDir, "home", "", wd, "Program home directory") // doesnt work as system daemon if not wd (/)
@@ -163,6 +163,7 @@ func initApp() {
 	App.HomeDir = viper.GetString("home")
 	App.KeyDir = viper.GetString("keys")
 	App.DataStoreEngine = viper.GetString("datastore")
+	App.IdGenerator = util.NewIdGenerator(App.DataStoreEngine)
 	initLogger()
 	initConfig()
 	if App.DebugFlag {
@@ -176,7 +177,7 @@ func initApp() {
 		logging.SetLevel(logging.INFO, "")
 	}
 	if viper.GetBool("ssl") && viper.GetInt("port") == 80 {
-		App.Config.WebPort = 443
+		App.WebPort = 443
 	}
 }
 
@@ -195,7 +196,7 @@ func initLogger() {
 	} else {
 		logging.SetLevel(logging.ERROR, "")
 	}
-	App.Logger = logging.MustGetLogger(app.Name)
+	App.Logger = logging.MustGetLogger(App.Name)
 }
 
 func initConfig() {
@@ -213,7 +214,7 @@ func initConfig() {
 		CACert:            viper.GetString("datastore-ca-cert"),
 		TLSKey:            viper.GetString("datastore-tls-key"),
 		TLSCert:           viper.GetString("datastore-tls-cert"),
-		DBName:            app.Name,
+		DBName:            App.Name,
 		Location:          App.Location}
 
 	configTypeSupported := false
@@ -231,8 +232,6 @@ func initConfig() {
 		App.GORMInitParams.DataDir = fmt.Sprintf("%s/db", HomeDir)
 	}
 
-	App.Config = &config.Server{}
-
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(ConfigDir)
@@ -244,24 +243,24 @@ func initConfig() {
 		App.Logger.Errorf("%s", err)
 	}
 
-	viper.Unmarshal(&App.Config)
+	viper.Unmarshal(&App)
 
-	App.Config.NodeID = viper.GetInt("node-id")
-	App.Config.DefaultRole = viper.GetString("default-role")
-	App.Config.DefaultPermission = viper.GetString("default-permission")
-	App.Config.DataStoreEngine = viper.GetString("datastore")
-	App.Config.DataStoreCDC = viper.GetBool("datastore-cdc")
-	App.Config.Interval = viper.GetInt("interval")
-	App.Config.DataDir = viper.GetString("data-dir")
-	App.Config.WebPort = viper.GetInt("port")
-	App.Config.SSLFlag = viper.GetBool("ssl")
-	App.Config.RedirectHttpToHttps = viper.GetBool("redirect-http-https")
-	App.Config.Mode = viper.GetString("mode")
-	App.Config.DowngradeUser = viper.GetString("setuid")
-	App.Config.EnableRegistrations = viper.GetBool("enable-registrations")
-	App.Config.EnableDefaultFarm = viper.GetBool("enable-default-farm")
+	App.NodeID = viper.GetInt("node-id")
+	App.DefaultRole = viper.GetString("default-role")
+	App.DefaultPermission = viper.GetString("default-permission")
+	App.DataStoreEngine = viper.GetString("datastore")
+	App.DataStoreCDC = viper.GetBool("datastore-cdc")
+	App.Interval = viper.GetInt("interval")
+	App.DataDir = viper.GetString("data-dir")
+	App.WebPort = viper.GetInt("port")
+	App.SSLFlag = viper.GetBool("ssl")
+	App.RedirectHttpToHttps = viper.GetBool("redirect-http-https")
+	App.Mode = viper.GetString("mode")
+	App.DowngradeUser = viper.GetString("setuid")
+	App.EnableRegistrations = viper.GetBool("enable-registrations")
+	App.EnableDefaultFarm = viper.GetBool("enable-default-farm")
 
-	App.Logger.Debugf("%+v", App.Config)
+	App.Logger.Debugf("%+v", App)
 
 	//App.ValidateConfig()
 }

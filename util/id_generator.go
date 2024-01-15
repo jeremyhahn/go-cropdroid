@@ -20,11 +20,10 @@ type Fnv1aHasher struct {
 
 func NewIdGenerator(datastoreEngine string) IdGenerator {
 	uid := &Fnv1aHasher{}
-	if datastoreEngine == common.DATASTORE_TYPE_SQLITE ||
-		datastoreEngine == common.DATASTORE_TYPE_POSTGRES {
+	if datastoreEngine == common.DATASTORE_TYPE_64BIT {
 		uid.is64bit = false
 	} else {
-		uid.is64bit = true
+		uid.is64bit = false
 	}
 	return uid
 }

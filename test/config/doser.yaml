@@ -55,13 +55,7 @@ channels:
     name: pH UP
     enable: false
     notify: true
-    conditions:
-      - id: 3287683493
-        workflow: 0
-        channel: 2401243204
-        metric: 907254892
-        comparator: <
-        threshold: 5.4
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0
@@ -73,13 +67,7 @@ channels:
     name: pH DOWN
     enable: true
     notify: true
-    conditions:
-      - id: 4029357252
-        workflow: 0
-        channel: 2418020823
-        metric: 907254892
-        comparator: '>'
-        threshold: 6.1
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0
@@ -103,13 +91,7 @@ channels:
     name: Oxidizer
     enable: false
     notify: true
-    conditions:
-      - id: 2173591490
-        workflow: 0
-        channel: 2451576061
-        metric: 890477273
-        comparator: <
-        threshold: 300
+    conditions: []
     schedule: []
     duration: 0
     debounce: 0

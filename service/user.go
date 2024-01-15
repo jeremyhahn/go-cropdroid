@@ -46,13 +46,13 @@ func NewUserService(app *app.App, userDAO dao.UserDAO, orgDAO dao.OrganizationDA
 		serviceRegistry: serviceRegistry}
 }
 
-// Looks up the user account by email address
-func (service *DefaultUserService) Get(email string) (common.UserAccount, error) {
-	userEntity, err := service.userDAO.GetByEmail(email)
+// Looks up the user account by user ID
+func (service *DefaultUserService) Get(userID uint64) (common.UserAccount, error) {
+	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
 	}
-	return service.userMapper.MapUserEntityToModel(userEntity), nil
+	return service.userMapper.MapUserConfigToModel(userEntity), nil
 }
 
 // Sets a new user password
@@ -82,7 +82,9 @@ func (service *DefaultUserService) Activate(registrationID uint64) (common.UserA
 }
 
 // Login authenticates a user account against the AuthService
-func (service *DefaultUserService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error) {
+func (service *DefaultUserService) Login(userCredentials *UserCredentials) (common.UserAccount,
+	[]*config.Organization, []*config.Farm, error) {
+
 	if authService, ok := service.authServices[userCredentials.AuthType]; ok {
 		user, orgs, farms, err := authService.Login(userCredentials)
 		if err != nil {
@@ -94,13 +96,14 @@ func (service *DefaultUserService) Login(userCredentials *UserCredentials) (comm
 }
 
 // Reloads the users organizations, farms and permissions
-func (service *DefaultUserService) Refresh(userID uint64) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error) {
+func (service *DefaultUserService) Refresh(userID uint64) (common.UserAccount,
+	[]*config.Organization, []*config.Farm, error) {
 
 	service.app.Logger.Debugf("Refreshing user: %d", userID)
 
-	var user config.UserConfig
+	var user *config.User
 
-	organizations, err := service.orgDAO.GetByUserID(userID, true)
+	organizations, err := service.permissionDAO.GetOrganizations(userID, common.CONSISTENCY_LOCAL)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		return nil, nil, nil, ErrInvalidCredentials
 	}
@@ -120,17 +123,26 @@ ORG_LOOP:
 		}
 	}
 
-	farms, err := service.farmDAO.GetByUserID(userID)
+	farms, err := service.farmDAO.GetByUserID(userID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	if user == nil && len(organizations) == 0 {
+	if user == nil {
+		user, err = service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		userAccount := service.userMapper.MapUserConfigToModel(user)
+		return userAccount, organizations, farms, nil
+	}
+
+	if user.GetID() == 0 && len(organizations) == 0 {
 	FARM_LOOP:
 		for _, farm := range farms {
 			for _, u := range farm.GetUsers() {
 				if u.GetID() == userID {
-					user = &u
+					user = u
 					user.RedactPassword()
 					break FARM_LOOP
 				}
@@ -138,32 +150,23 @@ ORG_LOOP:
 		}
 	}
 
-	if user == nil {
+	if user.GetID() == 0 {
 		return nil, nil, nil, ErrUserNotFound
 	}
 
-	return service.userMapper.MapUserEntityToModel(user), organizations, farms, nil
+	return service.userMapper.MapUserConfigToModel(user), organizations, farms, nil
 }
 
 // CreateUser creates a new user account
 func (service *DefaultUserService) CreateUser(user common.UserAccount) error {
-	return service.userDAO.Create(&config.User{
+	return service.userDAO.Save(&config.User{
 		Email: user.GetEmail()})
 }
 
 // UpdateUser an existing user account
 func (service *DefaultUserService) UpdateUser(user common.UserAccount) error {
-	userConfig := service.userMapper.MapUserModelToEntity(user)
+	userConfig := service.userMapper.MapUserModelToConfig(user)
 	return service.userDAO.Save(userConfig)
-}
-
-// GetUserByEmail retrieves a user from the database by their email address
-func (service *DefaultUserService) GetUserByEmail(email string) (common.UserAccount, error) {
-	userEntity, err := service.userDAO.GetByEmail(email)
-	if err != nil {
-		return nil, err
-	}
-	return service.userMapper.MapUserEntityToModel(userEntity), nil
 }
 
 // Deletes an existing user account
@@ -176,7 +179,7 @@ func (service *DefaultUserService) Delete(session Session, userID uint64) error 
 
 // Sets the users "permission", ie., the role that grants access
 // to an organization and/or farm.
-func (service *DefaultUserService) SetPermission(session Session, permission config.PermissionConfig) error {
+func (service *DefaultUserService) SetPermission(session Session, permission *config.Permission) error {
 	if !session.GetUser().HasRole(common.ROLE_ADMIN) {
 		return ErrPermissionDenied
 	}

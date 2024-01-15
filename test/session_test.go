@@ -99,7 +99,7 @@ func NewUnitTestSession() (*app.App, service.Session) {
 	return _app, session
 }
 
-func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.DeviceStateMap) {
+func createTestFarm(farmID uint64, deviceType string) (config.Farm, state.DeviceStateMap) {
 
 	testChannelID := 0
 	fakeValue := 75.0
@@ -108,7 +108,7 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 	metricMap["humidity0"] = fakeValue
 	deviceState := state.CreateDeviceStateMap(metricMap, []int{0})
 
-	metrics := []config.Metric{{
+	metrics := []*config.Metric{{
 		ID:  1,
 		Key: "humidity0"}}
 
@@ -119,35 +119,36 @@ func createTestFarm(farmID uint64, deviceType string) (config.FarmConfig, state.
 		Comparator: ">",
 		Threshold:  55.0}
 
-	channels := []config.Channel{{
+	channels := []*config.Channel{{
 		ID:         1,
 		DeviceID:   1,
 		ChannelID:  testChannelID,
 		Name:       "test",
 		Enable:     true,
 		Notify:     true,
-		Conditions: []config.Condition{*condition}}}
+		Conditions: []*config.Condition{condition}}}
 
-	device := config.Device{
+	device := &config.Device{
 		ID:   1,
 		Type: deviceType,
 		// Configs: map[string]string{
 		// 	fmt.Sprintf("%s.notify", deviceType): "true",
 		// },
-		Configs: []config.DeviceConfigItem{{
-			Key:   fmt.Sprintf("%s.notify", deviceType),
-			Value: "true"},
+		Settings: []*config.DeviceSetting{
+			{
+				Key:   fmt.Sprintf("%s.notify", deviceType),
+				Value: "true"},
 		},
 		Metrics:  metrics,
 		Channels: channels}
 
-	farmConfig := &config.Farm{
+	farmConfig := config.Farm{
 		ID: farmID,
 		//OrganizationID: 0,
 		Mode:     "virtual",
 		Name:     "Test Farm",
 		Interval: 50,
-		Devices:  []config.Device{device}}
+		Devices:  []*config.Device{device}}
 
 	/*
 		serverConfig := &config.Server{

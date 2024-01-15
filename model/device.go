@@ -7,19 +7,20 @@ import (
 )
 
 type Device struct {
-	ID              uint64            `yaml:"id" json:"id"`
-	OrgID           int               `yaml:"orgId" json:"orgId"`
-	Type            string            `yaml:"type" json:"type"`
-	Description     string            `yaml:"description" json:"description"`
-	Enable          bool              `yaml:"enable" json:"enable"`
-	Notify          bool              `yaml:"notify" json:"notify"`
-	URI             string            `yaml:"uri" json:"uri"`
-	HardwareVersion string            `yaml:"hwVersion" json:"hwVersion"`
-	FirmwareVersion string            `yaml:"fwVersion" json:"fwVersion"`
-	Configs         map[string]string `yaml:"configs" json:"configs"`
-	Metrics         []common.Metric   `yaml:"metrics" json:"metrics"`
-	Channels        []common.Channel  `yaml:"channels" json:"channels"`
-	common.Device   `yaml:"-" json:"-"`
+	ID              uint64 `yaml:"id" json:"id"`
+	OrgID           int    `yaml:"orgId" json:"orgId"`
+	Type            string `yaml:"type" json:"type"`
+	Description     string `yaml:"description" json:"description"`
+	Enable          bool   `yaml:"enable" json:"enable"`
+	Notify          bool   `yaml:"notify" json:"notify"`
+	URI             string `yaml:"uri" json:"uri"`
+	HardwareVersion string `yaml:"hwVersion" json:"hwVersion"`
+	FirmwareVersion string `yaml:"fwVersion" json:"fwVersion"`
+	//Configs         map[string]string `yaml:"configs" json:"configs"`
+	Configs       map[string]string `yaml:"configMap" json:"configMap"`
+	Metrics       []common.Metric   `yaml:"metrics" json:"metrics"`
+	Channels      []common.Channel  `yaml:"channels" json:"channels"`
+	common.Device `yaml:"-" json:"-"`
 }
 
 func (device *Device) GetID() uint64 {

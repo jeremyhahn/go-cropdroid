@@ -1,3 +1,4 @@
+//go:build !cluster
 // +build !cluster
 
 package service
@@ -16,18 +17,18 @@ import (
 
 type ConditionService interface {
 	GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error)
-	GetConditions(session Session, deviceID uint64) ([]config.ConditionConfig, error)
-	Create(session Session, condition config.ConditionConfig) (config.ConditionConfig, error)
-	Update(session Session, condition config.ConditionConfig) error
-	Delete(session Session, condition config.ConditionConfig) error
-	IsTrue(condition config.ConditionConfig, value float64) (bool, error)
+	GetConditions(session Session, deviceID uint64) ([]*config.Condition, error)
+	Create(session Session, condition *config.Condition) (*config.Condition, error)
+	Update(session Session, condition *config.Condition) error
+	Delete(session Session, condition *config.Condition) error
+	IsTrue(condition *config.Condition, value float64) (bool, error)
 }
 
 type DefaultConditionService struct {
 	logger *logging.Logger
 	dao    dao.ConditionDAO
 	mapper mapper.ConditionMapper
-	store  store.DeviceConfigStorer
+	store  store.DeviceStorer
 	ConditionService
 }
 
@@ -85,8 +86,8 @@ func (service *DefaultConditionService) GetListView(session Session, channelID u
 					for _, metric := range device.GetMetrics() {
 						if metric.GetID() == condition.GetMetricID() {
 							viewConditions = append(viewConditions,
-								service.mapper.MapEntityToView(
-									&condition, device.GetType(), &metric, channelID))
+								service.mapper.MapConfigToView(
+									condition, device.GetType(), metric, channelID))
 							break
 						}
 					}
@@ -102,12 +103,12 @@ func (service *DefaultConditionService) GetListView(session Session, channelID u
 /*
 // GetCondition retrieves a specific condition entry from the database
 // This is no longer used by the android client
-func (service *DefaultConditionService) GetCondition(channelID int) ([]config.ConditionConfig, error) {
+func (service *DefaultConditionService) GetCondition(channelID int) ([]config.Condition, error) {
 	entities, err := service.dao.GetByChannelID(channelID)
 	if err != nil {
 		return nil, err
 	}
-	conditions := make([]config.ConditionConfig, len(entities))
+	conditions := make([]config.Condition, len(entities))
 	for i, entity := range entities {
 		conditions[i] = service.mapper.MapEntityToModel(&entity)
 	}
@@ -116,7 +117,7 @@ func (service *DefaultConditionService) GetCondition(channelID int) ([]config.Co
 
 // GetConditions retrieves a list of condition entries from the database
 // This is no longer used by the android client
-// func (service *DefaultConditionService) GetConditions(session Session, deviceID int) ([]config.ConditionConfig, error) {
+// func (service *DefaultConditionService) GetConditions(session Session, deviceID int) ([]config.Condition, error) {
 // 	farmService := session.GetFarmService()
 // 	orgID := farmService.GetConfig().GetOrgID()
 // 	userID := session.GetUser().GetID()
@@ -125,7 +126,7 @@ func (service *DefaultConditionService) GetCondition(channelID int) ([]config.Co
 // 	if err != nil {
 // 		return nil, err
 // 	}
-// 	conditions := make([]config.ConditionConfig, len(entities))
+// 	conditions := make([]config.Condition, len(entities))
 // 	for i, entity := range entities {
 // 		conditions[i] = service.mapper.MapEntityToModel(&entity)
 // 	}
@@ -133,7 +134,7 @@ func (service *DefaultConditionService) GetCondition(channelID int) ([]config.Co
 // }
 
 // Create a new condition entry
-func (service *DefaultConditionService) Create(session Session, condition config.ConditionConfig) (config.ConditionConfig, error) {
+func (service *DefaultConditionService) Create(session Session, condition *config.Condition) (*config.Condition, error) {
 	service.logger.Debugf("Creating condition config: %+v", condition)
 	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
 	// entity := service.mapper.MapModelToEntity(condition)
@@ -147,8 +148,8 @@ func (service *DefaultConditionService) Create(session Session, condition config
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == condition.GetChannelID() {
 				channel.AddCondition(condition)
-				device.SetChannel(&channel)
-				return condition, farmService.SetDeviceConfig(&device)
+				device.SetChannel(channel)
+				return condition, farmService.SetDeviceConfig(device)
 			}
 		}
 	}
@@ -156,7 +157,7 @@ func (service *DefaultConditionService) Create(session Session, condition config
 }
 
 // Update an existing condition entry in the database
-func (service *DefaultConditionService) Update(session Session, condition config.ConditionConfig) error {
+func (service *DefaultConditionService) Update(session Session, condition *config.Condition) error {
 	service.logger.Debugf("Updating condition config: %+v", condition)
 	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
 	// entity := service.mapper.MapModelToEntity(condition)
@@ -169,8 +170,8 @@ func (service *DefaultConditionService) Update(session Session, condition config
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == condition.GetChannelID() {
 				channel.SetCondition(condition)
-				device.SetChannel(&channel)
-				return farmService.SetDeviceConfig(&device)
+				device.SetChannel(channel)
+				return farmService.SetDeviceConfig(device)
 			}
 		}
 	}
@@ -178,11 +179,11 @@ func (service *DefaultConditionService) Update(session Session, condition config
 }
 
 // Delete a condition entry from the database
-func (service *DefaultConditionService) Delete(session Session, condition config.ConditionConfig) error {
+func (service *DefaultConditionService) Delete(session Session, condition *config.Condition) error {
+	farmID := session.GetRequestedFarmID()
 	service.logger.Debugf("Deleting condition config: %+v", condition)
 	// v0.0.3a: farmService.SetDeviceConfig doesnt delete the condition :(
-	entity := service.mapper.MapModelToEntity(condition)
-	if err := service.dao.Delete(entity); err != nil {
+	if err := service.dao.Delete(farmID, condition.GetChannelID(), condition); err != nil {
 		return err
 	}
 	farmService := session.GetFarmService()
@@ -191,9 +192,12 @@ func (service *DefaultConditionService) Delete(session Session, condition config
 		for _, channel := range device.GetChannels() {
 			for i, _condition := range channel.GetConditions() {
 				if _condition.GetID() == condition.GetID() {
+					// c := *channel.(*config.Channel)
+					// c.Conditions = append(c.Conditions[:i], c.Conditions[i+1:]...)
+					//device.SetChannel(&c)
 					channel.Conditions = append(channel.Conditions[:i], channel.Conditions[i+1:]...)
-					device.SetChannel(&channel)
-					return farmService.SetDeviceConfig(&device)
+					device.SetChannel(channel)
+					return farmService.SetDeviceConfig(device)
 				}
 			}
 		}
@@ -201,7 +205,7 @@ func (service *DefaultConditionService) Delete(session Session, condition config
 	return ErrConditionNotFound
 }
 
-func (service *DefaultConditionService) IsTrue(condition config.ConditionConfig, value float64) (bool, error) {
+func (service *DefaultConditionService) IsTrue(condition *config.Condition, value float64) (bool, error) {
 	service.logger.Debugf("condition=%+v, value=%.2f", condition, value)
 	switch condition.GetComparator() {
 	case ">":

@@ -15,8 +15,8 @@ import (
 type ChannelConditionHandler struct {
 	logger           *logging.Logger
 	idGenerator      util.IdGenerator
-	deviceConfig     config.DeviceConfig
-	channelConfig    config.ChannelConfig
+	deviceConfig     *config.Device
+	channelConfig    *config.Channel
 	farmState        state.FarmStateMap
 	farmService      FarmService
 	deviceService    DeviceService
@@ -27,7 +27,7 @@ type ChannelConditionHandler struct {
 }
 
 func NewChannelConditionHandler(logger *logging.Logger, idGenerator util.IdGenerator,
-	deviceConfig config.DeviceConfig, channelConfig config.ChannelConfig,
+	deviceConfig *config.Device, channelConfig *config.Channel,
 	farmState state.FarmStateMap, farmService FarmService,
 	deviceService DeviceService, conditionService ConditionService,
 	backoffTable map[uint64]time.Time) ConditionHandler {
@@ -46,20 +46,20 @@ func NewChannelConditionHandler(logger *logging.Logger, idGenerator util.IdGener
 
 func (h *ChannelConditionHandler) Handle() (bool, error) {
 
-	var conditionDevice config.DeviceConfig
-	var conditionMetric config.MetricConfig
-	var condition config.ConditionConfig
+	var conditionDevice *config.Device
+	var conditionMetric *config.Metric
+	var condition *config.Condition
 	var value float64
 	deviceType := h.deviceConfig.GetType()
 	result := false
 	backoff := h.channelConfig.GetBackoff()
 	debounce := h.channelConfig.GetDebounce()
 
-	parse := func(condition config.ConditionConfig) (config.DeviceConfig, config.MetricConfig, error) {
+	parse := func(condition *config.Condition) (*config.Device, *config.Metric, error) {
 		for _, device := range h.farmService.GetConfig().GetDevices() {
 			for _, metric := range device.GetMetrics() {
 				if metric.GetID() == condition.GetMetricID() {
-					return &device, &metric, nil
+					return device, metric, nil
 				}
 			}
 		}
@@ -72,13 +72,13 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 
 		h.logger.Debugf("Parsing %s condition: %+v", h.channelConfig.GetName(), _condition)
 
-		_conditionDevice, _conditionMetric, err := parse(&_condition)
+		_conditionDevice, _conditionMetric, err := parse(_condition)
 		if err != nil {
 			return false, err
 		}
 		conditionDevice = _conditionDevice
 		conditionMetric = _conditionMetric
-		condition = &_condition
+		condition = _condition
 
 		_value, err := h.farmState.GetMetricValue(conditionDevice.GetType(), conditionMetric.GetKey())
 		if err != nil {
@@ -86,7 +86,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 		}
 		value = _value
 
-		_result, err := h.conditionService.IsTrue(&_condition, _value)
+		_result, err := h.conditionService.IsTrue(_condition, _value)
 		if err != nil {
 			return false, err
 		}

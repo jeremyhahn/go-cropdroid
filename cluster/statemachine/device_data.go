@@ -1,4 +1,5 @@
-// +build cluster
+//go:build cluster && pebble
+// +build cluster,pebble
 
 package statemachine
 
@@ -34,12 +35,6 @@ type DeviceDataSM struct {
 	sm.IConcurrentStateMachine
 	fs.DeviceStore
 }
-
-/*cs := colfer.DeviceDataState{}
-  bytes, err := cs.UnmarshalBinary()
-  if err != nil {
-    panic(err)
-  }*/
 
 func NewDeviceDataStateMachine(logger *logging.Logger,
 	deviceID uint64, deviceType string,

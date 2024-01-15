@@ -7,7 +7,7 @@ import (
 )
 
 type ChannelService interface {
-	Get(id uint64) (common.Channel, error)
+	Get(session Session, id uint64) (common.Channel, error)
 	GetAll(session Session, deviceID uint64) ([]common.Channel, error)
 	Update(session Session, viewModel common.Channel) error
 }
@@ -25,24 +25,28 @@ func NewChannelService(dao dao.ChannelDAO, mapper mapper.ChannelMapper) ChannelS
 		mapper: mapper}
 }
 
-func (service *DefaultChannelService) Get(id uint64) (common.Channel, error) {
-	entity, err := service.dao.Get(id)
+func (service *DefaultChannelService) Get(session Session, id uint64) (common.Channel, error) {
+	orgID := session.GetRequestedOrganizationID()
+	farmID := session.GetRequestedFarmID()
+	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
+	entity, err := service.dao.Get(orgID, farmID, id, consistencyLevel)
 	if err != nil {
 		return nil, err
 	}
-	return service.mapper.MapEntityToModel(entity), nil
+	return service.mapper.MapConfigToModel(entity), nil
 }
 
 func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) ([]common.Channel, error) {
-	orgID := session.GetFarmService().GetConfig().GetOrganizationID()
+	orgID := session.GetRequestedOrganizationID()
 	userID := session.GetUser().GetID()
-	entities, err := service.dao.GetByOrgUserAndDeviceID(orgID, userID, deviceID)
+	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
+	entities, err := service.dao.GetByDevice(orgID, userID, deviceID, consistencyLevel)
 	if err != nil {
 		return nil, err
 	}
 	channelViews := make([]common.Channel, len(entities))
 	for i, entity := range entities {
-		model := service.mapper.MapEntityToModel(&entity)
+		model := service.mapper.MapConfigToModel(entity)
 		channelViews[i] = model
 	}
 	return channelViews, nil
@@ -50,16 +54,18 @@ func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) (
 
 func (service *DefaultChannelService) Update(session Session, viewModel common.Channel) error {
 	channelConfig := service.mapper.MapModelToConfig(viewModel)
-	persisted, err := service.dao.Get(channelConfig.GetID())
+	orgID := session.GetRequestedOrganizationID()
+	farmID := session.GetRequestedFarmID()
+	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
+	persisted, err := service.dao.Get(orgID, farmID, channelConfig.GetID(), consistencyLevel)
 	if err != nil {
 		return err
 	}
 	channelConfig.SetDeviceID(persisted.GetDeviceID())
 	channelConfig.SetChannelID(persisted.GetChannelID())
-	if err = service.dao.Save(channelConfig); err != nil {
+	if err = service.dao.Save(farmID, channelConfig); err != nil {
 		return err
 	}
-
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
@@ -74,7 +80,7 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 				}
 			}
 			device.SetChannel(channelConfig)
-			return farmService.SetDeviceConfig(&device)
+			return farmService.SetDeviceConfig(device)
 		}
 	}
 	return ErrChannelNotFound

@@ -1,5 +1,7 @@
 package config
 
+import "fmt"
+
 type WorkflowStep struct {
 	ID uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
 	//Name string `gorm:"name" yaml:"name" json:"name"`
@@ -8,10 +10,9 @@ type WorkflowStep struct {
 	ChannelID  uint64 `yaml:"channel" json:"channel_id"`
 	Webhook    string `yaml:"webhook" json:"webhook"`
 	//AlgorithmID        int    `yaml:"algorithm" json:"algorithm_id"`
-	Duration           int `yaml:"duration" json:"duration"`
-	Wait               int `yaml:"wait" json:"wait"`
-	State              int `yaml:"state" json:"state"`
-	WorkflowStepConfig `yaml:"-" json:"-"`
+	Duration int `yaml:"duration" json:"duration"`
+	Wait     int `yaml:"wait" json:"wait"`
+	State    int `yaml:"state" json:"state"`
 }
 
 func NewWorkflowStep() *WorkflowStep {
@@ -110,4 +111,10 @@ func (ws *WorkflowStep) GetState() int {
 // See common.Constants.WORKFLOW_STATE_* for possible states.
 func (ws *WorkflowStep) SetState(state int) {
 	ws.State = state
+}
+
+func (ws *WorkflowStep) String() string {
+	return fmt.Sprintf("%d-%d-%d-%s-%d-%d-%d",
+		ws.WorkflowID, ws.DeviceID, ws.ChannelID,
+		ws.Webhook, ws.Duration, ws.Wait, ws.State)
 }

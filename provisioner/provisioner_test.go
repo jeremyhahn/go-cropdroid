@@ -20,9 +20,13 @@ func TestProvisioner(t *testing.T) {
 
 	farmDAO, provisioner, params := createDefaultProvisioner()
 
-	user := &model.User{
-		Email:    "root@localhost",
-		Password: "dev"}
+	role := model.NewRole()
+	role.SetName("test")
+
+	user := model.NewUser()
+	user.SetEmail("root@localhost")
+	user.SetPassword("dev")
+	user.SetRoles([]common.Role{role})
 
 	farm, err := provisioner.Provision(user, params)
 	assert.Nil(t, err)
@@ -30,7 +34,7 @@ func TestProvisioner(t *testing.T) {
 	assert.NotNil(t, farm)
 	assert.Equal(t, 4, len(farm.GetDevices()))
 
-	farms, err := farmDAO.GetAll()
+	farms, err := farmDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(farms))
 
@@ -41,9 +45,13 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 
 	farmDAO, provisioner, params := createDefaultProvisioner()
 
-	user := &model.User{
-		Email:    "root@localhost",
-		Password: "dev"}
+	role := model.NewRole()
+	role.SetName("test")
+
+	user := model.NewUser()
+	user.SetEmail("root@localhost")
+	user.SetPassword("dev")
+	user.SetRoles([]common.Role{role})
 
 	farm1, err := provisioner.Provision(user, params)
 	assert.Nil(t, err)
@@ -59,24 +67,24 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	assert.Equal(t, 4, len(farm2.GetDevices()))
 	assert.Equal(t, 4, len(farm3.GetDevices()))
 
-	farms, err := farmDAO.GetAll()
+	farms, err := farmDAO.GetAll(common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(farms))
 
 	CurrentTest.Cleanup()
 }
 
-func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *ProvisionerParams) {
+func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *common.ProvisionerParams) {
 	it := NewIntegrationTest()
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	userMapper := mapper.NewUserMapper()
-	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm)
+	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm, it.idGenerator)
 	initializer := gormstore.NewGormInitializer(it.logger, it.db, idGenerator,
-		it.location, common.MODE_STANDALONE)
-	params := &ProvisionerParams{
-		ConfigStore: config.MEMORY_STORE,
-		StateStore:  state.MEMORY_STORE,
-		DataStore:   datastore.GORM_STORE,
+		it.location, common.CONFIG_MODE_VIRTUAL)
+	params := &common.ProvisionerParams{
+		ConfigStoreType: config.MEMORY_STORE,
+		StateStoreType:  state.MEMORY_STORE,
+		DataStoreType:   datastore.GORM_STORE,
 	}
 	return farmDAO, NewGormFarmProvisioner(it.logger, it.gorm, it.location,
 		farmDAO, nil, nil, userMapper, initializer), params

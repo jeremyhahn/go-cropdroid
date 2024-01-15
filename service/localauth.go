@@ -59,21 +59,23 @@ func NewLocalAuthService(app *app.App, permissionDAO dao.PermissionDAO,
 }
 
 // Looks up the specified user from the data store by email address
-func (service *LocalAuthService) Get(email string) (common.UserAccount, error) {
-	userEntity, err := service.userDAO.GetByEmail(email)
-	if err != nil && err != ErrRecordNotFound {
-		return nil, ErrInvalidCredentials
-	}
-	if err != nil {
-		return nil, err
-	}
-	return service.mapper.MapUserEntityToModel(userEntity), nil
-}
+// func (service *LocalAuthService) Get(orgID uint64, email string) (common.UserAccount, error) {
+// 	userID := service.idGenerator.NewID(email)
+// 	userEntity, err := service.userDAO.Get(orgID, userID)
+// 	if err != nil && err != ErrRecordNotFound {
+// 		return nil, ErrInvalidCredentials
+// 	}
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return service.mapper.MapUserEntityToModel(userEntity), nil
+// }
 
 // ResetPassword looks the user up from the database, encrypts the UserCredentials.Password
 // and updates the database with the encrypted value.
 func (service *LocalAuthService) ResetPassword(userCredentials *UserCredentials) error {
-	userEntity, err := service.userDAO.GetByEmail(userCredentials.Email)
+	userID := service.idGenerator.NewID(userCredentials.Email)
+	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
@@ -88,11 +90,13 @@ func (service *LocalAuthService) ResetPassword(userCredentials *UserCredentials)
 // Login takes a set of credentials and returns a list of organizations with the farms
 // the user has permission to access, minimally populated. No device or workflow data
 // will be contained with the farm(s).
-func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common.UserAccount, []config.OrganizationConfig, []config.FarmConfig, error) {
+func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common.UserAccount,
+	[]*config.Organization, []*config.Farm, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %s", userCredentials.Email)
 
-	userEntity, err := service.userDAO.GetByEmail(userCredentials.Email)
+	userID := service.idGenerator.NewID(userCredentials.Email)
+	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		return nil, nil, nil, ErrInvalidCredentials
 	}
@@ -106,25 +110,25 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common
 	}
 	userEntity.RedactPassword()
 
-	organizations, err := service.orgDAO.GetByUserID(userEntity.GetID(), true)
+	organizations, err := service.permissionDAO.GetOrganizations(userEntity.GetID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		service.app.Logger.Errorf("Error looking up organization user: %s", err)
 		return nil, nil, nil, err
 	}
 
-	farms, err := service.farmDAO.GetByUserID(userEntity.GetID())
+	farms, err := service.farmDAO.GetByUserID(userEntity.GetID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	return service.mapper.MapUserEntityToModel(userEntity), organizations, farms, nil
+	return service.mapper.MapUserConfigToModel(userEntity), organizations, farms, nil
 }
 
 // Registers a new user and sends an email with an activation button in HTML format.
 func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 	baseURI string) (common.UserAccount, error) {
 
-	if !service.app.Config.EnableRegistrations {
+	if !service.app.EnableRegistrations {
 		return nil, ErrRegistrationDisabled
 	}
 
@@ -133,12 +137,14 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		return nil, ErrInvalidEmailAddress
 	}
 
-	persistedUser, err := service.userDAO.GetByEmail(userCredentials.Email)
+	userID := service.idGenerator.NewID(userCredentials.Email)
+	persistedUser, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
+
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
 	}
-	if persistedUser != nil {
+	if persistedUser.GetID() != 0 {
 		return nil, ErrUserAlreadyExists
 	}
 	encrypted, err := service.encryptPassword(userCredentials.Password)
@@ -152,11 +158,11 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 	registration.SetPassword(string(encrypted))
 
 	if userCredentials.OrgName != "" {
-		if service.app.Config.Mode == common.MODE_STANDALONE {
-			return nil, ErrOrgRegistrationUnsupported
-		}
+		// if service.app.Mode == common.CONFIG_MODE_SERVER {
+		// 	return nil, ErrOrgRegistrationUnsupported
+		// }
 		userCredentials.OrgID = service.idGenerator.NewID(userCredentials.OrgName)
-		persistedOrg, err := service.orgDAO.Get(userCredentials.OrgID)
+		persistedOrg, err := service.orgDAO.Get(userCredentials.OrgID, common.CONSISTENCY_LOCAL)
 		if err != nil && err.Error() != ErrRecordNotFound.Error() {
 			service.app.Logger.Errorf("%s", err.Error())
 			return nil, fmt.Errorf("Unexpected error: %s", err.Error())
@@ -164,7 +170,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		if err != nil {
 			return nil, err
 		}
-		if persistedOrg != nil {
+		if persistedOrg.GetID() != 0 {
 			return nil, ErrOrgAlreadyExists
 		}
 		registration.SetOrganizationName(userCredentials.OrgName)
@@ -174,7 +180,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		return nil, err
 	}
 
-	mailer := NewMailer(service.app, nil)
+	mailer := NewMailer(service.app, config.NewSmtp())
 	mailer.SetRecipient(userCredentials.Email)
 	tmpl := fmt.Sprintf("%s/%s", common.HTTP_PUBLIC_HTML, common.EMAIL_REGISTRATION)
 	subject := fmt.Sprintf("%s Registration", service.app.Name)
@@ -200,7 +206,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 // otherwise the user will need to be explicitly added to farm(s).
 func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAccount, error) {
 
-	registration, err := service.regDAO.Get(registrationID)
+	registration, err := service.regDAO.Get(registrationID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
 	}
@@ -210,12 +216,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 		Email:    registration.GetEmail(),
 		Password: registration.GetPassword()}
 
-	err = service.userDAO.Create(userConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	defaultRole, err := service.roleDAO.GetByName(service.app.Config.DefaultRole)
+	defaultRole, err := service.roleDAO.GetByName(service.app.DefaultRole, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
 	}
@@ -228,16 +229,18 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	orgName := registration.GetOrganizationName()
 	if orgName != "" {
 
-		service.orgDAO.Save(&config.Organization{
+		org := &config.Organization{
 			ID:   service.idGenerator.NewID(orgName),
-			Name: orgName})
+			Name: orgName}
+		service.orgDAO.Save(org)
 
-		if service.app.Config.DefaultPermission == common.FARM_ACCESS_ALL {
-			orgs, err := service.orgDAO.GetAll()
+		if service.app.DefaultPermission == common.FARM_ACCESS_ALL {
+			orgs, err := service.orgDAO.GetAll(common.CONSISTENCY_QUORUM)
+			orgIds := make([]uint64, len(orgs))
 			if err != nil {
 				return nil, err
 			}
-			for _, org := range orgs {
+			for i, org := range orgs {
 				for _, farmConfig := range org.GetFarms() {
 					permission := config.NewPermission()
 					permission.SetOrgID(org.GetID())
@@ -246,23 +249,33 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 					permission.SetRoleID(defaultRole.GetID())
 					service.permissionDAO.Save(permission)
 				}
+				orgIds[i] = org.GetID()
 			}
+			userConfig.SetOrganizationRefs(orgIds)
 		}
 	} else {
-		if service.app.Config.DefaultPermission == common.FARM_ACCESS_ALL {
-			farms, err := service.farmDAO.GetAll()
+		if service.app.DefaultPermission == common.FARM_ACCESS_ALL {
+			farms, err := service.farmDAO.GetAll(common.CONSISTENCY_LOCAL)
+			farmIds := make([]uint64, len(farms))
 			if err != nil {
 				return nil, err
 			}
-			for _, farmConfig := range farms {
+			for i, farmConfig := range farms {
 				permission := config.NewPermission()
 				permission.SetOrgID(0)
 				permission.SetFarmID(farmConfig.GetID())
 				permission.SetUserID(userConfig.GetID())
 				permission.SetRoleID(defaultRole.GetID())
 				service.permissionDAO.Save(permission)
+
+				farmIds[i] = farmConfig.GetID()
 			}
+			userConfig.SetFarmRefs(farmIds)
 		}
+	}
+
+	if err = service.userDAO.Save(userConfig); err != nil {
+		return nil, err
 	}
 
 	if err = service.regDAO.Delete(registration); err != nil {

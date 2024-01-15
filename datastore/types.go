@@ -2,9 +2,10 @@ package datastore
 
 import (
 	"encoding/json"
+	"errors"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
@@ -14,9 +15,17 @@ const (
 	REDIS_TS
 )
 
+var (
+	ErrNotFound        = errors.New("not found")
+	ErrUnexpectedQuery = errors.New("unexpected query")
+	//ErrOrganizationNotFound = errors.New("organization not found")
+	//ErrOrganizationsNotFound = errors.New("organizations not found")
+)
+
 type Initializer interface {
-	Initialize(includeFarmConfig bool) error
-	BuildConfig(orgID uint64, user config.UserConfig, role config.RoleConfig) (config.FarmConfig, error)
+	Initialize(includeFarm bool) error
+	BuildConfig(orgID uint64, user *config.User,
+		role common.Role) (*config.Farm, error)
 }
 
 type ChangefeedCallback func(Changefeed)
@@ -38,39 +47,4 @@ type DeviceDataStore interface {
 	//CreateTable(tableName string, deviceState state.DeviceStateMap) error
 	Save(deviceID uint64, deviceState state.DeviceStateMap) error
 	GetLast30Days(deviceID uint64, metric string) ([]float64, error)
-}
-
-type DatastoreRegistry interface {
-	GetOrganizationDAO() dao.OrganizationDAO
-	SetOrganizationDAO(dao dao.OrganizationDAO)
-	GetFarmDAO() dao.FarmDAO
-	SetFarmDAO(dao dao.FarmDAO)
-	NewFarmDAO() dao.FarmDAO
-	GetDeviceDAO() dao.DeviceDAO
-	NewDeviceDAO() dao.DeviceDAO
-	SetDeviceDAO(dao dao.DeviceDAO)
-	GetDeviceConfigDAO() dao.DeviceConfigDAO
-	SetDeviceConfigDAO(dao dao.DeviceConfigDAO)
-	GetMetricDAO() dao.MetricDAO
-	SetMetricDAO(dao dao.MetricDAO)
-	GetChannelDAO() dao.ChannelDAO
-	SetChannelDAO(dao dao.ChannelDAO)
-	GetScheduleDAO() dao.ScheduleDAO
-	SetScheduleDAO(dao dao.ScheduleDAO)
-	GetConditionDAO() dao.ConditionDAO
-	SetConditionDAO(dao dao.ConditionDAO)
-	GetAlgorithmDAO() dao.AlgorithmDAO
-	SetAlgorithmDAO(dao dao.AlgorithmDAO)
-	GetUserDAO() dao.UserDAO
-	SetUserDAO(dao.UserDAO)
-	GetPermissionDAO() dao.PermissionDAO
-	SetPermissiondAO(regDAO dao.PermissionDAO)
-	GetRegistrationDAO() dao.RegistrationDAO
-	SetRegistrationDAO(regDAO dao.RegistrationDAO)
-	GetRoleDAO() dao.RoleDAO
-	SetRoleDAO(dao.RoleDAO)
-	GetWorkflowDAO() dao.WorkflowDAO
-	SetWorkflowDAO(dao.WorkflowDAO)
-	GetWorkflowStepDAO() dao.WorkflowStepDAO
-	SetWorkflowStepDAO(dao.WorkflowStepDAO)
 }

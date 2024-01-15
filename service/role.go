@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	logging "github.com/op/go-logging"
@@ -27,6 +28,6 @@ func NewRoleService(logger *logging.Logger,
 }
 
 // Returns a list of all Role entities in the database
-func (service *DefaultRoleService) GetAll() ([]config.RoleConfig, error) {
-	return service.roleDAO.GetAll()
+func (service *DefaultRoleService) GetAll() ([]*config.Role, error) {
+	return service.roleDAO.GetAll(common.CONSISTENCY_LOCAL)
 }

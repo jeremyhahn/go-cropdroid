@@ -1,6 +1,8 @@
 package gossip
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ClusterEventType int
 
@@ -41,7 +43,15 @@ type WorkerAssignedMessage struct {
 }
 
 type ProvisionRequest struct {
-	NodeID          uint64 `json:"nid"`
-	ConfigClusterID uint64 `json:"cid"`
-	StateClusterID  uint64 `json:"sid"`
+	NodeID           uint64 `json:"nid"`
+	ConfigClusterID  uint64 `json:"cid"`
+	StateClusterID   uint64 `json:"sid"`
+	OrganizationID   uint64 `json:"oid"`
+	ConfigStoreType  int    `json:"cst"`
+	StateStoreType   int    `json:"sst"`
+	DataStoreType    int    `json:"dst"`
+	ConsistencyLevel int    `json:"cl"`
+	FarmName         string `json:"fn"`
+	UserID           uint64 `json:"uid"`
+	RoleID           uint64 `json:"rid"`
 }

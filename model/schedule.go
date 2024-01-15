@@ -2,22 +2,19 @@ package model
 
 import (
 	"time"
-
-	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 type Schedule struct {
-	ID                    int        `yaml:"id" json:"id"`
-	ChannelID             int        `yaml:"channelId" json:"channelId"`
-	StartDate             time.Time  `yaml:"startDate" json:"startDate"`
-	EndDate               *time.Time `yaml:"endDate" json:"endDate"`
-	Frequency             int        `yaml:"frequency" json:"frequency"`
-	Interval              int        `yaml:"interval" json:"interval"`
-	Count                 int        `yaml:"count" json:"count"`
-	Days                  []string   `yaml:"days" json:"days"`
-	LastExecuted          time.Time  `yaml:"lastExecuted" json:"lastExecuted"`
-	ExecutionCount        int        `yaml:"executionCount" json:"executionCount"`
-	config.ScheduleConfig `yaml:"-" json:"-"`
+	ID             int        `yaml:"id" json:"id"`
+	ChannelID      int        `yaml:"channelId" json:"channelId"`
+	StartDate      time.Time  `yaml:"startDate" json:"startDate"`
+	EndDate        *time.Time `yaml:"endDate" json:"endDate"`
+	Frequency      int        `yaml:"frequency" json:"frequency"`
+	Interval       int        `yaml:"interval" json:"interval"`
+	Count          int        `yaml:"count" json:"count"`
+	Days           []string   `yaml:"days" json:"days"`
+	LastExecuted   time.Time  `yaml:"lastExecuted" json:"lastExecuted"`
+	ExecutionCount int        `yaml:"executionCount" json:"executionCount"`
 }
 
 func (schedule *Schedule) GetID() int {

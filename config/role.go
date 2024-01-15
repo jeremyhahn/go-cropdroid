@@ -1,10 +1,9 @@
 package config
 
 type Role struct {
-	ID         uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	Name       string `yaml:"name" json:"name"`
-	Users      []User `gorm:"many2many:permissions" yaml:"-" json:"-"`
-	RoleConfig `yaml:"-" json:"-"`
+	ID    uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	Name  string `yaml:"name" json:"name"`
+	Users []User `gorm:"many2many:permissions" yaml:"-" json:"-"`
 }
 
 func NewRole() *Role {

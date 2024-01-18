@@ -94,13 +94,15 @@ func NewClusterIntegrationTest() *TestCluster {
 		log.Fatal(err)
 	}
 
+	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	app := &app.App{
 		Logger:      logger,
 		Location:    location,
 		NodeID:      NodeID,
 		ClusterID:   ClusterID,
 		DataDir:     fmt.Sprintf("./%s", TestDataDir),
-		IdGenerator: util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)}
+		IdGenerator: idGenerator,
+		IdSetter:    util.NewIdSetter(idGenerator)}
 
 	Cluster = &TestCluster{
 		app:       app,
@@ -158,8 +160,8 @@ func (dt *TestCluster) StartCluster() {
 			clusterIaasProvider, clusterRegion, clusterZone, dt.app.DataDir, localAddress,
 			localIP, gossipPeers, raftPeers, clusterJoin, clusterGossipPort,
 			clusterRaftPort, RaftLeaderID, clusterVirtualNodes, clusterMaxNodes,
-			clusterBootstrap, clusterInit, dt.app.IdGenerator, farmProvisionerChan,
-			farmDeprovisionerChan, farmTickerProvisionerChan)
+			clusterBootstrap, clusterInit, dt.app.IdGenerator, dt.app.IdSetter,
+			farmProvisionerChan, farmDeprovisionerChan, farmTickerProvisionerChan)
 
 		wg.Add(1)
 		go func(params *clusterutil.ClusterParams) {
@@ -272,9 +274,9 @@ func (dt *TestCluster) CreateFarmConfigCluster(farmID uint64) error {
 		raftNode := dt.GetRaftNode(i)
 		join := false
 		farmConfigChangeChan := make(chan config.Farm, 5)
-		sm := statemachine.NewFarmConfigMachine(dt.app.Logger, dt.app.IdGenerator,
+		sm := statemachine.NewFarmConfigOnDiskStateMachine(dt.app.Logger, dt.app.IdGenerator,
 			farmID, dt.app.DataDir, farmConfigChangeChan)
-		err := raftNode.CreateOnDiskCluster(farmID, join, sm.CreateFarmConfigMachine)
+		err := raftNode.CreateOnDiskCluster(farmID, join, sm.CreateFarmConfigOnDiskStateMachine)
 		if err != nil {
 			return err
 		}
@@ -289,9 +291,9 @@ func (dt *TestCluster) CreateFarmStateCluster(farmStateID uint64) error {
 		raftNode := dt.GetRaftNode(i)
 		join := false
 		farmStateChangeChan := make(chan state.FarmStateMap, 5)
-		sm := statemachine.NewFarmStateMachine(dt.app.Logger,
+		sm := statemachine.NewFarmStateConcurrentStateMachine(dt.app.Logger,
 			farmStateID, farmStateChangeChan)
-		err := raftNode.CreateConcurrentCluster(farmStateID, join, sm.CreateFarmStateMachine)
+		err := raftNode.CreateConcurrentCluster(farmStateID, join, sm.CreateFarmStateConcurrentStateMachine)
 		if err != nil {
 			return err
 		}
@@ -306,9 +308,9 @@ func (dt *TestCluster) CreateDeviceConfigCluster(deviceID uint64) error {
 		nodeID := uint64(i + 1)
 		raftNode := dt.GetRaftNode(i)
 		join := false
-		sm := statemachine.NewDeviceConfigMachine(dt.app.Logger, dt.app.IdGenerator,
+		sm := statemachine.NewDeviceConfigOnDiskStateMachine(dt.app.Logger, dt.app.IdGenerator,
 			dt.app.DataDir, deviceID, nodeID)
-		err := raftNode.CreateOnDiskCluster(deviceID, join, sm.CreateDeviceConfigMachine)
+		err := raftNode.CreateOnDiskCluster(deviceID, join, sm.CreateDeviceConfigOnDiskStateMachine)
 		if err != nil {
 			return err
 		}

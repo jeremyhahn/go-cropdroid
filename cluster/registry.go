@@ -25,11 +25,11 @@ type RaftDaoRegistry struct {
 	scheduleDAO      dao.ScheduleDAO
 	conditionDAO     dao.ConditionDAO
 	algorithmDAO     dao.AlgorithmDAO
-	//eventLogDAO     EventLogDAO
-	userDAO         dao.UserDAO
-	roleDAO         dao.RoleDAO
-	workflowDAO     dao.WorkflowDAO
-	workflowStepDAO dao.WorkflowStepDAO
+	eventLogDAO      dao.EventLogDAO
+	userDAO          dao.UserDAO
+	roleDAO          dao.RoleDAO
+	workflowDAO      dao.WorkflowDAO
+	workflowStepDAO  dao.WorkflowStepDAO
 	dao.Registry
 }
 
@@ -41,6 +41,14 @@ func NewRaftRegistry(logger *logging.Logger,
 
 	serverDAO := NewRaftServerDAO(logger,
 		raftNode, raftOptions.SystemClusterID)
+	// This Raft is automatically started in the NewRaftNode constructor
+	// as soon as there are enough nodes to form the quorum, as Gossip.Join()
+	// adds nodes to the Raft cluster.
+	//serverDAO.(*RaftServerDAO).StartCluster()
+
+	eventLogDAO := NewRaftEventLogDAO(logger,
+		raftNode, raftOptions.SystemClusterID)
+	eventLogDAO.(*RaftEventLogDAO).StartCluster()
 
 	orgDAO := NewRaftOrganizationDAO(logger,
 		raftNode, raftOptions.OrganizationClusterID, serverDAO)
@@ -107,12 +115,12 @@ func NewRaftRegistry(logger *logging.Logger,
 		scheduleDAO:      scheduleDAO,
 		conditionDAO:     conditionDAO,
 		algorithmDAO:     algorithmDAO,
-		//eventLogDAO:       NewEventLogDAO(logger, db),
-		userDAO:         userDAO,
-		roleDAO:         roleDAO,
-		workflowDAO:     workflowDAO,
-		workflowStepDAO: workflowStepDAO,
-		permissionDAO:   permissionDAO}
+		eventLogDAO:      eventLogDAO,
+		userDAO:          userDAO,
+		roleDAO:          roleDAO,
+		workflowDAO:      workflowDAO,
+		workflowStepDAO:  workflowStepDAO,
+		permissionDAO:    permissionDAO}
 
 	return registry
 }
@@ -204,13 +212,13 @@ func (registry *RaftDaoRegistry) SetAlgorithmDAO(dao dao.AlgorithmDAO) {
 	registry.algorithmDAO = dao
 }
 
-// func (registry *RaftDaoRegistry) GetEventLogDAO() EventLogDAO {
-// 	return registry.eventLogDAO
-// }
+func (registry *RaftDaoRegistry) GetEventLogDAO() dao.EventLogDAO {
+	return registry.eventLogDAO
+}
 
-// func (registry *RaftDaoRegistry) SetEventLogDAO(dao EventLogDAO) {
-// 	registry.eventLogDAO = dao
-// }
+func (registry *RaftDaoRegistry) SetEventLogDAO(dao dao.EventLogDAO) {
+	registry.eventLogDAO = dao
+}
 
 func (registry *RaftDaoRegistry) GetUserDAO() dao.UserDAO {
 	return registry.userDAO

@@ -1,6 +1,9 @@
 package dao
 
-import "github.com/jeremyhahn/go-cropdroid/config"
+import (
+	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
+)
 
 type UserDAO interface {
 	Delete(user *config.User) error
@@ -102,6 +105,14 @@ type RegistrationDAO interface {
 	Delete(registration *config.Registration) error
 }
 
+type EventLogDAO interface {
+	Save(EventLog entity.EventLogEntity) error
+	GetAll(CONSISTENCY_LEVEL int) ([]entity.EventLog, error)
+	GetAllDesc(CONSISTENCY_LEVEL int) ([]entity.EventLog, error)
+	GetPage(CONSISTENCY_LEVEL int, page, size int64) ([]entity.EventLog, error)
+	Count(CONSISTENCY_LEVEL int) (int64, error)
+}
+
 type Registry interface {
 	GetOrganizationDAO() OrganizationDAO
 	SetOrganizationDAO(dao OrganizationDAO)
@@ -135,4 +146,6 @@ type Registry interface {
 	SetWorkflowDAO(WorkflowDAO)
 	GetWorkflowStepDAO() WorkflowStepDAO
 	SetWorkflowStepDAO(WorkflowStepDAO)
+	GetEventLogDAO() EventLogDAO
+	SetEventLogDAO(dao EventLogDAO)
 }

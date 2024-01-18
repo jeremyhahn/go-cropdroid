@@ -29,6 +29,7 @@ type RaftOptions struct {
 type ClusterParams struct {
 	Logger                    *logging.Logger `json:"-"`
 	IdGenerator               util.IdGenerator
+	IdSetter                  util.IdSetter
 	RaftOptions               RaftOptions
 	NodeName                  string           `json:"name"`
 	ClusterID                 uint64           `json:"clusterId`
@@ -55,8 +56,8 @@ type ClusterParams struct {
 func NewClusterParams(logger *logging.Logger, raftOptions RaftOptions, nodeID uint64, provider, region,
 	zone, dataDir, localAddress, listen string, gossipPeers []string, raft []string, join bool,
 	gossipPort, raftPort, raftRequestedLeaderID int, vnodes, maxNodes, bootstrap int, initialize bool,
-	idGenerator util.IdGenerator, farmProvisionerChan chan config.Farm, farmDeprovisionerChan chan config.Farm,
-	farmTickerProvisionerChan chan uint64) *ClusterParams {
+	idGenerator util.IdGenerator, idSetter util.IdSetter, farmProvisionerChan chan config.Farm,
+	farmDeprovisionerChan chan config.Farm, farmTickerProvisionerChan chan uint64) *ClusterParams {
 
 	var nodeName string
 	hostname, _ := os.Hostname()
@@ -126,6 +127,7 @@ func NewClusterParams(logger *logging.Logger, raftOptions RaftOptions, nodeID ui
 	return &ClusterParams{
 		Logger:                    logger,
 		IdGenerator:               idGenerator,
+		IdSetter:                  idSetter,
 		RaftOptions:               raftOptions,
 		NodeName:                  nodeName,
 		ClusterID:                 raftOptions.SystemClusterID,

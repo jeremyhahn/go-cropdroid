@@ -68,8 +68,8 @@ func (userDAO *RaftUserDAO) Get(userID uint64, CONSISTENCY_LEVEL int) (*config.U
 func (userDAO *RaftUserDAO) Save(user *config.User) error {
 
 	if user.GetID() == 0 {
-		id := userDAO.raft.GetParams().IdGenerator.NewID(user.GetEmail())
-		user.SetID(id)
+		idSetter := userDAO.raft.GetParams().IdSetter
+		idSetter.SetUserIds([]*config.User{user})
 	}
 
 	userDAO.logger.Debugf("Saving user: %+v", user)

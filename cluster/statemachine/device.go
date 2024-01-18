@@ -18,8 +18,8 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type DeviceConfigMachine interface {
-	CreateDeviceConfigMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine
+type DeviceConfigOnDiskStateMachine interface {
+	CreateDeviceConfigOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine
 	sm.IOnDiskStateMachine
 }
 
@@ -28,12 +28,12 @@ type DeviceDiskKV struct {
 	idGenerator util.IdGenerator
 	dbPath      string
 	diskKV      DiskKV
-	DeviceConfigMachine
+	DeviceConfigOnDiskStateMachine
 }
 
-func NewDeviceConfigMachine(logger *logging.Logger,
+func NewDeviceConfigOnDiskStateMachine(logger *logging.Logger,
 	idGenerator util.IdGenerator, dbPath string,
-	clusterID, nodeID uint64) DeviceConfigMachine {
+	clusterID, nodeID uint64) DeviceConfigOnDiskStateMachine {
 
 	return &DeviceDiskKV{
 		logger:      logger,
@@ -44,7 +44,7 @@ func NewDeviceConfigMachine(logger *logging.Logger,
 			nodeID:    nodeID}}
 }
 
-func (d *DeviceDiskKV) CreateDeviceConfigMachine(
+func (d *DeviceDiskKV) CreateDeviceConfigOnDiskStateMachine(
 	clusterID, nodeID uint64) sm.IOnDiskStateMachine {
 
 	d.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)

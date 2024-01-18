@@ -130,8 +130,11 @@ func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftNode) {
 }
 
 func (farm *DefaultFarmService) pollCluster(raftCluster cluster.RaftNode) {
-	farm.app.Logger.Debugf("Polling farm %d", farm.farmID)
+	farm.app.Logger.Debugf("Polling clustered farm %d", farm.farmID)
 	if isLeader := raftCluster.WaitForClusterReady(farm.farmID); isLeader == false {
+
+		farm.app.Logger.Debugf("Aborting polling, not the cluster leader for farm: %d", farm.farmID)
+
 		// Only the cluster leader polls the farm
 		return
 	}

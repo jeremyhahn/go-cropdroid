@@ -12,7 +12,6 @@ import (
 	//"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/cockroach"
-	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/store"
 	"github.com/jeremyhahn/go-cropdroid/datastore/redis"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
@@ -49,7 +48,7 @@ func NewGormConfigBuilder(_app *app.App, dataStore string, appStateTTL int, appS
 	if dataStore == "redis" {
 		deviceDatastore = redis.NewRedisDataStore(":6379", "")
 	} else {
-		deviceDatastore = store.NewGormDataStore(_app.Logger, db,
+		deviceDatastore = gormds.NewGormDeviceDataStore(_app.Logger, db,
 			_app.GORMInitParams.Engine, _app.Location)
 	}
 

@@ -39,7 +39,7 @@ var DowngradeUser string
 var EnableRegistrations bool
 var EnableDefaultFarm bool
 
-var DataStore string
+var DeviceDataStore string
 var DataStoreEngine string
 var DataStoreUser string
 var DataStorePass string
@@ -56,7 +56,7 @@ var DefaultFarmPermission string
 var supportedGormEngines = []string{"memory", "sqlite", "mysql", "postgres", "cockroach"}
 
 var logFormat = logging.MustStringFormatter(
-	`%{color}%{time:15:04:05.000} %{shortpkg}.%{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
+	`%{color}%{time:15:04:05.000} %{shortpkg}.%{longfunc} ▶ %{level:.4s} %{color:reset} %{message}`,
 )
 
 var rootCmd = &cobra.Command{
@@ -133,7 +133,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DataStoreTlsKey, "datastore-tls-key", "", "", "TLS key used to encrypt the database connection")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreTlsCert, "datastore-tls-cert", "", "", "TLS certificate used to encrypt the database connection")
 
-	rootCmd.PersistentFlags().StringVarP(&DataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
+	rootCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
 
 	rootCmd.PersistentFlags().BoolVarP(&EnableDefaultFarm, "enable-default-farm", "", true, "Create a default farm on startup")
 	rootCmd.PersistentFlags().StringVarP(&DefaultRole, "default-role", "", "admin", "Default role to assign to newly registered users [ admin | cultivator | analyst ]")

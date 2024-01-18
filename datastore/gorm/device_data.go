@@ -1,4 +1,4 @@
-package store
+package gorm
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ type GormDeviceStore struct {
 	datastore.DeviceDataStore
 }
 
-func NewGormDataStore(logger *logging.Logger, db *gorm.DB, dbtype string,
+func NewGormDeviceDataStore(logger *logging.Logger, db *gorm.DB, dbtype string,
 	location *time.Location) datastore.DeviceDataStore {
 
 	logger.Info("Using GormDeviceStore for device data store")

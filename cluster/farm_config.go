@@ -156,72 +156,12 @@ func (farmDAO *RaftFarmConfigDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*co
 
 func (farmDAO *RaftFarmConfigDAO) Save(farm *config.Farm) error {
 
-	idGenerator := farmDAO.raft.GetParams().IdGenerator
-	if farm.GetID() == 0 {
-		farmKey := fmt.Sprintf("%d-%s", farm.GetOrganizationID(), farm.GetName())
-		farm.SetID(idGenerator.NewID(farmKey))
-	}
+	idSetter := farmDAO.raft.GetParams().IdSetter
+	idSetter.SetIds(farm)
+
 	for _, device := range farm.GetDevices() {
-		if device.GetID() == 0 {
-			deviceKey := fmt.Sprintf("%d-%s", farm.GetID(), device.GetType())
-			device.SetID(idGenerator.NewID(deviceKey))
-
-			for _, deviceSetting := range device.GetSettings() {
-				if deviceSetting.GetID() == 0 {
-					deviceSettingsKey := fmt.Sprintf("%d-%s", device.GetID(), deviceSetting.GetKey())
-					deviceSetting.SetID(idGenerator.NewID(deviceSettingsKey))
-				}
-			}
-
-			for _, metric := range device.GetMetrics() {
-				if metric.GetID() == 0 {
-					metricKey := fmt.Sprintf("%d-%s", device.GetID(), metric.GetKey())
-					metric.SetID(idGenerator.NewID(metricKey))
-				}
-			}
-
-			for _, channel := range device.GetChannels() {
-				if channel.GetID() == 0 {
-					channelKey := fmt.Sprintf("%d-%s", device.GetID(), channel.GetName())
-					channel.SetID(idGenerator.NewID(channelKey))
-				}
-
-				for _, condition := range channel.GetConditions() {
-					if condition.GetID() == 0 {
-						conditionKey := fmt.Sprintf("%d-%s", device.GetID(), condition.String())
-						condition.SetID(idGenerator.NewID(conditionKey))
-					}
-				}
-
-				for _, schedule := range channel.GetSchedule() {
-					if schedule.GetID() == 0 {
-						scheduleKey := fmt.Sprintf("%d-%s", device.GetID(), schedule.String())
-						schedule.SetID(idGenerator.NewID(scheduleKey))
-					}
-				}
-			}
-		}
-	}
-	for _, user := range farm.GetUsers() {
-		if user.GetID() == 0 {
-			user.SetID(idGenerator.NewID(user.GetEmail()))
-		}
-		for _, role := range user.GetRoles() {
-			if role.GetID() == 0 {
-				role.SetID(idGenerator.NewID(role.GetName()))
-			}
-		}
-	}
-	for _, workflow := range farm.GetWorkflows() {
-		if workflow.GetID() == 0 {
-			workflowKey := fmt.Sprintf("%d-%s", farm.GetID(), workflow.GetName())
-			workflow.SetID(idGenerator.NewID(workflowKey))
-		}
-		for _, workflowStep := range workflow.GetSteps() {
-			if workflowStep.GetID() == 0 {
-				workflowStepKey := fmt.Sprintf("%d-%s", workflow.GetID(), workflowStep.String())
-				workflowStep.SetID(idGenerator.NewID(workflowStepKey))
-			}
+		if device.GetInterval() == 0 {
+			device.SetInterval(farm.GetInterval())
 		}
 	}
 
@@ -248,10 +188,8 @@ func (farmDAO *RaftFarmConfigDAO) Save(farm *config.Farm) error {
 	if err != nil {
 		return err
 	}
-	if serverConfig.HasFarmRef(farm.GetID()) {
-		farmDAO.logger.Warningf("[RaftFarmConfigDAO.Save] Server FarmRef already exists! farmID=%d",
-			farm.GetID())
-	} else {
+	if !serverConfig.HasFarmRef(farm.GetID()) {
+		farmDAO.logger.Debugf("[RaftFarmConfigDAO.Save] Adding server FarmRef: %d", farm.GetID())
 		serverConfig.AddFarmRef(farm.GetID())
 		if err := farmDAO.serverDAO.Save(serverConfig); err != nil {
 			return err
@@ -260,18 +198,14 @@ func (farmDAO *RaftFarmConfigDAO) Save(farm *config.Farm) error {
 
 	// Update the user farm refs
 	for _, user := range farm.GetUsers() {
-
-		farmDAO.logger.Errorf("Updating farm refs: %+v", user)
-
 		// This query expects / requires the user to be saved first
 		userConfig, err := farmDAO.userDAO.Get(user.GetID(), farm.GetConsistencyLevel())
 		if err != nil {
 			return err
 		}
-		if userConfig.HasFarmRef(farm.GetID()) {
-			farmDAO.logger.Warningf("[RaftFarmConfigDAO.Save] User FarmRef already exists! userID=%d, farmID=%d",
+		if !userConfig.HasFarmRef(farm.GetID()) {
+			farmDAO.logger.Debugf("[RaftFarmConfigDAO.Save] Adding user FarmRef. userID=%d, farmID=%d",
 				user.GetID(), farm.GetID())
-		} else {
 			userConfig.AddFarmRef(farm.GetID())
 			if err := farmDAO.userDAO.Save(userConfig); err != nil {
 				return err

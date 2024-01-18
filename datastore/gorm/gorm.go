@@ -68,7 +68,7 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 		//"file:%s?mode=memory&cache=shared"
 		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory", database.params.DBName))
 		database.db.Exec("PRAGMA foreign_keys = ON;")
-		//database.db.LogMode(true)
+		database.db.LogMode(database.params.DebugFlag)
 		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
 		if err := NewGormInitializer(database.logger, database, idGenerator, database.params.Location,
 			database.params.AppMode).Initialize(database.params.EnableDefaultFarm); err != nil {
@@ -113,26 +113,28 @@ func (database *GormDatabase) Create() error {
 
 // Migrate will import / alter the current schema to match entities defined in config package
 func (database *GormDatabase) Migrate() error {
-	database.db.AutoMigrate(&config.Permission{})
-	database.db.AutoMigrate(&config.User{})
-	database.db.AutoMigrate(&config.Role{})
-	database.db.AutoMigrate(&config.Device{})
-	database.db.AutoMigrate(&config.DeviceSetting{})
-	database.db.AutoMigrate(&config.Metric{})
+
+	database.db.AutoMigrate(&config.Algorithm{})
 	database.db.AutoMigrate(&config.Channel{})
 	database.db.AutoMigrate(&config.Condition{})
-	database.db.AutoMigrate(&config.Algorithm{})
-	database.db.AutoMigrate(&entity.EventLog{})
-	database.db.AutoMigrate(&config.Schedule{})
+	database.db.AutoMigrate(&config.DeviceSetting{})
+	database.db.AutoMigrate(&config.Device{})
 	database.db.AutoMigrate(&config.Farm{})
-	database.db.AutoMigrate(&config.Organization{})
 	database.db.AutoMigrate(&config.License{})
+	database.db.AutoMigrate(&config.Metric{})
+	database.db.AutoMigrate(&config.Organization{})
+	database.db.AutoMigrate(&config.Permission{})
+	database.db.AutoMigrate(&config.Registration{})
+	database.db.AutoMigrate(&config.Role{})
+	database.db.AutoMigrate(&config.Schedule{})
+	//database.db.AutoMigrate(&config.Server{})
+	database.db.AutoMigrate(&config.User{})
+	database.db.AutoMigrate(&config.WorkflowStep{})
+	database.db.AutoMigrate(&config.Workflow{})
+	// Entities
+	database.db.AutoMigrate(&entity.EventLog{})
 	database.db.AutoMigrate(&entity.InventoryType{})
 	database.db.AutoMigrate(&entity.Inventory{})
-	database.db.AutoMigrate(&config.Workflow{})
-	database.db.AutoMigrate(&config.WorkflowStep{})
-	database.db.AutoMigrate(&config.Registration{})
-
 	return nil
 }
 

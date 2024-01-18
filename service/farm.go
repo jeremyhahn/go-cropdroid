@@ -386,7 +386,7 @@ func (farm *DefaultFarmService) WatchFarmStateChange() {
 
 			newDeviceStates := newFarmState.GetDevices()
 
-			farm.app.Logger.Debugf("New farm state published. last=%+v, new=%+v",
+			farm.app.Logger.Debugf("Publishing new farm state. last=%+v, new=%+v",
 				lastState, newDeviceStates)
 
 			if lastState == nil {
@@ -468,6 +468,7 @@ func (farm *DefaultFarmService) WatchFarmConfigChange() {
 					service.SetMode(newMode, d)
 				}
 			}
+			farm.app.Logger.Debugf("Publishing new farm config. farmID=%d", farm.farmID)
 			farm.PublishConfig(&newConfig)
 
 		case <-farm.farmConfigQuitChan:
@@ -568,6 +569,9 @@ func (farm *DefaultFarmService) OnDeviceStateChange(deviceType string,
 	if delta == nil {
 		return nil, nil
 	}
+
+	farm.app.Logger.Debugf("Publishing device delta. deviceType=%s, delta: %+v", deviceType, delta)
+
 	if err := farm.PublishDeviceDelta(map[string]state.DeviceStateDeltaMap{deviceType: delta}); err != nil {
 		return nil, err
 	}

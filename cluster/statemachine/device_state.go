@@ -16,7 +16,7 @@ import (
 )
 
 type DeviceStateMachine interface {
-	CreateDeviceStateMachine(clusterID, nodeID uint64) sm.IStateMachine
+	CreateDeviceStateConcurrentStateMachine(clusterID, nodeID uint64) sm.IStateMachine
 	sm.IStateMachine
 }
 
@@ -33,7 +33,7 @@ type DeviceSM struct {
 	fs.DeviceStore
 }
 
-func NewDeviceStateMachine(logger *logging.Logger,
+func NewDeviceStateConcurrentStateMachine(logger *logging.Logger,
 	deviceID uint64, deviceType string,
 	deviceStateChangeChan chan common.DeviceStateChange) DeviceStateMachine {
 
@@ -45,7 +45,7 @@ func NewDeviceStateMachine(logger *logging.Logger,
 		mutex:                 &sync.RWMutex{}}
 }
 
-func (s *DeviceSM) CreateDeviceStateMachine(clusterID, nodeID uint64) sm.IStateMachine {
+func (s *DeviceSM) CreateDeviceStateConcurrentStateMachine(clusterID, nodeID uint64) sm.IStateMachine {
 	s.clusterID = clusterID
 	s.nodeID = nodeID
 	s.mutex = &sync.RWMutex{}
@@ -97,10 +97,10 @@ func (s *DeviceSM) Update(data []byte) (sm.Result, error) {
 	s.logger.Debugf("[DeviceStateMachine.Update] device.id: %d, device: %+v\n",
 		s.deviceID, string(data))
 
-	s.deviceStateChangeChan <- common.DeviceStateChange{
-		DeviceID:   s.deviceID,
-		DeviceType: s.deviceType,
-		StateMap:   &deviceState}
+	// s.deviceStateChangeChan <- common.DeviceStateChange{
+	// 	DeviceID:   s.deviceID,
+	// 	DeviceType: s.deviceType,
+	// 	StateMap:   &deviceState}
 
 	return sm.Result{Value: s.deviceID, Data: data}, nil
 }

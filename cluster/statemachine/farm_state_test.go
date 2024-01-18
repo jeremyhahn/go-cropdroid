@@ -20,7 +20,7 @@ func TestFarmStateMachineUpdateAndLookup(t *testing.T) {
 	farmStateChangeChan := make(chan fs.FarmStateMap, 1)
 
 	logger := createLogger()
-	sm := NewFarmStateMachine(logger, 1, farmStateChangeChan)
+	sm := NewFarmStateConcurrentStateMachine(logger, 1, farmStateChangeChan)
 
 	farmStateMap, deviceStateMap := createTestFarmStateMap()
 
@@ -68,7 +68,7 @@ func TestPrepareSnapshot(t *testing.T) {
 	farmStateChangeChan := make(chan fs.FarmStateMap, 1)
 
 	logger := createLogger()
-	sm := NewFarmStateMachine(logger, 1, farmStateChangeChan)
+	sm := NewFarmStateConcurrentStateMachine(logger, 1, farmStateChangeChan)
 
 	farmStateMap, _ := createTestFarmStateMap()
 
@@ -96,7 +96,7 @@ func TestSaveAndRecoverSnapshot(t *testing.T) {
 	farmStateChangeChan := make(chan fs.FarmStateMap, 1)
 
 	logger := createLogger()
-	sm := NewFarmStateMachine(logger, 1, farmStateChangeChan)
+	sm := NewFarmStateConcurrentStateMachine(logger, 1, farmStateChangeChan)
 
 	farmStateMap, _ := createTestFarmStateMap()
 
@@ -125,7 +125,7 @@ func TestSaveAndRecoverSnapshot(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(done))
 
-	sm2 := NewFarmStateMachine(logger, 1, farmStateChangeChan)
+	sm2 := NewFarmStateConcurrentStateMachine(logger, 1, farmStateChangeChan)
 	reader := strings.NewReader(string(stateBytes))
 	err = sm2.RecoverFromSnapshot(reader, nil, done)
 	assert.Nil(t, err)

@@ -88,7 +88,7 @@ func init() {
 
 	// Datastore
 	clusterCmd.PersistentFlags().StringVarP(&DataStoreEngine, "datastore", "", "raft", "Data store type [ memory | sqlite | mysql | postgres | cockroach | raft ]")
-	clusterCmd.PersistentFlags().StringVarP(&DataStore, "data-store", "", "raft", "Where to store historical device data [ raft | gorm | redis ]")
+	clusterCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "raft", "Where to store historical device data [ raft | gorm | redis ]")
 
 	// Default cluster parameters (for provisioning new accounts)
 	clusterCmd.PersistentFlags().IntVarP(&DefaultConsistencyLevel, "default-consistency-level", "", common.CONSISTENCY_LOCAL, "CONSISTENCY_LOCAL or CONSISTENCY_QUORUM")
@@ -119,6 +119,7 @@ var clusterCmd = &cobra.Command{
 		App.Mode = Mode
 		App.Mailer = service.NewMailer(App, nil)
 		App.IdGenerator = util.NewIdGenerator(DataStoreEngine)
+		App.IdSetter = util.NewIdSetter(App.IdGenerator)
 		App.DefaultConsistencyLevel = viper.GetInt("default-consistency-level")
 		App.DefaultConfigStoreType = viper.GetInt("default-config-store")
 		App.DefaultStateStoreType = viper.GetInt("default-state-store")
@@ -167,7 +168,7 @@ var clusterCmd = &cobra.Command{
 			ClusterIaasProvider, ClusterRegion, ClusterZone, App.DataDir, localAddress,
 			ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort,
 			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes,
-			ClusterBootstrap, ClusterInit, App.IdGenerator, farmProvisionerChan,
+			ClusterBootstrap, ClusterInit, App.IdGenerator, App.IdSetter, farmProvisionerChan,
 			farmDeprovisionerChan, farmTickerProvisionerChan)
 
 		gossipNode := cluster.NewGossipNode(params, clusterutil.NewHashring(ClusterVirtualNodes))
@@ -186,7 +187,7 @@ var clusterCmd = &cobra.Command{
 
 		// TODO: Check device hardware and firmware versions at startup, update devices db table
 		builder := builder.NewClusterConfigBuilder(App, params,
-			gossipNode, raftNode, DataStore, AppStateTTL, AppStateTick)
+			gossipNode, raftNode, DeviceDataStore, AppStateTTL, AppStateTick)
 		rsaKeyPair, serviceRegistry, restServices, _, err := builder.Build()
 		if err != nil {
 			App.Logger.Fatal(err)

@@ -61,10 +61,11 @@ type App struct {
 	EnableDefaultFarm       bool   `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
 	EnableRegistrations     bool   `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
 	//Farms               []config.Farm `gorm:"-" yaml:"farms" json:"farms"`
-	GormDB         gormstore.GormDB
+	//GormDB         gormstore.GormDB
 	GORMInitParams *gormstore.GormInitParams
 	HomeDir        string `yaml:"home_dir" json:"home_dir" mapstructure:"home_dir"`
 	IdGenerator    util.IdGenerator
+	IdSetter       util.IdSetter
 	Interval       int    `yaml:"interval" json:"interval" mapstructure:"interval"`
 	KeyDir         string `yaml:"key_dir" json:"key_dir" mapstructure:"key_dir"`
 	KeyPair        KeyPair

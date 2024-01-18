@@ -36,21 +36,19 @@ func (dao *RaftScheduleDAO) Save(farmID, deviceID uint64,
 	if err != nil {
 		return err
 	}
-	if schedule.GetID() == 0 {
-		key := fmt.Sprintf("%d-%d-%d-%s-%s-%d-%d", farmID, deviceID,
-			schedule.GetChannelID(), schedule.GetStartDate(),
-			schedule.GetEndDate(), schedule.GetFrequency(),
-			schedule.GetCount())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		schedule.SetID(id)
-	}
 	for _, device := range farmConfig.GetDevices() {
 		if device.GetID() == deviceID {
 			for _, channel := range device.GetChannels() {
-				if channel.GetID() == schedule.GetChannelID() {
-					channel.SetScheduleItem(schedule)
-					return dao.farmDAO.Save(farmConfig)
-				}
+				// if channel.GetID() == schedule.GetChannelID() {
+				// 	if schedule.GetID() == 0 || schedule.GetWorkflowID() == 0 && schedule.GetChannelID() == 0 {
+				// 		idSetter := dao.raft.GetParams().IdSetter
+				// 		idSetter.SetScheduleIds(farmID, deviceID, []*config.Schedule{schedule})
+				// 	}
+				// 	channel.SetScheduleItem(schedule)
+				// 	return dao.farmDAO.Save(farmConfig)
+				// }
+				channel.SetScheduleItem(schedule)
+				return dao.farmDAO.Save(farmConfig)
 			}
 		}
 	}

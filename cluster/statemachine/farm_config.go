@@ -17,8 +17,8 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type FarmConfigMachine interface {
-	CreateFarmConfigMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine
+type FarmConfigOnDiskStateMachine interface {
+	CreateFarmConfigOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine
 	sm.IOnDiskStateMachine
 }
 
@@ -27,11 +27,11 @@ type FarmDiskKV struct {
 	idGenerator          util.IdGenerator
 	farmConfigChangeChan chan config.Farm
 	diskKV               DiskKV
-	FarmConfigMachine
+	FarmConfigOnDiskStateMachine
 }
 
-func NewFarmConfigMachine(logger *logging.Logger, idGenerator util.IdGenerator,
-	clusterID uint64, dbPath string, farmConfigChangeChan chan config.Farm) FarmConfigMachine {
+func NewFarmConfigOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGenerator,
+	clusterID uint64, dbPath string, farmConfigChangeChan chan config.Farm) FarmConfigOnDiskStateMachine {
 
 	return &FarmDiskKV{
 		logger:               logger,
@@ -42,7 +42,7 @@ func NewFarmConfigMachine(logger *logging.Logger, idGenerator util.IdGenerator,
 			clusterID: clusterID}}
 }
 
-func (d *FarmDiskKV) CreateFarmConfigMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
+func (d *FarmDiskKV) CreateFarmConfigOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
 	d.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	d.diskKV.clusterID = clusterID
 	d.diskKV.nodeID = nodeID

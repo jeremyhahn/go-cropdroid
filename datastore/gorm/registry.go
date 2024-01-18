@@ -22,7 +22,7 @@ type GormDaoRegistry struct {
 	scheduleDAO     dao.ScheduleDAO
 	conditionDAO    dao.ConditionDAO
 	algorithmDAO    dao.AlgorithmDAO
-	eventLogDAO     EventLogDAO
+	eventLogDAO     dao.EventLogDAO
 	userDAO         dao.UserDAO
 	roleDAO         dao.RoleDAO
 	workflowDAO     dao.WorkflowDAO
@@ -140,11 +140,11 @@ func (registry *GormDaoRegistry) SetAlgorithmDAO(dao dao.AlgorithmDAO) {
 	registry.algorithmDAO = dao
 }
 
-func (registry *GormDaoRegistry) GetEventLogDAO() EventLogDAO {
+func (registry *GormDaoRegistry) GetEventLogDAO() dao.EventLogDAO {
 	return registry.eventLogDAO
 }
 
-func (registry *GormDaoRegistry) SetEventLogDAO(dao EventLogDAO) {
+func (registry *GormDaoRegistry) SetEventLogDAO(dao dao.EventLogDAO) {
 	registry.eventLogDAO = dao
 }
 

@@ -84,9 +84,9 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	adminUser.SetRoles([]*config.Role{adminRole})
 	initializer.userDAO.Save(adminUser)
 
-	permission := config.NewPermission()
-	permission.SetUserID(adminUser.GetID())
-	permission.SetRoleID(adminRole.GetID())
+	// permission := config.NewPermission()
+	// permission.SetUserID(adminUser.GetID())
+	// permission.SetRoleID(adminRole.GetID())
 
 	var farm *config.Farm
 	if includeFarm {
@@ -97,8 +97,11 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 		if err := initializer.farmDAO.Save(farm); err != nil {
 			return nil, err
 		}
-		permission.SetFarmID(farm.GetID())
+		// permission.SetFarmID(farm.GetID())
 	}
+	// if err := initializer.permissionDAO.Save(permission); err != nil {
+	// 	return nil, err
+	// }
 
 	phAlgoID := initializer.newID(common.ALGORITHM_PH_KEY)
 	phAlgo := &config.Algorithm{ID: phAlgoID, Name: common.ALGORITHM_PH_KEY}
@@ -156,6 +159,9 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
 	farmID := initializer.idGenerator.NewID(farmKey)
 
+	//
+	// TODO: This needs to be done by the caller
+	//
 	// Add permissions for all users in the org
 	users, _ := initializer.permissionDAO.GetUsers(params.OrganizationID,
 		params.ConsistencyLevel)
@@ -166,7 +172,9 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 			FarmID: farmID}
 		initializer.permissionDAO.Save(&permission)
 	}
-
+	//
+	// TODO: This needs to be done by the caller
+	//
 	// Add permission for user
 	permission := config.Permission{
 		UserID: params.UserID,
@@ -436,6 +444,8 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	farm := config.NewFarm()
 	farm.SetOrganizationID(params.OrganizationID)
 	farm.SetID(farmID)
+	farm.SetInterval(60)
+	farm.SetTimezone(initializer.location.String())
 	farm.SetName(params.FarmName)
 	farm.SetConfigStore(params.ConfigStoreType)
 	farm.SetStateStore(int(params.StateStoreType))

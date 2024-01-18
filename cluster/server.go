@@ -36,6 +36,18 @@ func NewRaftServerDAO(logger *logging.Logger, raftNode RaftNode,
 		clusterID: clusterID}
 }
 
+func (serverDAO *RaftServerDAO) StartCluster() {
+	params := serverDAO.raft.GetParams()
+	clusterID := params.RaftOptions.SystemClusterID
+	sm := statemachine.NewServerConfigMachine(serverDAO.logger,
+		params.IdGenerator, params.DataDir, clusterID, params.NodeID)
+	err := serverDAO.raft.CreateOnDiskCluster(clusterID, params.Join, sm.CreateServerConfigMachine)
+	if err != nil {
+		serverDAO.logger.Fatal(err)
+	}
+	serverDAO.raft.WaitForClusterReady(clusterID)
+}
+
 func (serverDAO *RaftServerDAO) GetConfig(CONSISTENCY_LEVEL int) (*config.Server, error) {
 	var result interface{}
 	var err error

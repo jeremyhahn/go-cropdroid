@@ -34,13 +34,6 @@ func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.Workflo
 	if err != nil {
 		return err
 	}
-	if workflowStep.GetID() == 0 {
-		key := fmt.Sprintf("%d-%d-%d-%d-%d", workflowStep.GetWorkflowID(),
-			workflowStep.GetDeviceID(), workflowStep.GetChannelID(),
-			workflowStep.GetDuration(), workflowStep.GetState())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		workflowStep.SetID(id)
-	}
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.GetID() == workflowStep.GetWorkflowID() {
 			workflow.SetStep(workflowStep)

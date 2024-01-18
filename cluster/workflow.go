@@ -35,22 +35,26 @@ func (dao *RaftWorkflowDAO) Save(workflow *config.Workflow) error {
 	if err != nil {
 		return err
 	}
-	if workflow.GetID() == 0 {
-		key := fmt.Sprintf("%d-%s", farmID, workflow.GetName())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		workflow.SetID(id)
-		steps := workflow.GetSteps()
-		for _, step := range steps {
-			if step.GetID() == 0 {
-				stepKey := fmt.Sprintf("%s-%d-%d-%d-%d", key, step.GetDeviceID(),
-					step.GetChannelID(), step.GetDuration(), step.GetState())
-				stepID := dao.raft.GetParams().IdGenerator.NewID(stepKey)
-				step.SetID(stepID)
-			}
-			step.SetWorkflowID(id)
-		}
-		workflow.SetSteps(steps)
-	}
+	// if workflow.GetID() == 0 {
+	// 	idSetter := dao.raft.GetParams().IdSetter
+	// 	idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
+	// }
+	// if workflow.GetID() == 0 {
+	// 	key := fmt.Sprintf("%d-%s", farmID, workflow.GetName())
+	// 	id := dao.raft.GetParams().IdGenerator.NewID(key)
+	// 	workflow.SetID(id)
+	// 	steps := workflow.GetSteps()
+	// 	for _, step := range steps {
+	// 		if step.GetID() == 0 {
+	// 			stepKey := fmt.Sprintf("%s-%d-%d-%d-%d", key, step.GetDeviceID(),
+	// 				step.GetChannelID(), step.GetDuration(), step.GetState())
+	// 			stepID := dao.raft.GetParams().IdGenerator.NewID(stepKey)
+	// 			step.SetID(stepID)
+	// 		}
+	// 		step.SetWorkflowID(id)
+	// 	}
+	// 	workflow.SetSteps(steps)
+	// }
 	farmConfig.SetWorkflow(workflow)
 	return dao.farmDAO.Save(farmConfig)
 }

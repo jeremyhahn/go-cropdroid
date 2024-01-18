@@ -36,18 +36,14 @@ func (dao *RaftConditionDAO) Save(farmID, deviceID uint64,
 	if err != nil {
 		return err
 	}
-	if condition.GetID() == 0 {
-		key := fmt.Sprintf("%d-%d-%d-%d-%s-%2f", deviceID,
-			condition.GetWorkflowID(), condition.GetChannelID(),
-			condition.GetMetricID(), condition.GetComparator(),
-			condition.GetThreshold())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		condition.SetID(id)
-	}
 	for _, device := range farmConfig.GetDevices() {
 		if device.GetID() == deviceID {
 			for _, channel := range device.GetChannels() {
 				if channel.GetID() == condition.GetChannelID() {
+					// if condition.GetWorkflowID() == 0 || condition.GetChannelID() == 0 {
+					// 	idSetter := dao.raft.GetParams().IdSetter
+					// 	idSetter.SetConditionIds(deviceID, []*config.Condition{condition})
+					// }
 					channel.SetCondition(condition)
 					return dao.farmDAO.Save(farmConfig)
 				}

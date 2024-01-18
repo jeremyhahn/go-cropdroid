@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -11,6 +12,21 @@ type IdGenerator interface {
 	NewID(string) uint64
 	Uint64Bytes(uint64) []byte
 	StringBytes(str string) []byte
+
+	NewFarmID(orgID uint64, farmName string) uint64
+	NewDeviceID(farmID uint64, deviceType string) uint64
+	NewDeviceSettingID(deviceID uint64, deviceSettingKey string) uint64
+	NewMetricID(deviceID uint64, metricKey string) uint64
+	NewChannelID(deviceID uint64, channelName string) uint64
+	NewConditionID(deviceID uint64, conditionKey string) uint64
+	NewScheduleID(deviceID uint64, scheduleKey string) uint64
+	NewUserID(email string) uint64
+	NewRoleID(name string) uint64
+	NewWorkflowID(farmID uint64, workflowName string) uint64
+	NewWorkflowStepID(workflowID uint64, workflowStepKey string) uint64
+
+	CreateEventLogClusterID(clusterID uint64) uint64
+	CreateDeviceDataClusterID(farmID, deviceID uint64) uint64
 }
 
 type Fnv1aHasher struct {
@@ -56,4 +72,65 @@ func (hasher *Fnv1aHasher) StringBytes(str string) []byte {
 	bytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(bytes, hasher.NewID(str))
 	return bytes
+}
+
+// Implementation specific ID hashes
+func (hasher *Fnv1aHasher) NewFarmID(orgID uint64, farmName string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", orgID, farmName))
+}
+
+func (hasher *Fnv1aHasher) NewDeviceID(farmID uint64, deviceType string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", farmID, deviceType))
+}
+
+func (hasher *Fnv1aHasher) NewDeviceSettingID(deviceID uint64, deviceSettingKey string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", deviceID, deviceSettingKey))
+}
+
+func (hasher *Fnv1aHasher) NewMetricID(deviceID uint64, metricKey string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", deviceID, metricKey))
+}
+
+func (hasher *Fnv1aHasher) NewChannelID(deviceID uint64, channelName string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", deviceID, channelName))
+}
+
+func (hasher *Fnv1aHasher) NewConditionID(deviceID uint64, conditionKey string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", deviceID, conditionKey))
+}
+
+func (hasher *Fnv1aHasher) NewScheduleID(deviceID uint64, scheduleKey string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", deviceID, scheduleKey))
+}
+
+func (hasher *Fnv1aHasher) NewUserID(email string) uint64 {
+	return hasher.NewID(email)
+}
+
+func (hasher *Fnv1aHasher) NewRoleID(name string) uint64 {
+	return hasher.NewID(name)
+}
+
+func (hasher *Fnv1aHasher) NewWorkflowID(farmID uint64, workflowName string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", farmID, workflowName))
+}
+
+func (hasher *Fnv1aHasher) NewWorkflowStepID(workflowID uint64, workflowStepKey string) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%s", workflowID, workflowStepKey))
+}
+
+// Implementation specific cluster ID generation functions
+
+func (hasher *Fnv1aHasher) CreateEventLogClusterID(clusterID uint64) uint64 {
+	eventLogClusterID := hasher.NewID(fmt.Sprintf("%d-%s", clusterID, "eventlog"))
+	fmt.Println(fmt.Sprintf("Creating event log cluster ID for clusterID: %d, eventLogClusterID=%d",
+		clusterID, eventLogClusterID))
+	return eventLogClusterID
+}
+
+func (hasher *Fnv1aHasher) CreateDeviceDataClusterID(farmID, deviceID uint64) uint64 {
+	deviceDataClusterID := hasher.NewID(fmt.Sprintf("%d-%d-%sd", farmID, deviceID, "devicedata"))
+	fmt.Println(fmt.Sprintf("Creating device data cluster ID for farmID: %d, deviceID:%d, deviceDataClusterID=%d",
+		farmID, deviceID, deviceDataClusterID))
+	return deviceDataClusterID
 }

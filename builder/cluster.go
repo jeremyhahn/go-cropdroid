@@ -14,7 +14,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 
-	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/store"
+	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/datastore/redis"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
@@ -22,15 +22,11 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 
-	"github.com/jinzhu/gorm"
-
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
-	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 )
 
 type ClusterConfigBuilder struct {
 	app               *app.App
-	gormDB            *gorm.DB
 	params            *util.ClusterParams
 	appStateTTL       int
 	appStateTick      int
@@ -46,25 +42,11 @@ func NewClusterConfigBuilder(app *app.App, params *util.ClusterParams,
 	gossipNode cluster.GossipNode, raftNode cluster.RaftNode,
 	dataStore string, appStateTTL, appStateTick int) *ClusterConfigBuilder {
 
-	app.GormDB = gormds.NewGormDB(app.Logger, app.GORMInitParams)
-
 	return &ClusterConfigBuilder{
 		app:        app,
-		gormDB:     app.GormDB.Connect(false),
 		params:     params,
 		gossipNode: gossipNode,
 		raftNode:   raftNode}
-}
-
-func (builder *ClusterConfigBuilder) waitForClusterInitialization(
-	serverDAO cluster.ServerDAO) {
-
-	_, err := serverDAO.Get(builder.params.ClusterID, common.CONSISTENCY_LOCAL)
-	if err != nil {
-		builder.app.Logger.Info("Waiting for cluster initialization...")
-		time.Sleep(1 * time.Second)
-		builder.waitForClusterInitialization(serverDAO)
-	}
 }
 
 func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServiceRegistry,
@@ -87,40 +69,49 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	builder.gossipNode.SetInitializer(configInitializer)
 
 	serverDAO := builder.datastoreRegistry.(*cluster.RaftDaoRegistry).GetServerDAO()
+	roleDAO := builder.datastoreRegistry.GetRoleDAO()
+	orgDAO := builder.datastoreRegistry.GetOrganizationDAO()
+	farmDAO := builder.datastoreRegistry.GetFarmDAO()
+	eventLogDAO := builder.datastoreRegistry.GetEventLogDAO()
+	//eventLogDAO.(*cluster.RaftEventLogDAO).StartCluster()
+	//serverEventLogClusterID := builder.params.IdGenerator.CreateEventLogClusterID(
+	//	builder.params.RaftOptions.SystemClusterID)
+	//builder.raftNode.WaitForClusterReady(serverEventLogClusterID)
 
-	//if builder.params.Initialize {
-	serverConfig, serverErr := serverDAO.GetConfig(common.CONSISTENCY_LOCAL)
+	if builder.params.Initialize { //&& builder.raftNode.IsLeader(builder.params.ClusterID) {
 
-	if serverErr != nil && serverErr.Error() == "not found" {
+		//	serverConfig, serverErr := serverDAO.GetConfig(common.CONSISTENCY_LOCAL)
+
+		//if serverErr != nil && serverErr.Error() == "not found" {
+
+		//	if builder.params.Initialize { //&& builder.raftNode.IsLeader(builder.params.ClusterID) {
 
 		builder.app.Logger.Info("Initializing cluster...")
 
-		if !builder.params.Initialize {
-			builder.waitForClusterInitialization(serverDAO)
-		} else {
-			serverConfig = config.NewServer()
-			serverConfig.SetID(builder.params.ClusterID)
-			if serverErr := serverDAO.Save(serverConfig); serverErr != nil {
-				builder.app.Logger.Fatal(serverErr)
-			}
-			provParams := &common.ProvisionerParams{
-				UserID:           0,
-				RoleID:           0,
-				OrganizationID:   0,
-				FarmName:         common.DEFAULT_CROP_NAME,
-				ConfigStoreType:  builder.app.DefaultConfigStoreType,
-				StateStoreType:   builder.app.DefaultStateStoreType,
-				DataStoreType:    builder.app.DefaultDataStoreType,
-				ConsistencyLevel: common.CONSISTENCY_LOCAL}
-			farmConfig, err := configInitializer.Initialize(false, provParams)
-			if err != nil {
-				builder.app.Logger.Fatal(err)
-			}
-			if farmConfig != nil {
-				serverConfig.AddFarmRef(farmConfig.GetID())
-				serverDAO.Save(serverConfig)
-			}
+		provParams := &common.ProvisionerParams{
+			UserID:           0,
+			RoleID:           0,
+			OrganizationID:   0,
+			FarmName:         common.DEFAULT_CROP_NAME,
+			ConfigStoreType:  builder.app.DefaultConfigStoreType,
+			StateStoreType:   builder.app.DefaultStateStoreType,
+			DataStoreType:    builder.app.DefaultDataStoreType,
+			ConsistencyLevel: common.CONSISTENCY_LOCAL}
+		farmConfig, err := configInitializer.Initialize(false, provParams)
+		if err != nil {
+			builder.app.Logger.Fatal(err)
 		}
+
+		serverConfig := config.NewServer()
+		serverConfig.SetID(builder.params.ClusterID)
+		if serverErr := serverDAO.Save(serverConfig); serverErr != nil {
+			builder.app.Logger.Fatal(serverErr)
+		}
+		if farmConfig != nil {
+			serverConfig.AddFarmRef(farmConfig.GetID())
+			serverDAO.Save(serverConfig)
+		}
+		//}
 	}
 
 	// gormInitializer := gormds.NewGormInitializer(builder.app.Logger,
@@ -149,9 +140,8 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 		DeviceStateChangeChan: make(chan common.DeviceStateChange, common.BUFFERED_CHANNEL_SIZE),
 		DeviceStateDeltaChan:  make(chan map[string]state.DeviceStateDeltaMap, common.BUFFERED_CHANNEL_SIZE)}
 
-	newGormDB := builder.app.GormDB.CloneConnection()
 	farmFactory := service.NewFarmFactoryCluster(
-		builder.app, newGormDB, builder.datastoreRegistry, builder.serviceRegistry,
+		builder.app, builder.datastoreRegistry, builder.serviceRegistry,
 		builder.mapperRegistry.GetDeviceMapper(), builder.changefeeders,
 		builder.params.GetFarmProvisionerChan(),
 		builder.params.GetFarmTickerProvisionerChan(), farmChannels)
@@ -165,8 +155,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	// 	builder.datastoreRegistry.NewFarmDAO(),
 	// 	builder.mapperRegistry.GetUserMapper(), initializer)
 
-	// TODO: Replace with modular backend event log storage
-	eventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.gormDB)
+	//eventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.gormDB)
 	eventLogService := service.NewEventLogService(builder.app, eventLogDAO,
 		common.CONTROLLER_TYPE_SERVER)
 	builder.serviceRegistry.SetEventLogService(eventLogService)
@@ -186,10 +175,6 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 
 	//builder.app.Server = serverConfig.(*config.Server)
 	//builder.app.Logger.Debugf("builder.app.Server: %+v", builder.app.Server)
-
-	roleDAO := builder.datastoreRegistry.GetRoleDAO()
-	orgDAO := builder.datastoreRegistry.GetOrganizationDAO()
-	farmDAO := builder.datastoreRegistry.GetFarmDAO()
 
 	orgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -309,7 +294,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 				}
 				builder.serviceRegistry.AddFarmService(farmService)
 				builder.params.GetFarmTickerProvisionerChan() <- farmConfig.GetID()
-				go farmService.Run()
+				go farmService.RunCluster()
 			}
 		}
 	}()
@@ -348,9 +333,13 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	}
 	//farmConfigStore := store.NewGormFarmConfigStore(farmDAO, 1)
 	defaultRole, err := roleDAO.GetByName(builder.app.DefaultRole, common.CONSISTENCY_LOCAL)
-	if err != nil {
-		builder.app.Logger.Fatal(err)
+	for err != nil {
+		defaultRole, err = roleDAO.GetByName(builder.app.DefaultRole, common.CONSISTENCY_LOCAL)
+		time.Sleep(1 * time.Second)
+		builder.app.Logger.Warning("Waiting for cluster database initialization (missing default role)...")
+		//builder.app.Logger.Fatal(err)
 	}
+
 	jwtService := service.CreateJsonWebTokenService(builder.app,
 		builder.app.IdGenerator, orgDAO, farmDAO, defaultRole,
 		builder.mapperRegistry.GetDeviceMapper(), builder.serviceRegistry,
@@ -403,7 +392,8 @@ func (builder *ClusterConfigBuilder) createFarmConfigDAO(storeType int,
 	var farmDAO dao.FarmDAO
 	switch storeType {
 	case config.MEMORY_STORE, config.GORM_STORE:
-		farmDAO = gormds.NewFarmDAO(builder.app.Logger, builder.gormDB,
+		gormDB := gormds.NewGormDB(builder.app.Logger, builder.app.GORMInitParams).Connect(false)
+		farmDAO = gormds.NewFarmDAO(builder.app.Logger, gormDB,
 			builder.app.IdGenerator)
 		//farmConfigStore = store.NewGormFarmConfigStore(farmDAO, 1)
 	case config.RAFT_MEMORY_STORE, config.RAFT_DISK_STORE:
@@ -456,11 +446,12 @@ func (builder *ClusterConfigBuilder) createDeviceDataStore(storeType int) datast
 	var deviceDataStore datastore.DeviceDataStore
 	switch storeType {
 	case datastore.GORM_STORE:
-		deviceDataStore = store.NewGormDataStore(builder.app.Logger,
-			builder.gormDB, builder.app.GORMInitParams.Engine,
+		gormDB := gormds.NewGormDB(builder.app.Logger, builder.app.GORMInitParams).Connect(false)
+		deviceDataStore = gormds.NewGormDeviceDataStore(builder.app.Logger,
+			gormDB, builder.app.GORMInitParams.Engine,
 			builder.app.Location)
 	case datastore.RAFT_STORE:
-		deviceDataStore = cluster.NewRaftDeviceStateStore(builder.app.Logger, builder.raftNode)
+		deviceDataStore = cluster.NewRaftDeviceDataStore(builder.app.Logger, builder.raftNode)
 	case datastore.REDIS_TS:
 		deviceDataStore = redis.NewRedisDataStore(":6379", "")
 	}

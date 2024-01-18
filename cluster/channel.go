@@ -4,8 +4,6 @@
 package cluster
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
@@ -34,14 +32,14 @@ func (dao *RaftChannelDAO) Save(farmID uint64, channel *config.Channel) error {
 	if err != nil {
 		return err
 	}
-	if channel.GetID() == 0 {
-		key := fmt.Sprintf("%d-%s", farmID, channel.GetName())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		channel.SetID(id)
-	}
 	devices := farmConfig.GetDevices()
 	for _, device := range devices {
-		if device.GetID() == channel.GetDeviceID() {
+		deviceID := device.GetID()
+		if deviceID == channel.GetDeviceID() {
+			// if channel.GetID() == 0 || channel.GetDeviceID() == 0 || channel.GetChannelID() == 0 {
+			// 	idSetter := dao.raft.GetParams().IdSetter
+			// 	idSetter.SetChannelsIds(farmID, deviceID, []*config.Channel{channel})
+			// }
 			device.SetChannel(channel)
 			farmConfig.SetDevice(device)
 			return dao.farmDAO.Save(farmConfig)

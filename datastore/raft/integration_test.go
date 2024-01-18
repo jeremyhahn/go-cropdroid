@@ -1,7 +1,7 @@
 //go:build cluster && pebble
 // +build cluster,pebble
 
-package cluster
+package raft
 
 import (
 	"fmt"
@@ -19,6 +19,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/util"
+
+	"github.com/jeremyhahn/go-cropdroid/cluster"
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
 )
@@ -49,9 +51,9 @@ type TestCluster struct {
 	app         *app.App
 	nodeCount   int
 	gossipMutex sync.Mutex
-	gossipNodes []GossipNode
+	gossipNodes []cluster.GossipNode
 	raftMutex   sync.Mutex
-	raftNodes   []RaftNode
+	raftNodes   []cluster.RaftNode
 	clusterID   uint64
 }
 
@@ -95,6 +97,7 @@ func NewClusterIntegrationTest() *TestCluster {
 	}
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
+
 	app := &app.App{
 		Logger:      logger,
 		Location:    location,
@@ -166,7 +169,7 @@ func (dt *TestCluster) StartCluster() {
 		wg.Add(1)
 		go func(params *clusterutil.ClusterParams) {
 
-			gossipNode := NewGossipNode(params, clusterutil.NewHashring(clusterVirtualNodes))
+			gossipNode := cluster.NewGossipNode(params, clusterutil.NewHashring(clusterVirtualNodes))
 			gossipNode.Join()
 			go gossipNode.Run()
 
@@ -215,23 +218,23 @@ func (dt *TestCluster) Cleanup() {
 	}
 }
 
-func (dt *TestCluster) GetRaftLeaderNode() RaftNode {
+func (dt *TestCluster) GetRaftLeaderNode() cluster.RaftNode {
 	return dt.raftNodes[RaftLeaderID-1]
 }
 
-func (dt *TestCluster) GetRaftNode(index int) RaftNode {
+func (dt *TestCluster) GetRaftNode(index int) cluster.RaftNode {
 	return dt.raftNodes[index]
 }
 
-func (dt *TestCluster) GetRaftNode1() RaftNode {
+func (dt *TestCluster) GetRaftNode1() cluster.RaftNode {
 	return dt.raftNodes[0]
 }
 
-func (dt *TestCluster) GetRaftNode2() RaftNode {
+func (dt *TestCluster) GetRaftNode2() cluster.RaftNode {
 	return dt.raftNodes[1]
 }
 
-func (dt *TestCluster) GetRaftNode3() RaftNode {
+func (dt *TestCluster) GetRaftNode3() cluster.RaftNode {
 	return dt.raftNodes[2]
 }
 

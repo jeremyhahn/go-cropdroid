@@ -4,8 +4,6 @@
 package cluster
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
@@ -34,14 +32,17 @@ func (dao *RaftMetricDAO) Save(farmID uint64, metric *config.Metric) error {
 	if err != nil {
 		return err
 	}
-	if metric.GetID() == 0 {
-		key := fmt.Sprintf("%d-%s", farmID, metric.GetName())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		metric.SetID(id)
-	}
+
+	raftParams := dao.raft.GetParams()
+	idSetter := raftParams.IdSetter
+
 	devices := farmConfig.GetDevices()
 	for _, device := range devices {
-		if device.GetID() == metric.GetDeviceID() {
+		deviceID := device.GetID()
+		if deviceID == metric.GetDeviceID() {
+			if metric.GetID() == 0 || metric.GetDeviceID() == 0 {
+				idSetter.SetMetricIds(deviceID, []*config.Metric{metric})
+			}
 			device.SetMetric(metric)
 			farmConfig.SetDevice(device)
 			return dao.farmDAO.Save(farmConfig)

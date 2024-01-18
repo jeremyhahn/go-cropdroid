@@ -75,8 +75,8 @@ func (roleDAO *RaftRoleDAO) GetByName(roleName string, CONSISTENCY_LEVEL int) (*
 func (roleDAO *RaftRoleDAO) Save(role *config.Role) error {
 
 	if role.GetID() == 0 {
-		id := roleDAO.raft.GetParams().IdGenerator.NewID(role.GetName())
-		role.SetID(id)
+		idSetter := roleDAO.raft.GetParams().IdSetter
+		idSetter.SetRoleIds([]*config.Role{role})
 	}
 
 	roleDAO.logger.Debugf("Saving role: %+v", role)

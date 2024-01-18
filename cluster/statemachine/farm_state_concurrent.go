@@ -17,7 +17,7 @@ import (
 )
 
 type FarmStateMachine interface {
-	CreateFarmStateMachine(clusterID, nodeID uint64) sm.IConcurrentStateMachine
+	CreateFarmStateConcurrentStateMachine(clusterID, nodeID uint64) sm.IConcurrentStateMachine
 	sm.IConcurrentStateMachine
 }
 
@@ -39,7 +39,7 @@ type FarmSM struct {
 // This is the farm state machine the Dragonboat library uses to
 // maintain farm state for a Raft node.
 // https://github.com/lni/dragonboat/blob/master/statemachine/concurrent.go
-func NewFarmStateMachine(logger *logging.Logger, farmID uint64,
+func NewFarmStateConcurrentStateMachine(logger *logging.Logger, farmID uint64,
 	farmStateChangeChan chan fs.FarmStateMap) FarmStateMachine {
 
 	return &FarmSM{
@@ -51,7 +51,7 @@ func NewFarmStateMachine(logger *logging.Logger, farmID uint64,
 		snapshotMutex:       &sync.RWMutex{}}
 }
 
-func (s *FarmSM) CreateFarmStateMachine(clusterID, nodeID uint64) sm.IConcurrentStateMachine {
+func (s *FarmSM) CreateFarmStateConcurrentStateMachine(clusterID, nodeID uint64) sm.IConcurrentStateMachine {
 	s.clusterID = clusterID
 	s.nodeID = nodeID
 	s.dataMutex = &sync.RWMutex{}

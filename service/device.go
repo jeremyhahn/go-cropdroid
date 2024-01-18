@@ -164,6 +164,10 @@ func (service *IOSwitcherDeviceService) Poll() error {
 	eventType := "Poll"
 	deviceConfig, err := service.deviceDAO.Get(service.farmID,
 		service.deviceID, service.consistency)
+	if err != nil {
+		service.error(eventType, eventType, err)
+		return err
+	}
 	if !deviceConfig.IsEnabled() {
 		service.app.Logger.Warningf("%s disabled...", deviceType)
 		return nil

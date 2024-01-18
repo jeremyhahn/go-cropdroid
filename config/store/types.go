@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package store
 
 import "github.com/jeremyhahn/go-cropdroid/config"

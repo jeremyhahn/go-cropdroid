@@ -26,7 +26,7 @@ func TestFarmConfigOpen(t *testing.T) {
 	logger := createLogger()
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	farmChangeConfigChan := make(chan config.Farm, 5)
-	farmConfigMachine := NewFarmConfigMachine(logger, idGenerator,
+	farmConfigMachine := NewFarmConfigOnDiskStateMachine(logger, idGenerator,
 		clusterID, farmsDatabasePath, farmChangeConfigChan)
 
 	lastAppliedIndex, err := farmConfigMachine.Open(nil)
@@ -41,7 +41,7 @@ func TestFarmConfigMachineUpdateLookupEmptyStore(t *testing.T) {
 	logger := createLogger()
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	farmChangeConfigChan := make(chan config.Farm, 5)
-	farmConfigMachine := NewFarmConfigMachine(logger, idGenerator,
+	farmConfigMachine := NewFarmConfigOnDiskStateMachine(logger, idGenerator,
 		clusterID, farmsDatabasePath, farmChangeConfigChan)
 
 	org := data.CreateTestOrganization1(idGenerator)

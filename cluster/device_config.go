@@ -4,8 +4,6 @@
 package cluster
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
@@ -30,14 +28,13 @@ func NewRaftDeviceConfigDAO(logger *logging.Logger,
 }
 
 func (dao *RaftDeviceConfigDAO) Save(device *config.Device) error {
+
+	idSetter := dao.raft.GetParams().IdSetter
+	idSetter.SetDeviceIds(device.GetFarmID(), []*config.Device{device})
+
 	farmConfig, err := dao.farmDAO.Get(device.GetFarmID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
-	}
-	if device.GetID() == 0 {
-		key := fmt.Sprintf("%d-%s", device.GetFarmID(), device.GetType())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
-		device.SetID(id)
 	}
 	farmConfig.SetDevice(device)
 	dao.logger.Debugf("Saving device config %+v", device)

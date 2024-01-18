@@ -2,7 +2,8 @@ module github.com/jeremyhahn/go-cropdroid
 
 go 1.21
 
-toolchain go1.21.6
+// Docker buildx doesn't understand this directive
+//toolchain go1.21.6
 
 require (
 	github.com/RedisTimeSeries/redistimeseries-go v1.4.4

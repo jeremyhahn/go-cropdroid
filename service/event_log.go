@@ -4,31 +4,32 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
-	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
 type EventLog struct {
-	app        *app.App
-	dao        gorm.EventLogDAO
+	app    *app.App
+	dao    dao.EventLogDAO
 	device string
 }
 
-func NewEventLogService(app *app.App, dao gorm.EventLogDAO, device string) EventLogService {
+func NewEventLogService(app *app.App, dao dao.EventLogDAO, device string) EventLogService {
 	return &EventLog{
-		app:        app,
+		app:    app,
 		device: device,
-		dao:        dao}
+		dao:    dao}
 }
 
 func (eventLog *EventLog) Create(eventType, message string) {
 	eventLog.app.Logger.Debugf("[Create] type=%s, message=%s", eventType, message)
-	err := eventLog.dao.Create(&entity.EventLog{
-		Device: eventLog.device,
-		Type:       eventType,
-		Message:    message,
-		Timestamp:  time.Now()})
+	err := eventLog.dao.Save(&entity.EventLog{
+		Device:    eventLog.device,
+		Type:      eventType,
+		Message:   message,
+		Timestamp: time.Now()})
 	if err != nil {
 		eventLog.app.Logger.Errorf("[Create] Error: %s", err)
 	}
@@ -41,11 +42,11 @@ func (eventLog *EventLog) GetPage(page int64) *viewmodel.EventsPage {
 	}
 	var offset = (page-1)*pageSize + 1
 	eventLog.app.Logger.Debugf("[GetPage]")
-	entities, err := eventLog.dao.GetPage(offset, pageSize)
+	entities, err := eventLog.dao.GetPage(common.CONSISTENCY_LOCAL, offset, pageSize)
 	if err != nil {
 		eventLog.app.Logger.Errorf("[GetPage] Error: %s", err)
 	}
-	count, err := eventLog.dao.Count()
+	count, err := eventLog.dao.Count(common.CONSISTENCY_LOCAL)
 	if err != nil {
 		eventLog.app.Logger.Errorf("[GetPage] Error: %s", err)
 	}
@@ -60,7 +61,7 @@ func (eventLog *EventLog) GetPage(page int64) *viewmodel.EventsPage {
 
 func (eventLog *EventLog) GetAll() []entity.EventLog {
 	eventLog.app.Logger.Debugf("[GetAll]")
-	entities, err := eventLog.dao.GetLogs()
+	entities, err := eventLog.dao.GetAllDesc(common.CONSISTENCY_LOCAL)
 	if err != nil {
 		eventLog.app.Logger.Errorf("[GetAll] Error: %s", err)
 	}

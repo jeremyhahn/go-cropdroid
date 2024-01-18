@@ -1,34 +1,27 @@
 package gorm
 
 import (
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
 )
 
-type EventLogDAO interface {
-	Create(EventLog entity.EventLogEntity) error
-	GetAll() ([]entity.EventLog, error)
-	GetLogs() ([]entity.EventLog, error)
-	GetPage(page, size int64) ([]entity.EventLog, error)
-	Count() (int64, error)
-}
-
 type GormEventLogDAO struct {
 	logger *logging.Logger
 	db     *gorm.DB
-	EventLogDAO
+	dao.EventLogDAO
 }
 
-func NewEventLogDAO(logger *logging.Logger, db *gorm.DB) EventLogDAO {
+func NewEventLogDAO(logger *logging.Logger, db *gorm.DB) dao.EventLogDAO {
 	return &GormEventLogDAO{logger: logger, db: db}
 }
 
-func (dao *GormEventLogDAO) Create(log entity.EventLogEntity) error {
-	return dao.db.Create(log).Error
+func (dao *GormEventLogDAO) Save(log entity.EventLogEntity) error {
+	return dao.db.Save(log).Error
 }
 
-func (dao *GormEventLogDAO) GetAll() ([]entity.EventLog, error) {
+func (dao *GormEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]entity.EventLog, error) {
 	var logs []entity.EventLog
 	if err := dao.db.Find(&logs).Error; err != nil {
 		return nil, err
@@ -36,7 +29,7 @@ func (dao *GormEventLogDAO) GetAll() ([]entity.EventLog, error) {
 	return logs, nil
 }
 
-func (dao *GormEventLogDAO) Count() (int64, error) {
+func (dao *GormEventLogDAO) Count(CONSISTENCY_LEVEL int) (int64, error) {
 	var count int64
 	if err := dao.db.Model(&entity.EventLog{}).Count(&count).Error; err != nil {
 		return 0, err
@@ -44,7 +37,7 @@ func (dao *GormEventLogDAO) Count() (int64, error) {
 	return count, nil
 }
 
-func (dao *GormEventLogDAO) GetPage(offset, size int64) ([]entity.EventLog, error) {
+func (dao *GormEventLogDAO) GetPage(CONSISTENCY_LEVEL int, offset, size int64) ([]entity.EventLog, error) {
 	var logs []entity.EventLog
 	if err := dao.db.Limit(size).Offset(offset).Order("timestamp desc").Find(&logs).Error; err != nil {
 		return nil, err
@@ -52,7 +45,7 @@ func (dao *GormEventLogDAO) GetPage(offset, size int64) ([]entity.EventLog, erro
 	return logs, nil
 }
 
-func (dao *GormEventLogDAO) GetLogs() ([]entity.EventLog, error) {
+func (dao *GormEventLogDAO) GetAllDesc(CONSISTENCY_LEVEL int) ([]entity.EventLog, error) {
 	var logs []entity.EventLog
 	if err := dao.db.Order("timestamp desc").Find(&logs).Limit(100).Error; err != nil {
 		return nil, err

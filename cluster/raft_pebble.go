@@ -336,7 +336,7 @@ func (r *Raft) CreateOnDiskCluster(clusterID uint64, join bool, stateMachineFunc
 	r.proposalChanMutex.Unlock()
 
 	if err := r.nodeHost.StartOnDiskCluster(r.peers, join, stateMachineFunc, newConfig); err != nil {
-		r.params.Logger.Error("failed to create IOnDiskStateMachine cluster %d, error=%v\n", clusterID, err)
+		r.params.Logger.Errorf("failed to create IOnDiskStateMachine cluster %d, error=%v", clusterID, err)
 		return err
 	}
 	return nil

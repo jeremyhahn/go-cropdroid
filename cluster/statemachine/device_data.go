@@ -5,167 +5,183 @@ package statemachine
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
-	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
-	fs "github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	sm "github.com/lni/dragonboat/v3/statemachine"
 	logging "github.com/op/go-logging"
 )
 
-type DeviceDataStateMachine interface {
-	CreateDeviceDataStateMachine(clusterID, nodeID uint64) sm.IStateMachine
-	sm.IStateMachine
+type DeviceDataOnDiskStateMachine interface {
+	CreateDeviceDataOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine
+	sm.IOnDiskStateMachine
 }
 
-type DeviceDataSM struct {
-	logger                *logging.Logger
-	clusterID             uint64
-	nodeID                uint64
-	deviceID              uint64
-	deviceType            string
-	current               fs.DeviceStateMap
-	history               []fs.DeviceStateMap
-	deviceStateChangeChan chan common.DeviceStateChange
-	mutex                 *sync.RWMutex
-	sm.IConcurrentStateMachine
-	fs.DeviceStore
+type DeviceDataDiskKV struct {
+	logger      *logging.Logger
+	idGenerator util.IdGenerator
+	diskKV      DiskKV
+	DeviceDataOnDiskStateMachine
 }
 
-func NewDeviceDataStateMachine(logger *logging.Logger,
-	deviceID uint64, deviceType string,
-	deviceStateChangeChan chan common.DeviceStateChange) DeviceDataStateMachine {
+func NewDeviceDataOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGenerator,
+	clusterID uint64, dbPath string) DeviceDataOnDiskStateMachine {
 
-	return &DeviceDataSM{
-		logger:                logger,
-		deviceID:              deviceID,
-		deviceType:            deviceType,
-		history:               make([]fs.DeviceStateMap, 0),
-		deviceStateChangeChan: deviceStateChangeChan,
-		mutex:                 &sync.RWMutex{}}
+	deviceDataID := idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "devicedata"))
+
+	return &DeviceDataDiskKV{
+		logger:      logger,
+		idGenerator: idGenerator,
+		diskKV: DiskKV{
+			dbPath:    dbPath,
+			clusterID: deviceDataID}}
 }
 
-func (s *DeviceDataSM) CreateDeviceDataStateMachine(clusterID, nodeID uint64) sm.IStateMachine {
-	s.clusterID = clusterID
-	s.nodeID = nodeID
-	s.mutex = &sync.RWMutex{}
-	return s
+func (d *DeviceDataDiskKV) CreateDeviceDataOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
+	d.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
+	//d.diskKV.clusterID = clusterID
+	d.diskKV.clusterID = d.idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "devicedata"))
+	d.diskKV.nodeID = nodeID
+	return d
 }
 
-func (s *DeviceDataSM) Lookup(query interface{}) (interface{}, error) {
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.logger.Warningf("[DeviceDataStateMachine.Lookup] query: %+v", query)
-	s.logger.Warningf("[DeviceDataStateMachine.Lookup] Current: %+v", s.current)
-	//s.logger.Warningf("[DeviceDataStateMachine.Lookup] History: %+v", s.history)
-
-	if query == nil {
-		return []fs.DeviceStateMap{s.current}, nil
-	}
-	if query.(string) == "*" {
-		return s.history, nil
-	}
-	pieces := strings.Split(query.(string), ":")
-	start, err := strconv.Atoi(pieces[0])
-	if err != nil {
-		return nil, err
-	}
-	end, err := strconv.Atoi(pieces[1])
-	if err != nil {
-		return nil, err
-	}
-	return s.history[start:end], nil
+func (d *DeviceDataDiskKV) Open(stopc <-chan struct{}) (uint64, error) {
+	return d.diskKV.Open(stopc)
 }
 
-func (s *DeviceDataSM) Update(data []byte) (sm.Result, error) {
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	var deviceState fs.DeviceState
-	err := json.Unmarshal(data, &deviceState)
-	if err != nil {
-		s.logger.Errorf("[DeviceDataStateMachine.Update] Error: %s\n", err)
-		return sm.Result{}, err
-	}
-	if s.current != nil {
-		s.history = append(s.history, s.current)
-	}
-	s.current = &deviceState
-
-	s.logger.Debugf("[DeviceDataStateMachine.Update] device.id: %d, store.history.len: %d, device: %+v\n",
-		s.deviceID, len(s.history), string(data))
-
-	// s.deviceStateChangeChan <- &deviceState
-
-	s.deviceStateChangeChan <- common.DeviceStateChange{
-		DeviceID:   s.deviceID,
-		DeviceType: s.deviceType,
-		StateMap:   &deviceState}
-
-	return sm.Result{Value: s.deviceID, Data: data}, nil
+func (d *DeviceDataDiskKV) Sync() error {
+	return d.diskKV.Sync()
 }
 
-// SaveSnapshot saves the current IStateMachine state into a snapshot using the
-// specified io.Writer object.
-func (s *DeviceDataSM) SaveSnapshot(w io.Writer, fc sm.ISnapshotFileCollection, done <-chan struct{}) error {
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	snap := s.history
-	if s.current != nil {
-		snap = append(snap, s.current)
-	}
-	bytes, err := json.Marshal(snap)
-	if err != nil {
-		s.logger.Errorf("[DeviceDataStateMachine.SaveSnapshot] Error: %s", err)
-		return err
-	}
-	s.logger.Infof("[DeviceDataStateMachine.SaveSnapshot] Created new snaphot. History length: %d", len(snap))
-	_, err = w.Write(bytes)
-	return err
+func (d *DeviceDataDiskKV) PrepareSnapshot() (interface{}, error) {
+	return d.diskKV.PrepareSnapshot()
 }
 
-// RecoverFromSnapshot recovers the state using the provided snapshot.
-func (s *DeviceDataSM) RecoverFromSnapshot(r io.Reader, files []sm.SnapshotFile, done <-chan struct{}) error {
+func (d *DeviceDataDiskKV) SaveSnapshot(ctx interface{}, w io.Writer, done <-chan struct{}) error {
+	return d.diskKV.SaveSnapshot(ctx, w, done)
+}
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (d *DeviceDataDiskKV) RecoverFromSnapshot(r io.Reader, done <-chan struct{}) error {
+	return d.diskKV.RecoverFromSnapshot(r, done)
+}
 
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	var deviceState []fs.DeviceState
-	err = json.Unmarshal(data, &deviceState)
-	if err != nil {
-		s.logger.Errorf("[DeviceDataStateMachine.RecoverFromSnapshot] Error: %s, deviceState: %+v\n", err, deviceState)
-		return err
-	}
-	s.logger.Debugf("[DeviceDataStateMachine.SaveSnapshot] Recovered from snapshot. History length: %d", len(deviceState))
-	if len(deviceState) > 0 {
-		s.history = make([]fs.DeviceStateMap, len(deviceState))
-		for i, h := range deviceState {
-			s.history[i] = &h
+func (d *DeviceDataDiskKV) Close() error {
+	return d.diskKV.Close()
+}
+
+func (d *DeviceDataDiskKV) Lookup(key interface{}) (interface{}, error) {
+	switch t := key.(type) {
+
+	case uint64:
+		id := d.idGenerator.Uint64Bytes(t)
+		v, err := d.diskKV.Lookup(id)
+		if err != nil {
+			return nil, err
 		}
-		s.current = s.history[len(deviceState)-1]
+		var deviceData state.DeviceStateMap
+		err = json.Unmarshal(v.([]byte), &deviceData)
+		if err != nil {
+			d.logger.Errorf("[DeviceDataDiskKV.Lookup] Error: %s\n", err)
+			return nil, err
+		}
+		return &deviceData, err
+
+	case []uint8:
+		query, err := strconv.Atoi(fmt.Sprintf("%s", key))
+		if err != nil {
+			d.logger.Errorf("[DeviceDataDiskKV.Lookup] Error: %s\n", err)
+			return nil, err
+		}
+		if query == QUERY_TYPE_WILDCARD {
+			db := (*pebbledb)(atomic.LoadPointer(&d.diskKV.db))
+			iter := db.db.NewIter(db.ro)
+			defer iter.Close()
+			values := make([]KVData, 0)
+			for iter.First(); iter.Valid(); iter.Next() {
+
+				key := make([]byte, len(iter.Key()))
+				copy(key, iter.Key())
+
+				value := make([]byte, len(iter.Value()))
+				copy(value, iter.Value())
+
+				values = append(values, KVData{
+					Key: key,
+					Val: value})
+			}
+			records := make([]state.DeviceStateMap, 0)
+			for _, deviceDataKV := range values {
+				if string(deviceDataKV.Key) == appliedIndexKey {
+					continue
+				}
+				var deviceData state.DeviceStateMap
+				if err := json.Unmarshal(deviceDataKV.Val, &deviceData); err != nil {
+					return nil, err
+				}
+				records = append(records, deviceData)
+			}
+			return records, nil
+		}
+		return nil, nil
 	}
-	return nil
+	return nil, ErrUnsupportedQuery
 }
 
-// Close closes the IStateMachine instance. There is nothing for us to cleanup
-// or release as this is a pure in memory data store. Note that the Close
-// method is not guaranteed to be called as node can crash at any time.
-func (s *DeviceDataSM) Close() error { return nil }
+func (d *DeviceDataDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
+	kvEnts := make([]sm.Entry, 0)
 
-// GetHash returns a uint64 representing the current object state.
-func (s *DeviceDataSM) GetHash() (uint64, error) {
-	return uint64(s.current.GetTimestamp().Unix()), nil
+	for idx, e := range ents {
+
+		var proposal Proposal
+		err := json.Unmarshal(e.Cmd, &proposal)
+		if err != nil {
+			d.logger.Errorf("[DeviceDataMachine.Update] Error: %s\n", err)
+			return nil, err
+		}
+
+		var deviceData state.DeviceStateMap
+		err = json.Unmarshal(proposal.Data, &deviceData)
+		if err != nil {
+			d.logger.Errorf("[DeviceDataMachine.Update] Error: %s\n", err)
+			return nil, err
+		}
+
+		kvdata := &KVData{
+			//Key: []byte(fmt.Sprint(deviceData.GetID())),
+			Key: d.idGenerator.Uint64Bytes(deviceData.GetID()),
+			Val: proposal.Data}
+
+		jsonDataKV, err := json.Marshal(kvdata)
+		if err != nil {
+			return nil, err
+		}
+
+		entry := sm.Entry{
+			Index: e.Index,
+			Cmd:   jsonDataKV}
+
+		if proposal.Query == QUERY_TYPE_DELETE {
+			err = d.diskKV.Delete(entry)
+			if err != nil {
+				d.logger.Errorf("[DeviceDataMachine.Update] Error: %s\n", err)
+				return nil, err
+			}
+			continue
+		}
+
+		kvEnts = append(kvEnts, entry)
+
+		ents[idx].Result = sm.Result{Value: uint64(len(ents[idx].Cmd))}
+	}
+
+	if len(kvEnts) > 0 {
+		return d.diskKV.Update(kvEnts)
+	}
+
+	return ents, nil
 }

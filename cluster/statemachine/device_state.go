@@ -97,10 +97,10 @@ func (s *DeviceSM) Update(data []byte) (sm.Result, error) {
 	s.logger.Debugf("[DeviceStateMachine.Update] device.id: %d, device: %+v\n",
 		s.deviceID, string(data))
 
-	// s.deviceStateChangeChan <- common.DeviceStateChange{
-	// 	DeviceID:   s.deviceID,
-	// 	DeviceType: s.deviceType,
-	// 	StateMap:   &deviceState}
+	s.deviceStateChangeChan <- common.DeviceStateChange{
+		DeviceID:   s.deviceID,
+		DeviceType: s.deviceType,
+		StateMap:   &deviceState}
 
 	return sm.Result{Value: s.deviceID, Data: data}, nil
 }

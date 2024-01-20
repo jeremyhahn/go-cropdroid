@@ -19,6 +19,7 @@ const (
 
 var (
 	ErrUnsupportedQuery = errors.New("unsupported raft query")
+	ErrNullDataProposal = errors.New("null raft proposal data")
 )
 
 // Tests only

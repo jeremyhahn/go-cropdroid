@@ -216,9 +216,9 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 		time.Sleep(1 * time.Second)
 		_, ready, _ = getLeaderFunc()
 	}
-	if r.params.RaftOptions.RequestedLeaderID > 0 && leaderID != uint64(r.params.RaftOptions.RequestedLeaderID) {
+	if r.params.RaftOptions.RequestedLeaderID > 0 && leaderID != r.params.RaftOptions.RequestedLeaderID {
 		r.params.Logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader", r.params.RaftOptions.RequestedLeaderID)
-		err = r.nodeHost.RequestLeaderTransfer(r.params.ClusterID, uint64(r.params.RaftOptions.RequestedLeaderID))
+		err = r.nodeHost.RequestLeaderTransfer(clusterID, r.params.RaftOptions.RequestedLeaderID)
 		if err != nil {
 			r.params.Logger.Error(err)
 		}
@@ -578,6 +578,7 @@ func (r *Raft) SyncPropose(clusterID uint64, cmd []byte) error {
 		r.params.Logger.Errorf("[Raft.SyncPropose] Error: %s", err)
 		return err
 	}
+	//session.ProposalCompleted()
 	r.params.Logger.Debugf("[Raft.SyncPropose] Raft confirmation: clusterID=%d, nodeID=%d, message=%s, result=%+v",
 		clusterID, r.config.NodeID, string(cmd), result)
 	return nil

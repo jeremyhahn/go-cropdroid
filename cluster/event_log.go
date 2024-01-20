@@ -22,21 +22,21 @@ type RaftEventLogDAO struct {
 }
 
 func NewRaftEventLogDAO(logger *logging.Logger, raftNode RaftNode,
-	forClusterID uint64) dao.EventLogDAO {
+	farmID uint64) dao.EventLogDAO {
 
-	serverEventLogClusterID := raftNode.GetParams().
-		IdGenerator.CreateEventLogClusterID(forClusterID)
+	eventLogClusterID := raftNode.GetParams().
+		IdGenerator.CreateEventLogClusterID(farmID)
 
 	return &RaftEventLogDAO{
 		logger:    logger,
 		raft:      raftNode,
-		clusterID: serverEventLogClusterID}
+		clusterID: eventLogClusterID}
 }
 
 func (eventLogDAO *RaftEventLogDAO) StartCluster() {
 	params := eventLogDAO.raft.GetParams()
 	sm := statemachine.NewEventLogOnDiskStateMachine(params.Logger, params.IdGenerator,
-		eventLogDAO.clusterID, params.DataDir)
+		params.DataDir, eventLogDAO.clusterID, params.NodeID)
 	if err := eventLogDAO.raft.CreateOnDiskCluster(eventLogDAO.clusterID, params.Join, sm.CreateEventLogOnDiskStateMachine); err != nil {
 		eventLogDAO.logger.Fatal(err)
 	}
@@ -85,19 +85,13 @@ func (eventLogDAO *RaftEventLogDAO) GetAllDesc(CONSISTENCY_LEVEL int) ([]entity.
 }
 
 func (eventLogDAO *RaftEventLogDAO) Save(record entity.EventLogEntity) error {
-
-	// recordKey := fmt.Sprintf("%s-%s-%s", record.Device, record.Type, record.Timestamp)
-	// recordID := eventLogDAO.raft.GetParams().IdGenerator.NewID(recordKey)
-
-	eventLogDAO.logger.Debugf("Saving event log record: %+v", record)
-
-	perm, err := json.Marshal(record)
+	data, err := json.Marshal(record)
 	if err != nil {
 		eventLogDAO.logger.Errorf("Error: %s", err)
 		return err
 	}
 	proposal, err := statemachine.CreateProposal(
-		statemachine.QUERY_TYPE_UPDATE, perm).Serialize()
+		statemachine.QUERY_TYPE_UPDATE, data).Serialize()
 	if err != nil {
 		eventLogDAO.logger.Errorf("Error: %s", err)
 		return err

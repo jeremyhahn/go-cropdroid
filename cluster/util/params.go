@@ -17,7 +17,7 @@ import (
 
 type RaftOptions struct {
 	Port                  int    `json:"raftPort"`
-	RequestedLeaderID     int    `json:"raftRequestedLeaderID"`
+	RequestedLeaderID     uint64 `json:"raftRequestedLeaderID"`
 	OrganizationClusterID uint64 `json:"organizationId"`
 	SystemClusterID       uint64 `json:"systemId"`
 	UserClusterID         uint64 `json:"userId"`
@@ -55,7 +55,7 @@ type ClusterParams struct {
 
 func NewClusterParams(logger *logging.Logger, raftOptions RaftOptions, nodeID uint64, provider, region,
 	zone, dataDir, localAddress, listen string, gossipPeers []string, raft []string, join bool,
-	gossipPort, raftPort, raftRequestedLeaderID int, vnodes, maxNodes, bootstrap int, initialize bool,
+	gossipPort, raftPort int, raftRequestedLeaderID uint64, vnodes, maxNodes, bootstrap int, initialize bool,
 	idGenerator util.IdGenerator, idSetter util.IdSetter, farmProvisionerChan chan config.Farm,
 	farmDeprovisionerChan chan config.Farm, farmTickerProvisionerChan chan uint64) *ClusterParams {
 

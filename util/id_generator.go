@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
+	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 )
@@ -12,6 +13,7 @@ type IdGenerator interface {
 	NewID(string) uint64
 	Uint64Bytes(uint64) []byte
 	StringBytes(str string) []byte
+	TimestampBytes(t time.Time) []byte
 
 	NewFarmID(orgID uint64, farmName string) uint64
 	NewDeviceID(farmID uint64, deviceType string) uint64
@@ -26,7 +28,7 @@ type IdGenerator interface {
 	NewWorkflowStepID(workflowID uint64, workflowStepKey string) uint64
 
 	CreateEventLogClusterID(clusterID uint64) uint64
-	CreateDeviceDataClusterID(farmID, deviceID uint64) uint64
+	CreateDeviceDataClusterID(deviceID uint64) uint64
 }
 
 type Fnv1aHasher struct {
@@ -72,6 +74,11 @@ func (hasher *Fnv1aHasher) StringBytes(str string) []byte {
 	bytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(bytes, hasher.NewID(str))
 	return bytes
+}
+
+// Returns a new 64-bit FNV-1a hash from a time object
+func (hasher *Fnv1aHasher) TimestampBytes(t time.Time) []byte {
+	return hasher.Uint64Bytes(uint64(t.Unix()))
 }
 
 // Implementation specific ID hashes
@@ -128,9 +135,9 @@ func (hasher *Fnv1aHasher) CreateEventLogClusterID(clusterID uint64) uint64 {
 	return eventLogClusterID
 }
 
-func (hasher *Fnv1aHasher) CreateDeviceDataClusterID(farmID, deviceID uint64) uint64 {
-	deviceDataClusterID := hasher.NewID(fmt.Sprintf("%d-%d-%sd", farmID, deviceID, "devicedata"))
-	fmt.Println(fmt.Sprintf("Creating device data cluster ID for farmID: %d, deviceID:%d, deviceDataClusterID=%d",
-		farmID, deviceID, deviceDataClusterID))
+func (hasher *Fnv1aHasher) CreateDeviceDataClusterID(deviceID uint64) uint64 {
+	deviceDataClusterID := hasher.NewID(fmt.Sprintf("%d-%s", deviceID, "devicedata"))
+	fmt.Println(fmt.Sprintf("Creating device data cluster ID for deviceID:%d, deviceDataClusterID=%d",
+		deviceID, deviceDataClusterID))
 	return deviceDataClusterID
 }

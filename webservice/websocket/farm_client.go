@@ -68,13 +68,6 @@ func (c *FarmClient) writePump() {
 				return
 			}
 
-			// DEBUG - TODO: REMOVE
-			//b, e := json.Marshal(message)
-			//if e != nil {
-			//	c.logger.Errorf("Error marshalling config: %s", e.Error())
-			//}
-			//c.logger.Debugf("[FarmClient.writePump] message: %s", b)
-
 			err := c.conn.WriteJSON(message)
 			if err != nil {
 				c.logger.Errorf("[FarmClient.writePump] Error: %s", err.Error())

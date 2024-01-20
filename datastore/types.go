@@ -16,8 +16,9 @@ const (
 )
 
 var (
-	ErrNotFound        = errors.New("not found")
-	ErrUnexpectedQuery = errors.New("unexpected query")
+	ErrNotFound          = errors.New("not found")
+	ErrUnexpectedQuery   = errors.New("unexpected query")
+	ErrMetricKeyNotFound = errors.New("metric key not found")
 	//ErrOrganizationNotFound = errors.New("organization not found")
 	//ErrOrganizationsNotFound = errors.New("organizations not found")
 )

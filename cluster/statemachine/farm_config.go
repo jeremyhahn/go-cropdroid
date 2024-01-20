@@ -31,7 +31,7 @@ type FarmDiskKV struct {
 }
 
 func NewFarmConfigOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGenerator,
-	clusterID uint64, dbPath string, farmConfigChangeChan chan config.Farm) FarmConfigOnDiskStateMachine {
+	dbPath string, clusterID, nodeID uint64, farmConfigChangeChan chan config.Farm) FarmConfigOnDiskStateMachine {
 
 	return &FarmDiskKV{
 		logger:               logger,
@@ -39,6 +39,7 @@ func NewFarmConfigOnDiskStateMachine(logger *logging.Logger, idGenerator util.Id
 		farmConfigChangeChan: farmConfigChangeChan,
 		diskKV: DiskKV{
 			dbPath:    dbPath,
+			nodeID:    nodeID,
 			clusterID: clusterID}}
 }
 

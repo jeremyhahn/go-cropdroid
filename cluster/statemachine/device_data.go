@@ -5,9 +5,7 @@ package statemachine
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"strconv"
 	"sync/atomic"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -30,22 +28,23 @@ type DeviceDataDiskKV struct {
 }
 
 func NewDeviceDataOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGenerator,
-	clusterID uint64, dbPath string) DeviceDataOnDiskStateMachine {
+	dbPath string, clusterID, nodeID uint64) DeviceDataOnDiskStateMachine {
 
-	deviceDataID := idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "devicedata"))
+	//deviceDataID := idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "devicedata"))
 
 	return &DeviceDataDiskKV{
 		logger:      logger,
 		idGenerator: idGenerator,
 		diskKV: DiskKV{
 			dbPath:    dbPath,
-			clusterID: deviceDataID}}
+			nodeID:    nodeID,
+			clusterID: clusterID}}
 }
 
 func (d *DeviceDataDiskKV) CreateDeviceDataOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
 	d.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
-	//d.diskKV.clusterID = clusterID
-	d.diskKV.clusterID = d.idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "devicedata"))
+	d.diskKV.clusterID = clusterID
+	//d.diskKV.clusterID = d.idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "devicedata"))
 	d.diskKV.nodeID = nodeID
 	return d
 }
@@ -83,7 +82,7 @@ func (d *DeviceDataDiskKV) Lookup(key interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		var deviceData state.DeviceStateMap
+		var deviceData state.DeviceState
 		err = json.Unmarshal(v.([]byte), &deviceData)
 		if err != nil {
 			d.logger.Errorf("[DeviceDataDiskKV.Lookup] Error: %s\n", err)
@@ -91,13 +90,8 @@ func (d *DeviceDataDiskKV) Lookup(key interface{}) (interface{}, error) {
 		}
 		return &deviceData, err
 
-	case []uint8:
-		query, err := strconv.Atoi(fmt.Sprintf("%s", key))
-		if err != nil {
-			d.logger.Errorf("[DeviceDataDiskKV.Lookup] Error: %s\n", err)
-			return nil, err
-		}
-		if query == QUERY_TYPE_WILDCARD {
+	case int:
+		if key == QUERY_TYPE_WILDCARD {
 			db := (*pebbledb)(atomic.LoadPointer(&d.diskKV.db))
 			iter := db.db.NewIter(db.ro)
 			defer iter.Close()
@@ -114,12 +108,12 @@ func (d *DeviceDataDiskKV) Lookup(key interface{}) (interface{}, error) {
 					Key: key,
 					Val: value})
 			}
-			records := make([]state.DeviceStateMap, 0)
+			records := make([]state.DeviceState, 0)
 			for _, deviceDataKV := range values {
 				if string(deviceDataKV.Key) == appliedIndexKey {
 					continue
 				}
-				var deviceData state.DeviceStateMap
+				var deviceData state.DeviceState
 				if err := json.Unmarshal(deviceDataKV.Val, &deviceData); err != nil {
 					return nil, err
 				}
@@ -129,6 +123,7 @@ func (d *DeviceDataDiskKV) Lookup(key interface{}) (interface{}, error) {
 		}
 		return nil, nil
 	}
+
 	return nil, ErrUnsupportedQuery
 }
 
@@ -144,7 +139,7 @@ func (d *DeviceDataDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 			return nil, err
 		}
 
-		var deviceData state.DeviceStateMap
+		var deviceData state.DeviceState
 		err = json.Unmarshal(proposal.Data, &deviceData)
 		if err != nil {
 			d.logger.Errorf("[DeviceDataMachine.Update] Error: %s\n", err)
@@ -152,8 +147,7 @@ func (d *DeviceDataDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 		}
 
 		kvdata := &KVData{
-			//Key: []byte(fmt.Sprint(deviceData.GetID())),
-			Key: d.idGenerator.Uint64Bytes(deviceData.GetID()),
+			Key: d.idGenerator.TimestampBytes(deviceData.GetTimestamp()),
 			Val: proposal.Data}
 
 		jsonDataKV, err := json.Marshal(kvdata)

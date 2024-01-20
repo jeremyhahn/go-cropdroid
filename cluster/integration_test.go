@@ -35,6 +35,8 @@ const (
 	RoleClusterID         = uint64(105)
 	AlgorithmClusterID    = uint64(106)
 	RegistrationClusterID = uint64(107)
+	DeviceStateClusterID  = uint64(108)
+	DeviceDataClusterID   = uint64(109)
 	NodeCount             = 3
 	RaftLeaderID          = 3
 	NodeID                = 1
@@ -272,10 +274,11 @@ func (dt *TestCluster) CreateFarmConfigCluster(farmID uint64) error {
 	dt.app.Logger.Debugf("Creating FarmConfig cluster: %d", farmID)
 	for i := 0; i < dt.nodeCount; i++ {
 		raftNode := dt.GetRaftNode(i)
+		nodeID := raftNode.GetParams().GetNodeID()
 		join := false
 		farmConfigChangeChan := make(chan config.Farm, 5)
 		sm := statemachine.NewFarmConfigOnDiskStateMachine(dt.app.Logger, dt.app.IdGenerator,
-			farmID, dt.app.DataDir, farmConfigChangeChan)
+			dt.app.DataDir, farmID, nodeID, farmConfigChangeChan)
 		err := raftNode.CreateOnDiskCluster(farmID, join, sm.CreateFarmConfigOnDiskStateMachine)
 		if err != nil {
 			return err
@@ -316,6 +319,42 @@ func (dt *TestCluster) CreateDeviceConfigCluster(deviceID uint64) error {
 		}
 	}
 	dt.GetRaftNode(0).WaitForClusterReady(deviceID)
+	return nil
+}
+
+func (dt *TestCluster) CreateDeviceDataCluster(deviceID uint64) error {
+	deviceDataClusterID := dt.app.IdGenerator.CreateDeviceDataClusterID(deviceID)
+	dt.app.Logger.Debugf("Creating device data cluster: %d", deviceDataClusterID)
+	for i := 0; i < dt.nodeCount; i++ {
+		nodeID := uint64(i + 1)
+		raftNode := dt.GetRaftNode(i)
+		join := false
+		sm := statemachine.NewDeviceDataOnDiskStateMachine(dt.app.Logger, dt.app.IdGenerator,
+			dt.app.DataDir, deviceDataClusterID, nodeID)
+		err := raftNode.CreateOnDiskCluster(deviceDataClusterID, join, sm.CreateDeviceDataOnDiskStateMachine)
+		if err != nil {
+			return err
+		}
+	}
+	dt.GetRaftNode(0).WaitForClusterReady(deviceDataClusterID)
+	return nil
+}
+
+func (dt *TestCluster) CreateEventLogCluster(farmID uint64) error {
+	eventLogClusterID := dt.app.IdGenerator.CreateEventLogClusterID(farmID)
+	dt.app.Logger.Debugf("Creating event log cluster: %d", eventLogClusterID)
+	for i := 0; i < dt.nodeCount; i++ {
+		nodeID := uint64(i + 1)
+		raftNode := dt.GetRaftNode(i)
+		join := false
+		sm := statemachine.NewEventLogOnDiskStateMachine(dt.app.Logger, dt.app.IdGenerator,
+			dt.app.DataDir, eventLogClusterID, nodeID)
+		err := raftNode.CreateOnDiskCluster(eventLogClusterID, join, sm.CreateEventLogOnDiskStateMachine)
+		if err != nil {
+			return err
+		}
+	}
+	dt.GetRaftNode(0).WaitForClusterReady(eventLogClusterID)
 	return nil
 }
 

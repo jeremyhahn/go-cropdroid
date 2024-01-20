@@ -36,7 +36,7 @@ var (
 	ClusterGossipPort    int
 	ClusterRaft          string
 	ClusterRaftPort      int
-	ClusterRaftLeaderID  int
+	ClusterRaftLeaderID  uint64
 	ClusterBootstrap     int
 	ClusterInit          bool
 
@@ -74,7 +74,7 @@ func init() {
 	clusterCmd.PersistentFlags().StringVarP(&ClusterZone, "zone", "", "z1", "The zone within the region which this node is placed")
 
 	// Raft
-	clusterCmd.PersistentFlags().IntVarP(&ClusterRaftLeaderID, "raft-leader-id", "", 0, "Starts Raft cluster requesting this node ID become leader")
+	clusterCmd.PersistentFlags().Uint64VarP(&ClusterRaftLeaderID, "raft-leader-id", "", 0, "Starts Raft cluster requesting this node ID become leader")
 	clusterCmd.PersistentFlags().StringVarP(&ClusterRaft, "raft", "", "", "Initial Raft members (for bootstrapping a new cluster)")
 	clusterCmd.PersistentFlags().IntVarP(&ClusterRaftPort, "raft-port", "", 60020, "Initial Raft members (for bootstrapping a new cluster)")
 	clusterCmd.PersistentFlags().IntVarP(&ClusterMaxNodes, "raft-max-nodes", "", 7, "Maximum number of nodes allowed to join a raft cluster")

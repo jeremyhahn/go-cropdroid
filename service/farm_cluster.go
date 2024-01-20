@@ -33,6 +33,7 @@ func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 			}
 
 			if !raftCluster.IsLeader(farm.farmID) {
+				farm.app.Logger.Debugf("Not the raft leader for farmID=%d, ignoring DeviceStateChange event.", farm.farmID)
 				continue
 			}
 
@@ -44,19 +45,17 @@ func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 				continue
 			}
 
-			deviceService, err := farm.serviceRegistry.GetDeviceService(farm.farmID, deviceType)
-			if err != nil {
-				farm.app.Logger.Errorf("Error getting device service: %s", err)
-				continue
-			}
-
-			deviceConfig, err := deviceService.GetConfig()
-			if err != nil {
-				farm.app.Logger.Errorf("Error getting device config: %s", err)
-				continue
-			}
-
 			if newDeviceState.IsPollEvent {
+				deviceService, err := farm.serviceRegistry.GetDeviceService(farm.farmID, deviceType)
+				if err != nil {
+					farm.app.Logger.Errorf("Error getting device service: %s", err)
+					continue
+				}
+				deviceConfig, err := deviceService.GetConfig()
+				if err != nil {
+					farm.app.Logger.Errorf("Error getting device config: %s", err)
+					continue
+				}
 				farm.Manage(deviceConfig, farm.GetState())
 			}
 		}
@@ -132,9 +131,7 @@ func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftNode) {
 func (farm *DefaultFarmService) pollCluster(raftCluster cluster.RaftNode) {
 	farm.app.Logger.Debugf("Polling clustered farm %d", farm.farmID)
 	if isLeader := raftCluster.WaitForClusterReady(farm.farmID); isLeader == false {
-
-		farm.app.Logger.Debugf("Aborting polling, not the cluster leader for farm: %d", farm.farmID)
-
+		farm.app.Logger.Warningf("Aborting polling, not the cluster leader for farm: %d", farm.farmID)
 		// Only the cluster leader polls the farm
 		return
 	}

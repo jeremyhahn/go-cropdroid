@@ -3,6 +3,7 @@ package entity
 import "time"
 
 type EventLogEntity interface {
+	GetFarmID() uint64
 	GetDevice() string
 	GetType() string
 	GetMessage() string
@@ -11,11 +12,16 @@ type EventLogEntity interface {
 }
 
 type EventLog struct {
+	FarmID         uint64    `gorm:"not null" json:"farm_id"`
 	Device         string    `gorm:"not null" json:"device"`
 	Type           string    `gorm:"not null" json:"type"`
 	Message        string    `gorm:"not null" json:"message"`
 	Timestamp      time.Time `gorm:"type:timestamp" json:"timestamp"`
 	EventLogEntity `json:"-"`
+}
+
+func (entity *EventLog) GetFarmID() uint64 {
+	return entity.FarmID
 }
 
 func (entity *EventLog) GetDevice() string {

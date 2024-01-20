@@ -35,16 +35,16 @@ func (h *FarmHub) Run() {
 
 		select {
 		case client := <-h.register:
+			h.clients[client] = true
 			h.logger.Debugf("[FarmHub.Run] Registering new client: address=%s, user=%s. %d clients connected to farm hub %d",
 				client.conn.RemoteAddr(), client.getUser().GetEmail(), len(h.clients), h.farmService.GetFarmID())
-			h.clients[client] = true
 			//h.logger.Debugf("Sending config: %s", client.session.GetFarmService().GetConfig())
 			client.send <- *h.farmService.GetConfig()
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				h.logger.Debugf("[FarmHub.Run] Unregistering client address=%s, user=%s",
-					client.conn.RemoteAddr(), client.getUser().GetEmail())
+				h.logger.Debugf("[FarmHub.Run] Unregistering client address=%s, user=%s. %d clients connected to the farm hub.",
+					client.conn.RemoteAddr(), client.getUser().GetEmail(), len(h.clients))
 				client.disconnect()
 				delete(h.clients, client)
 				close(client.send)

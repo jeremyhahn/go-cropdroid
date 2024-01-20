@@ -93,7 +93,6 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 	if err := cff.CreateFarmConfigCluster(raftCluster, farmID, farmConfigChangeChan); err != nil {
 		cff.app.Logger.Errorf("Cluster config error: %s", err)
 	}
-	raftCluster.WaitForClusterReady(farmID)
 
 	// Save the Farm config so the device can look it up
 	if err := farmDAO.Save(farmConfig); err != nil {
@@ -114,16 +113,11 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 			cff.farmChannels.DeviceStateChangeChan); err != nil {
 			cff.app.Logger.Errorf("Device state cluster error: %s", err)
 		}
-		raftCluster.WaitForClusterReady(deviceID)
 
 		//if farmConfig.GetDataStore() == datastore.RAFT_STORE {
-		cff.app.Logger.Errorf("Creating device data cluster for deviceID: %d, farmID: %d",
-			deviceConfig.GetID(), farmID)
-		deviceDataClusterID := cff.app.IdGenerator.CreateDeviceDataClusterID(farmID, deviceID)
-		if err := cff.CreateDeviceDataCluster(raftCluster, deviceDataClusterID); err != nil {
+		if err := cff.CreateDeviceDataCluster(raftCluster, deviceID); err != nil {
 			cff.app.Logger.Errorf("Device data cluster error: %s", err)
 		}
-		raftCluster.WaitForClusterReady(deviceDataClusterID)
 		//}
 	}
 
@@ -132,7 +126,6 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 	if err := cff.CreateFarmStateCluster(raftCluster, farmID, farmStateID, farmStateChangeChan); err != nil {
 		cff.app.Logger.Errorf("Cluster state error: %s", err)
 	}
-	raftCluster.WaitForClusterReady(farmStateID)
 
 	farmService, err := cff.BuildService(farmStateStore,
 		farmDAO, deviceDataStore, deviceStateStore, farmConfig)
@@ -151,13 +144,9 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 	}
 
 	// Create EventLog cluster for this farm
-	eventLogClusterID := cff.app.IdGenerator.CreateEventLogClusterID(farmID)
-	cff.app.Logger.Infof("Creating event log cluster for farmID: %d, eventLogClusterID=%d",
-		farmID, eventLogClusterID)
-	if err := cff.CreateEventLogCluster(raftCluster, eventLogClusterID); err != nil {
+	if err := cff.CreateEventLogCluster(raftCluster, farmID); err != nil {
 		cff.app.Logger.Errorf("Event Log cluster error: %s", err)
 	}
-	raftCluster.WaitForClusterReady(eventLogClusterID)
 
 	return farmService, nil
 }
@@ -169,11 +158,12 @@ func (cff *ClusteredFarmFactory) CreateFarmConfigCluster(
 	if raftCluster != nil {
 		params := raftCluster.GetParams()
 		sm := statemachine.NewFarmConfigOnDiskStateMachine(cff.app.Logger, cff.app.IdGenerator,
-			farmID, cff.app.DataDir, farmConfigChangeChan)
+			cff.app.DataDir, farmID, params.NodeID, farmConfigChangeChan)
 		if err := raftCluster.CreateOnDiskCluster(farmID, params.Join, sm.CreateFarmConfigOnDiskStateMachine); err != nil {
 			return err
 		}
 	}
+	raftCluster.WaitForClusterReady(farmID)
 	return nil
 }
 
@@ -188,6 +178,7 @@ func (cff *ClusteredFarmFactory) CreateFarmStateCluster(
 			return err
 		}
 	}
+	raftCluster.WaitForClusterReady(farmStateID)
 	return nil
 }
 
@@ -202,33 +193,40 @@ func (cff *ClusteredFarmFactory) CreateDeviceStateCluster(
 			return err
 		}
 	}
+	raftCluster.WaitForClusterReady(deviceID)
 	return nil
 }
 
 func (cff *ClusteredFarmFactory) CreateDeviceDataCluster(
-	raftCluster cluster.RaftNode, deviceDataClusterID uint64) error {
+	raftCluster cluster.RaftNode, deviceID uint64) error {
+
+	deviceDataClusterID := cff.app.IdGenerator.CreateDeviceDataClusterID(deviceID)
 
 	if raftCluster != nil {
 		params := raftCluster.GetParams()
 		sm := statemachine.NewDeviceDataOnDiskStateMachine(cff.app.Logger, cff.app.IdGenerator,
-			deviceDataClusterID, cff.app.DataDir)
+			cff.app.DataDir, deviceDataClusterID, params.NodeID)
 		if err := raftCluster.CreateOnDiskCluster(deviceDataClusterID, params.Join, sm.CreateDeviceDataOnDiskStateMachine); err != nil {
 			return err
 		}
 	}
+	raftCluster.WaitForClusterReady(deviceDataClusterID)
 	return nil
 }
 
 func (cff *ClusteredFarmFactory) CreateEventLogCluster(
-	raftCluster cluster.RaftNode, eventLogClusterID uint64) error {
+	raftCluster cluster.RaftNode, farmID uint64) error {
+
+	eventLogClusterID := cff.app.IdGenerator.CreateEventLogClusterID(farmID)
 
 	if raftCluster != nil {
 		params := raftCluster.GetParams()
 		sm := statemachine.NewEventLogOnDiskStateMachine(cff.app.Logger, cff.app.IdGenerator,
-			eventLogClusterID, cff.app.DataDir)
+			cff.app.DataDir, eventLogClusterID, params.NodeID)
 		if err := raftCluster.CreateOnDiskCluster(eventLogClusterID, params.Join, sm.CreateEventLogOnDiskStateMachine); err != nil {
 			return err
 		}
 	}
+	raftCluster.WaitForClusterReady(eventLogClusterID)
 	return nil
 }

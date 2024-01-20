@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -55,7 +54,7 @@ func (c *VirtualIOSwitch) GetType() string {
 func (c *VirtualIOSwitch) State() (state.DeviceStateMap, error) {
 	if _, err := os.Stat(c.stateFile); err == nil {
 		state := state.NewDeviceStateMap()
-		data, err := ioutil.ReadFile(c.stateFile)
+		data, err := os.ReadFile(c.stateFile)
 		if err != nil {
 			c.app.Logger.Error(err.Error())
 			return nil, err
@@ -84,7 +83,7 @@ func (c *VirtualIOSwitch) Switch(channel, position int) (*common.Switch, error) 
 		c.app.Logger.Errorf("Error marshalling virtual device state: %s", err.Error())
 		return nil, err
 	}
-	err = ioutil.WriteFile(c.stateFile, stateJson, 0644)
+	err = os.WriteFile(c.stateFile, stateJson, 0644)
 	if err != nil {
 		c.app.Logger.Errorf("Error writing virtual device file: %s", err.Error())
 		return nil, err
@@ -132,13 +131,13 @@ func (c *VirtualIOSwitch) WriteState(state state.DeviceStateMap) error {
 		return err
 	}
 	c.app.Logger.Debugf("Writing virtual state: %s", stateJson)
-	err = ioutil.WriteFile(c.stateFile, stateJson, 0644)
+	err = os.WriteFile(c.stateFile, stateJson, 0644)
 	if err != nil {
 		c.app.Logger.Errorf("Error writing virtual state file: %s", err.Error())
 		return err
 	}
 	c.app.Logger.Debugf("Wrote virtual state to: %s", c.stateFile)
-	err = ioutil.WriteFile(c.stateFile, stateJson, 0644)
+	err = os.WriteFile(c.stateFile, stateJson, 0644)
 	if err != nil {
 		c.app.Logger.Errorf("Error writing virtual state file: %s", err.Error())
 		return err

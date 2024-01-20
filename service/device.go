@@ -20,7 +20,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
-type IOSwitcherDeviceService struct {
+type IOSwitchDeviceService struct {
 	app             *app.App
 	farmID          uint64
 	deviceID        uint64
@@ -60,7 +60,7 @@ func NewDeviceService(app *app.App, farmID, deviceID uint64, farmName string,
 
 	deviceDAO.Save(deviceConfig)
 
-	return &IOSwitcherDeviceService{
+	return &IOSwitchDeviceService{
 		app:             app,
 		deviceID:        deviceID,
 		farmID:          farmID,
@@ -76,33 +76,33 @@ func NewDeviceService(app *app.App, farmID, deviceID uint64, farmName string,
 		consistency:     consistency}, nil
 }
 
-func (service *IOSwitcherDeviceService) Stop() {
+func (service *IOSwitchDeviceService) Stop() {
 	service.app.Logger.Debugf("Stopping device service. deviceID=%d, farmName=%s",
 		service.deviceID, service.farmName)
 	service.stateStore.Close()
 }
 
-func (service *IOSwitcherDeviceService) GetID() uint64 {
+func (service *IOSwitchDeviceService) GetID() uint64 {
 	return service.deviceID
 }
 
-func (service *IOSwitcherDeviceService) GetDeviceType() string {
+func (service *IOSwitchDeviceService) GetDeviceType() string {
 	return service.device.GetType()
 }
 
-func (service *IOSwitcherDeviceService) GetConfig() (*config.Device, error) {
+func (service *IOSwitchDeviceService) GetConfig() (*config.Device, error) {
 	return service.deviceDAO.Get(service.farmID, service.deviceID, service.consistency)
 }
 
-func (service *IOSwitcherDeviceService) SetConfig(config *config.Device) error {
+func (service *IOSwitchDeviceService) SetConfig(config *config.Device) error {
 	return service.deviceDAO.Save(config)
 }
 
-func (service *IOSwitcherDeviceService) GetState() (state.DeviceStateMap, error) {
+func (service *IOSwitchDeviceService) GetState() (state.DeviceStateMap, error) {
 	return service.stateStore.Get(service.deviceID)
 }
 
-func (service *IOSwitcherDeviceService) SetMode(mode string, d device.IOSwitcher) {
+func (service *IOSwitchDeviceService) SetMode(mode string, d device.IOSwitcher) {
 	//var unsafeDevice = (*unsafe.Pointer)(unsafe.Pointer(&service.device))
 	//atomic.StorePointer(unsafeDevice, unsafe.Pointer(&d))
 	service.deviceMutex.Lock()
@@ -110,7 +110,7 @@ func (service *IOSwitcherDeviceService) SetMode(mode string, d device.IOSwitcher
 	service.device = d
 }
 
-func (service *IOSwitcherDeviceService) GetView() (common.DeviceView, error) {
+func (service *IOSwitchDeviceService) GetView() (common.DeviceView, error) {
 	device, err := service.GetDevice()
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (service *IOSwitcherDeviceService) GetView() (common.DeviceView, error) {
 	return viewmodel.NewDeviceView(service.app, metrics, channels), err
 }
 
-func (service *IOSwitcherDeviceService) GetHistory(metric string) ([]float64, error) {
+func (service *IOSwitchDeviceService) GetHistory(metric string) ([]float64, error) {
 	values, err := service.deviceStore.GetLast30Days(service.deviceID, metric)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (service *IOSwitcherDeviceService) GetHistory(metric string) ([]float64, er
 // GetDevice combines DeviceState and Config to return a fully populated domain model
 // Device instance including child Metric and Channel objects with their current values. This
 // operation is more costly than working with the "indexed" maps and functions in FarmState.
-func (service *IOSwitcherDeviceService) GetDevice() (common.Device, error) {
+func (service *IOSwitchDeviceService) GetDevice() (common.Device, error) {
 	deviceState, err := service.stateStore.Get(service.deviceID)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (service *IOSwitcherDeviceService) GetDevice() (common.Device, error) {
 // on the deviceStateChangeChan channel. The FarmService#WatchDeviceStateChange watches
 // for the DeviceStateChange to update the farm state and publish the new state to connected
 // websocket clients.
-func (service *IOSwitcherDeviceService) Poll() error {
+func (service *IOSwitchDeviceService) Poll() error {
 	deviceID := service.deviceID
 	deviceType := service.device.GetType()
 	eventType := "Poll"
@@ -189,7 +189,7 @@ func (service *IOSwitcherDeviceService) Poll() error {
 }
 
 // Sends a request to the device to turn a switch on or off
-func (service *IOSwitcherDeviceService) Switch(channelID, position int, logMessage string) (*common.Switch, error) {
+func (service *IOSwitchDeviceService) Switch(channelID, position int, logMessage string) (*common.Switch, error) {
 	eventType := "Switch"
 	switchPosition := util.NewSwitchPosition(position)
 	channelConfig, err := service.getChannelConfig(channelID)
@@ -232,7 +232,7 @@ func (service *IOSwitcherDeviceService) Switch(channelID, position int, logMessa
 
 // Sends a request to the device to activate a timed switch. The switch will be on for the
 // specified duration in seconds and then turned off.
-func (service *IOSwitcherDeviceService) TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error) {
+func (service *IOSwitchDeviceService) TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error) {
 	eventType := "TimerSwitch"
 	//deviceType := service.device.GetType()
 	channelConfig, err := service.getChannelConfig(channelID)
@@ -290,7 +290,7 @@ func (service *IOSwitcherDeviceService) TimerSwitch(channelID, duration int, log
 }
 
 // Sets a metric value.
-func (service *IOSwitcherDeviceService) SetMetricValue(key string, value float64) error {
+func (service *IOSwitchDeviceService) SetMetricValue(key string, value float64) error {
 	deviceState, err := service.stateStore.Get(service.deviceID)
 	if err != nil {
 		return err
@@ -319,7 +319,7 @@ func (service *IOSwitcherDeviceService) SetMetricValue(key string, value float64
 	return nil
 }
 
-func (service *IOSwitcherDeviceService) getChannelConfig(channelID int) (*config.Channel, error) {
+func (service *IOSwitchDeviceService) getChannelConfig(channelID int) (*config.Channel, error) {
 	deviceConfig, err := service.deviceDAO.Get(service.farmID,
 		service.deviceID, service.consistency)
 	if err != nil {
@@ -336,7 +336,7 @@ func (service *IOSwitcherDeviceService) getChannelConfig(channelID int) (*config
 	return nil, fmt.Errorf("Channel ID not found: %d", channelID)
 }
 
-func (service *IOSwitcherDeviceService) notify(eventType, message string) {
+func (service *IOSwitchDeviceService) notify(eventType, message string) {
 	config, err := service.GetConfig()
 	if err != nil {
 		service.error("notify", eventType, err)
@@ -357,7 +357,7 @@ func (service *IOSwitcherDeviceService) notify(eventType, message string) {
 		Message:   message}
 }
 
-func (service *IOSwitcherDeviceService) error(method, eventType string, err error) {
+func (service *IOSwitchDeviceService) error(method, eventType string, err error) {
 	service.app.Logger.Errorf("Error: %s", method, err)
 	service.farmChannels.FarmErrorChan <- common.FarmError{
 		Method:    method,

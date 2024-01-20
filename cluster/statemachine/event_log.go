@@ -29,7 +29,7 @@ type EventLogDiskKV struct {
 }
 
 func NewEventLogOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGenerator,
-	clusterID uint64, dbPath string) EventLogOnDiskStateMachine {
+	dbPath string, clusterID, nodeID uint64) EventLogOnDiskStateMachine {
 
 	eventLogClusterID := idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "eventlog"))
 
@@ -38,6 +38,7 @@ func NewEventLogOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGe
 		idGenerator: idGenerator,
 		diskKV: DiskKV{
 			dbPath:    dbPath,
+			nodeID:    nodeID,
 			clusterID: eventLogClusterID}}
 }
 
@@ -159,8 +160,7 @@ func (d *EventLogDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 		}
 
 		kvdata := &KVData{
-			//Key: []byte(fmt.Sprint(deviceData.GetID())),
-			Key: d.idGenerator.Uint64Bytes(uint64(idx)),
+			Key: d.idGenerator.TimestampBytes(eventLog.GetTimestampAsObject()),
 			Val: proposal.Data}
 
 		jsonDataKV, err := json.Marshal(kvdata)

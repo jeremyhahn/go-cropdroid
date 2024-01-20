@@ -214,20 +214,20 @@ func (farm *DefaultFarmService) SetConfig(farmConfig *config.Farm) error {
 // Stores the device state in the farm state
 func (farm *DefaultFarmService) SetDeviceState(deviceType string, deviceState state.DeviceStateMap) {
 	farm.app.Logger.Debugf("deviceType: %s, deviceState: %+v", deviceType, deviceState)
-	state, err := farm.stateStore.Get(farm.farmStateID)
+	farmState, err := farm.stateStore.Get(farm.farmStateID)
 	if err != nil {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return
 	}
-	if state == nil {
+	if farmState == nil {
 		// When running in cluster mode, the device state
 		// may not have propagated to all nodes yet
 		farm.app.Logger.Error("Farm state not found in state store! farm.farmStateID=%d",
 			farm.farmStateID)
 		return
 	}
-	state.SetDevice(deviceType, deviceState.Clone())
-	farm.stateStore.Put(farm.farmStateID, state)
+	farmState.SetDevice(deviceType, deviceState.Clone())
+	farm.stateStore.Put(farm.farmStateID, farmState)
 }
 
 // Stores the specified device config in the farm and device config stores and publishes
@@ -517,19 +517,17 @@ func (farm *DefaultFarmService) WatchDeviceStateChange() {
 				continue
 			}
 
-			deviceService, err := farm.serviceRegistry.GetDeviceService(farm.farmID, deviceType)
-			if err != nil {
-				farm.app.Logger.Errorf("Error getting device service: %s", err)
-				continue
-			}
-
-			deviceConfig, err := deviceService.GetConfig()
-			if err != nil {
-				farm.app.Logger.Errorf("Error getting device config: %s", err)
-				continue
-			}
-
 			if newDeviceState.IsPollEvent {
+				deviceService, err := farm.serviceRegistry.GetDeviceService(farm.farmID, deviceType)
+				if err != nil {
+					farm.app.Logger.Errorf("Error getting device service: %s", err)
+					continue
+				}
+				deviceConfig, err := deviceService.GetConfig()
+				if err != nil {
+					farm.app.Logger.Errorf("Error getting device config: %s", err)
+					continue
+				}
 				farm.Manage(deviceConfig, farm.GetState())
 			}
 		case <-farm.deviceStateQuitChan:

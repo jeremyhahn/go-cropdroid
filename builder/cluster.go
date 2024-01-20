@@ -451,7 +451,7 @@ func (builder *ClusterConfigBuilder) createDeviceDataStore(storeType int) datast
 			gormDB, builder.app.GORMInitParams.Engine,
 			builder.app.Location)
 	case datastore.RAFT_STORE:
-		deviceDataStore = cluster.NewRaftDeviceDataStore(builder.app.Logger, builder.raftNode)
+		deviceDataStore = cluster.NewRaftDeviceDataDAO(builder.app.Logger, builder.raftNode)
 	case datastore.REDIS_TS:
 		deviceDataStore = redis.NewRedisDataStore(":6379", "")
 	}

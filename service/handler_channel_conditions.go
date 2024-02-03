@@ -123,14 +123,14 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 				h.channelConfig.GetID(), h.channelConfig.GetName(), conditionMetric.GetKey(), value)
 
 			if h.channelConfig.GetDuration() > 0 {
-				message := fmt.Sprintf("Switching ON %s for %d seconds. %s %.2f %s",
+				message := fmt.Sprintf("Switching ON %s for %d seconds. %s %.2f%s",
 					h.channelConfig.GetName(), h.channelConfig.GetDuration(), conditionMetric.GetName(), value, conditionMetric.GetUnit())
 				_, err := h.deviceService.TimerSwitch(h.channelConfig.GetChannelID(), h.channelConfig.GetDuration(), message)
 				if err != nil {
 					return false, err
 				}
 			} else {
-				message := fmt.Sprintf("Switching ON %s. %s %.2f %s", h.channelConfig.GetName(), conditionMetric.GetName(), value, conditionMetric.GetUnit())
+				message := fmt.Sprintf("Switching ON %s. %s %.2f%s", h.channelConfig.GetName(), conditionMetric.GetName(), value, conditionMetric.GetUnit())
 				_, err := h.deviceService.Switch(h.channelConfig.GetChannelID(), common.SWITCH_ON, message)
 				if err != nil {
 					return false, err
@@ -162,7 +162,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 			h.logger.Debugf("Switching OFF channel: id=%d, name=%s, metric.key=%s, value=%.2f. debounce=%d",
 				h.channelConfig.GetID(), h.channelConfig.GetName(), conditionMetric.GetKey(), value, debounce)
 
-			message := fmt.Sprintf("Switching OFF %s. %s %.2f %s", h.channelConfig.GetName(), conditionMetric.GetName(), value, conditionMetric.GetUnit())
+			message := fmt.Sprintf("Switching OFF %s. %s %.2f%s", h.channelConfig.GetName(), conditionMetric.GetName(), value, conditionMetric.GetUnit())
 			_, err := h.deviceService.Switch(h.channelConfig.GetChannelID(), common.SWITCH_OFF, message)
 			if err != nil {
 				return false, err

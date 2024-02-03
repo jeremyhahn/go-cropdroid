@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
@@ -16,6 +18,7 @@ import (
 type FarmFactory interface {
 	BuildService(farmStateStore state.FarmStorer,
 		farmDAO dao.FarmDAO,
+		eventLogDAO dao.EventLogDAO,
 		deviceDataStore datastore.DeviceDataStore,
 		deviceStateStore state.DeviceStorer,
 		farmConfig *config.Farm) (FarmService, error)
@@ -66,6 +69,7 @@ func NewFarmFactory(app *app.App, farmDAO dao.FarmDAO, deviceDAO dao.DeviceDAO,
 
 func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	farmDAO dao.FarmDAO,
+	eventLogDAO dao.EventLogDAO,
 	deviceDataStore datastore.DeviceDataStore,
 	deviceStateStore state.DeviceStorer,
 	farmConfig *config.Farm) (FarmService, error) {
@@ -78,7 +82,7 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 
 	// Build device services
 	deviceFactory := NewDeviceFactory(ff.app, farmID, farmName,
-		ff.deviceDAO, farmConfig.GetConfigStore(), consistencyLevel,
+		ff.deviceDAO, eventLogDAO, farmConfig.GetConfigStore(), consistencyLevel,
 		deviceStateStore, ff.deviceMapper, ff.serviceRegistry, ff.farmChannels)
 
 	deviceServices, err := deviceFactory.BuildServices(deviceConfigs,
@@ -94,6 +98,9 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	if err != nil {
 		return nil, err
 	}
+
+	// Build event log service
+	eventLogService := NewEventLogService(ff.app, eventLogDAO, farmID)
 
 	// deviceIndexMap := make(map[uint64]config.Device, 0)
 	// channelIndexMap := make(map[int]config.Channel, 0)
@@ -120,11 +127,15 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	ff.serviceRegistry.SetDeviceFactory(deviceFactory)
 	ff.serviceRegistry.SetDeviceServices(farmID, deviceServices)
 	ff.serviceRegistry.AddFarmService(farmService)
+	ff.serviceRegistry.AddEventLogService(eventLogService)
 
 	ff.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
 	ff.app.Logger.Debugf("Mode: %s", farmConfig.GetMode())
 	ff.app.Logger.Debugf("Timezone: %s", farmConfig.GetTimezone())
 	ff.app.Logger.Debugf("Polling interval: %d", farmConfig.GetInterval())
+
+	startupEventLogItem := fmt.Sprintf("Created farm on node %d", ff.app.NodeID)
+	eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, "System", startupEventLogItem)
 
 	return farmService, nil
 }

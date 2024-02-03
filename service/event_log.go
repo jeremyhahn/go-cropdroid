@@ -13,23 +13,35 @@ import (
 type EventLog struct {
 	app    *app.App
 	dao    dao.EventLogDAO
-	device string
+	farmID uint64
+	EventLogService
 }
 
-func NewEventLogService(app *app.App, dao dao.EventLogDAO, device string) EventLogService {
+func NewEventLogService(app *app.App, dao dao.EventLogDAO,
+	farmID uint64) EventLogService {
 	return &EventLog{
 		app:    app,
-		device: device,
-		dao:    dao}
+		dao:    dao,
+		farmID: farmID}
 }
 
-func (eventLog *EventLog) Create(eventType, message string) {
-	eventLog.app.Logger.Debugf("[Create] type=%s, message=%s", eventType, message)
-	err := eventLog.dao.Save(&entity.EventLog{
-		Device:    eventLog.device,
-		Type:      eventType,
-		Message:   message,
-		Timestamp: time.Now()})
+func (eventLog *EventLog) GetFarmID() uint64 {
+	return eventLog.farmID
+}
+
+func (eventLog *EventLog) Create(deviceID uint64, deviceName, eventType, message string) {
+
+	eventLogEntry := &entity.EventLog{
+		FarmID:     eventLog.farmID,
+		DeviceID:   deviceID,
+		DeviceName: deviceName,
+		EventType:  eventType,
+		Message:    message,
+		Timestamp:  time.Now()}
+
+	eventLog.app.Logger.Debugf("Event log entry: %+v", eventLogEntry)
+
+	err := eventLog.dao.Save(eventLogEntry)
 	if err != nil {
 		eventLog.app.Logger.Errorf("[Create] Error: %s", err)
 	}

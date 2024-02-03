@@ -50,6 +50,9 @@ func (dao *RaftDeviceConfigDAO) Get(farmID, deviceID uint64, CONSISTENCY_LEVEL i
 	if err != nil {
 		return nil, datastore.ErrNotFound
 	}
+	if err := device.ParseSettings(); err != nil {
+		return nil, err
+	}
 	return device, nil
 }
 

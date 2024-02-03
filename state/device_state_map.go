@@ -14,6 +14,8 @@ type DeviceStateMap interface {
 	*/
 	GetID() uint64
 	SetID(uint64)
+	SetFarmID(uint64)
+	GetFarmID() uint64
 	GetMetrics() map[string]float64
 	SetMetrics(map[string]float64)
 	GetChannels() []int
@@ -26,6 +28,7 @@ type DeviceStateMap interface {
 type DeviceState struct {
 	//HardwareVersion    string             `yaml:"hardwareVersion" json:"hardwareVersion"`
 	//FirmwareVersion    string             `yaml:"firmwareVersion" json:"firmwareVersion"`
+	FarmID         uint64             `yaml:"farm_id" json:"farm_id"`
 	DeviceID       uint64             `yaml:"device_id" json:"device_id"`
 	Metrics        map[string]float64 `yaml:"metrics" json:"metrics"`
 	Channels       []int              `yaml:"channels" json:"channels"`
@@ -53,21 +56,21 @@ func CreateEmptyDeviceStateMap(deviceID uint64, numMetrics, numChannels int) Dev
 }
 
 /*
-func (state *DeviceState) GetHardwareVersion() string {
-	return state.HardwareVersion
-}
+	func (state *DeviceState) GetHardwareVersion() string {
+		return state.HardwareVersion
+	}
 
-func (state *DeviceState) SetHardwareVersion(version string) {
-	state.HardwareVersion = version
-}
+	func (state *DeviceState) SetHardwareVersion(version string) {
+		state.HardwareVersion = version
+	}
 
-func (state *DeviceState) GetFirmwareVersion() string {
-	return state.FirmwareVersion
-}
+	func (state *DeviceState) GetFirmwareVersion() string {
+		return state.FirmwareVersion
+	}
 
-func (state *DeviceState) SetFirmwareVersion(version string) {
-	state.FirmwareVersion = version
-}
+	func (state *DeviceState) SetFirmwareVersion(version string) {
+		state.FirmwareVersion = version
+	}
 */
 func (state *DeviceState) GetID() uint64 {
 	return state.DeviceID
@@ -75,6 +78,14 @@ func (state *DeviceState) GetID() uint64 {
 
 func (state *DeviceState) SetID(id uint64) {
 	state.DeviceID = id
+}
+
+func (state *DeviceState) SetFarmID(farmID uint64) {
+	state.FarmID = farmID
+}
+
+func (state *DeviceState) GetFarmID() uint64 {
+	return state.FarmID
 }
 
 func (state *DeviceState) GetMetrics() map[string]float64 {

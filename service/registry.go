@@ -12,46 +12,54 @@ import (
 )
 
 type DefaultServiceRegistry struct {
-	app                 *app.App
-	datastoreRegistry   dao.Registry
-	mapperRegistry      mapper.MapperRegistry
-	algorithmService    AlgorithmService
-	authService         AuthService
-	changefeedService   ChangefeedService
-	channelService      ChannelService
-	configService       ConfigService
-	conditionService    ConditionService
-	deviceFactory       DeviceFactory
-	deviceServices      map[uint64][]DeviceService
-	eventLogService     EventLogService
-	farmFactory         FarmFactory
-	farmServices        map[uint64]FarmService
-	farmServicesMutex   *sync.RWMutex
-	farmProvisioner     provisioner.FarmProvisioner
-	googleAuthService   AuthService
-	jwtService          JsonWebTokenService
-	mailer              common.Mailer
-	metricService       MetricService
-	notificationService NotificationService
-	organizationService OrganizationService
-	roleService         RoleService
-	scheduleService     ScheduleService
-	userService         UserService
-	workflowService     WorkflowService
-	workflowStepService WorkflowStepService
+	app                   *app.App
+	datastoreRegistry     dao.Registry
+	mapperRegistry        mapper.MapperRegistry
+	algorithmService      AlgorithmService
+	authService           AuthService
+	changefeedService     ChangefeedService
+	channelService        ChannelService
+	configService         ConfigService
+	conditionService      ConditionService
+	deviceFactory         DeviceFactory
+	deviceServices        map[uint64][]DeviceService
+	deviceServicesMutex   *sync.RWMutex
+	eventLogServices      map[uint64]EventLogService
+	eventLogServicesMutex *sync.RWMutex
+	farmFactory           FarmFactory
+	farmServices          map[uint64]FarmService
+	farmServicesMutex     *sync.RWMutex
+	farmProvisioner       provisioner.FarmProvisioner
+	googleAuthService     AuthService
+	jwtService            JsonWebTokenService
+	mailer                common.Mailer
+	metricService         MetricService
+	notificationService   NotificationService
+	organizationService   OrganizationService
+	roleService           RoleService
+	scheduleService       ScheduleService
+	userService           UserService
+	workflowService       WorkflowService
+	workflowStepService   WorkflowStepService
 	ServiceRegistry
 }
 
 var (
-	ErrFarmAlreadyExists   = errors.New("farm already exists")
-	ErrFarmNotFound        = errors.New("farm not found")
-	ErrDeviceAlreadyExists = errors.New("device already exists")
+	ErrFarmAlreadyExists     = errors.New("farm already exists")
+	ErrFarmNotFound          = errors.New("farm not found")
+	ErrDeviceAlreadyExists   = errors.New("device already exists")
+	ErrEventLogAlreadyExists = errors.New("event log already exists")
 )
 
 func NewServiceRegistry(app *app.App) ServiceRegistry {
 	return &DefaultServiceRegistry{
-		app:               app,
-		farmServicesMutex: &sync.RWMutex{}}
+		app:                   app,
+		farmServicesMutex:     &sync.RWMutex{},
+		farmServices:          make(map[uint64]FarmService, 0),
+		deviceServicesMutex:   &sync.RWMutex{},
+		deviceServices:        make(map[uint64][]DeviceService, 0),
+		eventLogServicesMutex: &sync.RWMutex{},
+		eventLogServices:      make(map[uint64]EventLogService, 0)}
 }
 
 func CreateServiceRegistry(_app *app.App, daos dao.Registry,
@@ -85,21 +93,24 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	authServices[common.AUTH_TYPE_GOOGLE] = gas
 
 	registry := &DefaultServiceRegistry{
-		app:                 _app,
-		algorithmService:    algorithmService,
-		authService:         authService,
-		googleAuthService:   gas,
-		channelService:      channelService,
-		conditionService:    conditionService,
-		deviceServices:      make(map[uint64][]DeviceService, 0),
-		farmServicesMutex:   &sync.RWMutex{},
-		farmServices:        make(map[uint64]FarmService, 0),
-		metricService:       metricService,
-		notificationService: notificationService,
-		scheduleService:     scheduleService,
-		roleService:         roleService,
-		workflowService:     workflowService,
-		workflowStepService: workflowStepService}
+		app:                   _app,
+		algorithmService:      algorithmService,
+		authService:           authService,
+		googleAuthService:     gas,
+		channelService:        channelService,
+		conditionService:      conditionService,
+		farmServicesMutex:     &sync.RWMutex{},
+		farmServices:          make(map[uint64]FarmService, 0),
+		deviceServicesMutex:   &sync.RWMutex{},
+		deviceServices:        make(map[uint64][]DeviceService, 0),
+		eventLogServicesMutex: &sync.RWMutex{},
+		eventLogServices:      make(map[uint64]EventLogService, 0),
+		metricService:         metricService,
+		notificationService:   notificationService,
+		scheduleService:       scheduleService,
+		roleService:           roleService,
+		workflowService:       workflowService,
+		workflowStepService:   workflowStepService}
 
 	registry.SetUserService(NewUserService(_app, daos.GetUserDAO(), daos.GetOrganizationDAO(),
 		daos.GetRoleDAO(), daos.GetPermissionDAO(), daos.GetFarmDAO(),
@@ -165,10 +176,14 @@ func (registry *DefaultServiceRegistry) GetDeviceFactory() DeviceFactory {
 }
 
 func (registry *DefaultServiceRegistry) SetDeviceServices(farmID uint64, deviceServices []DeviceService) {
+	registry.deviceServicesMutex.Lock()
+	defer registry.deviceServicesMutex.Unlock()
 	registry.deviceServices[farmID] = deviceServices
 }
 
 func (registry *DefaultServiceRegistry) GetDeviceServices(farmID uint64) ([]DeviceService, error) {
+	registry.deviceServicesMutex.Lock()
+	defer registry.deviceServicesMutex.Unlock()
 	if services, ok := registry.deviceServices[farmID]; ok {
 		return services, nil
 	}
@@ -178,6 +193,8 @@ func (registry *DefaultServiceRegistry) GetDeviceServices(farmID uint64) ([]Devi
 func (registry *DefaultServiceRegistry) GetDeviceService(farmID uint64,
 	deviceType string) (DeviceService, error) {
 
+	registry.deviceServicesMutex.Lock()
+	defer registry.deviceServicesMutex.Unlock()
 	if services, ok := registry.deviceServices[farmID]; ok {
 		for _, service := range services {
 			if service.GetDeviceType() == deviceType {
@@ -190,6 +207,8 @@ func (registry *DefaultServiceRegistry) GetDeviceService(farmID uint64,
 }
 
 func (registry *DefaultServiceRegistry) GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceService, error) {
+	registry.deviceServicesMutex.Lock()
+	defer registry.deviceServicesMutex.Unlock()
 	if services, ok := registry.deviceServices[farmID]; ok {
 		for _, service := range services {
 			if service.GetID() == deviceID {
@@ -201,12 +220,39 @@ func (registry *DefaultServiceRegistry) GetDeviceServiceByID(farmID uint64, devi
 	return nil, ErrFarmNotFound
 }
 
-func (registry *DefaultServiceRegistry) SetEventLogService(eventLogService EventLogService) {
-	registry.eventLogService = eventLogService
+func (registry *DefaultServiceRegistry) AddEventLogService(eventLogService EventLogService) error {
+	registry.eventLogServicesMutex.Lock()
+	defer registry.eventLogServicesMutex.Unlock()
+	if _, ok := registry.eventLogServices[eventLogService.GetFarmID()]; ok {
+		return ErrEventLogAlreadyExists
+	}
+	registry.eventLogServices[eventLogService.GetFarmID()] = eventLogService
+	return nil
 }
 
-func (registry *DefaultServiceRegistry) GetEventLogService() EventLogService {
-	return registry.eventLogService
+func (registry *DefaultServiceRegistry) SetEventLogService(eventLogServices map[uint64]EventLogService) {
+	registry.eventLogServicesMutex.Lock()
+	defer registry.eventLogServicesMutex.Unlock()
+	registry.eventLogServices = eventLogServices
+}
+
+func (registry *DefaultServiceRegistry) GetEventLogServices() map[uint64]EventLogService {
+	registry.eventLogServicesMutex.RLock()
+	defer registry.eventLogServicesMutex.RUnlock()
+	return registry.eventLogServices
+}
+
+func (registry *DefaultServiceRegistry) GetEventLogService(farmID uint64) EventLogService {
+	registry.eventLogServicesMutex.RLock()
+	defer registry.eventLogServicesMutex.RUnlock()
+	service, _ := registry.eventLogServices[farmID]
+	return service
+}
+
+func (registry *DefaultServiceRegistry) RemoveEventLogService(farmID uint64) {
+	registry.eventLogServicesMutex.Lock()
+	defer registry.eventLogServicesMutex.Unlock()
+	delete(registry.eventLogServices, farmID)
 }
 
 func (registry *DefaultServiceRegistry) SetFarmFactory(farmFactory FarmFactory) {

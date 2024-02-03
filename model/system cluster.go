@@ -13,6 +13,21 @@ import (
 // https://golang.org/pkg/net/http/pprof/
 // https://golang.org/pkg/runtime
 
+type System struct {
+	ClusterID               int             `json:"cluster_id"`
+	NodeID                  int             `json:"node_id"`
+	Mode                    string          `json:"mode"`
+	Version                 *app.AppVersion `json:"version"`
+	Farms                   int             `json:"farms"`
+	Changefeeds             int             `json:"changefeeds"`
+	NotificationQueueLength int             `json:"notificationQueueLength"`
+	DeviceIndexLength       int             `json:"deviceIndexLength"`
+	ChannelIndexLength      int             `json:"channelIndexLength"`
+	Runtime                 *SystemRuntime  `json:"runtime"`
+	RaftStats               *RaftStats      `json:"raft"`
+	GossipStats             *GossipStats    `json:"gossip"`
+}
+
 type SystemRuntime struct {
 	Version     string `json:"version"`
 	Goroutines  int    `json:"goroutines"`
@@ -50,17 +65,4 @@ type GossipStats struct {
 
 type Hashring struct {
 	Loads map[string]int64 `json:"loads"`
-}
-
-type System struct {
-	Mode                    string          `json:"mode"`
-	Version                 *app.AppVersion `json:"version"`
-	Farms                   int             `json:"farms"`
-	Changefeeds             int             `json:"changefeeds"`
-	NotificationQueueLength int             `json:"notificationQueueLength"`
-	DeviceIndexLength       int             `json:"deviceIndexLength"`
-	ChannelIndexLength      int             `json:"channelIndexLength"`
-	Runtime                 *SystemRuntime  `json:"runtime"`
-	RaftStats               *RaftStats      `json:"raft"`
-	GossipStats             *GossipStats    `json:"gossip"`
 }

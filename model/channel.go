@@ -23,7 +23,9 @@ type Channel struct {
 }
 
 func NewChannel() common.Channel {
-	return &Channel{}
+	return &Channel{
+		Conditions: make([]config.Condition, 0),
+		Schedule:   make([]config.Schedule, 0)}
 }
 
 func (channel *Channel) SetID(id uint64) {

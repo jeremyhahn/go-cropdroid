@@ -27,6 +27,7 @@ type ClusteredFarmFactory struct {
 type FarmFactoryCluster interface {
 	BuildClusterService(farmStateStore state.FarmStorer,
 		farmDAO dao.FarmDAO,
+		eventLogDAO dao.EventLogDAO,
 		deviceDataStore datastore.DeviceDataStore,
 		deviceStateStore state.DeviceStorer,
 		farmConfig *config.Farm) (FarmService, error)
@@ -37,8 +38,8 @@ type FarmFactoryCluster interface {
 	CreateDeviceStateCluster(
 		raftCluster cluster.RaftNode, deviceID uint64, deviceType string,
 		deviceStateChangeChan chan common.DeviceStateChange) error
-	CreateDeviceDataCluster(raftCluster cluster.RaftNode, deviceDataClusterID uint64) error
-	CreateEventLogCluster(raftCluster cluster.RaftNode, eventLogClusterID uint64) error
+	CreateDeviceDataCluster(raftCluster cluster.RaftNode, deviceDataClusterID uint64) (uint64, error)
+	CreateEventLogCluster(raftCluster cluster.RaftNode, eventLogClusterID uint64) (uint64, error)
 	FarmFactory
 }
 
@@ -69,6 +70,7 @@ func NewFarmFactoryCluster(app *app.App, datastoreRegistry dao.Registry,
 func (cff *ClusteredFarmFactory) BuildClusterService(
 	farmStateStore state.FarmStorer,
 	farmDAO dao.FarmDAO,
+	eventLogDAO dao.EventLogDAO,
 	deviceDataStore datastore.DeviceDataStore,
 	deviceStateStore state.DeviceStorer,
 	farmConfig *config.Farm) (FarmService, error) {
@@ -89,19 +91,23 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 	farmStateChangeChan := cff.farmChannels.FarmStateChangeChan
 	//deviceStateChangeChan := farmChannels.DeviceStateChangeChan
 
+	// Create EventLog cluster for this farm
+	eventLogClusterID, err := cff.CreateEventLogCluster(raftCluster, farmID)
+	if err != nil {
+		cff.app.Logger.Errorf("Event Log cluster error: %s", err)
+	}
+
 	// Create config cluster and set initial configuration
 	if err := cff.CreateFarmConfigCluster(raftCluster, farmID, farmConfigChangeChan); err != nil {
 		cff.app.Logger.Errorf("Cluster config error: %s", err)
 	}
 
-	// Save the Farm config so the device can look it up
-	if err := farmDAO.Save(farmConfig); err != nil {
-		return nil, err
-	}
-
 	// Create device state and device data clusters first so farmService.InitializeState()
 	// is able to look up the controllers
-	for _, deviceConfig := range farmConfig.GetDevices() {
+	devices := farmConfig.GetDevices()
+	deviceIds := make([]uint64, 0)
+	deviceDataClusterIds := make([]uint64, 0)
+	for _, deviceConfig := range devices {
 		deviceID := deviceConfig.GetID()
 		deviceType := deviceConfig.GetType()
 		if deviceType == common.CONTROLLER_TYPE_SERVER {
@@ -115,9 +121,13 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 		}
 
 		//if farmConfig.GetDataStore() == datastore.RAFT_STORE {
-		if err := cff.CreateDeviceDataCluster(raftCluster, deviceID); err != nil {
+		deviceDataClusterID, err := cff.CreateDeviceDataCluster(raftCluster, deviceID)
+		if err != nil {
 			cff.app.Logger.Errorf("Device data cluster error: %s", err)
 		}
+
+		deviceIds = append(deviceIds, deviceID)
+		deviceDataClusterIds = append(deviceDataClusterIds, deviceDataClusterID)
 		//}
 	}
 
@@ -127,26 +137,37 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 		cff.app.Logger.Errorf("Cluster state error: %s", err)
 	}
 
+	// Wait for all clusters to become ready
+	raftCluster.WaitForClusterReady(eventLogClusterID)
+	raftCluster.WaitForClusterReady(farmID)
+	raftCluster.WaitForClusterReady(farmStateID)
+	for i := range deviceIds {
+		raftCluster.WaitForClusterReady(deviceIds[i])
+		raftCluster.WaitForClusterReady(deviceDataClusterIds[i])
+	}
+
 	farmService, err := cff.BuildService(farmStateStore,
-		farmDAO, deviceDataStore, deviceStateStore, farmConfig)
+		farmDAO, eventLogDAO, deviceDataStore, deviceStateStore, farmConfig)
 	if err != nil {
 		return nil, err
 	}
+
+	// Save the farm config
 	if raftCluster.IsLeader(farmID) {
 		cff.app.Logger.Debugf("Setting inital clustered farm config for farm %d", farmID)
-		farmService.SetConfig(farmConfig)
-	}
-	if raftCluster.IsLeader(farmStateID) {
-		cff.app.Logger.Debugf("Setting inital clustered farm state for farm %d, farmStateID=%d", farmID, farmStateID)
-		farmService.InitializeState(true)
-	} else {
-		farmService.InitializeState(false)
+		farmService.SetConfig(farmConfig) // Farm saved to the database
 	}
 
-	// Create EventLog cluster for this farm
-	if err := cff.CreateEventLogCluster(raftCluster, farmID); err != nil {
-		cff.app.Logger.Errorf("Event Log cluster error: %s", err)
+	// Set the initial farm state
+	if raftCluster.IsLeader(farmStateID) {
+		cff.app.Logger.Debugf("Setting inital clustered farm state for farm %d, farmStateID=%d", farmID, farmStateID)
+		farmService.InitializeState(true) // Farm state saved to the database
+	} else {
+		farmService.InitializeState(false) // Populate the object but dont save to the database
 	}
+
+	// Set the device hardware and firmware versions
+	farmService.RefreshHardwareVersions()
 
 	return farmService, nil
 }
@@ -163,7 +184,7 @@ func (cff *ClusteredFarmFactory) CreateFarmConfigCluster(
 			return err
 		}
 	}
-	raftCluster.WaitForClusterReady(farmID)
+	//raftCluster.WaitForClusterReady(farmID)
 	return nil
 }
 
@@ -178,7 +199,7 @@ func (cff *ClusteredFarmFactory) CreateFarmStateCluster(
 			return err
 		}
 	}
-	raftCluster.WaitForClusterReady(farmStateID)
+	//raftCluster.WaitForClusterReady(farmStateID)
 	return nil
 }
 
@@ -193,40 +214,46 @@ func (cff *ClusteredFarmFactory) CreateDeviceStateCluster(
 			return err
 		}
 	}
-	raftCluster.WaitForClusterReady(deviceID)
+	//raftCluster.WaitForClusterReady(deviceID)
 	return nil
 }
 
 func (cff *ClusteredFarmFactory) CreateDeviceDataCluster(
-	raftCluster cluster.RaftNode, deviceID uint64) error {
+	raftCluster cluster.RaftNode, deviceID uint64) (uint64, error) {
 
 	deviceDataClusterID := cff.app.IdGenerator.CreateDeviceDataClusterID(deviceID)
+
+	cff.app.Logger.Errorf("Creating device data cluster for deviceDataClusterID: %d, deviceID: %d",
+		deviceDataClusterID, deviceID)
 
 	if raftCluster != nil {
 		params := raftCluster.GetParams()
 		sm := statemachine.NewDeviceDataOnDiskStateMachine(cff.app.Logger, cff.app.IdGenerator,
 			cff.app.DataDir, deviceDataClusterID, params.NodeID)
 		if err := raftCluster.CreateOnDiskCluster(deviceDataClusterID, params.Join, sm.CreateDeviceDataOnDiskStateMachine); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	raftCluster.WaitForClusterReady(deviceDataClusterID)
-	return nil
+	//raftCluster.WaitForClusterReady(deviceDataClusterID)
+	return deviceDataClusterID, nil
 }
 
 func (cff *ClusteredFarmFactory) CreateEventLogCluster(
-	raftCluster cluster.RaftNode, farmID uint64) error {
+	raftCluster cluster.RaftNode, farmID uint64) (uint64, error) {
 
 	eventLogClusterID := cff.app.IdGenerator.CreateEventLogClusterID(farmID)
+
+	cff.app.Logger.Errorf("Creating event log cluster: eventLogClusterID: %d, farmID: %d",
+		eventLogClusterID, farmID)
 
 	if raftCluster != nil {
 		params := raftCluster.GetParams()
 		sm := statemachine.NewEventLogOnDiskStateMachine(cff.app.Logger, cff.app.IdGenerator,
 			cff.app.DataDir, eventLogClusterID, params.NodeID)
 		if err := raftCluster.CreateOnDiskCluster(eventLogClusterID, params.Join, sm.CreateEventLogOnDiskStateMachine); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	raftCluster.WaitForClusterReady(eventLogClusterID)
-	return nil
+	//raftCluster.WaitForClusterReady(eventLogClusterID)
+	return eventLogClusterID, nil
 }

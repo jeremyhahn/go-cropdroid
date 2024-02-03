@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 )
 
 type IdGenerator interface {
@@ -17,6 +18,7 @@ type IdGenerator interface {
 
 	NewFarmID(orgID uint64, farmName string) uint64
 	NewDeviceID(farmID uint64, deviceType string) uint64
+	NewDeviceDataID(farmID, deviceID uint64, timestamp time.Time) uint64
 	NewDeviceSettingID(deviceID uint64, deviceSettingKey string) uint64
 	NewMetricID(deviceID uint64, metricKey string) uint64
 	NewChannelID(deviceID uint64, channelName string) uint64
@@ -26,6 +28,7 @@ type IdGenerator interface {
 	NewRoleID(name string) uint64
 	NewWorkflowID(farmID uint64, workflowName string) uint64
 	NewWorkflowStepID(workflowID uint64, workflowStepKey string) uint64
+	NewEventLogID(eventLog entity.EventLog) uint64
 
 	CreateEventLogClusterID(clusterID uint64) uint64
 	CreateDeviceDataClusterID(deviceID uint64) uint64
@@ -76,7 +79,7 @@ func (hasher *Fnv1aHasher) StringBytes(str string) []byte {
 	return bytes
 }
 
-// Returns a new 64-bit FNV-1a hash from a time object
+// Returns a new 64-bit FNV-1a hash from a time object and farm id
 func (hasher *Fnv1aHasher) TimestampBytes(t time.Time) []byte {
 	return hasher.Uint64Bytes(uint64(t.Unix()))
 }
@@ -88,6 +91,10 @@ func (hasher *Fnv1aHasher) NewFarmID(orgID uint64, farmName string) uint64 {
 
 func (hasher *Fnv1aHasher) NewDeviceID(farmID uint64, deviceType string) uint64 {
 	return hasher.NewID(fmt.Sprintf("%d-%s", farmID, deviceType))
+}
+
+func (hasher *Fnv1aHasher) NewDeviceDataID(farmID, deviceID uint64, timestamp time.Time) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%d-%d", farmID, deviceID, timestamp.Unix()))
 }
 
 func (hasher *Fnv1aHasher) NewDeviceSettingID(deviceID uint64, deviceSettingKey string) uint64 {
@@ -108,6 +115,14 @@ func (hasher *Fnv1aHasher) NewConditionID(deviceID uint64, conditionKey string) 
 
 func (hasher *Fnv1aHasher) NewScheduleID(deviceID uint64, scheduleKey string) uint64 {
 	return hasher.NewID(fmt.Sprintf("%d-%s", deviceID, scheduleKey))
+}
+
+func (hasher *Fnv1aHasher) NewEventLogID(eventLog entity.EventLog) uint64 {
+	return hasher.NewID(fmt.Sprintf("%d-%d-%s-%d",
+		eventLog.FarmID,
+		eventLog.DeviceID,
+		eventLog.Message,
+		eventLog.Timestamp))
 }
 
 func (hasher *Fnv1aHasher) NewUserID(email string) uint64 {

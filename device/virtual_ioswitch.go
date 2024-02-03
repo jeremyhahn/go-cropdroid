@@ -119,8 +119,8 @@ func (c *VirtualIOSwitch) TimerSwitch(channel, duration int) (common.TimerEvent,
 
 func (c *VirtualIOSwitch) SystemInfo() (DeviceInfo, error) {
 	return &DefaultDeviceInfo{
-		FirmwareVersion: "virt-v0.0.1a",
-		HardwareVersion: "virt-v0.0.1a",
+		FirmwareVersion: "virtfw-v0.0.1a",
+		HardwareVersion: "virthw-v0.0.1a",
 		Uptime:          int64(time.Since(c.startTime).Seconds())}, nil
 }
 

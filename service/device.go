@@ -28,6 +28,7 @@ type IOSwitchDeviceService struct {
 	consistency     int
 	stateStore      state.DeviceStorer
 	deviceDAO       dao.DeviceDAO
+	eventLogDAO     dao.EventLogDAO
 	deviceStore     datastore.DeviceDataStore
 	device          device.IOSwitcher
 	deviceMutex     *sync.RWMutex
@@ -38,27 +39,25 @@ type IOSwitchDeviceService struct {
 }
 
 func NewDeviceService(app *app.App, farmID, deviceID uint64, farmName string,
-	stateStore state.DeviceStorer, deviceDAO dao.DeviceDAO,
+	stateStore state.DeviceStorer, deviceDAO dao.DeviceDAO, eventLogDAO dao.EventLogDAO,
 	deviceDatastore datastore.DeviceDataStore, deviceMapper mapper.DeviceMapper,
-	device device.IOSwitcher, eventLogService EventLogService,
-	farmChannels *FarmChannels, consistency int) (DeviceService, error) {
+	device device.IOSwitcher, farmChannels *FarmChannels, consistency int) (DeviceService, error) {
 
-	deviceConfig, err := deviceDAO.Get(farmID, deviceID, consistency)
-	if err != nil {
-		return nil, err
-	}
+	// deviceConfig, err := deviceDAO.Get(farmID, deviceID, consistency)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if deviceConfig.IsEnabled() && deviceConfig.GetURI() != "" {
-		deviceInfo, err := device.SystemInfo()
-		if err != nil {
-			return nil, err
-		}
-
-		deviceConfig.SetHardwareVersion(deviceInfo.GetHardwareVersion())
-		deviceConfig.SetFirmwareVersion(deviceInfo.GetFirmwareVersion())
-	}
-
-	deviceDAO.Save(deviceConfig)
+	// //if deviceConfig.IsEnabled() && deviceConfig.GetURI() != "" {
+	// if deviceConfig.IsEnabled() {
+	// 	deviceInfo, err := device.SystemInfo()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	deviceConfig.SetHardwareVersion(deviceInfo.GetHardwareVersion())
+	// 	deviceConfig.SetFirmwareVersion(deviceInfo.GetFirmwareVersion())
+	// 	deviceDAO.Save(deviceConfig)
+	// }
 
 	return &IOSwitchDeviceService{
 		app:             app,
@@ -67,13 +66,31 @@ func NewDeviceService(app *app.App, farmID, deviceID uint64, farmName string,
 		farmName:        farmName,
 		stateStore:      stateStore,
 		deviceDAO:       deviceDAO,
+		eventLogDAO:     eventLogDAO,
 		deviceStore:     deviceDatastore,
 		mapper:          deviceMapper,
 		device:          device,
 		deviceMutex:     &sync.RWMutex{},
-		eventLogService: eventLogService,
+		eventLogService: NewEventLogService(app, eventLogDAO, farmID),
 		farmChannels:    farmChannels,
 		consistency:     consistency}, nil
+}
+
+func (service *IOSwitchDeviceService) RefreshSystemInfo() error {
+	deviceConfig, err := service.deviceDAO.Get(service.farmID, service.deviceID, service.consistency)
+	if err != nil {
+		return err
+	}
+	if deviceConfig.IsEnabled() {
+		deviceInfo, err := service.device.SystemInfo()
+		if err != nil {
+			return err
+		}
+		deviceConfig.SetHardwareVersion(deviceInfo.GetHardwareVersion())
+		deviceConfig.SetFirmwareVersion(deviceInfo.GetFirmwareVersion())
+		service.deviceDAO.Save(deviceConfig)
+	}
+	return nil
 }
 
 func (service *IOSwitchDeviceService) Stop() {
@@ -179,7 +196,8 @@ func (service *IOSwitchDeviceService) Poll() error {
 		return err
 	}
 	state.SetID(deviceID)
-	service.stateStore.Put(service.deviceID, state)
+	state.SetFarmID(service.farmID)
+	service.stateStore.Put(deviceID, state)
 	service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
 		DeviceID:    deviceID,
 		DeviceType:  deviceType,
@@ -191,8 +209,9 @@ func (service *IOSwitchDeviceService) Poll() error {
 // Sends a request to the device to turn a switch on or off
 func (service *IOSwitchDeviceService) Switch(channelID, position int, logMessage string) (*common.Switch, error) {
 	eventType := "Switch"
+	deviceType := service.device.GetType()
 	switchPosition := util.NewSwitchPosition(position)
-	channelConfig, err := service.getChannelConfig(channelID)
+	channelConfig, err := service.GetChannelConfig(channelID)
 	if err != nil {
 		service.error(eventType, eventType, err)
 		return nil, err
@@ -203,7 +222,6 @@ func (service *IOSwitchDeviceService) Switch(channelID, position int, logMessage
 			switchPosition.ToString())
 	}
 	service.notify(eventType, logMessage)
-	service.eventLogService.Create(eventType, logMessage)
 	service.app.Logger.Debug(fmt.Sprintf("Switching %s (channel=%d), %s", channelName, channelID,
 		switchPosition.ToString()))
 	_switch, err := service.device.Switch(channelConfig.GetChannelID(), position)
@@ -220,13 +238,15 @@ func (service *IOSwitchDeviceService) Switch(channelID, position int, logMessage
 	service.stateStore.Put(service.deviceID, deviceStateMap)
 	service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
 		DeviceID:   service.deviceID,
-		DeviceType: service.device.GetType(),
+		DeviceType: deviceType,
 		StateMap:   deviceStateMap}
 	// service.farmChannels.SwitchChangedChan <- common.SwitchValueChanged{
 	// 	DeviceType: "",
 	// 	ChannelID:  1,
 	// 	Value:      common,
 	// }
+	service.eventLogService.Create(service.deviceID, deviceType,
+		eventType, logMessage)
 	return _switch, nil
 }
 
@@ -234,8 +254,9 @@ func (service *IOSwitchDeviceService) Switch(channelID, position int, logMessage
 // specified duration in seconds and then turned off.
 func (service *IOSwitchDeviceService) TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error) {
 	eventType := "TimerSwitch"
-	//deviceType := service.device.GetType()
-	channelConfig, err := service.getChannelConfig(channelID)
+	deviceID := service.deviceID
+	deviceType := service.device.GetType()
+	channelConfig, err := service.GetChannelConfig(channelID)
 	if err != nil {
 		service.error(eventType, eventType, err)
 		return nil, err
@@ -246,16 +267,16 @@ func (service *IOSwitchDeviceService) TimerSwitch(channelID, duration int, logMe
 		return nil, err
 	}
 
-	deviceStateMap, err := service.stateStore.Get(service.deviceID)
+	deviceStateMap, err := service.stateStore.Get(deviceID)
 	if err != nil {
 		return nil, err
 	}
 	channels := deviceStateMap.GetChannels()
 	channels[channelID] = common.SWITCH_ON
 	deviceStateMap.SetChannels(channels)
-	service.stateStore.Put(service.deviceID, deviceStateMap)
+	service.stateStore.Put(deviceID, deviceStateMap)
 	// service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
-	// 	DeviceID:   service.deviceID,
+	// 	DeviceID:   deviceID,
 	// 	DeviceType: deviceType,
 	// 	StateMap:   deviceStateMap}
 
@@ -263,7 +284,7 @@ func (service *IOSwitchDeviceService) TimerSwitch(channelID, duration int, logMe
 	defer timer.Stop()
 	go func() {
 		<-timer.C
-		deviceStateMap, err := service.stateStore.Get(service.deviceID)
+		deviceStateMap, err := service.stateStore.Get(deviceID)
 		if err != nil {
 			service.app.Logger.Error(err)
 			return
@@ -271,7 +292,7 @@ func (service *IOSwitchDeviceService) TimerSwitch(channelID, duration int, logMe
 		channels := deviceStateMap.GetChannels()
 		channels[channelID] = common.SWITCH_OFF
 		deviceStateMap.SetChannels(channels)
-		service.stateStore.Put(service.deviceID, deviceStateMap)
+		service.stateStore.Put(deviceID, deviceStateMap)
 		// service.farmChannels.DeviceStateChangeChan <- common.DeviceStateChange{
 		// 	DeviceID:   service.deviceID,
 		// 	DeviceType: deviceType,
@@ -284,7 +305,7 @@ func (service *IOSwitchDeviceService) TimerSwitch(channelID, duration int, logMe
 			channelConfig.GetName(), duration)
 	}
 	service.notify(eventType, logMessage)
-	service.eventLogService.Create(eventType, logMessage)
+	service.eventLogService.Create(deviceID, deviceType, eventType, logMessage)
 	service.app.Logger.Debug(logMessage)
 	return event, nil
 }
@@ -319,7 +340,7 @@ func (service *IOSwitchDeviceService) SetMetricValue(key string, value float64) 
 	return nil
 }
 
-func (service *IOSwitchDeviceService) getChannelConfig(channelID int) (*config.Channel, error) {
+func (service *IOSwitchDeviceService) GetChannelConfig(channelID int) (*config.Channel, error) {
 	deviceConfig, err := service.deviceDAO.Get(service.farmID,
 		service.deviceID, service.consistency)
 	if err != nil {

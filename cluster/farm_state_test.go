@@ -16,18 +16,12 @@ import (
 func TestFarmStateCRUD(t *testing.T) {
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
-	//consistencyLevel := common.CONSISTENCY_LOCAL
-	//testFarmStateName := "root@localhost"
 
-	cluster := NewClusterIntegrationTest()
-	cluster.StartCluster()
-	defer cluster.Cleanup()
-
-	err := cluster.CreateFarmStateCluster(FarmStateClusterID)
+	err := Cluster.CreateFarmStateCluster(FarmStateClusterID)
 	assert.Nil(t, err)
 
-	farmStateStore := NewRaftFarmStateStore(cluster.app.Logger,
-		cluster.GetRaftNode1())
+	farmStateStore := NewRaftFarmStateStore(Cluster.app.Logger,
+		Cluster.GetRaftNode1())
 	assert.NotNil(t, farmStateStore)
 
 	deviceName := "device1"
@@ -42,6 +36,7 @@ func TestFarmStateCRUD(t *testing.T) {
 
 	deviceStateMap := state.NewDeviceStateMap()
 	deviceStateMap.SetID(deviceID)
+	deviceStateMap.SetFarmID(FarmStateClusterID)
 	deviceStateMap.SetMetrics(metrics)
 	deviceStateMap.SetChannels(channels)
 	//deviceStateMap.SetTimestamp(timestamp)
@@ -57,6 +52,12 @@ func TestFarmStateCRUD(t *testing.T) {
 
 	persistedFarmState, err := farmStateStore.Get(FarmStateClusterID)
 	assert.Nil(t, err)
+
+	assert.Equal(t, FarmStateClusterID, persistedFarmState.GetFarmID())
+
+	persistedDevice, err := persistedFarmState.GetDevice(deviceName)
+	assert.Nil(t, err)
+	assert.Equal(t, deviceID, persistedDevice.GetID())
 
 	persistedMetrics, err := persistedFarmState.GetMetrics(deviceName)
 	assert.Nil(t, err)

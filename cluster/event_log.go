@@ -5,6 +5,7 @@ package cluster
 
 import (
 	"encoding/json"
+	"sort"
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -60,15 +61,9 @@ func (eventLogDAO *RaftEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]entity.Even
 		}
 	}
 	if result != nil {
-		return result.([]entity.EventLog), nil
+		items := result.([]entity.EventLog)
+		return items, nil
 	}
-	// if result != nil {
-	// 	results := make([]entity.EventLog, len(result.([]entity.EventLog)))
-	// 	for _, r := range result.([]entity.EventLog) {
-	// 		results = append(results, r)
-	// 	}
-	// 	return results, nil
-	// }
 	return nil, datastore.ErrNotFound
 }
 
@@ -114,6 +109,8 @@ func (eventLogDAO *RaftEventLogDAO) Count(CONSISTENCY_LEVEL int) (int64, error) 
 
 func (eventLogDAO *RaftEventLogDAO) GetPage(CONSISTENCY_LEVEL int, page, size int64) ([]entity.EventLog, error) {
 	// TODO: Make this efficient
+	// PebbleDB requires iterating the entire data set to get the count
+	// Alternative approach is adding an on-write counter to the application
 	records, err := eventLogDAO.GetAll(common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
@@ -123,7 +120,12 @@ func (eventLogDAO *RaftEventLogDAO) GetPage(CONSISTENCY_LEVEL int, page, size in
 	if len(records) < int(highBound) {
 		highBound = int64(len(records))
 	}
-	return records[lowBound:highBound], nil
+	recordSet := records[lowBound:highBound]
+	// Sort records in descending order; most recent events first
+	sort.SliceStable(recordSet, func(i, j int) bool {
+		return recordSet[i].Timestamp.Unix() > recordSet[j].Timestamp.Unix()
+	})
+	return recordSet, nil
 }
 
 // func (eventLogDAO *RaftEventLogDAO) Delete(registration *entity.EventLog) error {

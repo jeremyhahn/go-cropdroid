@@ -28,6 +28,7 @@ type DefaultDeviceFactory struct {
 	farmID          uint64
 	farmName        string
 	deviceDAO       dao.DeviceDAO
+	eventLogDAO     dao.EventLogDAO
 	stateStore      state.DeviceStorer
 	consistency     int
 	deviceMapper    mapper.DeviceMapper
@@ -37,8 +38,8 @@ type DefaultDeviceFactory struct {
 }
 
 func NewDeviceFactory(app *app.App, farmID uint64, farmName string,
-	deviceDAO dao.DeviceDAO, configStoreType int, consistency int,
-	stateStore state.DeviceStorer, deviceMapper mapper.DeviceMapper,
+	deviceDAO dao.DeviceDAO, eventLogDAO dao.EventLogDAO, configStoreType int,
+	consistency int, stateStore state.DeviceStorer, deviceMapper mapper.DeviceMapper,
 	serviceRegistry ServiceRegistry, farmChannels *FarmChannels) DeviceFactory {
 
 	return &DefaultDeviceFactory{
@@ -46,6 +47,7 @@ func NewDeviceFactory(app *app.App, farmID uint64, farmName string,
 		farmID:          farmID,
 		farmName:        farmName,
 		deviceDAO:       deviceDAO,
+		eventLogDAO:     eventLogDAO,
 		stateStore:      stateStore,
 		consistency:     consistency,
 		deviceMapper:    deviceMapper,
@@ -76,9 +78,6 @@ func (factory *DefaultDeviceFactory) BuildServices(deviceConfigs []*config.Devic
 func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceDataStore,
 	deviceConfig *config.Device, mode string) (DeviceService, error) {
 
-	// gormDB := factory.app.GormDB.CloneConnection()
-	// deviceDAO := gorm.NewDeviceDAO(factory.app.Logger, gormDB)
-
 	var _device device.IOSwitcher
 	deviceID := deviceConfig.GetID()
 	deviceType := deviceConfig.GetType()
@@ -96,14 +95,9 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 		_device = device.NewSmartSwitch(factory.app, deviceConfig.GetURI(), deviceType)
 	}
 
-	// -- Disabling as part of new raft package work --
-	// // HACK: This populates the Raft config store from GORM dao
-	// //       so NewDeviceService can look it up
-	// factory.deviceDAO.Save(deviceConfig)
-
 	service, err := NewDeviceService(factory.app, factory.farmID, deviceID,
-		factory.farmName, factory.stateStore, factory.deviceDAO, datastore,
-		factory.deviceMapper, _device, factory.serviceRegistry.GetEventLogService(),
+		factory.farmName, factory.stateStore, factory.deviceDAO,
+		factory.eventLogDAO, datastore, factory.deviceMapper, _device,
 		factory.farmChannels, factory.consistency)
 
 	if err != nil {
@@ -114,7 +108,7 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 	return service, nil
 }
 
-// Should the following 2 methods be refactored into the device service?
+// TODO: Should the following 2 methods be refactored into the device service?
 
 // Returns all device configs for a given farm session
 func (factory *DefaultDeviceFactory) GetAll(session Session) ([]*config.Device, error) {

@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/service"
+	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
 var (
@@ -101,14 +102,14 @@ func (restService *DefaultDeviceRestService) getDeviceService(r *http.Request) (
 
 func (restService *DefaultDeviceRestService) View(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-	defer ctx.Close()
+	defer session.Close()
 
-	ctx.GetLogger().Debugf("REST service /view request email=%s", ctx.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /view request email=%s", session.GetUser().GetEmail())
 
 	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
@@ -127,24 +128,24 @@ func (restService *DefaultDeviceRestService) View(w http.ResponseWriter, r *http
 
 func (restService *DefaultDeviceRestService) Metric(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-	defer ctx.Close()
+	defer session.Close()
 
-	ctx.GetLogger().Debugf("REST service /metric request from %s", ctx.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /metric request from %s", session.GetUser().GetEmail())
 
 	params := mux.Vars(r)
 	key := params["key"]
 	value := params["value"]
 
-	ctx.GetLogger().Debugf("/%s/%s", key, value)
+	session.GetLogger().Debugf("/%s/%s", key, value)
 
 	floatValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		ctx.GetLogger().Errorf("Error: %s", err)
+		session.GetLogger().Errorf("Error: %s", err)
 	}
 
 	deviceService, err := restService.getDeviceService(r)
@@ -154,7 +155,7 @@ func (restService *DefaultDeviceRestService) Metric(w http.ResponseWriter, r *ht
 	}
 
 	if err = deviceService.SetMetricValue(key, floatValue); err != nil {
-		ctx.GetLogger().Errorf("Error: Unable to set metric %s for %s device",
+		session.GetLogger().Errorf("Error: Unable to set metric %s for %s device",
 			key, deviceService.GetDeviceType())
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
@@ -164,14 +165,14 @@ func (restService *DefaultDeviceRestService) Metric(w http.ResponseWriter, r *ht
 
 func (restService *DefaultDeviceRestService) State(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-	defer ctx.Close()
+	defer session.Close()
 
-	ctx.GetLogger().Debugf("REST service /state request email=%s", ctx.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /state request email=%s", session.GetUser().GetEmail())
 
 	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
@@ -189,17 +190,17 @@ func (restService *DefaultDeviceRestService) State(w http.ResponseWriter, r *htt
 
 func (restService *DefaultDeviceRestService) Switch(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
-	defer ctx.Close()
+	defer session.Close()
 
 	params := mux.Vars(r)
 	channel := params["channel"]
 	position := params["position"]
 
-	ctx.GetLogger().Debugf("REST service /switch request channel=%s, position=%s, user=%s", channel, position, ctx.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /switch request channel=%s, position=%s, user=%s", channel, position, session.GetUser().GetEmail())
 
 	_channel, err := strconv.Atoi(channel)
 	if err != nil {
@@ -219,11 +220,21 @@ func (restService *DefaultDeviceRestService) Switch(w http.ResponseWriter, r *ht
 		return
 	}
 
+	channelConfig, err := deviceService.GetChannelConfig(_channel)
+	if err != nil {
+		session.GetLogger().Error("Error: %s", err.Error())
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
 	deviceType := deviceService.GetDeviceType()
-	message := fmt.Sprintf("User %s switching on %s channel %s", ctx.GetUser().GetEmail(), deviceType, channel)
+	switchPosition := util.NewSwitchPosition(_position)
+	message := fmt.Sprintf("User %s switching %s %s %s", session.GetUser().GetEmail(),
+		switchPosition.ToLowerString(), deviceType, channelConfig.GetName())
+
 	eventEntity, err := deviceService.Switch(_channel, _position, message)
 	if err != nil {
-		ctx.GetLogger().Error("Error: %s", err.Error())
+		session.GetLogger().Error("Error: %s", err.Error())
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
@@ -233,17 +244,17 @@ func (restService *DefaultDeviceRestService) Switch(w http.ResponseWriter, r *ht
 
 func (restService *DefaultDeviceRestService) TimerSwitch(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
-	defer ctx.Close()
+	defer session.Close()
 
 	params := mux.Vars(r)
 	channel := params["channel"]
 	duration := params["duration"]
 
-	ctx.GetLogger().Debugf("REST service /timerSwitch request channel=%s, duration=%s, user=%s", channel, duration, ctx.GetUser().GetEmail())
+	session.GetLogger().Debugf("REST service /timerSwitch request channel=%s, duration=%s, user=%s", channel, duration, session.GetUser().GetEmail())
 
 	_channel, err := strconv.Atoi(channel)
 	if err != nil {
@@ -265,10 +276,10 @@ func (restService *DefaultDeviceRestService) TimerSwitch(w http.ResponseWriter, 
 
 	deviceType := deviceService.GetDeviceType()
 	message := fmt.Sprintf("User %s switching on %s channel %s for %s seconds",
-		ctx.GetUser().GetEmail(), deviceType, channel, duration)
+		session.GetUser().GetEmail(), deviceType, channel, duration)
 	eventEntity, err := deviceService.TimerSwitch(_channel, _duration, message)
 	if err != nil {
-		ctx.GetLogger().Error("Error: %s", err.Error())
+		session.GetLogger().Error("Error: %s", err.Error())
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
@@ -278,16 +289,16 @@ func (restService *DefaultDeviceRestService) TimerSwitch(w http.ResponseWriter, 
 
 func (restService *DefaultDeviceRestService) History(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
-	defer ctx.Close()
+	defer session.Close()
 
 	params := mux.Vars(r)
 	metric := params["metric"]
 
-	ctx.GetLogger().Debugf("REST service /history request. metric=%s", metric)
+	session.GetLogger().Debugf("REST service /history request. metric=%s", metric)
 
 	deviceService, err := restService.getDeviceService(r)
 	if err != nil {
@@ -306,11 +317,11 @@ func (restService *DefaultDeviceRestService) History(w http.ResponseWriter, r *h
 /*
 func (restService *DefaultDeviceRestService) SetMetric(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middleware.CreateSession(w, r)
+	session, err := restService.middleware.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 	}
-	defer ctx.Close()
+	defer session.Close()
 
 	params := mux.Vars(r)
 	metric := params["metric"]
@@ -318,12 +329,12 @@ func (restService *DefaultDeviceRestService) SetMetric(w http.ResponseWriter, r 
 
 	fvalue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		ctx.GetLogger().Errorf("Error: %s", err)
+		session.GetLogger().Errorf("Error: %s", err)
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	ctx.GetLogger().Debugf("REST service / request. metric=%s, value=%s", metric, value)
+	session.GetLogger().Debugf("REST service / request. metric=%s, value=%s", metric, value)
 
 	deviceService, err := restService.getDeviceService(r)
 	if err != nil {

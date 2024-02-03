@@ -106,9 +106,11 @@ type FarmService interface {
 	PublishState(farmState state.FarmStateMap) error
 	PublishDeviceState(deviceState map[string]state.DeviceStateMap) error
 	PublishDeviceDelta(deviceState map[string]state.DeviceStateDeltaMap) error
+	RefreshHardwareVersions() error
 	Run()
 	RunCluster()
 	RunWorkflow(workflow *config.Workflow)
+	SaveConfig(farmConfig *config.Farm) error
 	SetConfig(farmConfig *config.Farm) error
 	SetDeviceConfig(deviceConfig *config.Device) error
 	SetDeviceState(deviceType string, deviceState state.DeviceStateMap)
@@ -150,7 +152,8 @@ type NotificationService interface {
 }
 
 type EventLogService interface {
-	Create(event, message string)
+	GetFarmID() uint64
+	Create(deviceID uint64, deviceName, eventType, message string)
 	GetAll() []entity.EventLog
 	GetPage(page int64) *viewmodel.EventsPage
 }
@@ -175,8 +178,11 @@ type ServiceRegistry interface {
 	GetDeviceService(farmID uint64, deviceType string) (DeviceService, error)
 	GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceService, error)
 	SetDeviceService(farmID uint64, deviceService DeviceService) (DeviceService, error)
-	SetEventLogService(EventLogService)
-	GetEventLogService() EventLogService
+	AddEventLogService(eventLogService EventLogService) error
+	SetEventLogService(eventLogServices map[uint64]EventLogService)
+	GetEventLogServices() map[uint64]EventLogService
+	GetEventLogService(farmID uint64) EventLogService
+	RemoveEventLogService(farmID uint64)
 	SetFarmFactory(FarmFactory FarmFactory)
 	GetFarmFactory() FarmFactory
 	AddFarmService(farmService FarmService) error
@@ -255,6 +261,8 @@ type DeviceService interface {
 	ManageMetrics(config config.Device, farmState state.FarmStateMap) []error
 	ManageChannels(deviceConfig config.Device,
 		farmState state.FarmStateMap, channels []config.Channel) []error
+	GetChannelConfig(channelID int) (*config.Channel, error)
+	RefreshSystemInfo() error
 	//RegisterObserver(observer DeviceObserver)
 }
 

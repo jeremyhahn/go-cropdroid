@@ -4,8 +4,9 @@ import "time"
 
 type EventLogEntity interface {
 	GetFarmID() uint64
-	GetDevice() string
-	GetType() string
+	GetDeviceID() uint64
+	GetDeviceName() string
+	GetEventType() string
 	GetMessage() string
 	GetTimestamp() string
 	GetTimestampAsObject() time.Time
@@ -13,8 +14,9 @@ type EventLogEntity interface {
 
 type EventLog struct {
 	FarmID         uint64    `gorm:"not null" json:"farm_id"`
-	Device         string    `gorm:"not null" json:"device"`
-	Type           string    `gorm:"not null" json:"type"`
+	DeviceID       uint64    `gorm:"not null" json:"device_id"`
+	DeviceName     string    `gorm:"not null" json:"device"`
+	EventType      string    `gorm:"not null" json:"type"`
 	Message        string    `gorm:"not null" json:"message"`
 	Timestamp      time.Time `gorm:"type:timestamp" json:"timestamp"`
 	EventLogEntity `json:"-"`
@@ -24,12 +26,16 @@ func (entity *EventLog) GetFarmID() uint64 {
 	return entity.FarmID
 }
 
-func (entity *EventLog) GetDevice() string {
-	return entity.Device
+func (entity *EventLog) GetDeviceID() uint64 {
+	return entity.DeviceID
 }
 
-func (entity *EventLog) GetType() string {
-	return entity.Type
+func (entity *EventLog) GetNameDevice() string {
+	return entity.DeviceName
+}
+
+func (entity *EventLog) GetEventType() string {
+	return entity.EventType
 }
 
 func (entity *EventLog) GetMessage() string {

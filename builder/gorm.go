@@ -86,8 +86,8 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 
 	// TODO: Replace with modular backend event log storage
 	eventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.db)
-	eventLogService := service.NewEventLogService(builder.app, eventLogDAO, common.CONTROLLER_TYPE_SERVER)
-	serviceRegistry.SetEventLogService(eventLogService)
+	eventLogService := service.NewEventLogService(builder.app, eventLogDAO, 0)
+	serviceRegistry.AddEventLogService(eventLogService)
 
 	// serverConfig := config.NewServer()
 	// serverConfig.SetInterval(builder.app.Interval)
@@ -163,10 +163,18 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 		// deviceDAO := gormds.NewDeviceDAO(builder.app.Logger, db)
 		// farmDAO := gormds.NewFarmDAO(builder.app.Logger, db)
 
-		farmFactory.BuildService(builder.farmStateStore, farmDAO,
+		farmFactory.BuildService(builder.farmStateStore, farmDAO, eventLogDAO,
 			builder.deviceDataStore, builder.deviceStateStore,
 			farmConfig)
 		//builder.app.Server..AddFarm(&farmConfig)
+
+		builder.app.Logger.Debugf("Farm ID: %s", farmConfig.GetID())
+		builder.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
+		builder.app.Logger.Debugf("Mode: %s", builder.app.Mode)
+		builder.app.Logger.Debugf("Timezone: %s", builder.app.Timezone)
+		builder.app.Logger.Debugf("Polling interval: %d", builder.app.Interval)
+
+		eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, "System", "Startup")
 	}
 
 	// Listen for new farm provisioning requests
@@ -176,12 +184,13 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 			case farmConfig := <-farmProvisionerChan:
 				builder.app.Logger.Debugf("Processing provisioner request...")
 				farmService, err := farmFactory.BuildService(
-					builder.farmStateStore, farmDAO, builder.deviceDataStore,
+					builder.farmStateStore, farmDAO, eventLogDAO, builder.deviceDataStore,
 					builder.deviceStateStore, &farmConfig)
 				if err != nil {
 					builder.app.Logger.Errorf("Error: %s", err)
 					break
 				}
+				farmService.RefreshHardwareVersions()
 				serviceRegistry.AddFarmService(farmService)
 				farmTickerProvisionerChan <- farmConfig.GetID()
 				go farmService.Run()

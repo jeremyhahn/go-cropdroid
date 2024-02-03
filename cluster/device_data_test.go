@@ -36,6 +36,7 @@ func TestDeviceDataCRUD(t *testing.T) {
 
 	deviceStateMap := state.NewDeviceStateMap()
 	deviceStateMap.SetID(deviceID)
+	deviceStateMap.SetFarmID(1)
 	deviceStateMap.SetMetrics(metrics)
 	deviceStateMap.SetChannels(channels)
 	//deviceStateMap.SetTimestamp(timestamp)

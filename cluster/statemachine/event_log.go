@@ -5,7 +5,6 @@ package statemachine
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"sync/atomic"
 
@@ -31,21 +30,18 @@ type EventLogDiskKV struct {
 func NewEventLogOnDiskStateMachine(logger *logging.Logger, idGenerator util.IdGenerator,
 	dbPath string, clusterID, nodeID uint64) EventLogOnDiskStateMachine {
 
-	eventLogClusterID := idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "eventlog"))
-
 	return &EventLogDiskKV{
 		logger:      logger,
 		idGenerator: idGenerator,
 		diskKV: DiskKV{
 			dbPath:    dbPath,
 			nodeID:    nodeID,
-			clusterID: eventLogClusterID}}
+			clusterID: clusterID}}
 }
 
 func (d *EventLogDiskKV) CreateEventLogOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine {
 	d.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
-	//d.diskKV.clusterID = clusterID
-	d.diskKV.clusterID = d.idGenerator.NewID(fmt.Sprintf("%d-%s", clusterID, "eventlog"))
+	d.diskKV.clusterID = clusterID
 	d.diskKV.nodeID = nodeID
 	return d
 }
@@ -93,8 +89,7 @@ func (d *EventLogDiskKV) Lookup(key interface{}) (interface{}, error) {
 			db := (*pebbledb)(atomic.LoadPointer(&d.diskKV.db))
 			iter := db.db.NewIter(db.ro)
 			defer iter.Close()
-			values := make([]KVData, 0)
-			i := 0
+			records := make([]entity.EventLog, 0)
 			for iter.First(); iter.Valid(); iter.Next() {
 				key := make([]byte, len(iter.Key()))
 				copy(key, iter.Key())
@@ -102,19 +97,12 @@ func (d *EventLogDiskKV) Lookup(key interface{}) (interface{}, error) {
 				value := make([]byte, len(iter.Value()))
 				copy(value, iter.Value())
 
-				values = append(values, KVData{
-					Key: key,
-					Val: value})
-
-				i++
-			}
-			records := make([]entity.EventLog, i-1)
-			for _, eventLogDataKV := range values {
-				if string(eventLogDataKV.Key) == appliedIndexKey {
+				if string(key) == appliedIndexKey {
 					continue
 				}
+
 				var eventLogRecord entity.EventLog
-				if err := json.Unmarshal(eventLogDataKV.Val, &eventLogRecord); err != nil {
+				if err := json.Unmarshal(value, &eventLogRecord); err != nil {
 					return nil, err
 				}
 				records = append(records, eventLogRecord)
@@ -159,8 +147,9 @@ func (d *EventLogDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 			return nil, err
 		}
 
+		newEventLogID := d.idGenerator.NewEventLogID(eventLog)
 		kvdata := &KVData{
-			Key: d.idGenerator.TimestampBytes(eventLog.GetTimestampAsObject()),
+			Key: d.idGenerator.Uint64Bytes(newEventLogID),
 			Val: proposal.Data}
 
 		jsonDataKV, err := json.Marshal(kvdata)

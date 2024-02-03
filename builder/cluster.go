@@ -72,7 +72,13 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	roleDAO := builder.datastoreRegistry.GetRoleDAO()
 	orgDAO := builder.datastoreRegistry.GetOrganizationDAO()
 	farmDAO := builder.datastoreRegistry.GetFarmDAO()
-	eventLogDAO := builder.datastoreRegistry.GetEventLogDAO()
+	systemEventLogDAO := builder.datastoreRegistry.GetEventLogDAO()
+
+	// Build and add event log service to registry
+	raftParams := builder.raftNode.GetParams()
+	systemEventLogService := service.NewEventLogService(builder.app, systemEventLogDAO, raftParams.RaftOptions.SystemClusterID)
+	builder.serviceRegistry.AddEventLogService(systemEventLogService)
+
 	//eventLogDAO.(*cluster.RaftEventLogDAO).StartCluster()
 	//serverEventLogClusterID := builder.params.IdGenerator.CreateEventLogClusterID(
 	//	builder.params.RaftOptions.SystemClusterID)
@@ -97,6 +103,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 			StateStoreType:   builder.app.DefaultStateStoreType,
 			DataStoreType:    builder.app.DefaultDataStoreType,
 			ConsistencyLevel: common.CONSISTENCY_LOCAL}
+
 		farmConfig, err := configInitializer.Initialize(false, provParams)
 		if err != nil {
 			builder.app.Logger.Fatal(err)
@@ -111,7 +118,11 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 			serverConfig.AddFarmRef(farmConfig.GetID())
 			serverDAO.Save(serverConfig)
 		}
-		//}
+
+		// Passing false to initialize does not create the farm
+		// if err := farmDAO.Save(farmConfig); err != nil {
+		// 	builder.app.Logger.Error(err)
+		// }
 	}
 
 	// gormInitializer := gormds.NewGormInitializer(builder.app.Logger,
@@ -156,9 +167,6 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	// 	builder.mapperRegistry.GetUserMapper(), initializer)
 
 	//eventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.gormDB)
-	eventLogService := service.NewEventLogService(builder.app, eventLogDAO,
-		common.CONTROLLER_TYPE_SERVER)
-	builder.serviceRegistry.SetEventLogService(eventLogService)
 
 	// serverConfig := config.NewServer()
 	// serverConfig.SetInterval(builder.app.Server.Interval)
@@ -215,7 +223,8 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 
 	for _, farmConfig := range farmConfigs {
 
-		farmDAO.(*cluster.RaftFarmConfigDAO).StartCluster(farmConfig.GetID())
+		farmID := farmConfig.GetID()
+		farmDAO.(*cluster.RaftFarmConfigDAO).StartCluster(farmID)
 
 		stateStoreType := farmConfig.GetStateStore()
 		configStoreType := farmConfig.GetConfigStore()
@@ -223,26 +232,29 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 
 		farmStateStore := builder.createFarmStateStore(stateStoreType)
 		farmConfigDAO := builder.createFarmConfigDAO(configStoreType,
-			farmConfig.GetOrganizationID(), farmConfig.GetID())
+			farmConfig.GetOrganizationID(), farmID)
 
 		deviceDataStore := builder.createDeviceDataStore(dataStoreType)
 		deviceStateStore := builder.createDeviceStateStore(stateStoreType, deviceDataStore)
-		// deviceDAO := builder.createDeviceConfigStore(configStoreType,
-		// 	farmConfig.GetOrganizationID())
 
-		_, err := farmFactory.BuildClusterService(farmStateStore,
-			farmConfigDAO, deviceDataStore, deviceStateStore, farmConfig)
+		farmEventLogDAO := cluster.NewRaftEventLogDAO(builder.app.Logger,
+			builder.raftNode, farmID)
+
+		farmService, err := farmFactory.BuildClusterService(farmStateStore,
+			farmConfigDAO, farmEventLogDAO, deviceDataStore, deviceStateStore, farmConfig)
 		if err != nil {
 			builder.app.Logger.Fatalf("Error loading farm config: %s", err)
 		}
+		go farmService.RunCluster()
 
-		builder.app.Logger.Debugf("Farm ID: %s", farmConfig.GetID())
+		builder.app.Logger.Debugf("Farm ID: %s", farmID)
 		builder.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
 		builder.app.Logger.Debugf("Mode: %s", builder.app.Mode)
 		builder.app.Logger.Debugf("Timezone: %s", builder.app.Timezone)
 		builder.app.Logger.Debugf("Polling interval: %d", builder.app.Interval)
+		builder.app.Logger.Debugf("Event Log ID: %s", builder.app.IdGenerator.CreateEventLogClusterID(farmID))
 
-		builder.serviceRegistry.GetEventLogService().Create("System", "Startup")
+		systemEventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, "System", "Startup")
 	}
 
 	// Listen for new farm provisioning requests
@@ -287,12 +299,15 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 				// 	farmID, farmStateID, farmChannels.FarmStateChangeChan)
 				// builder.raftNode.WaitForClusterReady(farmStateID)
 
+				eventLogDAO := cluster.NewRaftEventLogDAO(builder.app.Logger,
+					builder.raftNode, farmID)
+
 				farmService, err := farmFactory.BuildClusterService(farmStateStore,
-					farmConfigDAO, deviceDataStore, deviceStateStore, &farmConfig)
+					farmConfigDAO, eventLogDAO, deviceDataStore, deviceStateStore, &farmConfig)
 				if err != nil {
 					builder.app.Logger.Errorf("Error: %s", err)
 				}
-				builder.serviceRegistry.AddFarmService(farmService)
+
 				builder.params.GetFarmTickerProvisionerChan() <- farmConfig.GetID()
 				go farmService.RunCluster()
 			}

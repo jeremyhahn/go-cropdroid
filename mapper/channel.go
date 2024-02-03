@@ -18,18 +18,20 @@ func NewChannelMapper() ChannelMapper {
 	return &DefaultChannelMapper{}
 }
 
-func (mapper *DefaultChannelMapper) MapConfigToModel(config *config.Channel) common.Channel {
+func (mapper *DefaultChannelMapper) MapConfigToModel(channel *config.Channel) common.Channel {
 	return &model.Channel{
-		ID:          config.GetID(),
-		DeviceID:    config.GetDeviceID(),
-		ChannelID:   config.GetChannelID(),
-		Name:        config.GetName(),
-		Enable:      config.IsEnabled(),
-		Notify:      config.IsNotify(),
-		Duration:    config.GetDuration(),
-		Debounce:    config.GetDebounce(),
-		Backoff:     config.GetBackoff(),
-		AlgorithmID: config.GetAlgorithmID()}
+		ID:          channel.GetID(),
+		DeviceID:    channel.GetDeviceID(),
+		ChannelID:   channel.GetChannelID(),
+		Name:        channel.GetName(),
+		Enable:      channel.IsEnabled(),
+		Notify:      channel.IsNotify(),
+		Duration:    channel.GetDuration(),
+		Debounce:    channel.GetDebounce(),
+		Backoff:     channel.GetBackoff(),
+		AlgorithmID: channel.GetAlgorithmID(),
+		Conditions:  make([]config.Condition, 0),
+		Schedule:    make([]config.Schedule, 0)}
 }
 
 func (mapper *DefaultChannelMapper) MapModelToConfig(model common.Channel) *config.Channel {
@@ -43,5 +45,7 @@ func (mapper *DefaultChannelMapper) MapModelToConfig(model common.Channel) *conf
 		Duration:    model.GetDuration(),
 		Debounce:    model.GetDebounce(),
 		Backoff:     model.GetBackoff(),
-		AlgorithmID: model.GetAlgorithmID()}
+		AlgorithmID: model.GetAlgorithmID(),
+		Conditions:  make([]*config.Condition, 0),
+		Schedule:    make([]*config.Schedule, 0)}
 }

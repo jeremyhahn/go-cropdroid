@@ -146,8 +146,10 @@ func (d *DeviceDataDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 			return nil, err
 		}
 
+		deviceDataItemID := d.idGenerator.NewDeviceDataID(deviceData.FarmID,
+			deviceData.DeviceID, deviceData.Timestamp)
 		kvdata := &KVData{
-			Key: d.idGenerator.TimestampBytes(deviceData.GetTimestamp()),
+			Key: d.idGenerator.Uint64Bytes(deviceDataItemID),
 			Val: proposal.Data}
 
 		jsonDataKV, err := json.Marshal(kvdata)

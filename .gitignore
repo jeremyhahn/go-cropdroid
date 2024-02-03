@@ -12,3 +12,4 @@ db/
 
 # Visual Studio Code debug binary
 __debug_bin
+__debug*

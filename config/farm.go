@@ -29,8 +29,9 @@ type Farm struct {
 func NewFarm() *Farm {
 	return &Farm{
 		//Interval: 60,
-		Devices: make([]*Device, 0),
-		Users:   make([]*User, 0)}
+		Devices:   make([]*Device, 0),
+		Users:     make([]*User, 0),
+		Workflows: make([]*Workflow, 0)}
 }
 
 func CreateFarm(name string, orgID uint64, interval int,
@@ -39,7 +40,9 @@ func CreateFarm(name string, orgID uint64, interval int,
 	return &Farm{
 		//Interval:       60,
 		OrganizationID: orgID,
-		Devices:        devices}
+		Devices:        devices,
+		Users:          make([]*User, 0),
+		Workflows:      make([]*Workflow, 0)}
 }
 
 func (farm *Farm) SetID(id uint64) {

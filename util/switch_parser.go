@@ -1,6 +1,10 @@
 package util
 
-import "github.com/jeremyhahn/go-cropdroid/common"
+import (
+	"strings"
+
+	"github.com/jeremyhahn/go-cropdroid/common"
+)
 
 type SwitchPosition struct {
 	position int
@@ -16,4 +20,8 @@ func (sp *SwitchPosition) ToString() string {
 	} else {
 		return "OFF"
 	}
+}
+
+func (sp *SwitchPosition) ToLowerString() string {
+	return strings.ToLower(sp.ToString())
 }

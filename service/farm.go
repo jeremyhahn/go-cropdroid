@@ -19,21 +19,21 @@ import (
 type DefaultFarmService struct {
 	app                 *app.App
 	idGenerator         util.IdGenerator
-	farmDAO             dao.FarmDAO
-	stateStore          state.FarmStorer
-	deviceDataStore     datastore.DeviceDataStore
 	farmID              uint64
 	farmStateID         uint64
 	mode                string
 	consistencyLevel    int
+	running             bool
+	channels            *FarmChannels
+	backoffTable        map[uint64]map[uint64]time.Time
+	farmDAO             dao.FarmDAO
+	deviceConfigDAO     dao.DeviceSettingDAO
+	stateStore          state.FarmStorer
+	deviceDataStore     datastore.DeviceDataStore
 	serviceRegistry     ServiceRegistry
 	conditionService    ConditionService
 	scheduleService     ScheduleService
 	notificationService NotificationService
-	channels            *FarmChannels
-	running             bool
-	backoffTable        map[uint64]map[uint64]time.Time
-	deviceConfigDAO     dao.DeviceSettingDAO
 	farmStateQuitChan   chan int
 	farmConfigQuitChan  chan int
 	deviceStateQuitChan chan int
@@ -54,22 +54,6 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, idGenerator util.IdGen
 	mode := farmConfig.GetMode()
 
 	backoffTable := make(map[uint64]map[uint64]time.Time, 0)
-
-	deviceServices, err := serviceRegistry.GetDeviceServices(farmID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set farmConfig devices with latest configs (populated SystemInfo)
-	// TODO: make this more efficient
-	// TODO: This seems GORM specific, push into GormFarmDAO?
-	for _, ds := range deviceServices {
-		deviceConfig, err := ds.GetConfig()
-		if err != nil {
-			return nil, err
-		}
-		farmConfig.SetDevice(deviceConfig)
-	}
 
 	farmService := &DefaultFarmService{
 		app:                 app,
@@ -94,27 +78,20 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, idGenerator util.IdGen
 		deviceConfigDAO:     deviceConfigDAO,
 		backoffTable:        backoffTable}
 
-	// var configClusterID uint64
-	// if farmService.isRaftConfigStore(farmConfig) {
-	// 	key := fmt.Sprintf("%d-%d", farmConfig.GetOrganizationID(), farmID)
-	// 	configClusterID = idGenerator.NewID(key)
-	// } else {
-	// 	configClusterID = farmID
+	deviceServices, err := serviceRegistry.GetDeviceServices(farmID)
+	if err != nil {
+		return nil, err
+	}
 
-	// 	err = farmService.farmDAO.Save(farmConfig)
-	// 	//if err == state.ErrFarmNotFound {
-	// 	err = farmService.InitializeState(true)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	// } else if err != nil {
-	// 	// 	app.Logger.Errorf("Fatal farm service error (farmID=%d): %s", farmID, err)
-	// 	// 	return nil, err
-	// 	// }
-	// }
-	// farmService.configClusterID = configClusterID
-
+	// TODO: This is GORM specific, push into GormFarmDAO?
 	if !farmService.isRaftConfigStore(farmConfig) {
+		for _, ds := range deviceServices {
+			deviceConfig, err := ds.GetConfig()
+			if err != nil {
+				return nil, err
+			}
+			farmConfig.SetDevice(deviceConfig)
+		}
 		err = farmService.InitializeState(true)
 		if err != nil {
 			return nil, err
@@ -141,7 +118,13 @@ func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
 	_state := state.NewFarmStateMap(farm.farmStateID)
 	deviceStateMaps := make([]state.DeviceStateMap, 0)
 	for _, d := range deviceServices {
-		conf, _ := d.GetConfig()
+		conf, err := d.GetConfig()
+		if err != nil {
+			for conf == nil {
+				farm.app.Logger.Warningf("Waiting for initial device state...")
+				time.Sleep(1 * time.Minute)
+			}
+		}
 		deviceID := conf.GetID()
 		deviceStateMap := state.CreateEmptyDeviceStateMap(
 			deviceID, len(conf.GetMetrics()), len(conf.GetChannels()))
@@ -153,6 +136,17 @@ func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
 		farm.stateStore.Put(farm.farmStateID, _state)
 	}
 	return nil
+}
+
+func (farm *DefaultFarmService) RefreshHardwareVersions() error {
+	deviceServices, err := farm.serviceRegistry.GetDeviceServices(farm.farmID)
+	for _, ds := range deviceServices {
+		err := ds.RefreshSystemInfo()
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func (farm *DefaultFarmService) GetFarmID() uint64 {
@@ -203,11 +197,19 @@ func (farm *DefaultFarmService) GetConfig() *config.Farm {
 }
 
 func (farm *DefaultFarmService) SetConfig(farmConfig *config.Farm) error {
-	if err := farm.farmDAO.Save(farmConfig); err != nil {
+	if err := farm.SaveConfig(farmConfig); err != nil {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return err
 	}
 	farm.PublishConfig(farmConfig)
+	return nil
+}
+
+func (farm *DefaultFarmService) SaveConfig(farmConfig *config.Farm) error {
+	if err := farm.farmDAO.Save(farmConfig); err != nil {
+		farm.app.Logger.Errorf("Error: %s", err)
+		return err
+	}
 	return nil
 }
 
@@ -404,8 +406,14 @@ func (farm *DefaultFarmService) WatchFarmStateChange() {
 
 			for _, device := range deviceServices {
 				deviceType := device.GetDeviceType()
-				newDeviceState := newDeviceStates[deviceType]
-				_, err := farm.OnDeviceStateChange(deviceType, newDeviceState)
+				// Use GetDevice here instead of accessing the map
+				// directly to prevent concurrent read/write map error
+				newDeviceState, err := newFarmState.GetDevice(deviceType)
+				if err != nil {
+					farm.app.Logger.Errorf("Error: %s", err)
+					continue
+				}
+				_, err = farm.OnDeviceStateChange(deviceType, newDeviceState)
 				if err == state.ErrDeviceNotFound {
 					farm.SetDeviceState(deviceType, newDeviceState)
 				}

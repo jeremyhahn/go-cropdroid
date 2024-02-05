@@ -79,6 +79,7 @@ func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *common.Provision
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	userMapper := mapper.NewUserMapper()
 	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm, it.idGenerator)
+
 	initializer := gormstore.NewGormInitializer(it.logger, it.db, idGenerator,
 		it.location, common.CONFIG_MODE_VIRTUAL)
 	params := &common.ProvisionerParams{

@@ -41,7 +41,7 @@ func (eventLogDAO *RaftEventLogDAO) StartCluster() {
 	if err := eventLogDAO.raft.CreateOnDiskCluster(eventLogDAO.clusterID, params.Join, sm.CreateEventLogOnDiskStateMachine); err != nil {
 		eventLogDAO.logger.Fatal(err)
 	}
-	eventLogDAO.raft.WaitForClusterReady(eventLogDAO.clusterID)
+	//eventLogDAO.raft.WaitForClusterReady(eventLogDAO.clusterID)
 }
 
 func (eventLogDAO *RaftEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]entity.EventLog, error) {
@@ -115,10 +115,17 @@ func (eventLogDAO *RaftEventLogDAO) GetPage(CONSISTENCY_LEVEL int, page, size in
 	if err != nil {
 		return nil, err
 	}
-	lowBound := (page - 1) * size
-	highBound := size * page
-	if len(records) < int(highBound) {
-		highBound = int64(len(records))
+	recordLen := int64(len(records))
+	var lowBound = int64(0)
+	var highBound = recordLen
+	if page == 0 {
+		page = 1
+	}
+	if page > 1 {
+		lowBound = (page - 1) * size
+	}
+	if recordLen > size {
+		highBound = lowBound + size
 	}
 	recordSet := records[lowBound:highBound]
 	// Sort records in descending order; most recent events first

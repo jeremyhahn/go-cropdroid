@@ -2,11 +2,13 @@ package builder
 
 import (
 	"crypto/rsa"
+	"fmt"
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 
 	//"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
@@ -24,25 +26,31 @@ import (
 )
 
 type GormConfigBuilder struct {
-	app              *app.App
-	db               *gorm.DB
-	gormDB           gormds.GormDB
-	farmStateStore   state.FarmStorer
-	deviceStateStore state.DeviceStorer
-	deviceDataStore  datastore.DeviceDataStore
-	consistencyLevel int
-	appStateTTL      int
-	appStateTick     int
-	idGenerator      util.IdGenerator
+	app               *app.App
+	db                *gorm.DB
+	gormDB            gormds.GormDB
+	datastoreRegistry dao.Registry
+	farmStateStore    state.FarmStorer
+	deviceStateStore  state.DeviceStorer
+	deviceDataStore   datastore.DeviceDataStore
+	consistencyLevel  int
+	appStateTTL       int
+	appStateTick      int
+	databaseInit      bool
+	idGenerator       util.IdGenerator
 }
 
-func NewGormConfigBuilder(_app *app.App, dataStore string, appStateTTL int, appStateTick int) *GormConfigBuilder {
+func NewGormConfigBuilder(_app *app.App, dataStore string,
+	appStateTTL int, appStateTick int, databaseInit bool) *GormConfigBuilder {
 
 	gormDB := gormds.NewGormDB(_app.Logger, _app.GORMInitParams)
 	db := gormDB.Connect(false)
 
-	farmStateStore := state.NewMemoryFarmStore(_app.Logger, 1, appStateTTL, time.Duration(appStateTick))
-	deviceStateStore := state.NewMemoryDeviceStore(_app.Logger, 3, appStateTTL, time.Duration(appStateTick))
+	farmStateStore := state.NewMemoryFarmStore(_app.Logger, 1, appStateTTL,
+		time.Duration(appStateTick))
+
+	deviceStateStore := state.NewMemoryDeviceStore(_app.Logger, 3, appStateTTL,
+		time.Duration(appStateTick))
 
 	var deviceDatastore datastore.DeviceDataStore
 	if dataStore == "redis" {
@@ -59,6 +67,7 @@ func NewGormConfigBuilder(_app *app.App, dataStore string, appStateTTL int, appS
 		farmStateStore:   farmStateStore,
 		deviceStateStore: deviceStateStore,
 		deviceDataStore:  deviceDatastore,
+		databaseInit:     databaseInit,
 		consistencyLevel: common.CONSISTENCY_LOCAL,
 		idGenerator:      util.NewIdGenerator(_app.DataStoreEngine)}
 }
@@ -69,9 +78,10 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	var restServices []rest.RestService
 	var farmConfigs []*config.Farm
 
-	datastoreRegistry := gormds.NewGormRegistry(builder.app.Logger, builder.gormDB)
+	builder.datastoreRegistry = gormds.NewGormRegistry(builder.app.Logger, builder.gormDB)
 	mapperRegistry := mapper.CreateRegistry()
-	serviceRegistry := service.CreateServiceRegistry(builder.app, datastoreRegistry, mapperRegistry)
+	serviceRegistry := service.CreateServiceRegistry(builder.app,
+		builder.datastoreRegistry, mapperRegistry)
 
 	changefeeders := make(map[string]datastore.Changefeeder, 0)
 
@@ -84,8 +94,7 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 		changefeeders["_schedules"] = cockroach.NewCockroachChangefeed(builder.app, "schedules")
 	}
 
-	// TODO: Replace with modular backend event log storage
-	eventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.db)
+	eventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.db, 0)
 	eventLogService := service.NewEventLogService(builder.app, eventLogDAO, 0)
 	serviceRegistry.AddEventLogService(eventLogService)
 
@@ -105,11 +114,10 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	farmProvisionerChan := make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE)
 	farmDeprovisionerChan := make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE)
 	farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
-	gormInitializer := gormds.NewGormInitializer(builder.app.Logger,
-		builder.gormDB, builder.idGenerator, builder.app.Location, builder.app.Mode)
 
-	//gormFarmStore := store.NewGormFarmStore(datastoreRegistry.NewFarmDAO(), 1)
-	//gormDeviceConfigStore := store.NewGormDeviceConfigStore(datastoreRegistry.NewDeviceDAO(), 3)
+	configInitializer := dao.NewConfigInitializer(builder.app.Logger,
+		builder.app.IdGenerator, builder.app.Location, builder.datastoreRegistry,
+		builder.app.Mode)
 
 	farmChannels := &service.FarmChannels{
 		FarmConfigChan:       make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE),
@@ -130,19 +138,33 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	serviceRegistry.SetFarmFactory(farmFactory)
 
 	farmProvisioner := provisioner.NewGormFarmProvisioner(
-		builder.app.Logger, builder.db, builder.app.Location,
-		datastoreRegistry.NewFarmDAO(), farmProvisionerChan,
-		farmDeprovisionerChan, mapperRegistry.GetUserMapper(),
-		gormInitializer)
+		builder.app.Logger, builder.db, builder.app.Location, builder.datastoreRegistry.NewFarmDAO(),
+		builder.datastoreRegistry.GetPermissionDAO(), farmProvisionerChan, farmDeprovisionerChan,
+		mapperRegistry.GetUserMapper(), configInitializer)
 	serviceRegistry.SetFarmProvisioner(farmProvisioner)
 
+	// Initialize the database with a default farm
+	if builder.databaseInit {
+		builder.initDatabase()
+	}
+
+	// Load all the organizations
 	orgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
 	if err != nil {
-		builder.app.Logger.Fatal(err)
+		if err.Error() == "no such table: organizations" {
+			// Assume this is a first start and the database
+			// needs to be initialized
+			builder.initDatabase()
+			orgs, err = orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+			if err != nil {
+				builder.app.Logger.Fatal(err)
+			}
+		} else {
+			builder.app.Logger.Fatal(err)
+		}
 	}
-	//serverConfig.SetOrganizations(orgs)
-	//builder.app.Server.SetOrganizations(orgs)
 
+	// Load all the farms
 	if len(orgs) > 0 {
 		for _, org := range orgs {
 			farmConfigs = append(farmConfigs, org.GetFarms()...)
@@ -153,22 +175,24 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	//serverConfig.SetFarms(farmConfigs)
-	//builder.app.Server.SetFarms(farmConfigs)
 
+	// Build a FarmService for each farm in the database
 	for _, farmConfig := range farmConfigs {
 
-		// gormDB := gormds.NewGormDB(builder.app.Logger, builder.app.GORMInitParams)
-		// db := gormDB.Connect(false)
-		// deviceDAO := gormds.NewDeviceDAO(builder.app.Logger, db)
-		// farmDAO := gormds.NewFarmDAO(builder.app.Logger, db)
+		farmID := farmConfig.GetID()
 
-		farmFactory.BuildService(builder.farmStateStore, farmDAO, eventLogDAO,
+		farmEventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.db, int(farmID))
+
+		farmService, err := farmFactory.BuildService(builder.farmStateStore, farmDAO, farmEventLogDAO,
 			builder.deviceDataStore, builder.deviceStateStore,
 			farmConfig)
-		//builder.app.Server..AddFarm(&farmConfig)
+		if err != nil {
+			builder.app.Logger.Errorf("Error: %s", err)
+			continue
+		}
+		farmService.RefreshHardwareVersions()
 
-		builder.app.Logger.Debugf("Farm ID: %s", farmConfig.GetID())
+		builder.app.Logger.Debugf("Farm ID: %s", farmID)
 		builder.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
 		builder.app.Logger.Debugf("Mode: %s", builder.app.Mode)
 		builder.app.Logger.Debugf("Timezone: %s", builder.app.Timezone)
@@ -183,13 +207,19 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 			select {
 			case farmConfig := <-farmProvisionerChan:
 				builder.app.Logger.Debugf("Processing provisioner request...")
+
+				farmKey := fmt.Sprintf("%d-%s", farmConfig.OrganizationID, farmConfig.Name)
+				farmID := builder.idGenerator.NewID32(farmKey)
+
+				farmEventLogDAO := gormds.NewEventLogDAO(builder.app.Logger, builder.db, farmID)
 				farmService, err := farmFactory.BuildService(
-					builder.farmStateStore, farmDAO, eventLogDAO, builder.deviceDataStore,
+					builder.farmStateStore, farmDAO, farmEventLogDAO, builder.deviceDataStore,
 					builder.deviceStateStore, &farmConfig)
 				if err != nil {
 					builder.app.Logger.Errorf("Error: %s", err)
 					break
 				}
+				farmService.InitializeState(true)
 				farmService.RefreshHardwareVersions()
 				serviceRegistry.AddFarmService(farmService)
 				farmTickerProvisionerChan <- farmConfig.GetID()
@@ -221,7 +251,7 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 
 	organizationService := service.NewOrganizationService(
 		builder.app.Logger, builder.idGenerator,
-		datastoreRegistry.GetOrganizationDAO())
+		builder.datastoreRegistry.GetOrganizationDAO())
 	serviceRegistry.SetOrganizationService(organizationService)
 
 	// Build JWT service
@@ -230,16 +260,16 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
-	//farmConfigStore := store.NewGormFarmStore(farmDAO, 1)
+
 	defaultRole, err := roleDAO.GetByName(builder.app.DefaultRole, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
+
 	jwtService := service.CreateJsonWebTokenService(builder.app,
 		builder.idGenerator, orgDAO, farmDAO, defaultRole,
 		mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter,
 		525960, rsaKeyPair) // 1 year jwt expiration
-	//jwtService := service.CreateJsonWebTokenService(builder.app, farmDAO, mapperRegistry.GetDeviceMapper(), serviceRegistry, jsonWriter, 525960, rsaKeyPair) // 1 year jwt expiration
 	if err != nil {
 		builder.app.Logger.Fatal(err)
 	}
@@ -259,4 +289,34 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	}
 
 	return rsaKeyPair, serviceRegistry, restServices, farmTickerProvisionerChan, err
+}
+
+func (builder *GormConfigBuilder) initDatabase() {
+
+	builder.app.Logger.Info("Initializing database...")
+
+	builder.gormDB.Create()
+	builder.gormDB.Migrate()
+
+	provParams := &common.ProvisionerParams{
+		UserID:           0,
+		RoleID:           0,
+		OrganizationID:   0,
+		FarmName:         common.DEFAULT_CROP_NAME,
+		ConfigStoreType:  builder.app.DefaultConfigStoreType,
+		StateStoreType:   builder.app.DefaultStateStoreType,
+		DataStoreType:    builder.app.DefaultDataStoreType,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL}
+
+	configInitializer := dao.NewConfigInitializer(builder.app.Logger,
+		builder.app.IdGenerator, builder.app.Location,
+		builder.datastoreRegistry, builder.app.Mode)
+
+	_, err := configInitializer.Initialize(builder.app.EnableDefaultFarm, provParams)
+	if err != nil {
+		builder.app.Logger.Fatal(err)
+	}
+	// if err := farmDAO.Save(farmConfig); err != nil {
+	// 	builder.app.Logger.Fatal(err)
+	// }
 }

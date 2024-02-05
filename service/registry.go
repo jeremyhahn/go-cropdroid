@@ -66,11 +66,10 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	mappers mapper.MapperRegistry) ServiceRegistry {
 
 	algorithmService := NewAlgorithmService(daos.GetAlgorithmDAO())
-	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper()) // ConfigService
-	//configService
-	//eventLogService := NewEventLogService(app, daos.GetEventLogDAO(), common.CONTROLLER_TYPE_SERVER)
-	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper())                    // ConfigService
-	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO(), mappers.GetScheduleMapper(), nil) // ConfigService
+	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper())
+
+	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper())
+	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO(), mappers.GetScheduleMapper(), nil)
 
 	conditionService := NewConditionService(_app.Logger, daos.GetConditionDAO(), mappers.GetConditionMapper())
 	workflowService := NewWorkflowService(_app, daos.GetWorkflowDAO(), mappers.GetWorkflowMapper())

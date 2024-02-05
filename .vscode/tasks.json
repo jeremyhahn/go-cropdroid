@@ -7,6 +7,11 @@
         "args": ["build-standalone"]
     }, {
         "type": "shell",
+        "label": "rmsqlite",
+        "command": "rm",
+        "args": ["-f", "db/cropdroid.db"]
+    }, {
+        "type": "shell",
         "label": "initsqlite",
         "command": "rm",
         "args": ["-f", "db/cropdroid.db", "&&", 

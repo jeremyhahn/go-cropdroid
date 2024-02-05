@@ -78,26 +78,6 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, idGenerator util.IdGen
 		deviceConfigDAO:     deviceConfigDAO,
 		backoffTable:        backoffTable}
 
-	deviceServices, err := serviceRegistry.GetDeviceServices(farmID)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: This is GORM specific, push into GormFarmDAO?
-	if !farmService.isRaftConfigStore(farmConfig) {
-		for _, ds := range deviceServices {
-			deviceConfig, err := ds.GetConfig()
-			if err != nil {
-				return nil, err
-			}
-			farmConfig.SetDevice(deviceConfig)
-		}
-		err = farmService.InitializeState(true)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return farmService, nil
 }
 
@@ -115,25 +95,42 @@ func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
 	if err != nil {
 		return err
 	}
-	_state := state.NewFarmStateMap(farm.farmStateID)
-	deviceStateMaps := make([]state.DeviceStateMap, 0)
-	for _, d := range deviceServices {
-		conf, err := d.GetConfig()
+	farmState := state.NewFarmStateMap(farm.farmStateID)
+	for _, deviceService := range deviceServices {
+		deviceConfig, err := deviceService.GetConfig()
+		// TODO: RAFT specific
 		if err != nil {
-			for conf == nil {
+			farm.app.Logger.Warning(err)
+			for deviceConfig == nil {
 				farm.app.Logger.Warningf("Waiting for initial device state...")
 				time.Sleep(1 * time.Minute)
 			}
 		}
-		deviceID := conf.GetID()
+		deviceID := deviceConfig.GetID()
+		deviceType := deviceConfig.GetType()
+		metrics := deviceConfig.GetMetrics()
+		channels := deviceConfig.GetChannels()
+		metricLen := len(metrics)
 		deviceStateMap := state.CreateEmptyDeviceStateMap(
-			deviceID, len(conf.GetMetrics()), len(conf.GetChannels()))
-		deviceStateMaps = append(deviceStateMaps, deviceStateMap)
-		_state.SetDevice(conf.GetType(), deviceStateMap)
+			deviceID, metricLen, len(channels))
+
+		// Create default metric value state
+		metricMap := make(map[string]float64, metricLen)
+		for _, metric := range deviceConfig.GetMetrics() {
+			metricMap[metric.Key] = 0
+		}
+		deviceStateMap.SetMetrics(metricMap)
+
+		farmState.SetDevice(deviceType, deviceStateMap)
+
+		if err := deviceService.SetState(deviceStateMap); err != nil {
+			return err
+		}
+
 		farm.backoffTable[farm.farmID] = make(map[uint64]time.Time, 0)
 	}
 	if saveToStateStore {
-		farm.stateStore.Put(farm.farmStateID, _state)
+		farm.stateStore.Put(farm.farmStateID, farmState)
 	}
 	return nil
 }
@@ -166,7 +163,7 @@ func (farm *DefaultFarmService) GetChannels() *FarmChannels {
 }
 
 func (farm *DefaultFarmService) GetPublicKey() string {
-	// TODO: Replace w/ key defined in Farm
+	// TODO: Replace w/ key defined in FarmConfig
 	return string(farm.app.KeyPair.GetPublicBytes())
 }
 
@@ -551,21 +548,22 @@ func (farm *DefaultFarmService) OnDeviceStateChange(deviceType string,
 	farm.app.Logger.Debugf("newDeviceState=%+v", newDeviceState)
 	var delta state.DeviceStateDeltaMap
 
-	lastState, err := farm.stateStore.Get(farm.farmStateID)
+	lastFarmState, err := farm.stateStore.Get(farm.farmStateID)
 	if err != nil && err != state.ErrFarmNotFound {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return nil, err
 	}
+	farm.app.Logger.Debugf("lastFarmState=%+v", lastFarmState)
 
 	newChannelMap := make(map[int]int, len(newDeviceState.GetChannels()))
 	for i, channel := range newDeviceState.GetChannels() {
 		newChannelMap[i] = channel
 	}
 
-	if lastState == nil {
+	if lastFarmState == nil {
 		delta = state.CreateDeviceStateDeltaMap(newDeviceState.GetMetrics(), newChannelMap)
 	} else {
-		d, err := lastState.Diff(deviceType, newDeviceState.GetMetrics(), newChannelMap)
+		d, err := lastFarmState.Diff(deviceType, newDeviceState.GetMetrics(), newChannelMap)
 		if err != nil {
 			farm.app.Logger.Errorf("Error: %s", err)
 			return nil, err
@@ -595,21 +593,21 @@ func (farm *DefaultFarmService) Run() {
 	go farm.WatchFarmConfigChange()
 	go farm.WatchDeviceStateChange()
 
-	if !farm.app.DebugFlag {
-		// Wait for top of the minute
-		ticker := time.NewTicker(time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				_, _, secs := time.Now().Clock()
-				if secs == 0 {
-					ticker.Stop()
-					return
-				}
-				farm.app.Logger.Infof("Waiting for top of the minute... %d sec left", 60-secs)
-			}
-		}
-	}
+	// if !farm.app.DebugFlag {
+	// 	// Wait for top of the minute
+	// 	ticker := time.NewTicker(time.Second)
+	// 	for {
+	// 		select {
+	// 		case <-ticker.C:
+	// 			_, _, secs := time.Now().Clock()
+	// 			if secs == 0 {
+	// 				ticker.Stop()
+	// 				return
+	// 			}
+	// 			farm.app.Logger.Infof("Waiting for top of the minute... %d sec left", 60-secs)
+	// 		}
+	// 	}
+	// }
 
 	farm.poll()
 	farm.Poll()

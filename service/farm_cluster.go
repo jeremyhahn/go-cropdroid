@@ -58,6 +58,9 @@ func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 				}
 				farm.Manage(deviceConfig, farm.GetState())
 			}
+		case <-farm.deviceStateQuitChan:
+			farm.app.Logger.Debugf("Closing device state channel. farmID=%d", farm.farmID)
+			return
 		}
 	}
 }

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/builder"
+	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
@@ -34,7 +35,7 @@ var standaloneCmd = &cobra.Command{
 		App.Mode = Mode
 
 		rsaKeyPair, serviceRegistry, restServices, farmTickerProvisionerChan, err := builder.NewGormConfigBuilder(
-			App, DataStore, AppStateTTL, AppStateTick).Build()
+			App, DeviceDataStore, AppStateTTL, AppStateTick, DatabaseInit).Build()
 
 		if err != nil {
 			App.Logger.Fatal(err)
@@ -57,7 +58,7 @@ var standaloneCmd = &cobra.Command{
 			changefeedService.Subscribe()
 		}
 
-		serviceRegistry.GetEventLogService().Create("System", "Startup")
+		serviceRegistry.GetEventLogService(0).Create(0, common.CONTROLLER_TYPE_SERVER, "System", "Startup")
 
 		done := make(chan error, 1)
 		<-done

@@ -6,7 +6,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
@@ -17,23 +16,26 @@ type GormFarmProvisioner struct {
 	db                    *gorm.DB
 	location              *time.Location
 	farmDAO               dao.FarmDAO
+	permissionDAO         dao.PermissionDAO
 	farmProvisionerChan   chan config.Farm
 	farmDeprovisionerChan chan config.Farm
 	userMapper            mapper.UserMapper
-	initializer           datastore.Initializer
+	initializer           dao.Initializer
 	FarmProvisioner
 }
 
-func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB, location *time.Location,
-	farmDAO dao.FarmDAO, farmProvisionerChan chan config.Farm,
+func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB,
+	location *time.Location, farmDAO dao.FarmDAO,
+	permissionDAO dao.PermissionDAO, farmProvisionerChan chan config.Farm,
 	farmDeprovisionerChan chan config.Farm, userMapper mapper.UserMapper,
-	initializer datastore.Initializer) FarmProvisioner {
+	initializer dao.Initializer) FarmProvisioner {
 
 	return &GormFarmProvisioner{
 		logger:                logger,
 		db:                    db,
 		location:              location,
 		farmDAO:               farmDAO,
+		permissionDAO:         permissionDAO,
 		farmProvisionerChan:   farmProvisionerChan,
 		farmDeprovisionerChan: farmDeprovisionerChan,
 		userMapper:            userMapper,
@@ -41,11 +43,13 @@ func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB, location *time.
 }
 
 func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount, params *common.ProvisionerParams) (*config.Farm, error) {
-	userConfig := provisioner.userMapper.MapUserModelToConfig(userAccount)
-	farmConfig, err := provisioner.initializer.BuildConfig(params.OrganizationID, userConfig, userAccount.GetRoles()[0])
+
+	// Build farm config
+	farmConfig, err := provisioner.initializer.Initialize(true, params)
 	if err != nil {
-		return nil, err
+		provisioner.logger.Error(err)
 	}
+
 	if provisioner.farmProvisionerChan != nil {
 		select {
 		case provisioner.farmProvisionerChan <- *farmConfig:
@@ -53,7 +57,27 @@ func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount
 			provisioner.logger.Debugf("[FarmProvisioner.Provision] Waiting for provisioning request to complete. user=%s", userAccount.GetEmail())
 		}
 	}
-	return farmConfig, provisioner.farmDAO.Save(farmConfig)
+
+	// Save the farm config
+	if err := provisioner.farmDAO.Save(farmConfig); err != nil {
+		return nil, err
+	}
+
+	// Save permission entries for each user / role combination
+	// for _, user := range farmConfig.Users {
+	// 	for _, role := range user.GetRoles() {
+	// 		permission := config.NewPermission()
+	// 		permission.SetUserID(user.GetID())
+	// 		permission.SetRoleID(role.GetID())
+	// 		permission.SetFarmID(farmConfig.GetID())
+	// 		// if err := provisioner.permissionDAO.Save(permission); err != nil {
+	// 		// 	return nil, err
+	// 		// }
+	// 		provisioner.permissionDAO.Save(permission)
+	// 	}
+	// }
+
+	return farmConfig, nil
 }
 
 func (provisioner *GormFarmProvisioner) Deprovision(

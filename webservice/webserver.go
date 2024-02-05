@@ -75,7 +75,7 @@ func NewWebserver(app *app.App, serviceRegistry service.ServiceRegistry,
 		notificationService:       serviceRegistry.GetNotificationService(),
 		notificationHubs:          make(map[int]*websocket.NotificationHub),
 		notificationHubMutex:      sync.Mutex{},
-		eventLogService:           serviceRegistry.GetEventLogService()}
+		eventLogService:           serviceRegistry.GetEventLogService(0)}
 	webserver.httpServer = &http.Server{
 		ReadTimeout:  common.HTTP_SERVER_READ_TIMEOUT,
 		WriteTimeout: common.HTTP_SERVER_WRITE_TIMEOUT,
@@ -114,9 +114,9 @@ func (server *Webserver) Run() {
 	sPort := fmt.Sprintf(":%d", server.app.WebPort)
 	if server.app.SSLFlag {
 
-		server.app.Logger.Debugf("Starting web services on TLS port %d", server.app.WebPort)
-		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web server on TLS port %d", server.app.WebPort))
-
+		message := fmt.Sprintf("Starting web server on TLS port %d", server.app.WebPort)
+		server.app.Logger.Debugf(message)
+		server.eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, server.eventType, message)
 		certfile := fmt.Sprintf("%s/cert.pem", server.app.KeyDir)
 		keyfile := fmt.Sprintf("%s/key.pem", server.app.KeyDir)
 
@@ -152,8 +152,9 @@ func (server *Webserver) Run() {
 
 	} else {
 
-		server.app.Logger.Infof("Starting web services on port %d", server.app.WebPort)
-		server.eventLogService.Create(server.eventType, fmt.Sprintf("Starting web services on port %d", server.app.WebPort))
+		message := fmt.Sprintf("Starting web services on port %d", server.app.WebPort)
+		server.app.Logger.Infof(message)
+		server.eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, server.eventType, message)
 
 		ipv4Listener, err := net.Listen("tcp4", sPort)
 		if err != nil {
@@ -520,7 +521,11 @@ func (server *Webserver) events(w http.ResponseWriter, r *http.Request) {
 	//server.eventLogService.Create(server.eventType,
 	//	fmt.Sprintf("/events requested by %s", server.clientIP(r)))
 
-	entities := server.registry.GetEventLogService().GetAll()
+	params := mux.Vars(r)
+	sFarmID := params["farmID"]
+	farmID, _ := strconv.ParseUint(sFarmID, 10, 64) // ignore errors to default to system log
+
+	entities := server.registry.GetEventLogService(farmID).GetAll()
 	w.Header().Set("Content-Type", "application/json")
 	json, _ := json.MarshalIndent(entities, "", " ")
 	fmt.Fprintln(w, string(json))
@@ -530,6 +535,8 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 	page := params["page"]
+	sFarmID := params["farmID"]
+	farmID, _ := strconv.ParseUint(sFarmID, 10, 32) // ignore errors to default to system log
 
 	//server.eventLogService.Create(server.eventType,
 	//	fmt.Sprintf("/eventsPage/%s requested by %s", page, server.clientIP(r)))
@@ -539,9 +546,10 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 		server.sendBadRequest(w, r, err)
 	}
 
-	server.app.Logger.Debugf("[Webserver.eventsPage] page %s requested", page)
+	server.app.Logger.Debugf("[Webserver.eventsPage] page %s requested for farmID=%d",
+		page, farmID)
 
-	entities := server.registry.GetEventLogService().GetPage(p)
+	entities := server.registry.GetEventLogService(farmID).GetPage(p)
 	w.Header().Set("Content-Type", "application/json")
 	json, _ := json.MarshalIndent(entities, "", " ")
 	fmt.Fprintln(w, string(json))

@@ -390,7 +390,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 			StateStoreType:   provisionRequest.StateStoreType,
 			DataStoreType:    provisionRequest.DataStoreType,
 			ConsistencyLevel: provisionRequest.ConsistencyLevel}
-		farmConfig, err := cluster.initializer.BuildConfig(provParams)
+		farmConfig, err := cluster.initializer.BuildConfig(provParams, nil)
 		if err != nil {
 			cluster.params.Logger.Errorf("[Gossip.handleMessage] Error: %s", err)
 			return

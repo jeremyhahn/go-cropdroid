@@ -128,11 +128,7 @@ func (service *DefaultScheduleService) Create(session Session, schedule *config.
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.GetID() == schedule.GetChannelID() {
-				// c := *channel.(*config.Channel)
-				// c.Schedule = append(c.Schedule, *schedule.(*config.Schedule))
-				//channel.Schedule = append(channel.Schedule, *schedule.(*config.Schedule))
-				//device.SetChannel(&channel)
-				//return schedule, farmService.SetDeviceConfig(&device)
+				channel.SetScheduleItem(schedule)
 				device.SetChannel(channel)
 				return schedule, farmService.SetDeviceConfig(device)
 			}

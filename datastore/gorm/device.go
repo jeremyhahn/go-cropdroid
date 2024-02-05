@@ -33,6 +33,8 @@ func (dao *GormDeviceDAO) Get(farmID, deviceID uint64,
 		Preload("Settings").
 		Preload("Metrics").
 		Preload("Channels").
+		Preload("Channels.Conditions").
+		Preload("Channels.Schedule").
 		First(&devices, deviceID).Error; err != nil {
 		return nil, err
 	}

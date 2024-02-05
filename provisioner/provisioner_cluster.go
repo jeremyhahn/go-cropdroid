@@ -52,7 +52,7 @@ func (provisioner *RaftFarmProvisioner) Provision(
 	}
 
 	// Construct a new config.Farm and set the default user
-	farmConfig, err := provisioner.initializer.BuildConfig(params)
+	farmConfig, err := provisioner.initializer.BuildConfig(params, userConfig)
 	if err != nil {
 		return nil, err
 	}

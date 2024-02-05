@@ -10,11 +10,12 @@ import (
 type GormEventLogDAO struct {
 	logger *logging.Logger
 	db     *gorm.DB
+	farmID int
 	dao.EventLogDAO
 }
 
-func NewEventLogDAO(logger *logging.Logger, db *gorm.DB) dao.EventLogDAO {
-	return &GormEventLogDAO{logger: logger, db: db}
+func NewEventLogDAO(logger *logging.Logger, db *gorm.DB, farmID int) dao.EventLogDAO {
+	return &GormEventLogDAO{logger: logger, db: db, farmID: farmID}
 }
 
 func (dao *GormEventLogDAO) Save(log entity.EventLogEntity) error {
@@ -39,7 +40,11 @@ func (dao *GormEventLogDAO) Count(CONSISTENCY_LEVEL int) (int64, error) {
 
 func (dao *GormEventLogDAO) GetPage(CONSISTENCY_LEVEL int, offset, size int64) ([]entity.EventLog, error) {
 	var logs []entity.EventLog
-	if err := dao.db.Limit(size).Offset(offset).Order("timestamp desc").Find(&logs).Error; err != nil {
+	if err := dao.db.Limit(size).
+		Offset(offset).
+		Where("farm_id = ?", dao.farmID).
+		Order("timestamp desc").
+		Find(&logs).Error; err != nil {
 		return nil, err
 	}
 	return logs, nil

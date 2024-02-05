@@ -38,7 +38,6 @@ var (
 	ClusterRaftPort      int
 	ClusterRaftLeaderID  uint64
 	ClusterBootstrap     int
-	ClusterInit          bool
 
 	DefaultConsistencyLevel int
 	DefaultConfigStoreType  int
@@ -63,7 +62,6 @@ func init() {
 	clusterCmd.PersistentFlags().IntVarP(&ClusterVirtualNodes, "vnodes", "", 1, "Number of virtual nodes on the consistent hash ring")
 	clusterCmd.PersistentFlags().BoolVarP(&ClusterJoin, "join", "", false, "True to join an existing cluster, false to create a new cluster")
 	clusterCmd.PersistentFlags().StringVarP(&ClusterListenAddress, "listen", "", "", "The IP address services listen for incoming requests")
-	clusterCmd.PersistentFlags().BoolVarP(&ClusterInit, "init", "", false, "Initialize an empty database with user and optional farm")
 	//clusterCmd.PersistentFlags().BoolVarP(&ClusterBootstrap, "bootstrap", "", 0, "Number of nodes to wait on when bootstrapping the cluster")
 	//clusterCmd.PersistentFlags().StringVarP(&ClusterGossipPeers, "peers", "", "localhost:63001,localhost:63002,localhost:63003", "Cluster member peer addresses")
 
@@ -168,7 +166,7 @@ var clusterCmd = &cobra.Command{
 			ClusterIaasProvider, ClusterRegion, ClusterZone, App.DataDir, localAddress,
 			ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort,
 			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes,
-			ClusterBootstrap, ClusterInit, App.IdGenerator, App.IdSetter, farmProvisionerChan,
+			ClusterBootstrap, DatabaseInit, App.IdGenerator, App.IdSetter, farmProvisionerChan,
 			farmDeprovisionerChan, farmTickerProvisionerChan)
 
 		gossipNode := cluster.NewGossipNode(params, clusterutil.NewHashring(ClusterVirtualNodes))

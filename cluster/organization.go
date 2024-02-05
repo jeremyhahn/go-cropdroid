@@ -45,7 +45,7 @@ func (dao *RaftOrganizationDAO) StartCluster() {
 	if err != nil {
 		dao.logger.Fatal(err)
 	}
-	dao.raft.WaitForClusterReady(clusterID)
+	//dao.raft.WaitForClusterReady(clusterID)
 }
 
 func (dao *RaftOrganizationDAO) Save(organization *config.Organization) error {

@@ -134,7 +134,7 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	ff.app.Logger.Debugf("Timezone: %s", farmConfig.GetTimezone())
 	ff.app.Logger.Debugf("Polling interval: %d", farmConfig.GetInterval())
 
-	startupEventLogItem := fmt.Sprintf("Created farm on node %d", ff.app.NodeID)
+	startupEventLogItem := fmt.Sprintf("Starting farm on node %d", ff.app.NodeID)
 	eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, "System", startupEventLogItem)
 
 	return farmService, nil
@@ -168,8 +168,8 @@ func (ff *DefaultFarmFactory) GetFarms(session Session) ([]*config.Farm, error) 
 	// }
 
 	// Update: 01/02/2022
-	// The config store type is currently stored at the farm level so this is a
+	// The farm config store type is currently stored in farm object so this is a
 	// chicken and egg problem, since the store type has to be known before
-	// the lookup can be made.
+	// the lookup can be made. Hard coding consistency level for now.
 	return ff.farmDAO.GetByIds(farmIds, common.CONSISTENCY_LOCAL)
 }

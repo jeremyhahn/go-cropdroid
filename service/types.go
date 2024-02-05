@@ -255,6 +255,7 @@ type DeviceService interface {
 	Poll() error
 	SetConfig(config *config.Device) error
 	SetMode(mode string, device device.IOSwitcher)
+	SetState(deviceStateMap state.DeviceStateMap) error
 	Stop()
 	Switch(channelID, position int, logMessage string) (*common.Switch, error)
 	TimerSwitch(channelID, duration int, logMessage string) (common.TimerEvent, error)

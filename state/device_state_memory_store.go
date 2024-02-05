@@ -71,13 +71,10 @@ func (store *DeviceStore) Len() int {
 func (store *DeviceStore) Put(deviceID uint64, v DeviceStateMap) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	item, ok := store.devices[deviceID]
-	if !ok {
-		item = deviceStoreItem{state: v}
-		store.devices[deviceID] = item
-		//store.logger.Errorf("Storing device: device.id=%d", deviceID)
-	}
+	item := deviceStoreItem{state: v}
 	item.lastAccess = time.Now().Unix()
+	store.devices[deviceID] = item
+	//store.logger.Debugf("Storing device state: device.id=%d", deviceID)
 	return nil
 }
 
@@ -87,7 +84,7 @@ func (store *DeviceStore) Get(deviceID uint64) (DeviceStateMap, error) {
 	if device, ok := store.devices[deviceID]; ok {
 		state := device.state
 		device.lastAccess = time.Now().Unix()
-		//store.logger.Errorf("Returning stored device: device.id=%d", deviceID)
+		//store.logger.Debugf("Fetching stored device state: device.id=%d", deviceID)
 		return state, nil
 	}
 	return nil, fmt.Errorf("DeviceID not found in app state: %d", deviceID)

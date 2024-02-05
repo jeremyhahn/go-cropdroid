@@ -9,7 +9,9 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
@@ -42,14 +44,30 @@ var configCmd = &cobra.Command{
 			db := gormdb.Connect(true)
 			db.LogMode(App.DebugFlag)
 
-			idGenerator := util.NewIdGenerator(App.DataStoreEngine)
+			//idGenerator := util.NewIdGenerator(App.DataStoreEngine)
 
 			switch App.Mode {
 			case common.CONFIG_MODE_VIRTUAL:
-				if err := gorm.NewGormInitializer(App.Logger, gormdb, idGenerator, App.Location,
-					App.Mode).Initialize(App.EnableDefaultFarm); err != nil {
-					log.Fatal(err)
-				}
+				// if err := gorm.NewGormInitializer(App.Logger, gormdb, idGenerator, App.Location,
+				// 	App.Mode).Initialize(App.EnableDefaultFarm); err != nil {
+				// 	log.Fatal(err)
+				// }
+				datastoreRegistry := gormds.NewGormRegistry(App.Logger, gormdb)
+
+				provParams := &common.ProvisionerParams{
+					UserID:           0,
+					RoleID:           0,
+					OrganizationID:   0,
+					FarmName:         common.DEFAULT_CROP_NAME,
+					ConfigStoreType:  App.DefaultConfigStoreType,
+					StateStoreType:   App.DefaultStateStoreType,
+					DataStoreType:    App.DefaultDataStoreType,
+					ConsistencyLevel: common.CONSISTENCY_LOCAL}
+
+				dao.NewConfigInitializer(App.Logger,
+					App.IdGenerator, App.Location, datastoreRegistry,
+					App.Mode).Initialize(App.EnableDefaultFarm, provParams)
+
 			// case common.MODE_CLOUD:
 			// 	if err := gorm.NewGormCloudInitializer(App.Logger, App.GORM, App.Location).Initialize(); err != nil {
 			// 		log.Fatal(err)
@@ -77,7 +95,7 @@ var configCmd = &cobra.Command{
 				App.InitLogFile(os.Getuid(), os.Getgid())
 
 				_, _, _, _, err := builder.NewGormConfigBuilder(App, DeviceDataStore,
-					AppStateTTL, AppStateTick).Build()
+					AppStateTTL, AppStateTick, DatabaseInit).Build()
 				if err != nil {
 					App.Logger.Fatal(err)
 				}

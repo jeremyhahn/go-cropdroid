@@ -40,7 +40,7 @@ func (roleDAO *RaftRoleDAO) StartCluster() {
 	if err != nil {
 		roleDAO.logger.Fatal(err)
 	}
-	roleDAO.raft.WaitForClusterReady(clusterID)
+	//roleDAO.raft.WaitForClusterReady(clusterID)
 }
 
 func (roleDAO *RaftRoleDAO) Get(roleID uint64, CONSISTENCY_LEVEL int) (*config.Role, error) {

@@ -1,4 +1,5 @@
-// +build webserver_original
+//go:build ignore
+// +build ignore
 
 package webservice
 

@@ -100,6 +100,15 @@ func NewRaftRegistry(logger *logging.Logger,
 	permissionDAO := NewRaftPermissionDAO(logger,
 		orgDAO, farmDAO, userDAO)
 
+	// Wait for clusters to become ready
+	eventLogClusterID := raftNode.GetParams().
+		IdGenerator.CreateEventLogClusterID(raftOptions.SystemClusterID)
+	raftNode.WaitForClusterReady(eventLogClusterID)
+
+	raftNode.WaitForClusterReady(raftOptions.OrganizationClusterID)
+	raftNode.WaitForClusterReady(raftOptions.RoleClusterID)
+	raftNode.WaitForClusterReady(raftOptions.UserClusterID)
+
 	registry := &RaftDaoRegistry{
 		logger:           logger,
 		idGenerator:      idGenerator,

@@ -52,7 +52,8 @@ func (eventLog *EventLog) GetPage(page int64) *viewmodel.EventsPage {
 	if page < 1 {
 		page = 1
 	}
-	var offset = (page-1)*pageSize + 1
+	//var offset = (page-1)*pageSize + 1
+	var offset = (page - 1) * pageSize
 	eventLog.app.Logger.Debugf("[GetPage]")
 	entities, err := eventLog.dao.GetPage(common.CONSISTENCY_LOCAL, offset, pageSize)
 	if err != nil {

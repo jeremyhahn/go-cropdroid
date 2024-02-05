@@ -59,6 +59,8 @@ func NewDeviceService(app *app.App, farmID, deviceID uint64, farmName string,
 	// 	deviceDAO.Save(deviceConfig)
 	// }
 
+	app.Logger.Errorf("Creating IOSwitchDeviceService for %s", device.GetType())
+
 	return &IOSwitchDeviceService{
 		app:             app,
 		deviceID:        deviceID,
@@ -117,6 +119,10 @@ func (service *IOSwitchDeviceService) SetConfig(config *config.Device) error {
 
 func (service *IOSwitchDeviceService) GetState() (state.DeviceStateMap, error) {
 	return service.stateStore.Get(service.deviceID)
+}
+
+func (service *IOSwitchDeviceService) SetState(deviceStateMap state.DeviceStateMap) error {
+	return service.stateStore.Put(service.deviceID, deviceStateMap.(*state.DeviceState))
 }
 
 func (service *IOSwitchDeviceService) SetMode(mode string, d device.IOSwitcher) {

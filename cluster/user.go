@@ -40,7 +40,7 @@ func (userDAO *RaftUserDAO) StartCluster() {
 	if err != nil {
 		userDAO.logger.Fatal(err)
 	}
-	userDAO.raft.WaitForClusterReady(clusterID)
+	//userDAO.raft.WaitForClusterReady(clusterID)
 }
 
 func (userDAO *RaftUserDAO) Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error) {

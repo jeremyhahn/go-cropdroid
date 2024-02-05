@@ -1,6 +1,7 @@
-//go:build ignore
-// +build ignore
-
+// TODO: This is not being used. Leaving here to avoid
+//
+//	build constraint errors because all files in
+//	this package are being ignored.
 package store
 
 import "github.com/jeremyhahn/go-cropdroid/config"

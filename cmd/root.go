@@ -39,6 +39,7 @@ var DowngradeUser string
 var EnableRegistrations bool
 var EnableDefaultFarm bool
 
+var DatabaseInit bool
 var DeviceDataStore string
 var DataStoreEngine string
 var DataStoreUser string
@@ -123,6 +124,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DowngradeUser, "setuid", "", "root", "Root downgrade user/group")
 	rootCmd.PersistentFlags().BoolVarP(&EnableRegistrations, "enable-registrations", "", false, "Allows user account registrations via API")
 
+	rootCmd.PersistentFlags().BoolVarP(&DatabaseInit, "init", "", false, "Initialize an empty database with user and optional farm")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreEngine, "datastore", "", "memory", "Data store type [ memory | sqlite | mysql | postgres | cockroach ]")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreUser, "datastore-user", "", "root", "Data store username")
 	rootCmd.PersistentFlags().StringVarP(&DataStorePass, "datastore-pass", "", "", "Data store password")
@@ -135,7 +137,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
 
-	rootCmd.PersistentFlags().BoolVarP(&EnableDefaultFarm, "enable-default-farm", "", true, "Create a default farm on startup")
+	rootCmd.PersistentFlags().BoolVarP(&EnableDefaultFarm, "enable-default-farm", "", false, "Create a default farm on startup")
 	rootCmd.PersistentFlags().StringVarP(&DefaultRole, "default-role", "", "admin", "Default role to assign to newly registered users [ admin | cultivator | analyst ]")
 	rootCmd.PersistentFlags().StringVarP(&DefaultFarmPermission, "default-permission", "", "all", "Default permission given to newly registered users to access existing farms [ all | owner | none ]")
 

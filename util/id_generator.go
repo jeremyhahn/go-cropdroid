@@ -12,6 +12,7 @@ import (
 
 type IdGenerator interface {
 	NewID(string) uint64
+	NewID32(str string) int
 	Uint64Bytes(uint64) []byte
 	StringBytes(str string) []byte
 	TimestampBytes(t time.Time) []byte
@@ -42,6 +43,7 @@ type Fnv1aHasher struct {
 func NewIdGenerator(datastoreEngine string) IdGenerator {
 	uid := &Fnv1aHasher{}
 	if datastoreEngine == common.DATASTORE_TYPE_64BIT {
+		// TODO: Fix this to true
 		uid.is64bit = false
 	} else {
 		uid.is64bit = false
@@ -52,6 +54,13 @@ func NewIdGenerator(datastoreEngine string) IdGenerator {
 // Returns a new 64-bit FNV-1a hash from a string
 func (hasher *Fnv1aHasher) NewID(str string) uint64 {
 	return hasher.createClusterHash([]byte(str))
+}
+
+// Returns a new 64-bit FNV-1a hash from a string
+func (hasher *Fnv1aHasher) NewID32(str string) int {
+	fnv32a := fnv.New32a()
+	fnv32a.Write([]byte(str))
+	return int(fnv32a.Sum32())
 }
 
 // Returns a new 64-bit FNV-1a hash from a byte array
@@ -122,7 +131,7 @@ func (hasher *Fnv1aHasher) NewEventLogID(eventLog entity.EventLog) uint64 {
 		eventLog.FarmID,
 		eventLog.DeviceID,
 		eventLog.Message,
-		eventLog.Timestamp))
+		eventLog.Timestamp.Unix()))
 }
 
 func (hasher *Fnv1aHasher) NewUserID(email string) uint64 {

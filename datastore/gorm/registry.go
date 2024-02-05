@@ -48,7 +48,7 @@ func NewGormRegistry(logger *logging.Logger, gormDB GormDB) dao.Registry {
 		scheduleDAO:     NewScheduleDAO(logger, db),
 		conditionDAO:    NewConditionDAO(logger, db),
 		algorithmDAO:    NewAlgorithmDAO(logger, db),
-		eventLogDAO:     NewEventLogDAO(logger, db),
+		eventLogDAO:     NewEventLogDAO(logger, db, 0),
 		userDAO:         NewUserDAO(logger, db),
 		roleDAO:         NewRoleDAO(logger, db),
 		workflowDAO:     NewWorkflowDAO(logger, db),

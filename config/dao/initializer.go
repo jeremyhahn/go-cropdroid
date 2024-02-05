@@ -18,7 +18,7 @@ var (
 
 type Initializer interface {
 	Initialize(includeFarm bool, params *common.ProvisionerParams) (*config.Farm, error)
-	BuildConfig(*common.ProvisionerParams) (*config.Farm, error)
+	BuildConfig(*common.ProvisionerParams, *config.User) (*config.Farm, error)
 	//DefaultFarmID() (uint64, string, error)
 }
 
@@ -53,9 +53,6 @@ func NewConfigInitializer(logger *logging.Logger, idGenerator util.IdGenerator,
 func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	params *common.ProvisionerParams) (*config.Farm, error) {
 
-	// initializer.gormDB.Create()
-	// initializer.gormDB.Migrate()
-
 	encrypted, err := bcrypt.GenerateFromPassword([]byte(common.DEFAULT_PASSWORD), bcrypt.DefaultCost)
 	if err != nil {
 		initializer.logger.Fatalf("Error generating encrypted password: %s", err)
@@ -84,32 +81,25 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	adminUser.SetRoles([]*config.Role{adminRole})
 	initializer.userDAO.Save(adminUser)
 
-	// permission := config.NewPermission()
-	// permission.SetUserID(adminUser.GetID())
-	// permission.SetRoleID(adminRole.GetID())
-
 	var farm *config.Farm
 	if includeFarm {
-		farm, err = initializer.BuildConfig(params)
+		farm, err = initializer.BuildConfig(params, adminUser)
 		if err != nil {
 			return nil, err
 		}
 		if err := initializer.farmDAO.Save(farm); err != nil {
 			return nil, err
 		}
-		// permission.SetFarmID(farm.GetID())
 	}
-	// if err := initializer.permissionDAO.Save(permission); err != nil {
-	// 	return nil, err
-	// }
 
 	phAlgoID := initializer.newID(common.ALGORITHM_PH_KEY)
 	phAlgo := &config.Algorithm{ID: phAlgoID, Name: common.ALGORITHM_PH_KEY}
 	initializer.algorithmDAO.Save(phAlgo)
 
-	oxidizerAlgoID := initializer.newID(common.ALGORITHM_ORP_KEY)
-	oxidizerAlgo := &config.Algorithm{ID: oxidizerAlgoID, Name: common.ALGORITHM_ORP_KEY}
-	initializer.algorithmDAO.Save(oxidizerAlgo)
+	// Oxidizer can be set up with a simple condition
+	// oxidizerAlgoID := initializer.newID(common.ALGORITHM_ORP_KEY)
+	// oxidizerAlgo := &config.Algorithm{ID: oxidizerAlgoID, Name: common.ALGORITHM_ORP_KEY}
+	// initializer.algorithmDAO.Save(oxidizerAlgo)
 
 	initializer.seedInventory()
 
@@ -124,45 +114,12 @@ func (initializer *ConfigInitializer) newFarmID(farmID uint64, key string) uint6
 	return initializer.idGenerator.NewID(fmt.Sprintf("%d-%s", farmID, key))
 }
 
-// func (initializer *ConfigInitializer) DefaultFarmID() (uint64, string, error) {
-// 	orgID := uint64(0)
-// 	farms, err := initializer.permissionDAO.GetFarms(orgID, common.CONSISTENCY_LOCAL)
-// 	if err != nil {
-// 		initializer.logger.Error(err)
-// 	}
-// 	farmName := fmt.Sprintf("%s %d", common.DEFAULT_CROP_NAME, len(farms)+1)
-// 	farmKey := fmt.Sprintf("%d-%s", orgID, farmName)
-// 	farmID := initializer.idGenerator.NewID(farmKey)
-// 	// Make sure farm doesn't already exist
-// 	for _, farm := range farms {
-// 		if farm.GetID() == farmID {
-// 			return orgID, farmName, ErrFarmAlreadyExists
-// 		}
-// 	}
-// 	return farmID, farmName, nil
-// }
-
-// // Builds a Farm for the specified (pre-existing) administrative user.
-// func (initializer *ConfigInitializer) BuildConfig(orgID uint64,
-// 	farmName string, adminUser *config.User,
-// 	assignedRole common.Role) (*config.Farm, error) {
-
-// 	_, farmName, err := initializer.DefaultFarmID()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return initializer.CreateConfig(orgID, farmName, adminUser, assignedRole)
-// }
-
-func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerParams) (*config.Farm, error) {
+func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerParams, adminUser *config.User) (*config.Farm, error) {
 
 	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
 	farmID := initializer.idGenerator.NewID(farmKey)
 
-	//
-	// TODO: This needs to be done by the caller
-	//
-	// Add permissions for all users in the org
+	// Add permissions for all existing users in the organization
 	users, _ := initializer.permissionDAO.GetUsers(params.OrganizationID,
 		params.ConsistencyLevel)
 	for _, user := range users {
@@ -172,15 +129,23 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 			FarmID: farmID}
 		initializer.permissionDAO.Save(&permission)
 	}
-	//
-	// TODO: This needs to be done by the caller
-	//
-	// Add permission for user
+
+	// Add permission for user who requested the provisioning
 	permission := config.Permission{
 		UserID: params.UserID,
 		RoleID: params.RoleID,
 		FarmID: farmID}
 	initializer.permissionDAO.Save(&permission)
+
+	// TODO: This is for GORM.
+	// if users == nil && adminUser != nil {
+	// 	// Admin user is nil when Gossip.handleEvent
+	// 	// processes a new EventProvisionRequest. Dont
+	// 	// run this code for this event.
+	// 	users = []*config.User{adminUser}
+	// 	params.UserID = adminUser.ID
+	// 	params.RoleID = adminUser.Roles[0].ID
+	// }
 
 	// Create a final list of users to assign to the farm
 	adminUserID := initializer.newID(common.DEFAULT_USER)
@@ -444,7 +409,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 		{ID: doserChannel1ID, ChannelID: common.CHANNEL_DOSER_PHUP_ID, Name: common.CHANNEL_DOSER_PHUP, Enable: false, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
 			Conditions: []*config.Condition{{ID: doserChannel1ConditionID, MetricID: resDeviceMetric2ID, Comparator: "<", Threshold: 5.4}},
 			Schedule:   make([]*config.Schedule, 0)},
-		{ID: doserChannel2ID, ChannelID: common.CHANNEL_DOSER_OXIDIZER_ID, Name: common.CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 2,
+		{ID: doserChannel2ID, ChannelID: common.CHANNEL_DOSER_OXIDIZER_ID, Name: common.CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
 			Conditions: []*config.Condition{{ID: doserChannel2ConditionID, MetricID: resDeviceMetric5ID, Comparator: "<", Threshold: 300.0}},
 			Schedule:   make([]*config.Schedule, 0)},
 		{ID: doserChannel3ID, ChannelID: common.CHANNEL_DOSER_TOPOFF_ID, Name: common.CHANNEL_DOSER_TOPOFF, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
@@ -458,6 +423,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	farm.SetInterval(60)
 	farm.SetTimezone(initializer.location.String())
 	farm.SetName(params.FarmName)
+	farm.SetMode(common.CONFIG_MODE_VIRTUAL)
 	farm.SetConfigStore(params.ConfigStoreType)
 	farm.SetStateStore(int(params.StateStoreType))
 	farm.SetDataStore(params.DataStoreType)

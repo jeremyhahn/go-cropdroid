@@ -10,7 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type CockroachChangefeed struct {

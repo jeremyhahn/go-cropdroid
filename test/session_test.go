@@ -14,8 +14,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 var CurrentTest *ServiceTest = &ServiceTest{mutex: &sync.Mutex{}}
@@ -48,7 +48,6 @@ func NewIntegrationTest() *ServiceTest {
 		DBName:   appName,
 		Location: location})
 	gormdb := database.Connect(false)
-	gormdb.LogMode(true)
 
 	//database.Migrate()
 
@@ -61,7 +60,6 @@ func NewIntegrationTest() *ServiceTest {
 
 func (dt *ServiceTest) Cleanup() {
 	if CurrentTest != nil {
-		CurrentTest.db.Close()
 		CurrentTest.db.Drop()
 		CurrentTest.mutex.Unlock()
 	}

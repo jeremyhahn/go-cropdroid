@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package service
@@ -15,8 +16,8 @@ import (
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/state"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 var CurrentTest *ServiceTest = &ServiceTest{mutex: &sync.Mutex{}}
@@ -122,13 +123,13 @@ func createTestFarm(farmID int, deviceType string) (config.FarmConfig, state.Dev
 
 	channels := []config.Channel{
 		config.Channel{
-			ID:           1,
-			DeviceID: 1,
-			ChannelID:    testChannelID,
-			Name:         "test",
-			Enable:       true,
-			Notify:       true,
-			Conditions:   []config.Condition{*condition}}}
+			ID:         1,
+			DeviceID:   1,
+			ChannelID:  testChannelID,
+			Name:       "test",
+			Enable:     true,
+			Notify:     true,
+			Conditions: []config.Condition{*condition}}}
 
 	device := config.Device{
 		ID:   1,
@@ -150,7 +151,7 @@ func createTestFarm(farmID int, deviceType string) (config.FarmConfig, state.Dev
 		Mode:           "virtual",
 		Name:           "Test Farm",
 		Interval:       50,
-		Devices:    []config.Device{device}}
+		Devices:        []config.Device{device}}
 
 	/*
 		serverConfig := &config.Server{

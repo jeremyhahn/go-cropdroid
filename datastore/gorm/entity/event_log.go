@@ -13,13 +13,14 @@ type EventLogEntity interface {
 }
 
 type EventLog struct {
+	ID             uint64    `gorm:"primaryKey" yaml:"id" json:"id"`
 	FarmID         uint64    `gorm:"not null" json:"farm_id"`
 	DeviceID       uint64    `gorm:"not null" json:"device_id"`
 	DeviceName     string    `gorm:"not null" json:"device"`
 	EventType      string    `gorm:"not null" json:"type"`
 	Message        string    `gorm:"not null" json:"message"`
 	Timestamp      time.Time `gorm:"type:timestamp" json:"timestamp"`
-	EventLogEntity `json:"-"`
+	EventLogEntity `gorm:"-" json:"-"`
 }
 
 func (entity *EventLog) GetFarmID() uint64 {

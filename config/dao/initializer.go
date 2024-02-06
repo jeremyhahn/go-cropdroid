@@ -126,8 +126,13 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	users, _ := initializer.permissionDAO.GetUsers(params.OrganizationID,
 		params.ConsistencyLevel)
 	for _, user := range users {
+		userID := user.GetID()
+		if userID == params.UserID {
+			// This permission record gets created below
+			continue
+		}
 		permission := config.Permission{
-			UserID: user.GetID(),
+			UserID: userID,
 			RoleID: user.GetRoles()[0].GetID(),
 			FarmID: farmID}
 		initializer.permissionDAO.Save(&permission)

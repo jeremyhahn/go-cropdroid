@@ -41,8 +41,7 @@ var configCmd = &cobra.Command{
 		if InitDB {
 
 			gormdb := gorm.NewGormDB(App.Logger, App.GORMInitParams)
-			db := gormdb.Connect(true)
-			db.LogMode(App.DebugFlag)
+			gormdb.Connect(true)
 
 			//idGenerator := util.NewIdGenerator(App.DataStoreEngine)
 

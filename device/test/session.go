@@ -8,8 +8,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 var CurrentTest *DeviceTest = &DeviceTest{mutex: &sync.Mutex{}}

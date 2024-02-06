@@ -1,10 +1,14 @@
 package config
 
 type Permission struct {
-	OrganizationID uint64 `gorm:primaryKey" yaml:"orgId" json:"orgId"`
-	FarmID         uint64 `gorm:primaryKey" yaml:"farmId" json:"farmId"`
-	UserID         uint64 `gorm:primaryKey" yaml:"userId" json:"userId"`
-	RoleID         uint64 `gorm:primaryKey" yaml:"roleId" json:"roleId"`
+	OrganizationID uint64 `gorm:"primaryKey" yaml:"orgId" json:"orgId"`
+	FarmID         uint64 `gorm:"primaryKey" yaml:"farmId" json:"farmId"`
+	UserID         uint64 `gorm:"primaryKey" yaml:"userId" json:"userId"`
+	RoleID         uint64 `gorm:"primaryKey" yaml:"roleId" json:"roleId"`
+	// OrganizationID uint64 `yaml:"orgId" json:"orgId"`
+	// FarmID         uint64 `gorm:"many2many:permission_farm" yaml:"farmId" json:"farmId"`
+	// UserID         uint64 `yaml:"userId" json:"userId"`
+	// RoleID         uint64 `gorm:"many2many:permission_role" yaml:"roleId" json:"roleId"`
 }
 
 func NewPermission() *Permission {

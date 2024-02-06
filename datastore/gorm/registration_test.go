@@ -13,7 +13,6 @@ func TestRegistrationCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.LogMode(true)
 	currentTest.gorm.AutoMigrate(&config.Registration{})
 
 	consistencyLevel := common.CONSISTENCY_LOCAL

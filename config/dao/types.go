@@ -106,10 +106,10 @@ type RegistrationDAO interface {
 }
 
 type EventLogDAO interface {
-	Save(EventLog entity.EventLogEntity) error
+	Save(eventLog *entity.EventLog) error
 	GetAll(CONSISTENCY_LEVEL int) ([]entity.EventLog, error)
-	GetAllDesc(CONSISTENCY_LEVEL int) ([]entity.EventLog, error)
-	GetPage(CONSISTENCY_LEVEL int, page, size int64) ([]entity.EventLog, error)
+	GetAllDesc(CONSISTENCY_LEVEL int) ([]*entity.EventLog, error)
+	GetPage(CONSISTENCY_LEVEL int, page, size int64) ([]*entity.EventLog, error)
 	Count(CONSISTENCY_LEVEL int) (int64, error)
 }
 

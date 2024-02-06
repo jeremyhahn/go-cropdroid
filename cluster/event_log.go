@@ -44,7 +44,7 @@ func (eventLogDAO *RaftEventLogDAO) StartCluster() {
 	//eventLogDAO.raft.WaitForClusterReady(eventLogDAO.clusterID)
 }
 
-func (eventLogDAO *RaftEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]entity.EventLog, error) {
+func (eventLogDAO *RaftEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]*entity.EventLog, error) {
 	var result interface{}
 	var err error
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
@@ -61,13 +61,13 @@ func (eventLogDAO *RaftEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]entity.Even
 		}
 	}
 	if result != nil {
-		items := result.([]entity.EventLog)
+		items := result.([]*entity.EventLog)
 		return items, nil
 	}
 	return nil, datastore.ErrNotFound
 }
 
-func (eventLogDAO *RaftEventLogDAO) GetAllDesc(CONSISTENCY_LEVEL int) ([]entity.EventLog, error) {
+func (eventLogDAO *RaftEventLogDAO) GetAllDesc(CONSISTENCY_LEVEL int) ([]*entity.EventLog, error) {
 	records, err := eventLogDAO.GetAll(CONSISTENCY_LEVEL)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (eventLogDAO *RaftEventLogDAO) GetAllDesc(CONSISTENCY_LEVEL int) ([]entity.
 	return records, nil
 }
 
-func (eventLogDAO *RaftEventLogDAO) Save(record entity.EventLogEntity) error {
+func (eventLogDAO *RaftEventLogDAO) Save(record *entity.EventLog) error {
 	data, err := json.Marshal(record)
 	if err != nil {
 		eventLogDAO.logger.Errorf("Error: %s", err)
@@ -107,7 +107,7 @@ func (eventLogDAO *RaftEventLogDAO) Count(CONSISTENCY_LEVEL int) (int64, error) 
 	return int64(len(records)), nil
 }
 
-func (eventLogDAO *RaftEventLogDAO) GetPage(CONSISTENCY_LEVEL int, page, size int64) ([]entity.EventLog, error) {
+func (eventLogDAO *RaftEventLogDAO) GetPage(CONSISTENCY_LEVEL int, page, size int64) ([]*entity.EventLog, error) {
 	// TODO: Make this efficient
 	// PebbleDB requires iterating the entire data set to get the count
 	// Alternative approach is adding an on-write counter to the application

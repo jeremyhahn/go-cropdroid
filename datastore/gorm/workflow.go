@@ -24,9 +24,10 @@ func (dao *GormWorkflowDAO) Save(workflow *config.Workflow) error {
 }
 
 func (dao *GormWorkflowDAO) Delete(workflow *config.Workflow) error {
-	step := &config.WorkflowStep{}
-	step.SetWorkflowID(workflow.GetID())
-	if err := dao.db.Model(step).Delete(step).Error; err != nil {
+	if err := dao.db.
+		Where("workflow_id = ?", workflow.GetID()).
+		Delete(&config.WorkflowStep{}).
+		Error; err != nil {
 		return err
 	}
 	return dao.db.Delete(workflow).Error

@@ -17,8 +17,8 @@ var (
 
 type Initializer interface {
 	Initialize(includeFarm bool, params *common.ProvisionerParams) (*config.Farm, error)
-	BuildConfig(*common.ProvisionerParams, *config.User) (*config.Farm, error)
-	//DefaultFarmID() (uint64, string, error)
+	BuildConfig(params *common.ProvisionerParams,
+		adminUser *config.User) (*config.Farm, []config.Permission, error)
 }
 
 type ConfigInitializer struct {
@@ -86,13 +86,19 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 
 	var farm *config.Farm
 	if includeFarm {
-		farm, err = initializer.BuildConfig(params, adminUser)
+		farm, permissions, err := initializer.BuildConfig(params, adminUser)
 		if err != nil {
 			return nil, err
 		}
 		if err := initializer.farmDAO.Save(farm); err != nil {
 			return nil, err
 		}
+		for _, permission := range permissions {
+			if err = initializer.permissionDAO.Save(&permission); err != nil {
+				return nil, err
+			}
+		}
+
 	}
 
 	phAlgoID := initializer.newID(common.ALGORITHM_PH_KEY)
@@ -117,7 +123,10 @@ func (initializer *ConfigInitializer) newFarmID(farmID uint64, key string) uint6
 	return initializer.idGenerator.NewID(fmt.Sprintf("%d-%s", farmID, key))
 }
 
-func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerParams, adminUser *config.User) (*config.Farm, error) {
+func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerParams,
+	adminUser *config.User) (*config.Farm, []config.Permission, error) {
+
+	permissions := make([]config.Permission, 0)
 
 	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
 	farmID := initializer.idGenerator.NewID(farmKey)
@@ -131,11 +140,11 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 			// This permission record gets created below
 			continue
 		}
-		permission := config.Permission{
+		permissions = append(permissions, config.Permission{
 			UserID: userID,
 			RoleID: user.GetRoles()[0].GetID(),
-			FarmID: farmID}
-		initializer.permissionDAO.Save(&permission)
+			FarmID: farmID})
+		//initializer.permissionDAO.Save(&permission)
 	}
 
 	// Add permission for user who requested the provisioning
@@ -143,17 +152,8 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 		UserID: params.UserID,
 		RoleID: params.RoleID,
 		FarmID: farmID}
-	initializer.permissionDAO.Save(&permission)
-
-	// TODO: This is for GORM.
-	// if users == nil && adminUser != nil {
-	// 	// Admin user is nil when Gossip.handleEvent
-	// 	// processes a new EventProvisionRequest. Dont
-	// 	// run this code for this event.
-	// 	users = []*config.User{adminUser}
-	// 	params.UserID = adminUser.ID
-	// 	params.RoleID = adminUser.Roles[0].ID
-	// }
+	permissions = append(permissions, permission)
+	//initializer.permissionDAO.Save(&permission)
 
 	// Create a final list of users to assign to the farm
 	adminUserID := initializer.newID(common.DEFAULT_USER)
@@ -167,7 +167,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	}
 	provisioningUser, err := initializer.userDAO.Get(params.UserID, params.ConsistencyLevel)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	farmUsers = append(farmUsers, provisioningUser)
 	if params.UserID == adminUserID {
@@ -176,7 +176,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	if !hasAdmin {
 		adminUser, err := initializer.userDAO.Get(adminUserID, params.ConsistencyLevel)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		farmUsers = append(farmUsers, adminUser)
 	}
@@ -509,7 +509,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	farm.SetUsers(farmUsers)
 	farm.SetWorkflows([]*config.Workflow{workflow1})
 
-	return farm, nil
+	return farm, permissions, nil
 }
 
 // Initializes the initial product inventory

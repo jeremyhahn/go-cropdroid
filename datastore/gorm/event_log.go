@@ -22,8 +22,8 @@ func (dao *GormEventLogDAO) Save(log *entity.EventLog) error {
 	return dao.db.Save(log).Error
 }
 
-func (dao *GormEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]entity.EventLog, error) {
-	var logs []entity.EventLog
+func (dao *GormEventLogDAO) GetAll(CONSISTENCY_LEVEL int) ([]*entity.EventLog, error) {
+	var logs []*entity.EventLog
 	if err := dao.db.Find(&logs).Error; err != nil {
 		return nil, err
 	}

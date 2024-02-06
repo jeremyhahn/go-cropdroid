@@ -21,6 +21,7 @@ type RaftFarmProvisioner struct {
 	location            *time.Location
 	farmDAO             dao.FarmDAO
 	userDAO             dao.UserDAO
+	permissionDAO       dao.PermissionDAO
 	userMapper          mapper.UserMapper
 	initializer         dao.Initializer
 	farmProvisionerChan chan config.Farm
@@ -51,8 +52,8 @@ func (provisioner *RaftFarmProvisioner) Provision(
 		return nil, err
 	}
 
-	// Construct a new config.Farm and set the default user
-	farmConfig, err := provisioner.initializer.BuildConfig(params, userConfig)
+	// Build a new FarmConfig and the user who requested the provisioning
+	farmConfig, permissions, err := provisioner.initializer.BuildConfig(params, userConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +66,13 @@ func (provisioner *RaftFarmProvisioner) Provision(
 	userConfig.AddFarmRef(farmConfig.GetID())
 	if err := provisioner.userDAO.Save(userConfig); err != nil {
 		return nil, err
+	}
+
+	// Save permission entries to the database
+	for _, permission := range permissions {
+		if err := provisioner.permissionDAO.Save(&permission); err != nil {
+			return nil, err
+		}
 	}
 
 	// Save the newly provisioned farm to the database

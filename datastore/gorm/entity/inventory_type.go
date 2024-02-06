@@ -16,7 +16,7 @@ type InventoryType struct {
 	LifeExpectancy      int    `json:"lifeExpectancy"`
 	MaintenanceCycle    int    `json:"maintenanceCycle"`
 	ProductPage         string `gorm:"size:255" json:"productPage"`
-	InventoryTypeEntity `json:"-"`
+	InventoryTypeEntity `gorm:"-" json:"-"`
 }
 
 func NewInventoryType() InventoryTypeEntity {

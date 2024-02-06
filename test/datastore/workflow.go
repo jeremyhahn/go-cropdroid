@@ -145,8 +145,8 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	err = workflowDAO.Delete(persistedWorkflow1)
 	assert.Nil(t, err)
 
-	persistedWorkflows, err = workflowDAO.GetByFarmID(
+	newPersistedWorkflows, err := workflowDAO.GetByFarmID(
 		waterChangeWorkflow.GetFarmID(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 0, len(persistedWorkflows))
+	assert.Equal(t, 0, len(newPersistedWorkflows))
 }

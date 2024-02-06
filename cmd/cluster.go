@@ -15,7 +15,6 @@ import (
 	clusterutil "github.com/jeremyhahn/go-cropdroid/cluster/util"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
 
@@ -115,7 +114,6 @@ var clusterCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		App.Mode = Mode
-		App.Mailer = service.NewMailer(App, nil)
 		App.IdGenerator = util.NewIdGenerator(DataStoreEngine)
 		App.IdSetter = util.NewIdSetter(App.IdGenerator)
 		App.DefaultConsistencyLevel = viper.GetInt("default-consistency-level")

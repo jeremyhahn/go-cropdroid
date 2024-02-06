@@ -9,25 +9,25 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/cluster"
-	"github.com/jeremyhahn/go-cropdroid/cluster/util"
+	clusterutil "github.com/jeremyhahn/go-cropdroid/cluster/util"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 
+	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/datastore/redis"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
-
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 )
 
 type ClusterConfigBuilder struct {
 	app               *app.App
-	params            *util.ClusterParams
+	params            *clusterutil.ClusterParams
 	appStateTTL       int
 	appStateTick      int
 	datastoreRegistry dao.Registry
@@ -38,7 +38,7 @@ type ClusterConfigBuilder struct {
 	raftNode          cluster.RaftNode
 }
 
-func NewClusterConfigBuilder(app *app.App, params *util.ClusterParams,
+func NewClusterConfigBuilder(app *app.App, params *clusterutil.ClusterParams,
 	gossipNode cluster.GossipNode, raftNode cluster.RaftNode,
 	dataStore string, appStateTTL, appStateTick int) *ClusterConfigBuilder {
 
@@ -62,9 +62,11 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 		builder.app, builder.datastoreRegistry, builder.mapperRegistry,
 		builder.gossipNode, builder.raftNode)
 
+	passwordHasher := util.NewPasswordHasher() // util.CreatePasswordHasher(builder.app.PasswordHasherParams)
+
 	configInitializer := dao.NewConfigInitializer(builder.app.Logger,
 		builder.app.IdGenerator, builder.app.Location,
-		builder.datastoreRegistry, builder.app.Mode)
+		builder.datastoreRegistry, passwordHasher, builder.app.Mode)
 
 	builder.gossipNode.SetInitializer(configInitializer)
 

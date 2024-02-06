@@ -48,7 +48,7 @@ func TestUserDAO_CreateAndGetByOrgID(t *testing.T) {
 	org := config.NewOrganization()
 	org.SetName("test org")
 	//org.SetFarms([]config.FarmConfig{farm})
-	//org.SetUsers([]config.UserConfig{user})
+	org.SetUsers([]*config.User{user})
 	err = orgDAO.Save(org)
 	assert.Nil(t, err)
 

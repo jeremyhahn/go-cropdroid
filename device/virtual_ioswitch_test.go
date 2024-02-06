@@ -131,8 +131,8 @@ func TestVirtualDeviceInfo(t *testing.T) {
 	mockURI := "http://localtest"
 	stateFile := "/tmp/cropdroid-state-file"
 
-	hardwareVersion := "virt-v0.0.1a"
-	firmwareVersion := "virt-v0.0.1a"
+	hardwareVersion := "virthw-v0.0.1a"
+	firmwareVersion := "virtfw-v0.0.1a"
 	uptime := int64(time.Since(time.Now()).Seconds())
 
 	virtualHttpDeviceType := CreateVirtualIOSwitch(

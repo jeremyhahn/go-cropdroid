@@ -14,7 +14,7 @@ type Inventory struct {
 	LifeExpectancy  int        `json:"lifeExpectancy"`
 	StartDate       time.Time  `json:"startDate"`
 	LastServiced    *time.Time `json:"lastServiced"`
-	InventoryEntity `json:"-"`
+	InventoryEntity `gorm:"-" json:"-"`
 }
 
 func NewInventory() InventoryEntity {

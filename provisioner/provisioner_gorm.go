@@ -48,7 +48,7 @@ func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount
 	user := userMappser.MapUserModelToConfig(userAccount)
 
 	// Build farm config
-	farmConfig, err := provisioner.initializer.BuildConfig(params, user)
+	farmConfig, permissions, err := provisioner.initializer.BuildConfig(params, user)
 	if err != nil {
 		provisioner.logger.Error(err)
 	}
@@ -66,19 +66,12 @@ func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount
 		return nil, err
 	}
 
-	// Save permission entries for each user / role combination
-	// for _, user := range farmConfig.Users {
-	// 	for _, role := range user.GetRoles() {
-	// 		permission := config.NewPermission()
-	// 		permission.SetUserID(user.GetID())
-	// 		permission.SetRoleID(role.GetID())
-	// 		permission.SetFarmID(farmConfig.GetID())
-	// 		// if err := provisioner.permissionDAO.Save(permission); err != nil {
-	// 		// 	return nil, err
-	// 		// }
-	// 		provisioner.permissionDAO.Save(permission)
-	// 	}
-	// }
+	// Save permission entries
+	for _, permission := range permissions {
+		if err = provisioner.permissionDAO.Save(&permission); err != nil {
+			return nil, err
+		}
+	}
 
 	return farmConfig, nil
 }

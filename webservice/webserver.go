@@ -541,7 +541,7 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 	//server.eventLogService.Create(server.eventType,
 	//	fmt.Sprintf("/eventsPage/%s requested by %s", page, server.clientIP(r)))
 
-	p, err := strconv.ParseInt(page, 10, 0)
+	p, err := strconv.ParseInt(page, 10, 64)
 	if err != nil {
 		server.sendBadRequest(w, r, err)
 	}

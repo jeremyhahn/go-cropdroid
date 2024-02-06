@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 type InventoryDAO interface {
@@ -35,7 +35,7 @@ func (dao *GormInventoryDAO) Save(entity entity.InventoryEntity) error {
 }
 
 func (dao *GormInventoryDAO) Update(entity entity.InventoryEntity) error {
-	return dao.db.Update(entity).Error
+	return dao.db.Save(entity).Error
 }
 
 func (dao *GormInventoryDAO) Get(channel string) (entity.InventoryEntity, error) {

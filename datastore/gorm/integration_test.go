@@ -9,8 +9,8 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/util"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 var CurrentTest *DatastoreTest = &DatastoreTest{mutex: &sync.Mutex{}}
@@ -48,7 +48,6 @@ func NewIntegrationTest() *DatastoreTest {
 
 	gormdb := database.Connect(true)
 	database.Create()
-	gormdb.Close()
 
 	gormdb = database.Connect(false)
 	database.Migrate()
@@ -63,13 +62,9 @@ func NewIntegrationTest() *DatastoreTest {
 
 func (dt *DatastoreTest) Cleanup() {
 	if CurrentTest != nil {
-		// Close app user connection
-		CurrentTest.gormDB.Close()
-
 		// Connect as server admin, drop db
 		CurrentTest.gormDB.Connect(true)
 		CurrentTest.gormDB.Drop()
-		CurrentTest.gormDB.Close()
 
 		CurrentTest.mutex.Unlock()
 	}

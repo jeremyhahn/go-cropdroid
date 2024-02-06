@@ -7,11 +7,16 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
-	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
 
-	// _ "github.com/jinzhu/gorm/dialects/mysql"
-	// _ "github.com/jinzhu/gorm/dialects/postgres"
+	"gorm.io/driver/sqlite"
+	_ "gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	//_ "gorm.io/driver/mysql"
+	//_ "gorm.io/driver/postgres"
+	// "gorm.io/driver/sqlserver"
+	// "gorm.io/driver/clickhouse"
+
 	logging "github.com/op/go-logging"
 )
 
@@ -22,7 +27,6 @@ type GormDB interface {
 	CloneConnection() *gorm.DB
 	Migrate() error
 	Drop()
-	Close()
 }
 
 type GormInitParams struct {
@@ -64,62 +68,29 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	switch database.params.Engine {
 	case "memory":
 		database.isInMemoryDatabase = true
-		// idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
-		//"file:%s?mode=memory&cache=shared"
-		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory&cache=shared&pooling=true", database.params.DBName))
-		database.db.Exec("PRAGMA foreign_keys = ON;")
-		database.db.Exec("PRAGMA journal_mode=WAL;")
-		database.db.LogMode(database.params.DebugFlag)
-		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
-
-		// provParams := &common.ProvisionerParams{
-		// 	UserID:           0,
-		// 	RoleID:           0,
-		// 	OrganizationID:   0,
-		// 	FarmName:         common.DEFAULT_CROP_NAME,
-		// 	ConfigStoreType:  state.MEMORY_STORE,
-		// 	StateStoreType:   state.MEMORY_STORE,
-		// 	DataStoreType:    state.MEMORY_STORE,
-		// 	ConsistencyLevel: common.CONSISTENCY_LOCAL}
-
-		// datastoreRegistry := NewGormRegistry(database.logger, database)
-
-		// configInitializer := dao.NewConfigInitializer(database.logger,
-		// 	idGenerator, database.params.Location, datastoreRegistry,
-		// 	database.params.AppMode)
-
-		// _, err := configInitializer.Initialize(database.params.EnableDefaultFarm, provParams)
-		// if err != nil {
-		// 	database.logger.Fatal(err)
-		// }
-		// if err := NewGormInitializer(database.logger, database, idGenerator, database.params.Location,
-		// 	database.params.AppMode).Initialize(database.params.EnableDefaultFarm); err != nil {
-		// 	database.logger.Fatal(err)
-		// }
+		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory&cache=shared", database.params.DBName))
 	case "sqlite":
 		sqlite := fmt.Sprintf("%s/%s.db", database.params.DataDir, database.params.DBName)
 		database.db = database.newSQLite(sqlite)
-		database.db.Exec("PRAGMA foreign_keys = ON;")
-		database.db.LogMode(database.params.DebugFlag)
-	case "cockroach":
-		database.db = database.newCockroachDB()
-	case "postgres":
-		database.db = database.newPgsql()
-	case "mysql":
-		database.db = database.newMySQL(serverConnection)
+	// case "cockroach":
+	// 	database.db = database.newCockroachDB()
+	// case "postgres":
+	// 	database.db = database.newPgsql()
+	// case "mysql":
+	// 	database.db = database.newMySQL(serverConnection)
 	default:
 		database.logger.Fatalf("[gorm.Connect] Unsupported GORM engine: %s", database.params.Engine)
 	}
-	database.db.LogMode(database.params.DebugFlag)
+
 	return database.db
 }
 
 // Uses the connection parameters and credentials from the current
 // database session to establish a new connection.
 func (database *GormDatabase) CloneConnection() *gorm.DB {
-	// if database.isInMemoryDatabase {
-	// 	return database.db
-	// }
+	if database.isInMemoryDatabase {
+		return database.db
+	}
 	return database.Connect(database.isServerConnection)
 }
 
@@ -161,6 +132,7 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&entity.EventLog{})
 	database.db.AutoMigrate(&entity.InventoryType{})
 	database.db.AutoMigrate(&entity.Inventory{})
+
 	return nil
 }
 
@@ -180,62 +152,60 @@ func (database *GormDatabase) Drop() {
 	}
 }
 
-// Close the database connection
-func (database *GormDatabase) Close() {
-	database.db.Close()
-}
-
 // Create a new sqlite database connection
 func (database *GormDatabase) newSQLite(dbname string) *gorm.DB {
-	db, err := gorm.Open("sqlite3", dbname)
+	db, err := gorm.Open(sqlite.Open(dbname), &gorm.Config{})
 	if err != nil {
 		database.logger.Fatalf("SQLite Error: %s", err)
 	}
-	db.Exec("PRAGMA foreign_keys = ON;")
+	// db.Exec("PRAGMA foreign_keys = OFF")
+	// db.Exec("PRAGMA journal_mode = WAL")
+	// db.Exec("PRAGMA ignore_check_constraints = ON")
 	return db
 }
 
-// Create a new mysql database connection
-func (database *GormDatabase) newMySQL(serverConnection bool) *gorm.DB {
-	var connStr string
-	if serverConnection {
-		connStr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=utf8&parseTime=True&loc=Local",
-			database.params.Username, database.params.Password, database.params.Host, database.params.Port)
-	} else {
-		connStr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
-			database.params.Username, database.params.Password, database.params.Host, database.params.Port, database.params.DBName)
-	}
-	db, err := gorm.Open("mysql", connStr)
-	if err != nil {
-		database.logger.Fatalf("MySQL Error: %s", err)
-	}
-	return db
-}
+// // Create a new mysql database connection
+// func (database *GormDatabase) newMySQL(serverConnection bool) *gorm.DB {
+// 	var connStr string
+// 	if serverConnection {
+// 		connStr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=utf8&parseTime=True&loc=Local",
+// 			database.params.Username, database.params.Password, database.params.Host, database.params.Port)
+// 	} else {
+// 		connStr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
+// 			database.params.Username, database.params.Password, database.params.Host, database.params.Port, database.params.DBName)
+// 	}
+// 	db, err := gorm.Open(mysql.Open(connStr), &gorm.Config{})
+// 	if err != nil {
+// 		database.logger.Fatalf("MySQL Error: %s", err)
+// 	}
+// 	return db
+// }
 
-// Create a new postgres database connection
-func (database *GormDatabase) newPgsql() *gorm.DB {
-	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s",
-		database.params.Host, database.params.Port, database.params.Username, database.params.DBName, database.params.Password)
-	db, err := gorm.Open("postgres", connStr)
-	if err != nil {
-		database.logger.Fatalf("Postgres Error: %s", err)
-	}
-	return db
-}
+// // Create a new postgres database connection
+// func (database *GormDatabase) newPgsql() *gorm.DB {
+// 	// sslmode=disable TimeZone=America/New_York
+// 	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s",
+// 		database.params.Host, database.params.Port, database.params.Username, database.params.DBName, database.params.Password)
+// 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
+// 	if err != nil {
+// 		database.logger.Fatalf("Postgres Error: %s", err)
+// 	}
+// 	return db
+// }
 
-// Create a new cockroach db connection
-func (database *GormDatabase) newCockroachDB() *gorm.DB {
-	sslParams := "sslmode=disable"
-	if database.params.CACert != "" && database.params.TLSKey != "" && database.params.TLSCert != "" {
-		sslParams = fmt.Sprintf("sslmode=require&sslkey=%s&sslcert=%s&sslrootcert=%s",
-			database.params.TLSKey, database.params.TLSCert, database.params.CACert)
-	}
-	connStr := fmt.Sprintf("postgres://%s@%s:%d/%s?%s",
-		database.params.Username, database.params.Host,
-		database.params.Port, database.params.DBName, sslParams)
-	db, err := gorm.Open("postgres", connStr)
-	if err != nil {
-		database.logger.Fatalf("CockroachDB Error: %s", err)
-	}
-	return db
-}
+// // Create a new cockroach db connection
+// func (database *GormDatabase) newCockroachDB() *gorm.DB {
+// 	sslParams := "sslmode=disable"
+// 	if database.params.CACert != "" && database.params.TLSKey != "" && database.params.TLSCert != "" {
+// 		sslParams = fmt.Sprintf("sslmode=require&sslkey=%s&sslcert=%s&sslrootcert=%s",
+// 			database.params.TLSKey, database.params.TLSCert, database.params.CACert)
+// 	}
+// 	connStr := fmt.Sprintf("postgres://%s@%s:%d/%s?%s",
+// 		database.params.Username, database.params.Host,
+// 		database.params.Port, database.params.DBName, sslParams)
+// 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
+// 	if err != nil {
+// 		database.logger.Fatalf("CockroachDB Error: %s", err)
+// 	}
+// 	return db
+// }

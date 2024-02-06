@@ -7,8 +7,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 type GormFarmProvisioner struct {
@@ -44,8 +44,11 @@ func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB,
 
 func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount, params *common.ProvisionerParams) (*config.Farm, error) {
 
+	userMappser := mapper.NewUserMapper()
+	user := userMappser.MapUserModelToConfig(userAccount)
+
 	// Build farm config
-	farmConfig, err := provisioner.initializer.Initialize(true, params)
+	farmConfig, err := provisioner.initializer.BuildConfig(params, user)
 	if err != nil {
 		provisioner.logger.Error(err)
 	}

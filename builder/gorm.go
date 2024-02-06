@@ -22,7 +22,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type GormConfigBuilder struct {

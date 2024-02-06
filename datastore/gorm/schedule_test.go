@@ -14,7 +14,6 @@ func TestScheduleCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.LogMode(true)
 	currentTest.gorm.AutoMigrate(&config.Permission{})
 	currentTest.gorm.AutoMigrate(&config.Farm{})
 	currentTest.gorm.AutoMigrate(&config.Device{})

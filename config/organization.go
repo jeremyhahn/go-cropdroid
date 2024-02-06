@@ -13,7 +13,7 @@ type Organization struct {
 	//Farms []Farm `gorm:"many2many:permissions" yaml:"farms" json:"farms"`
 	Farms []*Farm `yaml:"farms" json:"farms"`
 	//Devices        []Device `yaml:"devices" json:"devices"`
-	Users []*User `gorm:"many2many:permissions" yaml:"users" json:"users"`
+	Users []*User `gorm:"foreignKey:ID" yaml:"users" json:"users"`
 	//Users              []User   `yaml:"users" json:"users"`
 	License *License `yaml:"license" json:"license"`
 }

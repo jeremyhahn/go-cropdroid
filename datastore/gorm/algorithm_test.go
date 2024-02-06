@@ -14,7 +14,6 @@ func TestAlgorithmCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.LogMode(true)
 	currentTest.gorm.AutoMigrate(&config.Algorithm{})
 
 	algorithmDAO := NewAlgorithmDAO(currentTest.logger, currentTest.gorm)

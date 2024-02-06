@@ -8,8 +8,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/util"
-	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
+	"gorm.io/gorm"
 )
 
 type GormFarmDAO struct {

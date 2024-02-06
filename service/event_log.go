@@ -72,7 +72,7 @@ func (eventLog *EventLog) GetPage(page int64) *viewmodel.EventsPage {
 		End:    offset + pageSize}
 }
 
-func (eventLog *EventLog) GetAll() []entity.EventLog {
+func (eventLog *EventLog) GetAll() []*entity.EventLog {
 	eventLog.app.Logger.Debugf("[GetAll]")
 	entities, err := eventLog.dao.GetAllDesc(common.CONSISTENCY_LOCAL)
 	if err != nil {

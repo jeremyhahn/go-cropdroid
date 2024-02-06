@@ -154,7 +154,7 @@ type NotificationService interface {
 type EventLogService interface {
 	GetFarmID() uint64
 	Create(deviceID uint64, deviceName, eventType, message string)
-	GetAll() []entity.EventLog
+	GetAll() []*entity.EventLog
 	GetPage(page int64) *viewmodel.EventsPage
 }
 

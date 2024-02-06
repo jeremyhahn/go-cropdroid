@@ -15,15 +15,17 @@ import (
 
 var CurrentTest *ProvisionerTest = &ProvisionerTest{mutex: &sync.Mutex{}}
 var Location *time.Location
-var TestSuiteName = "cropdroid_service_test"
+var TestSuiteName = "cropdroid_provisioner_test"
 
 type ProvisionerTest struct {
-	mutex       *sync.Mutex
-	db          gormstore.GormDB
-	gorm        *gorm.DB
-	logger      *logging.Logger
-	location    *time.Location
-	idGenerator util.IdGenerator
+	mutex          *sync.Mutex
+	db             gormstore.GormDB
+	gorm           *gorm.DB
+	logger         *logging.Logger
+	location       *time.Location
+	idGenerator    util.IdGenerator
+	passwordHasher util.PasswordHasher
+	mode           string
 }
 
 func NewIntegrationTest() *ProvisionerTest {
@@ -54,6 +56,7 @@ func NewIntegrationTest() *ProvisionerTest {
 	CurrentTest.gorm = gormdb
 	CurrentTest.logger = logger
 	CurrentTest.location = Location
+	CurrentTest.passwordHasher = util.NewPasswordHasher()
 	CurrentTest.idGenerator = util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	return CurrentTest
 }

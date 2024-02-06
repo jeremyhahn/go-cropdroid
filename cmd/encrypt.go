@@ -2,18 +2,17 @@ package cmd
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"os"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
+	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var EncryptAES bool
 var EncryptAESKey string
-var EncryptBCrypt bool
+var EncryptArgon2 bool
 var EncryptData string
 var EncryptBase64Encode bool
 
@@ -21,7 +20,7 @@ func init() {
 
 	encryptCmd.PersistentFlags().BoolVarP(&EncryptAES, "aes", "", false, "Use AES 256 encryption")
 	encryptCmd.PersistentFlags().StringVarP(&EncryptAESKey, "aeskey", "", "", "AES encryption key")
-	encryptCmd.PersistentFlags().BoolVarP(&EncryptBCrypt, "bcrypt", "", false, "Use bcrypt encryption")
+	encryptCmd.PersistentFlags().BoolVarP(&EncryptArgon2, "argon2", "", false, "Use argon2 encryption")
 	encryptCmd.PersistentFlags().BoolVarP(&EncryptBase64Encode, "encode", "", false, "Base64 encode the encrypted data")
 	encryptCmd.PersistentFlags().StringVarP(&EncryptData, "data", "", "", "The data to encrypt")
 
@@ -66,19 +65,16 @@ var encryptCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		if EncryptBCrypt {
-			encrypted, err := bcrypt.GenerateFromPassword([]byte(EncryptData), bcrypt.DefaultCost)
+		if EncryptArgon2 {
+			hasher := util.CreatePasswordHasher(App.PasswordHasherParams)
+			hash, err := hasher.Encrypt(EncryptData)
 			if err != nil {
 				App.Logger.Fatal(err)
 			}
-			retval := string(encrypted)
-			if EncryptBase64Encode {
-				retval = base64.StdEncoding.EncodeToString([]byte(retval))
-			}
-			fmt.Println(retval)
+			fmt.Println(hash)
 			os.Exit(0)
 		}
 
-		App.Logger.Fatal("Invalid command algorithm. Supported algorithms: [ aes | bcrypt ]")
+		App.Logger.Fatal("Invalid crypto operation. Supported algorithms: [ aes | argon2 ]")
 	},
 }

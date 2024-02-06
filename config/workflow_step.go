@@ -10,9 +10,10 @@ type WorkflowStep struct {
 	ChannelID  uint64 `yaml:"channel" json:"channel_id"`
 	Webhook    string `yaml:"webhook" json:"webhook"`
 	//AlgorithmID        int    `yaml:"algorithm" json:"algorithm_id"`
-	Duration int `yaml:"duration" json:"duration"`
-	Wait     int `yaml:"wait" json:"wait"`
-	State    int `yaml:"state" json:"state"`
+	Duration  int `yaml:"duration" json:"duration"`
+	Wait      int `yaml:"wait" json:"wait"`
+	State     int `yaml:"state" json:"state"`
+	SortOrder int `yaml:"sortOrder" json:"sort_order"`
 }
 
 func NewWorkflowStep() *WorkflowStep {
@@ -113,8 +114,19 @@ func (ws *WorkflowStep) SetState(state int) {
 	ws.State = state
 }
 
+// GetOrder returns the order this step comes in the workflow
+func (ws *WorkflowStep) GetSortOrder() int {
+	return ws.SortOrder
+}
+
+// SetOrder sets the order of execution for the workflow step
+func (ws *WorkflowStep) SetOrder(sortOrder int) {
+	ws.SortOrder = sortOrder
+}
+
 func (ws *WorkflowStep) String() string {
-	return fmt.Sprintf("%d-%d-%d-%s-%d-%d-%d",
+	return fmt.Sprintf("%d-%d-%d-%s-%d-%d-%d-%d",
 		ws.WorkflowID, ws.DeviceID, ws.ChannelID,
-		ws.Webhook, ws.Duration, ws.Wait, ws.State)
+		ws.Webhook, ws.Duration, ws.Wait, ws.State,
+		ws.SortOrder)
 }

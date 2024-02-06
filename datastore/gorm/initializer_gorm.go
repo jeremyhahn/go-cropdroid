@@ -17,7 +17,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/jinzhu/gorm"
 	logging "github.com/op/go-logging"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -62,11 +61,11 @@ func (initializer *GormInitializer) Initialize(includeFarm bool) error {
 	initializer.gormDB.Create()
 	initializer.gormDB.Migrate()
 
-	encrypted, err := bcrypt.GenerateFromPassword([]byte(common.DEFAULT_PASSWORD), bcrypt.DefaultCost)
-	if err != nil {
-		initializer.logger.Fatalf("Error generating encrypted password: %s", err)
-		return err
-	}
+	// encrypted, err := bcrypt.GenerateFromPassword([]byte(common.DEFAULT_PASSWORD), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	initializer.logger.Fatalf("Error generating encrypted password: %s", err)
+	// 	return err
+	// }
 
 	adminRole := config.NewRole()
 	adminRole.SetID(initializer.newID(common.DEFAULT_ROLE))

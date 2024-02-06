@@ -67,12 +67,12 @@ func NewConditionService(logger *logging.Logger, conditionDAO dao.ConditionDAO,
 // 			return fmt.Errorf("Device for channel id %d not found", channelID)
 // 		}(conditionEntity)
 
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	return conditions, nil
-// }
+//			if err != nil {
+//				return nil, err
+//			}
+//		}
+//		return conditions, nil
+//	}
 func (service *DefaultConditionService) GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()

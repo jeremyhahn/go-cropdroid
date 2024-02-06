@@ -64,8 +64,10 @@ var configCmd = &cobra.Command{
 					DataStoreType:    App.DefaultDataStoreType,
 					ConsistencyLevel: common.CONSISTENCY_LOCAL}
 
+				passwordHasher := util.CreatePasswordHasher(App.PasswordHasherParams)
+
 				dao.NewConfigInitializer(App.Logger,
-					App.IdGenerator, App.Location, datastoreRegistry,
+					App.IdGenerator, App.Location, datastoreRegistry, passwordHasher,
 					App.Mode).Initialize(App.EnableDefaultFarm, provParams)
 
 			// case common.MODE_CLOUD:

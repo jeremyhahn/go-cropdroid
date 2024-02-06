@@ -6,8 +6,6 @@ package cmd
 import (
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +40,6 @@ var standaloneCmd = &cobra.Command{
 		}
 
 		App.KeyPair = rsaKeyPair
-		App.Mailer = service.NewMailer(App, config.NewSmtp())
 
 		farmServices := serviceRegistry.GetFarmServices()
 

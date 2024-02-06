@@ -169,7 +169,7 @@ func (setter *KeyValueSetter) SetWorkflowStepIds(workflowID uint64, workflowStep
 			workflowStep.SetID(workflowStepID)
 		}
 		if workflowStep.GetWorkflowID() == 0 {
-			workflowStep.SetID(workflowID)
+			workflowStep.SetWorkflowID(workflowID)
 		}
 	}
 	return workflowSteps

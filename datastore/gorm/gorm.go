@@ -10,8 +10,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 
-	//_ "github.com/jinzhu/gorm/dialects/mysql"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	// _ "github.com/jinzhu/gorm/dialects/mysql"
+	// _ "github.com/jinzhu/gorm/dialects/postgres"
 	logging "github.com/op/go-logging"
 )
 
@@ -49,6 +49,7 @@ type GormDatabase struct {
 	params             *GormInitParams
 	db                 *gorm.DB
 	isServerConnection bool
+	isInMemoryDatabase bool
 	GormDB
 }
 
@@ -62,10 +63,12 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	database.isServerConnection = serverConnection
 	switch database.params.Engine {
 	case "memory":
-		//idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
+		database.isInMemoryDatabase = true
+		// idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 		//"file:%s?mode=memory&cache=shared"
-		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory", database.params.DBName))
+		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory&cache=shared&pooling=true", database.params.DBName))
 		database.db.Exec("PRAGMA foreign_keys = ON;")
+		database.db.Exec("PRAGMA journal_mode=WAL;")
 		database.db.LogMode(database.params.DebugFlag)
 		//if err := NewGormClusterInitializer(database.logger, database.db, database.params.Location).Initialize(); err != nil {
 
@@ -96,8 +99,8 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	case "sqlite":
 		sqlite := fmt.Sprintf("%s/%s.db", database.params.DataDir, database.params.DBName)
 		database.db = database.newSQLite(sqlite)
-		database.db.LogMode(database.params.DebugFlag)
 		database.db.Exec("PRAGMA foreign_keys = ON;")
+		database.db.LogMode(database.params.DebugFlag)
 	case "cockroach":
 		database.db = database.newCockroachDB()
 	case "postgres":
@@ -114,6 +117,9 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 // Uses the connection parameters and credentials from the current
 // database session to establish a new connection.
 func (database *GormDatabase) CloneConnection() *gorm.DB {
+	// if database.isInMemoryDatabase {
+	// 	return database.db
+	// }
 	return database.Connect(database.isServerConnection)
 }
 

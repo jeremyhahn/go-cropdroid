@@ -5,6 +5,7 @@ package cluster
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
@@ -30,31 +31,13 @@ func NewRaftWorkflowDAO(logger *logging.Logger,
 }
 
 func (dao *RaftWorkflowDAO) Save(workflow *config.Workflow) error {
+	idSetter := dao.raft.GetParams().IdSetter
 	farmID := workflow.GetFarmID()
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	// if workflow.GetID() == 0 {
-	// 	idSetter := dao.raft.GetParams().IdSetter
-	// 	idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
-	// }
-	// if workflow.GetID() == 0 {
-	// 	key := fmt.Sprintf("%d-%s", farmID, workflow.GetName())
-	// 	id := dao.raft.GetParams().IdGenerator.NewID(key)
-	// 	workflow.SetID(id)
-	// 	steps := workflow.GetSteps()
-	// 	for _, step := range steps {
-	// 		if step.GetID() == 0 {
-	// 			stepKey := fmt.Sprintf("%s-%d-%d-%d-%d", key, step.GetDeviceID(),
-	// 				step.GetChannelID(), step.GetDuration(), step.GetState())
-	// 			stepID := dao.raft.GetParams().IdGenerator.NewID(stepKey)
-	// 			step.SetID(stepID)
-	// 		}
-	// 		step.SetWorkflowID(id)
-	// 	}
-	// 	workflow.SetSteps(steps)
-	// }
+	idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
 	farmConfig.SetWorkflow(workflow)
 	return dao.farmDAO.Save(farmConfig)
 }
@@ -98,5 +81,12 @@ func (dao *RaftWorkflowDAO) GetByFarmID(farmID uint64,
 	if err != nil {
 		return nil, err
 	}
-	return farmConfig.GetWorkflows(), nil
+	workflows := farmConfig.GetWorkflows()
+	for _, workflow := range workflows {
+		workflowSteps := workflow.GetSteps()
+		sort.SliceStable(workflowSteps, func(i, j int) bool {
+			return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+		})
+	}
+	return workflows, nil
 }

@@ -229,7 +229,7 @@ func (restService *DefaultDeviceRestService) Switch(w http.ResponseWriter, r *ht
 
 	deviceType := deviceService.GetDeviceType()
 	switchPosition := util.NewSwitchPosition(_position)
-	message := fmt.Sprintf("User %s switching %s %s %s", session.GetUser().GetEmail(),
+	message := fmt.Sprintf("%s switching %s %s %s", session.GetUser().GetEmail(),
 		switchPosition.ToLowerString(), deviceType, channelConfig.GetName())
 
 	eventEntity, err := deviceService.Switch(_channel, _position, message)
@@ -275,7 +275,7 @@ func (restService *DefaultDeviceRestService) TimerSwitch(w http.ResponseWriter, 
 	}
 
 	deviceType := deviceService.GetDeviceType()
-	message := fmt.Sprintf("User %s switching on %s channel %s for %s seconds",
+	message := fmt.Sprintf("%s switching on %s channel %s for %s seconds",
 		session.GetUser().GetEmail(), deviceType, channel, duration)
 	eventEntity, err := deviceService.TimerSwitch(_channel, _duration, message)
 	if err != nil {

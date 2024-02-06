@@ -41,7 +41,7 @@ func NewGormRegistry(logger *logging.Logger, gormDB GormDB) dao.Registry {
 		registrationDAO: NewRegistrationDAO(logger, db),
 		orgDAO:          NewOrganizationDAO(logger, db, idGenerator),
 		farmDAO:         NewFarmDAO(logger, db, idGenerator),
-		deviceDAO:       NewDeviceDAO(logger, db),
+		//deviceDAO:       NewDeviceDAO(logger, db, gormDB),
 		deviceConfigDAO: NewDeviceSettingDAO(logger, db),
 		metricDAO:       NewMetricDAO(logger, db),
 		channelDAO:      NewChannelDAO(logger, db),

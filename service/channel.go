@@ -37,10 +37,12 @@ func (service *DefaultChannelService) Get(session Session, id uint64) (common.Ch
 }
 
 func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) ([]common.Channel, error) {
+	farmService := session.GetFarmService()
 	orgID := session.GetRequestedOrganizationID()
-	userID := session.GetUser().GetID()
-	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
-	entities, err := service.dao.GetByDevice(orgID, userID, deviceID, consistencyLevel)
+	//userID := session.GetUser().GetID()
+	farmID := farmService.GetFarmID()
+	consistencyLevel := farmService.GetConsistencyLevel()
+	entities, err := service.dao.GetByDevice(orgID, farmID, deviceID, consistencyLevel)
 	if err != nil {
 		return nil, err
 	}

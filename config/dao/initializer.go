@@ -9,7 +9,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -23,37 +22,41 @@ type Initializer interface {
 }
 
 type ConfigInitializer struct {
-	logger        *logging.Logger
-	location      *time.Location
-	algorithmDAO  AlgorithmDAO
-	farmDAO       FarmDAO
-	userDAO       UserDAO
-	roleDAO       RoleDAO
-	permissionDAO PermissionDAO
-	idGenerator   util.IdGenerator
-	appMode       string
+	logger         *logging.Logger
+	location       *time.Location
+	algorithmDAO   AlgorithmDAO
+	farmDAO        FarmDAO
+	userDAO        UserDAO
+	roleDAO        RoleDAO
+	permissionDAO  PermissionDAO
+	idGenerator    util.IdGenerator
+	passwordHasher util.PasswordHasher
+	appMode        string
+	Initializer
 }
 
 func NewConfigInitializer(logger *logging.Logger, idGenerator util.IdGenerator,
-	location *time.Location, registry Registry, appMode string) *ConfigInitializer {
+	location *time.Location, registry Registry, passwordHasher util.PasswordHasher,
+	appMode string) *ConfigInitializer {
 
 	return &ConfigInitializer{
-		logger:        logger,
-		idGenerator:   idGenerator,
-		location:      location,
-		algorithmDAO:  registry.GetAlgorithmDAO(),
-		farmDAO:       registry.GetFarmDAO(),
-		userDAO:       registry.GetUserDAO(),
-		roleDAO:       registry.GetRoleDAO(),
-		permissionDAO: registry.GetPermissionDAO(),
-		appMode:       appMode}
+		logger:         logger,
+		idGenerator:    idGenerator,
+		location:       location,
+		algorithmDAO:   registry.GetAlgorithmDAO(),
+		farmDAO:        registry.GetFarmDAO(),
+		userDAO:        registry.GetUserDAO(),
+		roleDAO:        registry.GetRoleDAO(),
+		permissionDAO:  registry.GetPermissionDAO(),
+		passwordHasher: passwordHasher,
+		appMode:        appMode}
 }
 
 // Initializes a new database, including a new administrative user and default Farm.
 func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	params *common.ProvisionerParams) (*config.Farm, error) {
 
-	encrypted, err := bcrypt.GenerateFromPassword([]byte(common.DEFAULT_PASSWORD), bcrypt.DefaultCost)
+	encrypted, err := initializer.passwordHasher.Encrypt(common.DEFAULT_PASSWORD)
 	if err != nil {
 		initializer.logger.Fatalf("Error generating encrypted password: %s", err)
 		return nil, err
@@ -272,6 +275,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	roomChannel1ConditionID := initializer.newFarmID(farmID, "room-chan-1-cond-1")
 	roomChannel2ConditionID := initializer.newFarmID(farmID, "room-chan-2-cond-1")
 	roomChannel3ConditionID := initializer.newFarmID(farmID, "room-chan-3-cond-1")
+	roomChannel5ConditionID := initializer.newFarmID(farmID, "room-chan-5-cond-1")
 	roomDevice.SetChannels([]*config.Channel{
 		{ID: roomChannel0ID, ChannelID: common.CHANNEL_ROOM_LIGHTING_ID, Name: common.CHANNEL_ROOM_LIGHTING, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 64800, AlgorithmID: 0,
 			Conditions: make([]*config.Condition, 0),
@@ -288,7 +292,9 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 		{ID: roomChannel4ID, ChannelID: common.CHANNEL_ROOM_VENTILATION_ID, Name: common.CHANNEL_ROOM_VENTILATION, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 900, AlgorithmID: 0,
 			Conditions: make([]*config.Condition, 0),
 			Schedule:   ventSchedules},
-		{ID: roomChannel5ID, ChannelID: common.CHANNEL_ROOM_CO2_ID, Name: common.CHANNEL_ROOM_CO2, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)}})
+		{ID: roomChannel5ID, ChannelID: common.CHANNEL_ROOM_CO2_ID, Name: common.CHANNEL_ROOM_CO2, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.Condition{{ID: roomChannel5ConditionID, MetricID: roomDeviceMetric13ID, Comparator: "<", Threshold: 500.0}},
+			Schedule:   make([]*config.Schedule, 0)}})
 
 	reservoirDevice := config.NewDevice()
 	resDeviceEnableID := initializer.newFarmID(farmID, "res-enable")
@@ -417,29 +423,6 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 		{ID: doserChannel5ID, ChannelID: common.CHANNEL_DOSER_NUTE2_ID, Name: common.CHANNEL_DOSER_NUTE2, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
 		{ID: doserChannel6ID, ChannelID: common.CHANNEL_DOSER_NUTE3_ID, Name: common.CHANNEL_DOSER_NUTE3, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)}})
 
-	farm := config.NewFarm()
-	farm.SetOrganizationID(params.OrganizationID)
-	farm.SetID(farmID)
-	farm.SetInterval(60)
-	farm.SetTimezone(initializer.location.String())
-	farm.SetName(params.FarmName)
-	farm.SetMode(common.CONFIG_MODE_VIRTUAL)
-	farm.SetConfigStore(params.ConfigStoreType)
-	farm.SetStateStore(int(params.StateStoreType))
-	farm.SetDataStore(params.DataStoreType)
-	farm.SetConsistencyLevel(params.ConsistencyLevel)
-	farm.SetDevices([]*config.Device{serverDevice,
-		roomDevice, reservoirDevice, doserDevice})
-	farm.SetUsers(farmUsers)
-	//initializer.farmDAO.Save(farm)
-
-	// Create conditions now that metric ids have been saved to the databsae.
-	// GORM has trouble managing tables  with multiple foreign keys
-	// farm, err = initializer.farmDAO.Get(farm.GetID(), common.CONSISTENCY_LOCAL)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	// Water change workflow
 	drainStep := config.NewWorkflowStep()
 	drainStep.SetID(initializer.newFarmID(farmID, "drainStep"))
@@ -506,6 +489,19 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 		nutePart2Step,
 		nutePart3Step})
 
+	farm := config.NewFarm()
+	farm.SetOrganizationID(params.OrganizationID)
+	farm.SetID(farmID)
+	farm.SetInterval(60)
+	farm.SetTimezone(initializer.location.String())
+	farm.SetName(params.FarmName)
+	farm.SetMode(common.CONFIG_MODE_VIRTUAL)
+	farm.SetConfigStore(params.ConfigStoreType)
+	farm.SetStateStore(int(params.StateStoreType))
+	farm.SetDataStore(params.DataStoreType)
+	farm.SetConsistencyLevel(params.ConsistencyLevel)
+	farm.SetDevices([]*config.Device{serverDevice, roomDevice, reservoirDevice, doserDevice})
+	farm.SetUsers(farmUsers)
 	farm.SetWorkflows([]*config.Workflow{workflow1})
 
 	return farm, nil

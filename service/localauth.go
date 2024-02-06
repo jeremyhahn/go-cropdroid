@@ -13,7 +13,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/util"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -104,8 +103,11 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common
 		return nil, nil, nil, err
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(userEntity.GetPassword()), []byte(userCredentials.Password))
+	match, err := service.comparePassword(userCredentials.Password, userEntity.GetPassword())
 	if err != nil {
+		return nil, nil, nil, err
+	}
+	if match == false {
 		return nil, nil, nil, ErrInvalidCredentials
 	}
 	userEntity.RedactPassword()
@@ -144,7 +146,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
 	}
-	if persistedUser.GetID() != 0 {
+	if persistedUser != nil {
 		return nil, ErrUserAlreadyExists
 	}
 	encrypted, err := service.encryptPassword(userCredentials.Password)
@@ -180,7 +182,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		return nil, err
 	}
 
-	mailer := NewMailer(service.app, config.NewSmtp())
+	mailer := NewMailer(service.app)
 	mailer.SetRecipient(userCredentials.Email)
 	tmpl := fmt.Sprintf("%s/%s", common.HTTP_PUBLIC_HTML, common.EMAIL_REGISTRATION)
 	subject := fmt.Sprintf("%s Registration", service.app.Name)
@@ -271,6 +273,11 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 				farmIds[i] = farmConfig.GetID()
 			}
 			userConfig.SetFarmRefs(farmIds)
+			// Set a default role if this is a new user
+			// and there arent any farms in the system.
+			if len(farms) == 0 {
+				userConfig.SetRoles([]*config.Role{defaultRole})
+			}
 		}
 	}
 
@@ -285,6 +292,12 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	return userAccount, nil
 }
 
-func (service *LocalAuthService) encryptPassword(password string) ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+func (service *LocalAuthService) encryptPassword(password string) (string, error) {
+	hasher := util.CreatePasswordHasher(service.app.PasswordHasherParams)
+	return hasher.Encrypt(password)
+}
+
+func (service *LocalAuthService) comparePassword(password, hash string) (bool, error) {
+	hasher := util.CreatePasswordHasher(service.app.PasswordHasherParams)
+	return hasher.Compare(password, hash)
 }

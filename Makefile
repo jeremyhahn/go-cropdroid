@@ -81,11 +81,11 @@ build-standalone-debug:
 	$(GOBIN)/go build -gcflags='all=-N -l' -o $(APP) -gcflags='all=-N -l' -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-static:
-	CGO_ENABLED=1 \
+#	CGO_ENABLED=1
 	$(GOBIN)/go build -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
 
 build-standalone-debug-static:
-	CGO_ENABLED=1 \
+#	CGO_ENABLED=1
 	$(GOBIN)/go build -o $(APP) -gcflags='all=-N -l' --ldflags '-extldflags -static -v ${LDFLAGS}'
 
 

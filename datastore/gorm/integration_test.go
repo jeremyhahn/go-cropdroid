@@ -19,7 +19,7 @@ var TestSuiteName = "cropdroid_datastore_test"
 
 type DatastoreTest struct {
 	mutex       *sync.Mutex
-	db          GormDB
+	gormDB      GormDB
 	gorm        *gorm.DB
 	logger      *logging.Logger
 	location    *time.Location
@@ -51,9 +51,9 @@ func NewIntegrationTest() *DatastoreTest {
 	gormdb.Close()
 
 	gormdb = database.Connect(false)
-	//database.Migrate()
+	database.Migrate()
 
-	CurrentTest.db = database
+	CurrentTest.gormDB = database
 	CurrentTest.gorm = gormdb
 	CurrentTest.logger = logger
 	CurrentTest.location = Location
@@ -64,12 +64,12 @@ func NewIntegrationTest() *DatastoreTest {
 func (dt *DatastoreTest) Cleanup() {
 	if CurrentTest != nil {
 		// Close app user connection
-		CurrentTest.db.Close()
+		CurrentTest.gormDB.Close()
 
 		// Connect as server admin, drop db
-		CurrentTest.db.Connect(true)
-		CurrentTest.db.Drop()
-		CurrentTest.db.Close()
+		CurrentTest.gormDB.Connect(true)
+		CurrentTest.gormDB.Drop()
+		CurrentTest.gormDB.Close()
 
 		CurrentTest.mutex.Unlock()
 	}

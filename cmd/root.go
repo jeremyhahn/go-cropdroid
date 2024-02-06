@@ -262,25 +262,16 @@ func initConfig() {
 	App.EnableRegistrations = viper.GetBool("enable-registrations")
 	App.EnableDefaultFarm = viper.GetBool("enable-default-farm")
 
+	if viper.Get("argon2") == nil {
+		App.PasswordHasherParams = &util.PasswordHasherParams{
+			Memory:      64 * 1024,
+			Iterations:  3,
+			Parallelism: 2,
+			SaltLength:  16,
+			KeyLength:   32}
+	}
+
 	App.Logger.Debugf("%+v", App)
 
 	//App.ValidateConfig()
 }
-
-// func listFiles() {
-// 	files, err := ioutil.ReadDir("/cockroach/cockroach-certs/")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for _, file := range files {
-// 		fmt.Printf("File: %s", file.Name())
-// 	}
-
-// 	libs, err := ioutil.ReadDir("/usr/local/lib/cockroach")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for _, lib := range libs {
-// 		fmt.Printf("Lib: %s", lib.Name())
-// 	}
-// }

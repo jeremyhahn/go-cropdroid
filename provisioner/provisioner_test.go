@@ -8,27 +8,66 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
-	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 )
 
 func TestProvisioner(t *testing.T) {
 
-	farmDAO, provisioner, params := createDefaultProvisioner()
+	initParams := &common.ProvisionerParams{
+		UserID:           0,
+		RoleID:           0,
+		OrganizationID:   0,
+		FarmName:         common.DEFAULT_CROP_NAME,
+		ConfigStoreType:  config.MEMORY_STORE,
+		StateStoreType:   state.MEMORY_STORE,
+		DataStoreType:    datastore.GORM_STORE,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL}
 
-	role := model.NewRole()
-	role.SetName("test")
+	farmDAO, userDAO, provisioner, initializer := createDefaultProvisioner()
 
-	user := model.NewUser()
-	user.SetEmail("root@localhost")
+	_, err := initializer.Initialize(false, initParams)
+	assert.Nil(t, err)
+
+	roleName := "test"
+	roleID := CurrentTest.idGenerator.NewRoleID(roleName)
+	role := config.NewRole()
+	role.SetID(roleID)
+	role.SetName(roleName)
+
+	email := "root@localhost"
+	userID := CurrentTest.idGenerator.NewUserID(email)
+	user := config.NewUser()
+	user.SetID(userID)
+	user.SetEmail(email)
 	user.SetPassword("dev")
-	user.SetRoles([]common.Role{role})
+	user.SetRoles([]*config.Role{role})
 
-	farm, err := provisioner.Provision(user, params)
+	err = userDAO.Save(user)
+	assert.Nil(t, err)
+
+	persistedUser, err := userDAO.Get(userID, common.CONSISTENCY_LOCAL)
+	assert.Nil(t, err)
+
+	userMapper := mapper.NewUserMapper()
+	userModel := userMapper.MapUserConfigToModel(persistedUser)
+	assert.Equal(t, email, userModel.GetEmail())
+
+	provParams := &common.ProvisionerParams{
+		UserID:           userID,
+		RoleID:           roleID,
+		OrganizationID:   0,
+		FarmName:         common.DEFAULT_CROP_NAME,
+		ConfigStoreType:  config.MEMORY_STORE,
+		StateStoreType:   state.MEMORY_STORE,
+		DataStoreType:    datastore.GORM_STORE,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL}
+
+	farm, err := provisioner.Provision(userModel, provParams)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, farm)
@@ -43,23 +82,76 @@ func TestProvisioner(t *testing.T) {
 
 func TestProvisionerMultipleFarms(t *testing.T) {
 
-	farmDAO, provisioner, params := createDefaultProvisioner()
+	initParams := &common.ProvisionerParams{
+		UserID:           0,
+		RoleID:           0,
+		OrganizationID:   0,
+		FarmName:         common.DEFAULT_CROP_NAME,
+		ConfigStoreType:  config.MEMORY_STORE,
+		StateStoreType:   state.MEMORY_STORE,
+		DataStoreType:    datastore.GORM_STORE,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL}
 
-	role := model.NewRole()
-	role.SetName("test")
+	farmDAO, userDAO, provisioner, initializer := createDefaultProvisioner()
 
-	user := model.NewUser()
-	user.SetEmail("root@localhost")
+	_, err := initializer.Initialize(false, initParams)
+	assert.Nil(t, err)
+
+	roleName := "test"
+	roleID := CurrentTest.idGenerator.NewRoleID(roleName)
+	role := config.NewRole()
+	role.SetID(roleID)
+	role.SetName(roleName)
+
+	email := "root@localhost"
+	userID := CurrentTest.idGenerator.NewUserID(email)
+	user := config.NewUser()
+	user.SetID(userID)
+	user.SetEmail(email)
 	user.SetPassword("dev")
-	user.SetRoles([]common.Role{role})
+	user.SetRoles([]*config.Role{role})
 
-	farm1, err := provisioner.Provision(user, params)
+	err = userDAO.Save(user)
 	assert.Nil(t, err)
 
-	farm2, err := provisioner.Provision(user, params)
+	persistedUser, err := userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 
-	farm3, err := provisioner.Provision(user, params)
+	userMapper := mapper.NewUserMapper()
+	userModel := userMapper.MapUserConfigToModel(persistedUser)
+	assert.Equal(t, email, userModel.GetEmail())
+
+	farm1, err := provisioner.Provision(userModel, &common.ProvisionerParams{
+		UserID:           userID,
+		RoleID:           roleID,
+		OrganizationID:   0,
+		FarmName:         "farm1",
+		ConfigStoreType:  config.MEMORY_STORE,
+		StateStoreType:   state.MEMORY_STORE,
+		DataStoreType:    datastore.GORM_STORE,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL})
+	assert.Nil(t, err)
+
+	farm2, err := provisioner.Provision(userModel, &common.ProvisionerParams{
+		UserID:           userID,
+		RoleID:           roleID,
+		OrganizationID:   0,
+		FarmName:         "farm2",
+		ConfigStoreType:  config.MEMORY_STORE,
+		StateStoreType:   state.MEMORY_STORE,
+		DataStoreType:    datastore.GORM_STORE,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL})
+	assert.Nil(t, err)
+
+	farm3, err := provisioner.Provision(userModel, &common.ProvisionerParams{
+		UserID:           userID,
+		RoleID:           roleID,
+		OrganizationID:   0,
+		FarmName:         "farm3",
+		ConfigStoreType:  config.MEMORY_STORE,
+		StateStoreType:   state.MEMORY_STORE,
+		DataStoreType:    datastore.GORM_STORE,
+		ConsistencyLevel: common.CONSISTENCY_LOCAL})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, farm1)
@@ -74,19 +166,22 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	CurrentTest.Cleanup()
 }
 
-func createDefaultProvisioner() (dao.FarmDAO, FarmProvisioner, *common.ProvisionerParams) {
+func createDefaultProvisioner() (dao.FarmDAO, dao.UserDAO, FarmProvisioner,
+	dao.Initializer) {
+
 	it := NewIntegrationTest()
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 	userMapper := mapper.NewUserMapper()
 	farmDAO := gormstore.NewFarmDAO(it.logger, it.gorm, it.idGenerator)
+	userDAO := gormstore.NewUserDAO(it.logger, it.gorm)
+	permissionDAO := gormstore.NewPermissionDAO(it.logger, it.gorm)
 
-	initializer := gormstore.NewGormInitializer(it.logger, it.db, idGenerator,
-		it.location, common.CONFIG_MODE_VIRTUAL)
-	params := &common.ProvisionerParams{
-		ConfigStoreType: config.MEMORY_STORE,
-		StateStoreType:  state.MEMORY_STORE,
-		DataStoreType:   datastore.GORM_STORE,
-	}
-	return farmDAO, NewGormFarmProvisioner(it.logger, it.gorm, it.location,
-		farmDAO, nil, nil, userMapper, initializer), params
+	datastoreRegistry := gorm.NewGormRegistry(it.logger, it.db)
+
+	configInitializer := dao.NewConfigInitializer(it.logger,
+		idGenerator, it.location, datastoreRegistry, it.passwordHasher,
+		"virtual")
+
+	return farmDAO, userDAO, NewGormFarmProvisioner(it.logger, it.gorm, it.location,
+		farmDAO, permissionDAO, nil, nil, userMapper, configInitializer), configInitializer
 }

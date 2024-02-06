@@ -147,8 +147,8 @@ func (service *DefaultScheduleService) Update(session Session, schedule *config.
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			for _, schedule := range channel.GetSchedule() {
-				if channel.GetID() == schedule.GetChannelID() {
+			for _, _schedule := range channel.GetSchedule() {
+				if channel.GetID() == _schedule.GetChannelID() {
 					channel.SetScheduleItem(schedule)
 					device.SetChannel(channel)
 					return farmService.SetDeviceConfig(device)
@@ -190,8 +190,8 @@ func (service *DefaultScheduleService) Delete(session Session, schedule *config.
 func (service *DefaultScheduleService) IsScheduled(schedule *config.Schedule, duration int) bool {
 	service.app.Logger.Debugf("schedule=%+v", schedule)
 	startDate := schedule.GetStartDate()
+	now := time.Now().In(service.app.Location)
 	if schedule.GetFrequency() > 0 {
-		now := time.Now().In(service.app.Location)
 
 		if schedule.GetDays() != nil {
 			days := strings.Split(*schedule.GetDays(), ",")
@@ -256,9 +256,15 @@ func (service *DefaultScheduleService) IsScheduled(schedule *config.Schedule, du
 		timerExpiration := service.timeWithDuration(startDate, duration)
 		return service.isTimeBetween(startDate, timerExpiration)
 	}
+	if startDate.After(now) {
+		return false
+	}
 	endDate := schedule.GetEndDate()
 	if endDate == nil {
 		return true // No timer duration or end date - run forever
+	}
+	if now.After(*endDate) || now.Equal(*endDate) {
+		return false
 	}
 	return service.isDateTimeBetween(startDate, *endDate)
 }

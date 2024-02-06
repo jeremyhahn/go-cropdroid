@@ -12,7 +12,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/util"
-	"golang.org/x/crypto/bcrypt"
 	oauth2 "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
@@ -188,10 +187,13 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
 	}
-	encrypted, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+
+	passwordHasher := util.CreatePasswordHasher(service.app.PasswordHasherParams)
+	encrypted, err := passwordHasher.Encrypt(token)
 	if err != nil {
 		return nil, err
 	}
+
 	// var roleConfig config.RoleConfig
 	// if userCredentials.OrganizationID > 0 {
 	// 	roleConfig, err = service.roleDAO.GetByName(common.ROLE_ANALYST)
@@ -199,11 +201,17 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	// 	roleConfig, err = service.roleDAO.GetByName(common.ROLE_ADMIN)
 	// }
 	//roleConfig, err := service.roleDAO.GetByName(common.ROLE_ADMIN)
+
+	defaultRole, err := service.roleDAO.GetByName(service.app.DefaultRole, common.CONSISTENCY_LOCAL)
+	if err != nil {
+		return nil, err
+	}
+
 	userConfig := &config.User{
 		ID:       service.idGenerator.NewID(email),
 		Email:    email,
-		Password: string(encrypted)}
-	//	Roles:    []config.Role{*roleConfig.(*config.Role)}}
+		Password: string(encrypted),
+		Roles:    []*config.Role{defaultRole}}
 
 	err = service.userDAO.Save(userConfig) // creates userConfig.id
 	if err != nil {

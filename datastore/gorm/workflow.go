@@ -1,6 +1,8 @@
 package gorm
 
 import (
+	"sort"
+
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jinzhu/gorm"
@@ -36,6 +38,10 @@ func (dao *GormWorkflowDAO) Get(farmID, workflowID uint64,
 	if err := dao.db.First(workflow, workflowID).Error; err != nil {
 		return nil, err
 	}
+	workflowSteps := workflow.GetSteps()
+	sort.SliceStable(workflowSteps, func(i, j int) bool {
+		return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+	})
 	return workflow, nil
 }
 
@@ -47,6 +53,13 @@ func (dao *GormWorkflowDAO) GetByFarmID(farmID uint64,
 		Where("farm_id = ?", farmID).
 		Find(&workflows).Error; err != nil {
 		return nil, err
+	}
+	// TODO: Replace with order by workflow_steps.sort_order
+	for _, workflow := range workflows {
+		workflowSteps := workflow.GetSteps()
+		sort.SliceStable(workflowSteps, func(i, j int) bool {
+			return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+		})
 	}
 	return workflows, nil
 }

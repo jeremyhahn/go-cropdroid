@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
@@ -82,6 +83,12 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm,
 	if err := farm.ParseSettings(); err != nil {
 		return nil, err
 	}
+	for _, workflow := range farm.GetWorkflows() {
+		workflowSteps := workflow.GetSteps()
+		sort.SliceStable(workflowSteps, func(i, j int) bool {
+			return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+		})
+	}
 	return &farm, nil
 }
 
@@ -109,6 +116,12 @@ func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*co
 		if err := farm.ParseSettings(); err != nil {
 			return nil, err
 		}
+		for _, workflow := range farm.GetWorkflows() {
+			workflowSteps := workflow.GetSteps()
+			sort.SliceStable(workflowSteps, func(i, j int) bool {
+				return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+			})
+		}
 	}
 	return farms, nil
 }
@@ -135,6 +148,12 @@ func (dao *GormFarmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
 	for _, farm := range farms {
 		if err := farm.ParseSettings(); err != nil {
 			return nil, err
+		}
+		for _, workflow := range farm.GetWorkflows() {
+			workflowSteps := workflow.GetSteps()
+			sort.SliceStable(workflowSteps, func(i, j int) bool {
+				return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+			})
 		}
 	}
 	return farms, nil
@@ -164,6 +183,12 @@ func (dao *GormFarmDAO) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*co
 	for _, farm := range farms {
 		if err := farm.ParseSettings(); err != nil {
 			return nil, err
+		}
+		for _, workflow := range farm.GetWorkflows() {
+			workflowSteps := workflow.GetSteps()
+			sort.SliceStable(workflowSteps, func(i, j int) bool {
+				return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
+			})
 		}
 	}
 	return farms, nil

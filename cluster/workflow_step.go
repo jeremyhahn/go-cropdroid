@@ -30,6 +30,7 @@ func NewRaftWorkflowStepDAO(logger *logging.Logger,
 }
 
 func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.WorkflowStep) error {
+	idSetter := dao.raft.GetParams().IdSetter
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
@@ -37,6 +38,7 @@ func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.Workflo
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.GetID() == workflowStep.GetWorkflowID() {
 			workflow.SetStep(workflowStep)
+			idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
 			farmConfig.SetWorkflow(workflow)
 			return dao.farmDAO.Save(farmConfig)
 		}

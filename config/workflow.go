@@ -85,26 +85,36 @@ func (w *Workflow) SetStep(step *WorkflowStep) {
 			return
 		}
 	}
+	step.SetOrder(len(w.Steps) + 1)
 	w.Steps = append(w.Steps, step)
 }
 
-// SetSteps sets the workflow steps
+// SetSteps sets the workflow steps. The order of the steps are
+// preserved.
 func (w *Workflow) SetSteps(steps []*WorkflowStep) {
+	for i, step := range steps {
+		step.SetOrder(i + 1)
+	}
 	w.Steps = steps
 }
 
-// AddStep adds a new workflow step
+// AddStep adds a new workflow step as the last step in the workflow.
 func (w *Workflow) AddStep(step *WorkflowStep) {
+	step.SetOrder(len(w.Steps) + 1)
 	w.Steps = append(w.Steps, step)
 }
 
-// Removes the specified workflow step from the workflow
+// Removes the specified workflow step from the workflow.
+// The steps are re-ordered after the step is removed.
 func (w *Workflow) RemoveStep(step *WorkflowStep) error {
 	for i, s := range w.Steps {
 		if s.GetID() == step.GetID() {
 			w.Steps = append(w.Steps[:i], w.Steps[i+1:]...)
 			return nil
 		}
+	}
+	for i, s := range w.Steps {
+		s.SetOrder(i + 1)
 	}
 	return ErrWorkflowStepNotFound
 }

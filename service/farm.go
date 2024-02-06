@@ -98,11 +98,10 @@ func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
 	farmState := state.NewFarmStateMap(farm.farmStateID)
 	for _, deviceService := range deviceServices {
 		deviceConfig, err := deviceService.GetConfig()
-		// TODO: RAFT specific
 		if err != nil {
 			farm.app.Logger.Warning(err)
 			for deviceConfig == nil {
-				farm.app.Logger.Warningf("Waiting for initial device state...")
+				farm.app.Logger.Warningf("Waiting for device config to become available...")
 				time.Sleep(1 * time.Minute)
 			}
 		}
@@ -178,16 +177,9 @@ func (farm *DefaultFarmService) GetState() state.FarmStateMap {
 
 func (farm *DefaultFarmService) GetConfig() *config.Farm {
 	farm.app.Logger.Debugf("Getting farm configuration. farm.id=%d", farm.GetFarmID())
-
-	// farmConfigID := farm.farmID
-	// if farm.app.Mode == common.MODE_CLUSTER {
-	// 	farmConfigID = farm.configClusterID
-	// }
-
 	conf, err := farm.farmDAO.Get(farm.farmID, farm.consistencyLevel)
 	if err != nil {
 		farm.app.Logger.Errorf("Error: %s", err)
-		//return &config.Farm{}
 		return nil
 	}
 	return conf

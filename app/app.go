@@ -15,7 +15,6 @@ import (
 
 	logging "github.com/op/go-logging"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/util"
@@ -46,62 +45,49 @@ import (
 // 	- provisioning
 
 type App struct {
-	ClusterID               uint64 `yaml:"clusterId" json:"cluster_id" mapstructure:"cluster_id"`
-	DebugFlag               bool   `yaml:"debug" json:"debug" mapstructure:"debug"`
-	DataDir                 string `yaml:"datadir" json:"datadir" mapstructure:"datadir"`
-	DataStoreEngine         string `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
-	DataStoreCDC            bool   `yaml:"datastore_cdc" json:"datastore_cdc" mapstructure:"datastore_cdc"`
-	DefaultRole             string `yaml:"default_role" json:"default_role" mapstructure:"default_role"`
-	DefaultPermission       string `yaml:"default_permission" json:"default_permission" mapstructure:"default_permission"`
-	DefaultConsistencyLevel int    `yaml:"default_consistency_level" json:"default_consistency_level" mapstructure:"default_consistency_level"`
-	DefaultConfigStoreType  int    `yaml:"default_config_store" json:"default_config_store" mapstructure:"default_config_store"`
-	DefaultStateStoreType   int    `yaml:"default_state_store" json:"default_state_store" mapstructure:"default_state_store"`
-	DefaultDataStoreType    int    `yaml:"default_data_store" json:"default_data_store" mapstructure:"default_data_store"`
-	DowngradeUser           string `yaml:"www_user" json:"www_user" mapstructure:"www_user"`
-	EnableDefaultFarm       bool   `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
-	EnableRegistrations     bool   `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
-	//Farms               []config.Farm `gorm:"-" yaml:"farms" json:"farms"`
-	//GormDB         gormstore.GormDB
-	GORMInitParams *gormstore.GormInitParams
-	HomeDir        string `yaml:"home_dir" json:"home_dir" mapstructure:"home_dir"`
-	IdGenerator    util.IdGenerator
-	IdSetter       util.IdSetter
-	Interval       int    `yaml:"interval" json:"interval" mapstructure:"interval"`
-	KeyDir         string `yaml:"key_dir" json:"key_dir" mapstructure:"key_dir"`
-	KeyPair        KeyPair
-	LicenseBlob    string          `yaml:"license" json:"license" mapstructure:"license"`
-	License        *config.License `yaml:"-" json:"-" mapstructure:"-"`
-	Location       *time.Location
-	LogDir         string `yaml:"log_dir" json:"log_dir" mapstructure:"log_dir"`
-	LogFile        string `yaml:"log_file" json:"log_file" mapstructure:"log_file"`
-	Logger         *logging.Logger
-	Mailer         common.Mailer
-	Mode           string `yaml:"mode" json:"mode" mapstructure:"mode"`
-	Name           string
-	NodeID         int `yaml:"node_id" json:"node_id" mapstructure:"node_id"`
-	//Organizations       []config.Organization `yaml:"organizations" json:"organizations" mapstructure:"organizations"`
-	RedirectHttpToHttps bool         `yaml:"redirect_http_https" json:"redirect_http_https" mapstructure:"redirect_http_https"`
-	Smtp                *config.Smtp `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
-	SSLFlag             bool         `yaml:"ssl" json:"ssl" mapstructure:"ssl"`
-	StateTTL            int          `yaml:"state_ttl" json:"state_ttl" mapstructure:"state_ttl"`
-	StateTick           int          `yaml:"state_tick" json:"state_tick" mapstructure:"state_tick"`
-	Timezone            string       `yaml:"timezone" json:"timezone" mapstructure:"timezone"`
-	WebPort             int          `yaml:"port" json:"port" mapstructure:"port"`
+	ClusterID               uint64                    `yaml:"clusterId" json:"cluster_id" mapstructure:"cluster_id"`
+	DebugFlag               bool                      `yaml:"debug" json:"debug" mapstructure:"debug"`
+	DataDir                 string                    `yaml:"datadir" json:"datadir" mapstructure:"datadir"`
+	DataStoreEngine         string                    `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
+	DataStoreCDC            bool                      `yaml:"datastore_cdc" json:"datastore_cdc" mapstructure:"datastore_cdc"`
+	DefaultRole             string                    `yaml:"default_role" json:"default_role" mapstructure:"default_role"`
+	DefaultPermission       string                    `yaml:"default_permission" json:"default_permission" mapstructure:"default_permission"`
+	DefaultConsistencyLevel int                       `yaml:"default_consistency_level" json:"default_consistency_level" mapstructure:"default_consistency_level"`
+	DefaultConfigStoreType  int                       `yaml:"default_config_store" json:"default_config_store" mapstructure:"default_config_store"`
+	DefaultStateStoreType   int                       `yaml:"default_state_store" json:"default_state_store" mapstructure:"default_state_store"`
+	DefaultDataStoreType    int                       `yaml:"default_data_store" json:"default_data_store" mapstructure:"default_data_store"`
+	DowngradeUser           string                    `yaml:"www_user" json:"www_user" mapstructure:"www_user"`
+	EnableDefaultFarm       bool                      `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
+	EnableRegistrations     bool                      `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
+	GORMInitParams          *gormstore.GormInitParams `yaml:"-" json:"-" mapstructure:"-"`
+	HomeDir                 string                    `yaml:"home_dir" json:"home_dir" mapstructure:"home_dir"`
+	IdGenerator             util.IdGenerator          `yaml:"-" json:"-" mapstructure:"-"`
+	IdSetter                util.IdSetter             `yaml:"-" json:"-" mapstructure:"-"`
+	Interval                int                       `yaml:"interval" json:"interval" mapstructure:"interval"`
+	KeyDir                  string                    `yaml:"key_dir" json:"key_dir" mapstructure:"key_dir"`
+	KeyPair                 KeyPair                   `yaml:"-" json:"-" mapstructure:"-"`
+	LicenseBlob             string                    `yaml:"license" json:"license" mapstructure:"license"`
+	License                 *config.License           `yaml:"-" json:"-" mapstructure:"-"`
+	Location                *time.Location            `yaml:"-" json:"-" mapstructure:"-"`
+	LogDir                  string                    `yaml:"log_dir" json:"log_dir" mapstructure:"log_dir"`
+	LogFile                 string                    `yaml:"log_file" json:"log_file" mapstructure:"log_file"`
+	Logger                  *logging.Logger
+	Mode                    string                     `yaml:"mode" json:"mode" mapstructure:"mode"`
+	Name                    string                     `yaml:"-" json:"-" mapstructure:"-"`
+	NodeID                  int                        `yaml:"node_id" json:"node_id" mapstructure:"node_id"`
+	PasswordHasherParams    *util.PasswordHasherParams `yaml:"-" json:"-" mapstructure:"argon2"`
+	RedirectHttpToHttps     bool                       `yaml:"redirect_http_https" json:"redirect_http_https" mapstructure:"redirect_http_https"`
+	Smtp                    *config.Smtp               `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
+	SSLFlag                 bool                       `yaml:"ssl" json:"ssl" mapstructure:"ssl"`
+	StateTTL                int                        `yaml:"state_ttl" json:"state_ttl" mapstructure:"state_ttl"`
+	StateTick               int                        `yaml:"state_tick" json:"state_tick" mapstructure:"state_tick"`
+	Timezone                string                     `yaml:"timezone" json:"timezone" mapstructure:"timezone"`
+	WebPort                 int                        `yaml:"port" json:"port" mapstructure:"port"`
 }
 
 func NewApp() *App {
 	return &App{Name: "cropdroid"}
 }
-
-// func (this *App) InitGormDB() *gorm.DB {
-// 	this.GORM = this.NewGormDB()
-// 	return this.GORM
-// }
-
-// func (this *App) NewGormDB() *gorm.DB {
-// 	this.GormDB = gormstore.NewGormDB(this.Logger, this.GORMInitParams)
-// 	return this.GormDB.Connect(false)
-// }
 
 func (this *App) InitLogFile(uid, gid int) *os.File {
 	var logFile string

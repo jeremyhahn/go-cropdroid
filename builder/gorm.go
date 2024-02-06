@@ -115,9 +115,11 @@ func (builder *GormConfigBuilder) Build() (app.KeyPair,
 	farmDeprovisionerChan := make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE)
 	farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
 
+	passwordHasher := util.CreatePasswordHasher(builder.app.PasswordHasherParams)
+
 	configInitializer := dao.NewConfigInitializer(builder.app.Logger,
 		builder.app.IdGenerator, builder.app.Location, builder.datastoreRegistry,
-		builder.app.Mode)
+		passwordHasher, builder.app.Mode)
 
 	farmChannels := &service.FarmChannels{
 		FarmConfigChan:       make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE),
@@ -308,9 +310,11 @@ func (builder *GormConfigBuilder) initDatabase() {
 		DataStoreType:    builder.app.DefaultDataStoreType,
 		ConsistencyLevel: common.CONSISTENCY_LOCAL}
 
+	passwordHasher := util.CreatePasswordHasher(builder.app.PasswordHasherParams)
+
 	configInitializer := dao.NewConfigInitializer(builder.app.Logger,
 		builder.app.IdGenerator, builder.app.Location,
-		builder.datastoreRegistry, builder.app.Mode)
+		builder.datastoreRegistry, passwordHasher, builder.app.Mode)
 
 	_, err := configInitializer.Initialize(builder.app.EnableDefaultFarm, provParams)
 	if err != nil {

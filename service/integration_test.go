@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	logging "github.com/op/go-logging"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +56,18 @@ func NewIntegrationTest() *ServiceTest {
 		KeyDir:         "../keys",
 		Logger:         logger,
 		Location:       Location}
+
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(fmt.Sprintf("/etc/cropdroid/"))
+	viper.AddConfigPath(fmt.Sprintf("$HOME/.cropdroid/"))
+	viper.AddConfigPath(".")
+
+	if err := viper.ReadInConfig(); err != nil {
+		app.Logger.Errorf("%s", err)
+	}
+
+	viper.Unmarshal(app)
 
 	CurrentTest.app = app
 	CurrentTest.db = database

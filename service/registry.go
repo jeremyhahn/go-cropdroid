@@ -9,6 +9,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
+	"github.com/jeremyhahn/go-cropdroid/shoppingcart"
 )
 
 type DefaultServiceRegistry struct {
@@ -32,7 +33,6 @@ type DefaultServiceRegistry struct {
 	farmProvisioner       provisioner.FarmProvisioner
 	googleAuthService     AuthService
 	jwtService            JsonWebTokenService
-	mailer                common.Mailer
 	metricService         MetricService
 	notificationService   NotificationService
 	organizationService   OrganizationService
@@ -41,6 +41,7 @@ type DefaultServiceRegistry struct {
 	userService           UserService
 	workflowService       WorkflowService
 	workflowStepService   WorkflowStepService
+	shoppingCartService   shoppingcart.ShoppingCartService
 	ServiceRegistry
 }
 
@@ -75,7 +76,6 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	workflowService := NewWorkflowService(_app, daos.GetWorkflowDAO(), mappers.GetWorkflowMapper())
 	workflowStepService := NewWorkflowStepService(_app, daos.GetWorkflowStepDAO())
 
-	//serviceRegistry.SetMailer(NewMailer(farm.logger, farm.buildSmtp()))
 	notificationService := NewNotificationService(_app.Logger, nil) // Mailer
 
 	roleService := NewRoleService(_app.Logger, daos.GetRoleDAO())
@@ -90,6 +90,8 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 		mappers.GetUserMapper())
 	authServices[common.AUTH_TYPE_LOCAL] = authService
 	authServices[common.AUTH_TYPE_GOOGLE] = gas
+
+	shoppingCartService := shoppingcart.NewStripeService(_app)
 
 	registry := &DefaultServiceRegistry{
 		app:                   _app,
@@ -107,6 +109,7 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 		metricService:         metricService,
 		notificationService:   notificationService,
 		scheduleService:       scheduleService,
+		shoppingCartService:   shoppingCartService,
 		roleService:           roleService,
 		workflowService:       workflowService,
 		workflowStepService:   workflowStepService}
@@ -321,14 +324,6 @@ func (registry *DefaultServiceRegistry) GetJsonWebTokenService() JsonWebTokenSer
 	return registry.jwtService
 }
 
-func (registry *DefaultServiceRegistry) SetMailer(mailer common.Mailer) {
-	registry.mailer = mailer
-}
-
-func (registry *DefaultServiceRegistry) GetMailer() common.Mailer {
-	return registry.mailer
-}
-
 func (registry *DefaultServiceRegistry) SetMetricService(metricService MetricService) {
 	registry.metricService = metricService
 }
@@ -391,4 +386,12 @@ func (registry *DefaultServiceRegistry) SetWorkflowStepService(workflowStepServi
 
 func (registry *DefaultServiceRegistry) GetWorkflowStepService() WorkflowStepService {
 	return registry.workflowStepService
+}
+
+func (registry *DefaultServiceRegistry) SetShoppingCartService(shoppingCartService shoppingcart.ShoppingCartService) {
+	registry.shoppingCartService = shoppingCartService
+}
+
+func (registry *DefaultServiceRegistry) GetShoppingCartService() shoppingcart.ShoppingCartService {
+	return registry.shoppingCartService
 }

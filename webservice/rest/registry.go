@@ -13,7 +13,9 @@ type DefaultRestServiceRegistry struct {
 	RestServiceRegistry
 }
 
-func NewRestServiceRegistry(app *app.App, publicKey string, mapperRegistry mapper.MapperRegistry, serviceRegistry service.ServiceRegistry) RestServiceRegistry {
+func NewRestServiceRegistry(app *app.App, publicKey string,
+	mapperRegistry mapper.MapperRegistry,
+	serviceRegistry service.ServiceRegistry) RestServiceRegistry {
 
 	jsonWriter := NewJsonWriter()
 	jwtService := serviceRegistry.GetJsonWebTokenService()
@@ -33,6 +35,7 @@ func NewRestServiceRegistry(app *app.App, publicKey string, mapperRegistry mappe
 	provisionerRestService := NewProvisionerRestService(app, serviceRegistry.GetUserService(), farmProvisioner, jwtService, jsonWriter)
 	roleRestService := NewRoleRestService(serviceRegistry.GetRoleService(), jwtService, jsonWriter)
 	organizationRestService := NewOrganizationRestService(serviceRegistry.GetOrganizationService(), jwtService, jsonWriter)
+	shoppingCartRestService := NewShoppingCartRestService(serviceRegistry.GetShoppingCartService(), jwtService, jsonWriter)
 
 	restServices = append(restServices, channelRestService)
 	restServices = append(restServices, metricRestService)
@@ -51,6 +54,7 @@ func NewRestServiceRegistry(app *app.App, publicKey string, mapperRegistry mappe
 	restServices = append(restServices, provisionerRestService)
 	restServices = append(restServices, organizationRestService)
 	restServices = append(restServices, roleRestService)
+	restServices = append(restServices, shoppingCartRestService)
 
 	return &DefaultRestServiceRegistry{
 		jwtService: jwtService,

@@ -1,23 +1,23 @@
 {
- "farm_id": 2256749087,
- "device_id": 4228935323,
+ "farm_id": 1575691750,
+ "device_id": 2574880661,
  "metrics": {
-  "co2": 750,
+  "co2": 800,
   "heatIndex": 1,
   "heatIndex0": 72,
   "heatIndex1": 66,
   "heatIndex2": 24.9,
   "humidity0": 60,
-  "humidity1": 90,
+  "humidity1": 3,
   "humidity2": 0,
   "leak0": 2,
   "leak1": 1,
-  "mem": 1026,
+  "mem": 2048,
   "photo": 2000,
   "tempC0": 24.3,
   "tempC1": 0,
   "tempC2": 0,
-  "tempF0": 99,
+  "tempF0": 95.7,
   "tempF1": 32,
   "tempF2": 101,
   "vpd": -0.51,
@@ -32,5 +32,5 @@
   0,
   0
  ],
- "timestamp": "2024-02-05T22:24:16.110794776-05:00"
+ "timestamp": "2024-02-12T21:15:36.732672652-05:00"
 }

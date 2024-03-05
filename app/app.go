@@ -1,9 +1,6 @@
 package app
 
 import (
-	//#include <unistd.h>
-	//#include <errno.h>
-	"C"
 	"fmt"
 	"log"
 	"os"
@@ -78,6 +75,7 @@ type App struct {
 	PasswordHasherParams    *util.PasswordHasherParams `yaml:"-" json:"-" mapstructure:"argon2"`
 	RedirectHttpToHttps     bool                       `yaml:"redirect_http_https" json:"redirect_http_https" mapstructure:"redirect_http_https"`
 	Smtp                    *config.Smtp               `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
+	Stripe                  *config.Stripe             `yaml:"stripe" json:"stripe" mapstructure:"stripe"`
 	SSLFlag                 bool                       `yaml:"ssl" json:"ssl" mapstructure:"ssl"`
 	StateTTL                int                        `yaml:"state_ttl" json:"state_ttl" mapstructure:"state_ttl"`
 	StateTick               int                        `yaml:"state_tick" json:"state_tick" mapstructure:"state_tick"`
@@ -151,13 +149,13 @@ func (this *App) DropPrivileges() {
 		if err != nil {
 			this.Logger.Fatalf("Unable to parse GID: %s", err)
 		}
-		cerr, errno := C.setgid(C.__gid_t(gid))
-		if cerr != 0 {
-			this.Logger.Fatalf("Unable to setgid: errno=%d: message=%s", errno, cerr)
+		cerr := syscall.Setgid(int(gid))
+		if cerr != nil {
+			this.Logger.Fatalf("Unable to setgid: message=%s", cerr)
 		}
-		cerr, errno = C.setuid(C.__uid_t(uid))
-		if cerr != 0 {
-			this.Logger.Fatalf("Unable to setuid: errno=%d: message=%s", errno, cerr)
+		cerr = syscall.Setuid(int(uid))
+		if cerr != nil {
+			this.Logger.Fatalf("Unable to setuid: message=%s", cerr)
 		}
 		this.InitLogFile(int(uid), int(gid))
 	}

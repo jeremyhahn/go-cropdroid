@@ -4,6 +4,7 @@ TARGET_ARCH             := $(shell uname -m)
 
 ARCH                    := $(shell go env GOARCH)
 OS                      := $(shell go env GOOS)
+LONG_BITS               := $(shell getconf LONG_BIT)
 
 GOBIN                   := $(shell dirname `which go`)
 
@@ -28,8 +29,9 @@ LDFLAGS+= -X github.com/jeremyhahn/go-$(APP)/app.BuildUser=${USER}
 LDFLAGS+= -X github.com/jeremyhahn/go-$(APP)/app.BuildDate=${BUILD_DATE}
 LDFLAGS+= -X github.com/jeremyhahn/go-$(APP)/app.Image=${IMAGE_NAME}
 
-ROCKSDB_HOME    ?= /rocksdb
-ROCKSDB_INCLUDE ?= $(ROCKSDB_HOME)/include
+ifeq ($(LONG_BITS),64)
+	64BIT_CFLAGS=CGO_CFLAGS=-D_LARGEFILE64_SOURCE
+endif
 
 .PHONY: deps
 
@@ -48,25 +50,6 @@ benchmark-api:
 get-deps:
 	go get
 
-rocksdb-deps:
-	sudo apt-get install -y libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev libzstd-dev liblz4-dev
-
-rocksdb-deps-arm64:
-	sudo apt-get install -y libgflags-dev:arm64 libsnappy-dev:arm64 zlib1g-dev:arm64 libbz2-dev:arm64 libzstd-dev:arm64 liblz4-dev:arm64
-
-cockroachdb-deps:
-	sudo apt-get install -y libncurses-dev cmake
-
-gorocksdb:
-	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-	GOOS=linux $(GOBIN)/go get github.com/tecbot/gorocksdb
-
-#gorocksdb-cc:
-#	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-#	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-#	env CC=$(ARM_CC) GOARCH=arm64 GOOS=linux $(GOBIN)/go get github.com/tecbot/gorocksdb
-
 arm-deps:
 	sudo apt-get install -y gcc-6-arm-linux-gnueabihf
 
@@ -75,18 +58,16 @@ build-deps:
 
 
 build-standalone:
-	$(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
+	$(64BIT_CFLAGS) $(GOBIN)/go build -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-debug:
-	$(GOBIN)/go build -gcflags='all=-N -l' -o $(APP) -gcflags='all=-N -l' -ldflags="-w -s ${LDFLAGS}"
+	$(64BIT_CFLAGS) $(GOBIN)/go build -gcflags='all=-N -l' -o $(APP) -gcflags='all=-N -l' -ldflags="-w -s ${LDFLAGS}"
 
 build-standalone-static:
-#	CGO_ENABLED=1
-	$(GOBIN)/go build -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
+	$(64BIT_CFLAGS) $(GOBIN)/go build -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
 
 build-standalone-debug-static:
-#	CGO_ENABLED=1
-	$(GOBIN)/go build -o $(APP) -gcflags='all=-N -l' --ldflags '-extldflags -static -v ${LDFLAGS}'
+	$(64BIT_CFLAGS) $(GOBIN)/go build -o $(APP) -gcflags='all=-N -l' --ldflags '-extldflags -static -v ${LDFLAGS}'
 
 
 build-standalone-arm:
@@ -126,19 +107,19 @@ build-cluster: build-cluster-pebble
 
 build-cluster-pebble:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
-	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) -ldflags="-w -s ${LDFLAGS}"
+	$(64BIT_CFLAGS) $(GOBIN)/go build --tags="cluster pebble" -o $(APP) -ldflags="-w -s ${LDFLAGS}"
 
 build-cluster-pebble-debug:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
-	$(GOBIN)/go build --tags="cluster pebble" -gcflags "all=-N -l" -o $(APP) -ldflags="$(LDFLAGS)"
+	$(64BIT_CFLAGS) $(GOBIN)/go build --tags="cluster pebble" -gcflags "all=-N -l" -o $(APP) -ldflags="$(LDFLAGS)"
 
 build-cluster-pebble-static:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
-	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
+	$(64BIT_CFLAGS) $(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
 
 build-cluster-pebble-debug-static:
 	# Uses default dragonboat pebble database (remove rocksdb config.ExpertConfig in cluster/raft_pebble.go)
-	$(GOBIN)/go build --tags="cluster pebble" -gcflags "all=-N -l" -o $(APP) --ldflags '-extldflags -static -v ${LDFLAGS}'
+	$(64BIT_CFLAGS) $(GOBIN)/go build --tags="cluster pebble" -gcflags "all=-N -l" -o $(APP) --ldflags '-extldflags -static -v ${LDFLAGS}'
 
 
 build-cluster-pebble-arm64-static:
@@ -157,36 +138,6 @@ build-cluster-pebble-arm64-debug-static:
 	$(GOBIN)/go build --tags="cluster pebble" -gcflags "all=-N -l" -o $(APP) --ldflags '-w -s -extldflags -static -v ${LDFLAGS}'
 
 
-build-cluster-rocksdb:
-	# Uses dragonboat rocksdb database (rocksdb config.ExpertConfig in cluster/raft_rocksdb.go)
-	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-	GOOS=linux CGO_ENABLED=1 $(GOBIN)/go build --tags="cluster rocksdb" -o $(APP) -ldflags="-w -s ${LDFLAGS}"
-
-build-cluster-rocksdb-debug:
-	# Uses dragonboat rocksdb database (rocksdb config.ExpertConfig in cluster/raft_rocksdb.go)
-	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-	GOOS=linux CGO_ENABLED=1 $(GOBIN)/go build --tags="cluster rocksdb" -gcflags "all=-N -l" -o $(APP) -ldflags="$(LDFLAGS)"
-
-build-cluster-rocksdb-debug-static:
-	# Uses dragonboat rocksdb database (rocksdb config.ExpertConfig in cluster/raft_rocksdb.go)
-	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-	GOOS=linux CGO_ENABLED=1 $(GOBIN)/go build -a --tags="cluster rocksdb" -gcflags "all=-N -l" -o $(APP) -v --ldflags '-extldflags -static ${LDFLAGS}'
-
-# build-cluster-rocksdb-arm64:
-# 	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
-# 	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-# 	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-# 	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags="${LDFLAGS}"
-
-# build-cluster-rocksdb-arm64-static:
-# 	CC=$(ARM_CC_64) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
-# 	CGO_CFLAGS="-I${ROCKSDB_INCLUDE}" \
-# 	CGO_LDFLAGS="-L${ROCKSDB_HOME} -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd -ldl" \
-# 	$(GOBIN)/go build --tags="cluster pebble" -o $(APP) --ldflags '-w -s -extldflags -static ${LDFLAGS}'
-
 clean:
 	$(GOBIN)/go clean
 	rm -rf $(APP) \
@@ -194,7 +145,8 @@ clean:
 		/usr/local/bin/$(APP) \
 		vendor \
 		db/$(APP).db \
-		db/cluster
+		db/cluster \
+		cluster/test-data/
 
 tests: unittest integrationtest datastore-tests
 

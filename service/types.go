@@ -6,6 +6,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/provisioner"
+	"github.com/jeremyhahn/go-cropdroid/shoppingcart"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
@@ -196,14 +197,14 @@ type ServiceRegistry interface {
 	GetGoogleAuthService() AuthService
 	SetJsonWebTokenService(JsonWebTokenService)
 	GetJsonWebTokenService() JsonWebTokenService
-	SetMailer(common.Mailer)
-	GetMailer() common.Mailer
 	SetMetricService(MetricService)
 	GetMetricService() MetricService
 	SetNotificationService(NotificationService)
 	GetNotificationService() NotificationService
 	SetScheduleService(ScheduleService)
 	GetScheduleService() ScheduleService
+	SetShoppingCartService(shoppingcart.ShoppingCartService)
+	GetShoppingCartService() shoppingcart.ShoppingCartService
 	SetOrganizationService(organizationService OrganizationService)
 	GetOrganizationService() OrganizationService
 	SetRoleService(roleService RoleService)

@@ -130,7 +130,7 @@ func (server *Webserver) Run() {
 
 		server.httpServer.TLSConfig = &tlsconf
 
-		listener, err := tls.Listen("tcp4", sPort, &tlsconf)
+		tlsListener, err := tls.Listen("tcp4", sPort, &tlsconf)
 		if err != nil {
 			log.Fatalln("Unable to bind to SSL port: ", err)
 		}
@@ -142,17 +142,29 @@ func (server *Webserver) Run() {
 			go http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "https://"+r.Host+sPort+r.URL.String(), http.StatusMovedPermanently)
 			}))
+		} else {
+			sHttpPort := fmt.Sprintf(":%d", server.app.WebPort+1)
+			httpListener, err := net.Listen("tcp4", sHttpPort)
+			if err != nil {
+				log.Fatal(err)
+			}
+			go server.httpServer.Serve(httpListener)
+			// if err != nil {
+			// 	server.app.Logger.Fatalf("[WebServer] Unable to start web server on HTTP port: %s", err.Error())
+			// }
+			message := fmt.Sprintf("Starting web server on HTTP port %s", sHttpPort)
+			server.app.Logger.Debugf(message)
+			server.eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, server.eventType, message)
 		}
 
-		//err = http.Serve(listener, server.router)
-		err = server.httpServer.Serve(listener)
+		err = server.httpServer.Serve(tlsListener)
 		if err != nil {
 			server.app.Logger.Fatalf("[WebServer] Unable to start web server: %s", err.Error())
 		}
 
 	} else {
 
-		message := fmt.Sprintf("Starting web services on port %d", server.app.WebPort)
+		message := fmt.Sprintf("Starting web services on HTTP port %d", server.app.WebPort)
 		server.app.Logger.Infof(message)
 		server.eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, server.eventType, message)
 
@@ -239,14 +251,6 @@ func (server *Webserver) buildRoutes() {
 		negroni.Wrap(http.HandlerFunc(server.eventsPage)),
 	))
 	endpointList = append(endpointList, endpoint)
-
-	// /virtual
-	/*
-		router.Handle("/api/v1/virtual/{vdevice}/{metric}/{value}", negroni.New(
-			negroni.HandlerFunc(server.jsonWebTokenService.Validate),
-			negroni.Wrap(http.HandlerFunc(server.setVirtualMetric)),
-		)).Methods("GET")
-	*/
 
 	// Websocket hubs
 

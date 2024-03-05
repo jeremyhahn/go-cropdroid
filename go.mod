@@ -73,6 +73,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stripe/stripe-go/v76 v76.15.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/valyala/fastrand v1.0.0 // indirect
 	github.com/valyala/histogram v1.0.1 // indirect

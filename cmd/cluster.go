@@ -48,6 +48,7 @@ var (
 	RaftRoleClusterID         uint64
 	RaftAlgorithmClusterID    uint64
 	RaftRegistrationClusterID uint64
+	RaftCustomerClusterID     uint64
 )
 
 func init() {
@@ -82,6 +83,7 @@ func init() {
 	clusterCmd.PersistentFlags().Uint64VarP(&RaftRoleClusterID, "raft-role-cluster-id", "", 102, "The raft cluster id assigned to the role database")
 	clusterCmd.PersistentFlags().Uint64VarP(&RaftAlgorithmClusterID, "raft-algorithm-cluster-id", "", 103, "The raft cluster id assigned to the algorithm database")
 	clusterCmd.PersistentFlags().Uint64VarP(&RaftRegistrationClusterID, "raft-registration-cluster-id", "", 104, "The raft cluster id assigned to the registration database")
+	clusterCmd.PersistentFlags().Uint64VarP(&RaftCustomerClusterID, "raft-customer-cluster-id", "", 105, "The raft cluster id assigned to the customer database")
 
 	// Datastore
 	clusterCmd.PersistentFlags().StringVarP(&DataStoreEngine, "datastore", "", "raft", "Data store type [ memory | sqlite | mysql | postgres | cockroach | raft ]")
@@ -154,7 +156,8 @@ var clusterCmd = &cobra.Command{
 			UserClusterID:         RaftUserClusterID,
 			RoleClusterID:         RaftRoleClusterID,
 			AlgorithmClusterID:    RaftAlgorithmClusterID,
-			RegistrationClusterID: RaftRegistrationClusterID}
+			RegistrationClusterID: RaftRegistrationClusterID,
+			CustomerClusterID:     RaftCustomerClusterID}
 
 		farmProvisionerChan := make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE)
 		farmDeprovisionerChan := make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE)

@@ -5,6 +5,16 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 )
 
+type CustomerDAO interface {
+	Delete(user *config.Customer) error
+	Get(userID uint64, CONSISTENCY_LEVEL int) (*config.Customer, error)
+	GetByEmail(name string, CONSISTENCY_LEVEL int) (*config.Customer, error)
+	GetByProcessorID(id string, CONSISTENCY_LEVEL int) (*config.Customer, error)
+	GetAll(CONSISTENCY_LEVEL int) ([]*config.Customer, error)
+	Update(customer *config.Customer) error
+	Save(user *config.Customer) error
+}
+
 type UserDAO interface {
 	Delete(user *config.User) error
 	Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error)
@@ -142,6 +152,8 @@ type Registry interface {
 	SetRegistrationDAO(regDAO RegistrationDAO)
 	GetRoleDAO() RoleDAO
 	SetRoleDAO(RoleDAO)
+	GetCustomerDAO() CustomerDAO
+	SetCustomerDAO(CustomerDAO)
 	GetWorkflowDAO() WorkflowDAO
 	SetWorkflowDAO(WorkflowDAO)
 	GetWorkflowStepDAO() WorkflowStepDAO

@@ -76,9 +76,10 @@ const (
 	//FARM_ACCESS_OWNER = "owner" // allow access only to owned farms
 	FARM_ACCESS_ALL = "all" // allow access to all farms
 
+	// TODO: Update 32 and 64 bit uint64s to match root@localhost
 	DEFAULT_USER_ID_64  = uint64(7335774445529891924) // FNV1a_64 "admin" hash
 	DEFAULT_USER_ID_32  = uint64(885536276)           // FNV1a_32 "admin" hash
-	DEFAULT_USER        = "admin"
+	DEFAULT_USER        = "root@test.com"
 	DEFAULT_PASSWORD    = "cropdroid"
 	DEFAULT_ROLE        = "admin"
 	DEFAULT_FARM_ACCESS = FARM_ACCESS_ALL

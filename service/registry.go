@@ -91,7 +91,7 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	authServices[common.AUTH_TYPE_LOCAL] = authService
 	authServices[common.AUTH_TYPE_GOOGLE] = gas
 
-	shoppingCartService := shoppingcart.NewStripeService(_app)
+	shoppingCartService := shoppingcart.NewStripeService(_app, daos.GetCustomerDAO())
 
 	registry := &DefaultServiceRegistry{
 		app:                   _app,

@@ -22,6 +22,7 @@ type RaftOptions struct {
 	SystemClusterID       uint64 `json:"systemId"`
 	UserClusterID         uint64 `json:"userId"`
 	RoleClusterID         uint64 `json:"roleId"`
+	CustomerClusterID     uint64 `json:"customerId"`
 	AlgorithmClusterID    uint64 `json:"algorithmId`
 	RegistrationClusterID uint64 `json:"registrationId`
 }

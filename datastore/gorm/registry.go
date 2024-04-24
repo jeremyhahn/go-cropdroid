@@ -25,6 +25,7 @@ type GormDaoRegistry struct {
 	eventLogDAO     dao.EventLogDAO
 	userDAO         dao.UserDAO
 	roleDAO         dao.RoleDAO
+	customerDAO     dao.CustomerDAO
 	workflowDAO     dao.WorkflowDAO
 	workflowStepDAO dao.WorkflowStepDAO
 	dao.Registry
@@ -51,6 +52,7 @@ func NewGormRegistry(logger *logging.Logger, gormDB GormDB) dao.Registry {
 		eventLogDAO:     NewEventLogDAO(logger, db, 0),
 		userDAO:         NewUserDAO(logger, db),
 		roleDAO:         NewRoleDAO(logger, db),
+		customerDAO:     NewCustomerDAO(logger, db),
 		workflowDAO:     NewWorkflowDAO(logger, db),
 		workflowStepDAO: NewWorkflowStepDAO(logger, db)}
 }
@@ -178,6 +180,14 @@ func (registry *GormDaoRegistry) GetRoleDAO() dao.RoleDAO {
 
 func (registry *GormDaoRegistry) SetRoleDAO(dao dao.RoleDAO) {
 	registry.roleDAO = dao
+}
+
+func (registry *GormDaoRegistry) GetCustomerDAO() dao.CustomerDAO {
+	return registry.customerDAO
+}
+
+func (registry *GormDaoRegistry) SetCustomerDAO(dao dao.CustomerDAO) {
+	registry.customerDAO = dao
 }
 
 func (registry *GormDaoRegistry) GetWorkflowDAO() dao.WorkflowDAO {

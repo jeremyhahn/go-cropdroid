@@ -28,6 +28,7 @@ type RaftDaoRegistry struct {
 	eventLogDAO      dao.EventLogDAO
 	userDAO          dao.UserDAO
 	roleDAO          dao.RoleDAO
+	customerDAO      dao.CustomerDAO
 	workflowDAO      dao.WorkflowDAO
 	workflowStepDAO  dao.WorkflowStepDAO
 	dao.Registry
@@ -61,6 +62,10 @@ func NewRaftRegistry(logger *logging.Logger,
 	roleDAO := NewRaftRoleDAO(logger,
 		raftNode, raftOptions.RoleClusterID)
 	roleDAO.(*RaftRoleDAO).StartCluster()
+
+	customerDAO := NewRaftCustomerDAO(logger,
+		raftNode, raftOptions.CustomerClusterID)
+	customerDAO.(*RaftCustomerDAO).StartCluster()
 
 	farmDAO := NewRaftFarmConfigDAO(logger,
 		raftNode, serverDAO, userDAO)
@@ -127,6 +132,7 @@ func NewRaftRegistry(logger *logging.Logger,
 		eventLogDAO:      eventLogDAO,
 		userDAO:          userDAO,
 		roleDAO:          roleDAO,
+		customerDAO:      customerDAO,
 		workflowDAO:      workflowDAO,
 		workflowStepDAO:  workflowStepDAO,
 		permissionDAO:    permissionDAO}
@@ -259,6 +265,14 @@ func (registry *RaftDaoRegistry) GetRoleDAO() dao.RoleDAO {
 
 func (registry *RaftDaoRegistry) SetRoleDAO(dao dao.RoleDAO) {
 	registry.roleDAO = dao
+}
+
+func (registry *RaftDaoRegistry) GetCustomerDAO() dao.CustomerDAO {
+	return registry.customerDAO
+}
+
+func (registry *RaftDaoRegistry) SetCustomerDAO(dao dao.CustomerDAO) {
+	registry.customerDAO = dao
 }
 
 func (registry *RaftDaoRegistry) GetWorkflowDAO() dao.WorkflowDAO {

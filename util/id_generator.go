@@ -27,6 +27,7 @@ type IdGenerator interface {
 	NewScheduleID(deviceID uint64, scheduleKey string) uint64
 	NewUserID(email string) uint64
 	NewRoleID(name string) uint64
+	NewCustomerID(email string) uint64
 	NewWorkflowID(farmID uint64, workflowName string) uint64
 	NewWorkflowStepID(workflowID uint64, workflowStepKey string) uint64
 	NewEventLogID(eventLog entity.EventLog) uint64
@@ -140,6 +141,10 @@ func (hasher *Fnv1aHasher) NewUserID(email string) uint64 {
 
 func (hasher *Fnv1aHasher) NewRoleID(name string) uint64 {
 	return hasher.NewID(name)
+}
+
+func (hasher *Fnv1aHasher) NewCustomerID(email string) uint64 {
+	return hasher.NewID(email)
 }
 
 func (hasher *Fnv1aHasher) NewWorkflowID(farmID uint64, workflowName string) uint64 {

@@ -247,7 +247,7 @@ func (client *StripeClient) CreateInvoice(userAccount common.UserAccount,
 			newInvoice.PaymentIntent.ID, sentInvoice.PaymentIntent.ClientSecret)
 	}
 
-	// Look up the payment intent to retreive the secret key (not included in the invoice payment intent)
+	// Look up the payment intent to retreive the secret key (not included in the invoice PaymentIntent)
 	paymentIntentResponse, err := client.GetPaymentIntent(newInvoice.PaymentIntent.ID)
 	paymentIntentResponse.Customer = customer
 	paymentIntentResponse.InvoiceID = newInvoice.ID

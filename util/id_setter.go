@@ -18,6 +18,7 @@ type IdSetter interface {
 	SetRoleIds(roles []*config.Role) []*config.Role
 	SetWorkflowIds(farmID uint64, workflows []*config.Workflow) []*config.Workflow
 	SetWorkflowStepIds(workflowID uint64, workflowSteps []*config.WorkflowStep) []*config.WorkflowStep
+	SetCustomerIds(customer *config.Customer) *config.Customer
 }
 
 type KeyValueSetter struct {
@@ -173,4 +174,11 @@ func (setter *KeyValueSetter) SetWorkflowStepIds(workflowID uint64, workflowStep
 		}
 	}
 	return workflowSteps
+}
+
+func (setter *KeyValueSetter) SetCustomerIds(customer *config.Customer) *config.Customer {
+	if customer.ID == 0 {
+		customer.ID = setter.idGenerator.NewCustomerID(customer.Email)
+	}
+	return customer
 }

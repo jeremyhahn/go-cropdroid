@@ -133,6 +133,11 @@ func (database *GormDatabase) Migrate() error {
 	database.db.AutoMigrate(&entity.InventoryType{})
 	database.db.AutoMigrate(&entity.Inventory{})
 
+	// Billing & Shopping Cart
+	database.db.AutoMigrate(&config.Customer{})
+	database.db.AutoMigrate(&config.Address{})
+	database.db.AutoMigrate(&config.ShippingAddress{})
+
 	return nil
 }
 

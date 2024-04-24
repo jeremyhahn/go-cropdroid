@@ -40,7 +40,7 @@ default: build-standalone
 certs:
 	mkdir -p keys/
 	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout keys/key.pem -out keys/cert.pem \
-          -subj "/C=US/ST=MA/L=Boston/O=Automate The Things, LLC/CN=localhost"
+          -subj "/C=CO/ST=Medellin/L=Poblado/O=Automate The Things, LLC/CN=localhost"
 	openssl genrsa -out keys/rsa.key 2048
 	openssl rsa -in keys/rsa.key -pubout -out keys/rsa.pub
 

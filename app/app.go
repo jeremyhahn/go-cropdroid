@@ -17,58 +17,48 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
-//     	 Auth & Billing System              (gossip, dragonboat, cockroachdb - control plane) (cloud platform)
+//     	   cloud.cropdroid.com              (gossip, dragonboat, OLTP, OLAP - control plane) (Auth & Billing System)
 // 			 /            \
 // 		(gossip)         (gossip)           <-- data center raft group (cockroach changefeeds create Enterprise state proposals)
 // 		   /		         \
-// 	   Cluster1            ClusterN         (ASGs & dragonboat)
+// 	   Cluster1            ClusterN         (gossip, dragonboat, OLTP - data plane)
 // 	    /  \                 /  \
-//     Farm1  FarmN          Farm1  FarmN
-//      / \                      / \
-//  State Config              State Config
+//   Farm1  FarmN          Farm1  FarmN
+//      / \                     / \
+//  State Config            State Config
 
 // 	Gossip Data Model:
 // 	- Timezone     (region)
 // 	- Datacenter   (availability zone)  (nodes in a datacenter can form a Raft group, datacenters sync using gossip)
 
-// 	Billing Raft Groups:
-// 	- OLTP (cockroach)
-// 	- orgs
-// 	- users
-// 	- roles
-// 	- permissions
-// 	- billing
-// 	- licensing
-// 	- provisioning
-
 type App struct {
-	ClusterID               uint64                    `yaml:"clusterId" json:"cluster_id" mapstructure:"cluster_id"`
-	DebugFlag               bool                      `yaml:"debug" json:"debug" mapstructure:"debug"`
-	DataDir                 string                    `yaml:"datadir" json:"datadir" mapstructure:"datadir"`
-	DataStoreEngine         string                    `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
-	DataStoreCDC            bool                      `yaml:"datastore_cdc" json:"datastore_cdc" mapstructure:"datastore_cdc"`
-	DefaultRole             string                    `yaml:"default_role" json:"default_role" mapstructure:"default_role"`
-	DefaultPermission       string                    `yaml:"default_permission" json:"default_permission" mapstructure:"default_permission"`
-	DefaultConsistencyLevel int                       `yaml:"default_consistency_level" json:"default_consistency_level" mapstructure:"default_consistency_level"`
-	DefaultConfigStoreType  int                       `yaml:"default_config_store" json:"default_config_store" mapstructure:"default_config_store"`
-	DefaultStateStoreType   int                       `yaml:"default_state_store" json:"default_state_store" mapstructure:"default_state_store"`
-	DefaultDataStoreType    int                       `yaml:"default_data_store" json:"default_data_store" mapstructure:"default_data_store"`
-	DowngradeUser           string                    `yaml:"www_user" json:"www_user" mapstructure:"www_user"`
-	EnableDefaultFarm       bool                      `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
-	EnableRegistrations     bool                      `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
-	GORMInitParams          *gormstore.GormInitParams `yaml:"-" json:"-" mapstructure:"-"`
-	HomeDir                 string                    `yaml:"home_dir" json:"home_dir" mapstructure:"home_dir"`
-	IdGenerator             util.IdGenerator          `yaml:"-" json:"-" mapstructure:"-"`
-	IdSetter                util.IdSetter             `yaml:"-" json:"-" mapstructure:"-"`
-	Interval                int                       `yaml:"interval" json:"interval" mapstructure:"interval"`
-	KeyDir                  string                    `yaml:"key_dir" json:"key_dir" mapstructure:"key_dir"`
-	KeyPair                 KeyPair                   `yaml:"-" json:"-" mapstructure:"-"`
-	LicenseBlob             string                    `yaml:"license" json:"license" mapstructure:"license"`
-	License                 *config.License           `yaml:"-" json:"-" mapstructure:"-"`
-	Location                *time.Location            `yaml:"-" json:"-" mapstructure:"-"`
-	LogDir                  string                    `yaml:"log_dir" json:"log_dir" mapstructure:"log_dir"`
-	LogFile                 string                    `yaml:"log_file" json:"log_file" mapstructure:"log_file"`
-	Logger                  *logging.Logger
+	ClusterID               uint64                     `yaml:"clusterId" json:"cluster_id" mapstructure:"cluster_id"`
+	DebugFlag               bool                       `yaml:"debug" json:"debug" mapstructure:"debug"`
+	DataDir                 string                     `yaml:"datadir" json:"datadir" mapstructure:"datadir"`
+	DataStoreEngine         string                     `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
+	DataStoreCDC            bool                       `yaml:"datastore_cdc" json:"datastore_cdc" mapstructure:"datastore_cdc"`
+	DefaultRole             string                     `yaml:"default_role" json:"default_role" mapstructure:"default_role"`
+	DefaultPermission       string                     `yaml:"default_permission" json:"default_permission" mapstructure:"default_permission"`
+	DefaultConsistencyLevel int                        `yaml:"default_consistency_level" json:"default_consistency_level" mapstructure:"default_consistency_level"`
+	DefaultConfigStoreType  int                        `yaml:"default_config_store" json:"default_config_store" mapstructure:"default_config_store"`
+	DefaultStateStoreType   int                        `yaml:"default_state_store" json:"default_state_store" mapstructure:"default_state_store"`
+	DefaultDataStoreType    int                        `yaml:"default_data_store" json:"default_data_store" mapstructure:"default_data_store"`
+	DowngradeUser           string                     `yaml:"www_user" json:"www_user" mapstructure:"www_user"`
+	EnableDefaultFarm       bool                       `yaml:"enable_default_farm" json:"enable_default_farm" mapstructure:"enable_default_farm"`
+	EnableRegistrations     bool                       `yaml:"enable_registrations" json:"enable_registrations" mapstructure:"enable_registrations"`
+	GORMInitParams          *gormstore.GormInitParams  `yaml:"-" json:"-" mapstructure:"-"`
+	HomeDir                 string                     `yaml:"home_dir" json:"home_dir" mapstructure:"home_dir"`
+	IdGenerator             util.IdGenerator           `yaml:"-" json:"-" mapstructure:"-"`
+	IdSetter                util.IdSetter              `yaml:"-" json:"-" mapstructure:"-"`
+	Interval                int                        `yaml:"interval" json:"interval" mapstructure:"interval"`
+	KeyDir                  string                     `yaml:"key_dir" json:"key_dir" mapstructure:"key_dir"`
+	KeyPair                 KeyPair                    `yaml:"-" json:"-" mapstructure:"-"`
+	LicenseBlob             string                     `yaml:"license" json:"license" mapstructure:"license"`
+	License                 *config.License            `yaml:"-" json:"-" mapstructure:"-"`
+	Location                *time.Location             `yaml:"-" json:"-" mapstructure:"-"`
+	LogDir                  string                     `yaml:"log_dir" json:"log_dir" mapstructure:"log_dir"`
+	LogFile                 string                     `yaml:"log_file" json:"log_file" mapstructure:"log_file"`
+	Logger                  *logging.Logger            `yaml:"-" json:"-" mapstructure:"-"`
 	Mode                    string                     `yaml:"mode" json:"mode" mapstructure:"mode"`
 	Name                    string                     `yaml:"-" json:"-" mapstructure:"-"`
 	NodeID                  int                        `yaml:"node_id" json:"node_id" mapstructure:"node_id"`

@@ -37,6 +37,7 @@ const (
 	RegistrationClusterID = uint64(107)
 	DeviceStateClusterID  = uint64(108)
 	DeviceDataClusterID   = uint64(109)
+	CustomerClusterID     = uint64(110)
 	NodeCount             = 3
 	RaftLeaderID          = 3
 	NodeID                = 1
@@ -439,6 +440,23 @@ func (dt *TestCluster) CreateRegistrationCluster() error {
 		}
 	}
 	dt.GetRaftNode(0).WaitForClusterReady(RegistrationClusterID)
+	return nil
+}
+
+func (dt *TestCluster) CreateCustomerCluster() error {
+	dt.app.Logger.Debugf("Creating customer cluster: %d", CustomerClusterID)
+	for i := 0; i < dt.nodeCount; i++ {
+		raftNode := dt.GetRaftNode(i)
+		nodeID := raftNode.GetParams().GetNodeID()
+		join := false
+		sm := statemachine.NewCustomerConfigMachine(dt.app.Logger,
+			dt.app.IdGenerator, dt.app.DataDir, CustomerClusterID, nodeID)
+		err := raftNode.CreateOnDiskCluster(CustomerClusterID, join, sm.CreateCustomerConfigMachine)
+		if err != nil {
+			return err
+		}
+	}
+	dt.GetRaftNode(0).WaitForClusterReady(CustomerClusterID)
 	return nil
 }
 

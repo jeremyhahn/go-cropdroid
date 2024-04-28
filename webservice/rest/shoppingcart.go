@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,11 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/shoppingcart"
+
+	"io"
+
+	"github.com/stripe/stripe-go/v78"
+	"github.com/stripe/stripe-go/v78/webhook"
 )
 
 type ShoppingCartRestService interface {
@@ -43,10 +49,22 @@ func (restService *DefaultShoppingCartRestService) RegisterEndpoints(
 
 	shoppingCartEndpoint := fmt.Sprintf("%s/shoppingcart", baseURI)
 	customerEndpoint := fmt.Sprintf("%s/customer", shoppingCartEndpoint)
+	customerDefaultPaymentMethodEndpoint := fmt.Sprintf("%s/default-payment-method/{customerID}/{processorID}", customerEndpoint)
 	getCustomerEndpoint := fmt.Sprintf("%s/{id}", customerEndpoint)
 	invoiceEndpoint := fmt.Sprintf("%s/invoice", shoppingCartEndpoint)
-	paymentIntentEndpoint := fmt.Sprintf("%s/paymentIntent", shoppingCartEndpoint)
-	taxRateEndpoint := fmt.Sprintf("%s/taxrate", shoppingCartEndpoint)
+	invoicePaymentEndpoint := fmt.Sprintf("%s/payment-webhook", invoiceEndpoint)
+	paymentIntentEndpoint := fmt.Sprintf("%s/payment-intent", shoppingCartEndpoint)
+	taxRateEndpoint := fmt.Sprintf("%s/tax-rate", shoppingCartEndpoint)
+
+	router.Handle(invoicePaymentEndpoint, negroni.New(
+		negroni.HandlerFunc(restService.middlewareService.Validate),
+		negroni.Wrap(http.HandlerFunc(restService.InvoicePaymentWebHook)),
+	)).Methods("GET")
+
+	router.Handle(customerDefaultPaymentMethodEndpoint, negroni.New(
+		negroni.HandlerFunc(restService.middlewareService.Validate),
+		negroni.Wrap(http.HandlerFunc(restService.SetDefaultPaymentMethod)),
+	)).Methods("GET")
 
 	router.Handle(getCustomerEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middlewareService.Validate),
@@ -83,7 +101,9 @@ func (restService *DefaultShoppingCartRestService) RegisterEndpoints(
 		negroni.Wrap(http.HandlerFunc(restService.GetTaxRates)),
 	)).Methods("GET")
 
-	return []string{shoppingCartEndpoint, paymentIntentEndpoint, invoiceEndpoint}
+	return []string{shoppingCartEndpoint, customerEndpoint, customerDefaultPaymentMethodEndpoint,
+		getCustomerEndpoint, invoiceEndpoint, paymentIntentEndpoint,
+		taxRateEndpoint}
 }
 
 func (restService *DefaultShoppingCartRestService) GetProducts(w http.ResponseWriter, r *http.Request) {
@@ -273,4 +293,126 @@ func (restService *DefaultShoppingCartRestService) GetTaxRates(w http.ResponseWr
 	session.GetLogger().Debugf("response=%+v", response)
 
 	restService.jsonWriter.Success200(w, response)
+}
+
+func (restService *DefaultShoppingCartRestService) SetDefaultPaymentMethod(w http.ResponseWriter, r *http.Request) {
+
+	session, err := restService.middlewareService.CreateSession(w, r)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+	defer session.Close()
+
+	params := mux.Vars(r)
+	customerID := params["customerID"]
+	processorID := params["processorID"]
+
+	session.GetLogger().Debugf("customerID=%d, processorID=%s", customerID, processorID)
+
+	id, err := strconv.ParseUint(customerID, 0, 64)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	response, err := restService.shoppingCartService.SetDefaultPaymentMethod(id, processorID)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	session.GetLogger().Debugf("response=%+v", response)
+
+	restService.jsonWriter.Success200(w, response)
+}
+
+func (restService *DefaultShoppingCartRestService) InvoicePaymentWebHook(w http.ResponseWriter, r *http.Request) {
+
+	session, err := restService.middlewareService.CreateSession(w, r)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+	defer session.Close()
+
+	b, err := io.ReadAll(io.Reader(r.Body))
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	event, err := webhook.ConstructEvent(b, r.Header.Get("Stripe-Signature"), os.Getenv("STRIPE_WEBHOOK_SECRET"))
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	var invoice *stripe.Invoice
+	err = json.Unmarshal(event.Data.Raw, &invoice)
+	if err != nil {
+		BadRequestError(w, r, err, restService.jsonWriter)
+		return
+	}
+
+	if event.Type == "invoice.payment_succeeded" {
+		var invoice *stripe.Invoice
+		err := json.Unmarshal(event.Data.Raw, &invoice)
+		if err != nil {
+			BadRequestError(w, r, err, restService.jsonWriter)
+			return
+		}
+
+		restService.shoppingCartService.UpdateSubscription(&shoppingcart.Subscription{
+			ID:              invoice.Subscription.ID,
+			PaymentIntentID: invoice.PaymentIntent.ID,
+			LatestInvoiceID: invoice.ID})
+
+		// pi, _ := paymentintent.Get(
+		// 	invoice.PaymentIntent.ID,
+		// 	nil,
+		// )
+
+		// params := &stripe.SubscriptionParams{
+		// 	DefaultPaymentMethod: stripe.String(pi.PaymentMethod.ID),
+		// }
+		// subscription.Update(invoice.Subscription.ID, params)
+		// fmt.Println("Default payment method set for subscription: ", pi.PaymentMethod)
+	}
+
+	if event.Type == "invoice.paid" {
+		// Used to provision services after the trial has ended.
+		// The status of the invoice will show up as paid. Store the status in your
+		// database to reference when a user accesses your service to avoid hitting rate
+		// limits.
+		_, err = restService.shoppingCartService.UpdateSubscription(&shoppingcart.Subscription{
+			ID:              invoice.Subscription.ID,
+			PaymentIntentID: invoice.PaymentIntent.ID,
+			LatestInvoiceID: invoice.ID})
+		if err != nil {
+			BadRequestError(w, r, err, restService.jsonWriter)
+			return
+		}
+	}
+
+	if event.Type == "invoice.payment_failed" {
+		// If the payment fails or the customer does not have a valid payment method,
+		// an invoice.payment_failed event is sent, the subscription becomes past_due.
+		// Use this webhook to notify your user that their payment has
+		// failed and to retrieve new card details.
+		return
+	}
+
+	if event.Type == "customer.subscription.deleted" {
+		// handle subscription canceled automatically based
+		// upon your subscription settings. Or if the user cancels it. {
+		_, err = restService.shoppingCartService.CancelSubscription(invoice.Subscription.ID)
+		if err != nil {
+			BadRequestError(w, r, err, restService.jsonWriter)
+			return
+		}
+		return
+	}
+
+	restService.jsonWriter.Success200(w, nil)
 }

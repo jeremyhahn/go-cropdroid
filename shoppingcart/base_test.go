@@ -18,6 +18,15 @@ import (
 var CurrentTest *TestSuite = &TestSuite{mutex: &sync.Mutex{}}
 var Location *time.Location
 var TestSuiteName = "cropdroid_shoppingcart_test"
+var SKIP_TEARDOWN_FLAG = false
+
+// This user id maps to root@test.com
+// Stripe does not recommend submitting card details from the server to their API
+// beacuse they can't control what the server does with the card number prior
+// to sending it to stripe. That make testing hard since the tests that require
+// a card need the customer in stripe, with a successful payment already made, and
+// chose to save their card for future use.
+var TEST_CUSTOMER_ID = uint64(2060288868)
 
 type TestSuite struct {
 	mutex    *sync.Mutex
@@ -84,6 +93,11 @@ func setup() {
 }
 
 func teardown() {
+	if SKIP_TEARDOWN_FLAG {
+		CurrentTest.logger.Debug("skipping database teardown and resetting flag for next test")
+		SKIP_TEARDOWN_FLAG = false
+		return
+	}
 	if CurrentTest != nil {
 		// Connect as server admin, drop db
 		CurrentTest.db.Connect(true)
@@ -96,9 +110,9 @@ func teardown() {
 func createSqliteParams() *gormstore.GormInitParams {
 	return &gormstore.GormInitParams{
 		DebugFlag: true,
-		DataDir:   "/tmp",
+		DataDir:   "../db",
 		Engine:    "sqlite",
-		DBName:    TestSuiteName,
+		DBName:    "cropdroid",
 		Location:  Location}
 }
 

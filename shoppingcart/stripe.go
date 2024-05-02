@@ -6,12 +6,18 @@ package shoppingcart
 // https://docs.stripe.com/tax/tax-codes
 // https://github.com/stripe-samples/subscription-use-cases/tree/main/fixed-price-subscriptions
 
+// Rate limiting
+// https://docs.stripe.com/rate-limits#load-testing
+
 // Test credit card numbers
 // https://docs.stripe.com/testing
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
@@ -27,22 +33,31 @@ import (
 	"github.com/stripe/stripe-go/v78/paymentmethod"
 	"github.com/stripe/stripe-go/v78/price"
 	"github.com/stripe/stripe-go/v78/product"
+	"github.com/stripe/stripe-go/v78/setupintent"
 	"github.com/stripe/stripe-go/v78/subscription"
 	"github.com/stripe/stripe-go/v78/taxrate"
 	"gorm.io/gorm"
 )
 
 var ErrInvoiceNotPaid = errors.New("invoice not paid")
+var ErrInvoiceOutstanding = errors.New("outstanding invoice")
 var ErrMissingPaymentMethod = errors.New("missing payment method")
 var STRIPE_DEFAULT_LIMIT = int64(10)
 
 type ShoppingCartService interface {
-	GetPaymentMethods(customerID string) []*stripe.PaymentMethod
+	GetPublishableKey() string
 	GetProducts() []Product
+	GetTaxRates() []*TaxRate
+
 	CreatePaymentIntent(createPaymentIntentRequest CreatePaymentIntentRequest) (PaymentIntentResponse, error)
 	GetPaymentIntent(id string) (PaymentIntentResponse, error)
 
+	GetSetupIntent(setupIntentRequest *SetupIntentRequest) (*stripe.SetupIntent, error)
+	CreateSetupIntent(user common.UserAccount) (*SetupIntentResponse, error)
+	ListSetupIntents() []*stripe.SetupIntent
+
 	GetCustomer(id uint64) (*config.Customer, error)
+	GetOrCreateCustomerWithEphemeralKey(user common.UserAccount) (*CustomerEphemeralKeyResponse, error)
 	CreateCustomer(customerConfig *config.Customer) (*config.Customer, error)
 	UpdateCustomer(customerConfig *config.Customer) (*config.Customer, error)
 
@@ -51,16 +66,17 @@ type ShoppingCartService interface {
 	PayInvoice(invoiceID string) (*Invoice, error)
 	InvoicePreview(customerID, subscriptionID, priceID string) (*Invoice, error)
 
-	GetTaxRates() []*TaxRate
-
 	CreateSubscription(subscriptionConfig *Subscription) (*Subscription, error)
 	UpdateSubscription(subscriptionConfig *Subscription) (*Subscription, error)
 	CancelSubscription(subscriptionID string) (*Subscription, error)
 	ListSubscriptions(processorID string) []*Subscription
 
-	AttachPaymentMethond(customerID, paymentMethondID string) (*stripe.PaymentMethod, error)
+	GetPaymentMethod(paymentMethodID string) (*stripe.PaymentMethod, error)
+	GetPaymentMethods(customerID string) []*stripe.PaymentMethod
 	CreateCardPaymentMethod(card *CreditCard) (string, error)
-	SetDefaultPaymentMethod(customerID uint64, processorID string) (*config.Customer, error)
+	AttachPaymentMethod(attachPaymentRequest *AttachPaymentMethodRequest) (*stripe.PaymentMethod, error)
+	SetDefaultPaymentMethod(setDefaultPaymentMethodRequest *SetDefaultPaymentMethodRequest) (*config.Customer, error)
+	AttachAndSetDefaultPaymentMethod(setDefaultPaymentMethodRequest *SetDefaultPaymentMethodRequest) (*config.Customer, error)
 }
 
 type StripeClient struct {
@@ -72,11 +88,11 @@ type StripeClient struct {
 
 func NewStripeService(_app *app.App, customerDAO dao.CustomerDAO) ShoppingCartService {
 	stripe.Key = _app.Stripe.Key.Secret
-	stripe.SetAppInfo(&stripe.AppInfo{
-		Name:    _app.Name,
-		Version: app.Release,
-		URL:     "https://www.cropdroid.com",
-	})
+	// stripe.SetAppInfo(&stripe.AppInfo{
+	// 	Name:    _app.Name,
+	// 	Version: app.Release,
+	// 	URL:     "https://www.cropdroid.com",
+	// })
 	return &StripeClient{
 		app:         _app,
 		params:      _app.Stripe,
@@ -132,6 +148,96 @@ func (client *StripeClient) GetProducts() []Product {
 	return products
 }
 
+func (client *StripeClient) GetPublishableKey() string {
+	return client.app.Stripe.Key.Publishable
+}
+
+func (client *StripeClient) CreateSetupIntent(user common.UserAccount) (*SetupIntentResponse, error) {
+	customerEphemeralKeyResponse, err := client.GetOrCreateCustomerWithEphemeralKey(user)
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+	params := &stripe.SetupIntentParams{
+		Customer:           stripe.String(customerEphemeralKeyResponse.Customer.ProcessorID),
+		PaymentMethodTypes: []*string{stripe.String("card")},
+		Metadata: map[string]string{
+			"app_customer_id": strconv.Itoa(int(user.GetID())),
+		},
+	}
+	setupIntent, err := setupintent.New(params)
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+	return &SetupIntentResponse{
+		Customer:       customerEphemeralKeyResponse.Customer,
+		EphemeralKey:   customerEphemeralKeyResponse.EphemeralKey,
+		ClientSecret:   setupIntent.ClientSecret,
+		PublishableKey: client.app.Stripe.Key.Publishable}, nil
+}
+
+func (client *StripeClient) ListSetupIntents() []*stripe.SetupIntent {
+	setupIntents := make([]*stripe.SetupIntent, 0)
+	params := &stripe.SetupIntentListParams{}
+	params.Limit = stripe.Int64(STRIPE_DEFAULT_LIMIT)
+	result := setupintent.List(params)
+	for result.Iter.Next() {
+		setupIntent := result.Iter.Current().(*stripe.SetupIntent)
+		setupIntents = append(setupIntents, setupIntent)
+
+	}
+	return setupIntents
+}
+
+// Retrieves a SetupIntent using the ClientSecret that was used to confirm it
+func (client *StripeClient) GetSetupIntent(setupIntentRequest *SetupIntentRequest) (*stripe.SetupIntent, error) {
+
+	pieces := strings.Split(setupIntentRequest.ClientSecret, "_secret_")
+	setupIntentID := pieces[0]
+	//secret := pieces[1]
+
+	params := &stripe.SetupIntentParams{}
+	setupIntent, err := setupintent.Get(setupIntentID, params)
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+
+	return setupIntent, nil
+}
+
+// Retrieve a user with their ephemeral key. A new user is created if they don't already exist
+func (client *StripeClient) GetOrCreateCustomerWithEphemeralKey(user common.UserAccount) (*CustomerEphemeralKeyResponse, error) {
+	customerConfig, err := client.customerDAO.Get(user.GetID(), common.CONSISTENCY_LOCAL)
+	if err == gorm.ErrRecordNotFound {
+		customerConfig, err = client.CreateCustomer(&config.Customer{
+			ID:    user.GetID(),
+			Name:  user.GetEmail(),
+			Email: user.GetEmail(),
+			Description: fmt.Sprintf("This is a placeholder for %s, who is the process of becoming a new customer %s. DO NOT DELETE!",
+				user.GetEmail(), time.Now().Format(common.TIME_FORMAT))})
+		if err != nil {
+			client.app.Logger.Error(err)
+			return nil, err
+		}
+	}
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+
+	ephemeralKey, err := client.createEphemeralKey(customerConfig.ProcessorID)
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+
+	return &CustomerEphemeralKeyResponse{
+		Customer:     customerConfig,
+		EphemeralKey: ephemeralKey.Secret}, nil
+}
+
 func (client *StripeClient) GetCustomer(id uint64) (*config.Customer, error) {
 
 	customerConfig, err := client.customerDAO.Get(id, common.CONSISTENCY_LOCAL)
@@ -150,8 +256,24 @@ func (client *StripeClient) GetCustomer(id uint64) (*config.Customer, error) {
 		return nil, err
 	}
 
+	if stripeCustomer.InvoiceSettings != nil && stripeCustomer.InvoiceSettings.DefaultPaymentMethod != nil {
+		paymentMethod, err := client.GetPaymentMethod(stripeCustomer.InvoiceSettings.DefaultPaymentMethod.ID)
+		if err != nil {
+			client.app.Logger.Error(err)
+			return nil, err
+		}
+		customerConfig.PaymentMethodID = paymentMethod.ID
+		customerConfig.PaymentMethodLast4 = paymentMethod.Card.Last4
+	} else {
+		customerConfig.PaymentMethodID = ""
+		customerConfig.PaymentMethodLast4 = ""
+	}
+
 	hydratedCustomerConfig := client.mapStripeCustomerToCustomerConfig(stripeCustomer)
 	hydratedCustomerConfig.ID = customerConfig.ID
+	// The stripe customer doesnt have the last 4 set, so it cant be mapped
+	hydratedCustomerConfig.PaymentMethodLast4 = customerConfig.PaymentMethodLast4
+
 	return hydratedCustomerConfig, nil
 }
 
@@ -190,43 +312,20 @@ func (client *StripeClient) UpdateCustomer(customerConfig *config.Customer) (*co
 	return customerConfig, err
 }
 
-func (client *StripeClient) SetDefaultPaymentMethod(customerID uint64, processorID string) (*config.Customer, error) {
-
-	stripeCustomer, err := customer.Get(processorID, nil)
-	if err != nil {
-		client.app.Logger.Error(err)
-		return nil, err
+func (client *StripeClient) ListInvoices(processorID string, status *string) []*stripe.Invoice {
+	invoices := make([]*stripe.Invoice, 0)
+	params := &stripe.InvoiceListParams{
+		Customer: stripe.String(processorID),
+		Status:   status,
 	}
+	params.Limit = stripe.Int64(STRIPE_DEFAULT_LIMIT)
+	stripeInvoices := invoice.List(params)
+	for stripeInvoices.Iter.Next() {
+		stripeInvoice := stripeInvoices.Iter.Current().(*stripe.Invoice)
+		invoices = append(invoices, stripeInvoice)
 
-	paymentMethods := client.GetPaymentMethods(stripeCustomer.ID)
-	if len(paymentMethods) == 0 {
-		client.app.Logger.Error(ErrMissingPaymentMethod)
-		return nil, ErrMissingPaymentMethod
 	}
-
-	var defaultPaymentMethod *stripe.PaymentMethod = nil
-	for _, method := range paymentMethods {
-		if method.Card.Checks.AddressPostalCodeCheck != "pass" ||
-			method.Card.Checks.CVCCheck != "pass" {
-			continue
-		} else {
-			defaultPaymentMethod = method
-			break
-		}
-	}
-	if defaultPaymentMethod == nil {
-		client.app.Logger.Error(ErrMissingPaymentMethod)
-		return nil, ErrMissingPaymentMethod
-	}
-
-	stripeCustomer.InvoiceSettings = &stripe.CustomerInvoiceSettings{
-		DefaultPaymentMethod: &stripe.PaymentMethod{
-			ID: defaultPaymentMethod.ID}}
-
-	customerConfigWithDefaultPaymentMethod := client.mapStripeCustomerToCustomerConfig(stripeCustomer)
-	customerConfigWithDefaultPaymentMethod.ID = customerID
-
-	return client.UpdateCustomer(customerConfigWithDefaultPaymentMethod)
+	return invoices
 }
 
 func (client *StripeClient) GetInvoice(invoiceID string) (*Invoice, error) {
@@ -254,29 +353,17 @@ func (client *StripeClient) CreateInvoice(userAccount common.UserAccount,
 	// 	dynamicTaxRates = client.app.Stripe.Tax.Dynamic
 	// }
 
-	// Try to look up the customer from the database (the client does not store the processor ID / stripe customer ID)
 	customer, err := client.customerDAO.GetByEmail(userAccount.GetEmail(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		client.app.Logger.Error(err)
 		return EmptyPaymentIntentResponse, err
 	}
 
-	// if customer.ID == 0 {
-	// 	// If the customer doesn't exist, this is a new customer. Create a stripe
-	// 	// customer and save them to the database.
-	// 	customserConfig := &config.Customer{
-	// 		Name:  userAccount.GetEmail(),
-	// 		Email: userAccount.GetEmail()}
-	// 	customer, err = client.CreateCustomer(customserConfig)
-	// 	if err != nil {
-	// 		client.app.Logger.Error(err)
-	// 		return EmptyPaymentIntentResponse, err
-	// 	}
-	// 	if err = client.customerDAO.Save(customer); err != nil {
-	// 		client.app.Logger.Error(err)
-	// 		return EmptyPaymentIntentResponse, err
-	// 	}
-	// }
+	// Make sure the user doesn't already have an outstanding invoice
+	currentInvoices := client.ListInvoices(customer.ProcessorID, stripe.String("open"))
+	if len(currentInvoices) > 0 {
+		return EmptyPaymentIntentResponse, ErrInvoiceOutstanding
+	}
 
 	var shippingDetails *stripe.InvoiceShippingDetailsParams
 	if customer.Shipping != nil {
@@ -363,45 +450,6 @@ func (client StripeClient) PayInvoice(invoiceID string) (*Invoice, error) {
 		return nil, ErrInvoiceNotPaid
 	}
 	return client.mapStripeInvoiceToInvoice(_invoice), err
-}
-
-func (client *StripeClient) GetPaymentMethods(processorID string) []*stripe.PaymentMethod {
-	paymentMethods := make([]*stripe.PaymentMethod, 0)
-	params := &stripe.CustomerListPaymentMethodsParams{
-		Customer: stripe.String(processorID),
-	}
-	params.Limit = stripe.Int64(STRIPE_DEFAULT_LIMIT)
-	result := customer.ListPaymentMethods(params)
-	for result.Iter.Next() {
-		item := result.Iter.Current()
-		paymentMethods = append(paymentMethods, item.(*stripe.PaymentMethod))
-	}
-	return paymentMethods
-}
-
-func (client *StripeClient) GetTaxRates() []*TaxRate {
-	taxRates := make([]*TaxRate, 0)
-	params := &stripe.TaxRateListParams{}
-	params.Limit = stripe.Int64(STRIPE_DEFAULT_LIMIT)
-	result := taxrate.List(params)
-	for result.Iter.Next() {
-		item := result.Iter.Current()
-		if !item.(*stripe.TaxRate).Active {
-			continue
-		}
-		taxRates = append(taxRates, &TaxRate{
-			ID:           item.(*stripe.TaxRate).ID,
-			DisplayName:  item.(*stripe.TaxRate).DisplayName,
-			Description:  item.(*stripe.TaxRate).Description,
-			State:        item.(*stripe.TaxRate).State,
-			Country:      item.(*stripe.TaxRate).Country,
-			Inclusive:    item.(*stripe.TaxRate).Inclusive,
-			Jurisdiction: item.(*stripe.TaxRate).Jurisdiction,
-			Percentage:   item.(*stripe.TaxRate).Percentage})
-
-		client.app.Logger.Infof("%+v", taxRates)
-	}
-	return taxRates
 }
 
 func (client *StripeClient) GetPaymentIntent(id string) (PaymentIntentResponse, error) {
@@ -611,25 +659,26 @@ func (client *StripeClient) InvoicePreview(customerID, subscriptionID, priceID s
 
 }
 
-// func (client *StripeClient) CreateTaxRates() error {
+func (client *StripeClient) GetPaymentMethod(paymentMethodID string) (*stripe.PaymentMethod, error) {
+	params := &stripe.PaymentMethodParams{}
+	result, err := paymentmethod.Get(paymentMethodID, params)
+	return result, err
+}
 
-// 	stripeTax := client.app.Stripe.Tax
-// 	if stripeTax == nil {
-// 		return
-// 	}
-// 	for _, rate :- range client.app.Stripe.Tax.Rates {
-
-// 	}
-
-// 	params := &stripe.TaxRateParams{
-// 		DisplayName: stripe.String("VAT"),
-// 		Description: stripe.String("VAT Germany"),
-// 		Percentage: stripe.Float64(16),
-// 		Jurisdiction: stripe.String("DE"),
-// 		Inclusive: stripe.Bool(false),
-// 	  };
-// 	  result, err := taxrate.New(params);
-// }
+func (client *StripeClient) GetPaymentMethods(processorID string) []*stripe.PaymentMethod {
+	paymentMethods := make([]*stripe.PaymentMethod, 0)
+	params := &stripe.CustomerListPaymentMethodsParams{
+		Customer: stripe.String(processorID),
+		Type:     stripe.String(string(stripe.PaymentMethodTypeCard)),
+	}
+	params.Limit = stripe.Int64(STRIPE_DEFAULT_LIMIT)
+	result := customer.ListPaymentMethods(params)
+	for result.Iter.Next() {
+		item := result.Iter.Current()
+		paymentMethods = append(paymentMethods, item.(*stripe.PaymentMethod))
+	}
+	return paymentMethods
+}
 
 func (client *StripeClient) CreateCardPaymentMethod(card *CreditCard) (string, error) {
 	params := &stripe.PaymentMethodParams{
@@ -647,10 +696,23 @@ func (client *StripeClient) CreateCardPaymentMethod(card *CreditCard) (string, e
 	return paymentMethod.ID, err
 }
 
-func (client *StripeClient) AttachPaymentMethond(customerID, paymentMethondID string) (*stripe.PaymentMethod, error) {
+func (client *StripeClient) AttachAndSetDefaultPaymentMethod(
+	setDefaultPaymentMethodRequest *SetDefaultPaymentMethodRequest) (*config.Customer, error) {
+
+	_, err := client.AttachPaymentMethod(&AttachPaymentMethodRequest{
+		ProcessorID:     setDefaultPaymentMethodRequest.ProcessorID,
+		PaymentMethodID: setDefaultPaymentMethodRequest.PaymentMethodID})
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+	return client.SetDefaultPaymentMethod(setDefaultPaymentMethodRequest)
+}
+
+func (client *StripeClient) AttachPaymentMethod(attachPaymentRequest *AttachPaymentMethodRequest) (*stripe.PaymentMethod, error) {
 	params := &stripe.PaymentMethodAttachParams{
-		Customer: stripe.String(customerID)}
-	stripePaymentMethod, err := paymentmethod.Attach(paymentMethondID, params)
+		Customer: stripe.String(attachPaymentRequest.ProcessorID)}
+	stripePaymentMethod, err := paymentmethod.Attach(attachPaymentRequest.PaymentMethodID, params)
 	if err != nil {
 		client.app.Logger.Error(err)
 		return nil, err
@@ -658,18 +720,99 @@ func (client *StripeClient) AttachPaymentMethond(customerID, paymentMethondID st
 	return stripePaymentMethod, nil
 }
 
+func (client *StripeClient) SetDefaultPaymentMethod(
+	setDefaultPaymentMethodRequest *SetDefaultPaymentMethodRequest) (*config.Customer, error) {
+
+	var defaultPaymentMethod *stripe.PaymentMethod = nil
+	stripeCustomer, err := customer.Get(setDefaultPaymentMethodRequest.ProcessorID, nil)
+	if err != nil {
+		client.app.Logger.Error(err)
+		return nil, err
+	}
+
+	if setDefaultPaymentMethodRequest.PaymentMethodID == "" {
+		// This is a hack to workaround confirming the SetupIntent using the Android SDK.
+		// There is no way to define a callback for stripe.confirmSetupIntent and there
+		// appears to be a race condition somewhere because an immediate call to GetCustomer
+		// does not show the newly added payment method. It could be network or system latency,
+		// the confirmSetupIntent call might be async, or some other problem.
+		// This condition handles setting a newly added card during a SetupIntent as the default
+		// knowing what the payment method id is.
+		paymentMethods := client.GetPaymentMethods(stripeCustomer.ID)
+		if len(paymentMethods) == 0 {
+			client.app.Logger.Error(ErrMissingPaymentMethod)
+			return nil, ErrMissingPaymentMethod
+		}
+		for _, method := range paymentMethods {
+			if method.Card.Checks.AddressPostalCodeCheck != "pass" ||
+				method.Card.Checks.CVCCheck != "pass" {
+				continue
+			} else {
+				defaultPaymentMethod = method
+				break
+			}
+		}
+		if defaultPaymentMethod == nil {
+			client.app.Logger.Error(ErrMissingPaymentMethod)
+			return nil, ErrMissingPaymentMethod
+		}
+	} else {
+		defaultPaymentMethod, err = client.GetPaymentMethod(setDefaultPaymentMethodRequest.PaymentMethodID)
+		if err != nil {
+			client.app.Logger.Error(err)
+			return nil, err
+		}
+		if defaultPaymentMethod == nil {
+			client.app.Logger.Error(ErrMissingPaymentMethod)
+			return nil, ErrMissingPaymentMethod
+		}
+	}
+
+	stripeCustomer.InvoiceSettings = &stripe.CustomerInvoiceSettings{
+		DefaultPaymentMethod: &stripe.PaymentMethod{
+			ID: defaultPaymentMethod.ID}}
+
+	customerConfigWithDefaultPaymentMethod := client.mapStripeCustomerToCustomerConfig(stripeCustomer)
+	customerConfigWithDefaultPaymentMethod.ID = setDefaultPaymentMethodRequest.CustomerID
+	customerConfigWithDefaultPaymentMethod.PaymentMethodLast4 = defaultPaymentMethod.Card.Last4
+
+	return client.UpdateCustomer(customerConfigWithDefaultPaymentMethod)
+}
+
+func (client *StripeClient) GetTaxRates() []*TaxRate {
+	taxRates := make([]*TaxRate, 0)
+	params := &stripe.TaxRateListParams{}
+	params.Limit = stripe.Int64(STRIPE_DEFAULT_LIMIT)
+	result := taxrate.List(params)
+	for result.Iter.Next() {
+		item := result.Iter.Current()
+		if !item.(*stripe.TaxRate).Active {
+			continue
+		}
+		taxRates = append(taxRates, &TaxRate{
+			ID:           item.(*stripe.TaxRate).ID,
+			DisplayName:  item.(*stripe.TaxRate).DisplayName,
+			Description:  item.(*stripe.TaxRate).Description,
+			State:        item.(*stripe.TaxRate).State,
+			Country:      item.(*stripe.TaxRate).Country,
+			Inclusive:    item.(*stripe.TaxRate).Inclusive,
+			Jurisdiction: item.(*stripe.TaxRate).Jurisdiction,
+			Percentage:   item.(*stripe.TaxRate).Percentage})
+
+		client.app.Logger.Infof("%+v", taxRates)
+	}
+	return taxRates
+}
+
 func (client *StripeClient) createPaymentIntentResponse(customer *config.Customer, invoiceID,
 	paymentIntentID, clientSecret string) (PaymentIntentResponse, error) {
 
-	ekparams := &stripe.EphemeralKeyParams{
-		Customer:      stripe.String(customer.ProcessorID),
-		StripeVersion: stripe.String("2020-08-27"),
-	}
-	ephemeralKey, err := ephemeralkey.New(ekparams)
+	ephemeralKey, err := client.createEphemeralKey(customer.ProcessorID)
 	if err != nil {
 		client.app.Logger.Error(err)
-		return PaymentIntentResponse{}, nil
+		return PaymentIntentResponse{}, err
 	}
+
 	return PaymentIntentResponse{
 		Customer:       customer,
 		InvoiceID:      invoiceID,
@@ -678,6 +821,14 @@ func (client *StripeClient) createPaymentIntentResponse(customer *config.Custome
 		EphemeralKey:   ephemeralKey.Secret,
 		PublishableKey: client.app.Stripe.Key.Publishable}, nil
 
+}
+
+func (client *StripeClient) createEphemeralKey(processorID string) (*stripe.EphemeralKey, error) {
+	ekparams := &stripe.EphemeralKeyParams{
+		Customer:      stripe.String(processorID),
+		StripeVersion: stripe.String("2020-08-27"),
+	}
+	return ephemeralkey.New(ekparams)
 }
 
 func (client *StripeClient) mapCustomerConfigToStripeCustomerParams(customerConfig *config.Customer) *stripe.CustomerParams {
@@ -710,17 +861,16 @@ func (client *StripeClient) mapCustomerConfigToStripeCustomerParams(customerConf
 	}
 
 	params := &stripe.CustomerParams{
-		Description: &customerConfig.Description,
 		Name:        stripe.String(customerConfig.Name),
 		Email:       stripe.String(customerConfig.Email),
+		Description: &customerConfig.Description,
 		Phone:       &customerConfig.Phone,
 		Address:     address,
 		Shipping:    shipping}
 
-	if customerConfig.DefaultPaymentMethodID != "" {
-		//params.DefaultSource = stripe.String(customerConfig.DefaultPaymentMethodID)
+	if customerConfig.PaymentMethodID != "" {
 		params.InvoiceSettings = &stripe.CustomerInvoiceSettingsParams{
-			DefaultPaymentMethod: stripe.String(customerConfig.DefaultPaymentMethodID)}
+			DefaultPaymentMethod: stripe.String(customerConfig.PaymentMethodID)}
 	}
 
 	return params
@@ -732,11 +882,13 @@ func (client *StripeClient) mapStripeCustomerToCustomerConfig(stripeCustomer *st
 	var billingAddress *config.Address
 	var shippingAddress *config.ShippingAddress
 
-	defaultPaymentMethodID := ""
-	if stripeCustomer.DefaultSource != nil {
-		defaultPaymentMethodID = stripeCustomer.DefaultSource.ID
-	} else if stripeCustomer.InvoiceSettings != nil && stripeCustomer.InvoiceSettings.DefaultPaymentMethod != nil {
-		defaultPaymentMethodID = stripeCustomer.InvoiceSettings.DefaultPaymentMethod.ID
+	paymentMethodID := ""
+	paymentMethodLast4 := ""
+	if stripeCustomer.InvoiceSettings != nil && stripeCustomer.InvoiceSettings.DefaultPaymentMethod != nil {
+		paymentMethodID = stripeCustomer.InvoiceSettings.DefaultPaymentMethod.ID
+		if stripeCustomer.InvoiceSettings.DefaultPaymentMethod.Card != nil {
+			paymentMethodLast4 = stripeCustomer.InvoiceSettings.DefaultPaymentMethod.Card.Last4
+		}
 	}
 
 	if stripeCustomer.Address != nil {
@@ -768,7 +920,8 @@ func (client *StripeClient) mapStripeCustomerToCustomerConfig(stripeCustomer *st
 	customer.Phone = stripeCustomer.Phone
 	customer.Address = billingAddress
 	customer.Shipping = shippingAddress
-	customer.DefaultPaymentMethodID = defaultPaymentMethodID
+	customer.PaymentMethodID = paymentMethodID
+	customer.PaymentMethodLast4 = paymentMethodLast4
 
 	return customer
 }

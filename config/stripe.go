@@ -3,12 +3,12 @@ package config
 type StripeKey struct {
 	Secret      string `yaml:"secret" json:"secret" mapstructure:"secret"`
 	Publishable string `yaml:"publishable" json:"publishable" mapstructure:"publishable"`
+	Webook      string `yaml:"webhook" json:"webhook" mapstructure:"webhook"`
 }
 
 type Stripe struct {
 	Key *StripeKey `yaml:"key" json:"key" mapstructure:"key"`
 	Tax *StripeTax `yaml:"tax" json:"tax" mapstructure:"tax"`
-	// Tax StripeTax `yaml:"tax" json:"tax" mapstructure:"tax"`
 }
 
 type StripeTax struct {
@@ -16,7 +16,7 @@ type StripeTax struct {
 	Dynamic []*string `yaml:"dynamic" json:"dynamic" mapstructure:"dynamic"`
 }
 
-// type StripeTax struct {
+// type StripeTaxList struct {
 // 	Rates []*StripeTaxRate `yaml:"rates" json:"rates" mapstructure:"rates"`
 // }
 

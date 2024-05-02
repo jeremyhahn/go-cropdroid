@@ -35,7 +35,7 @@ func NewRestServiceRegistry(app *app.App, publicKey string,
 	provisionerRestService := NewProvisionerRestService(app, serviceRegistry.GetUserService(), farmProvisioner, jwtService, jsonWriter)
 	roleRestService := NewRoleRestService(serviceRegistry.GetRoleService(), jwtService, jsonWriter)
 	organizationRestService := NewOrganizationRestService(serviceRegistry.GetOrganizationService(), jwtService, jsonWriter)
-	shoppingCartRestService := NewShoppingCartRestService(serviceRegistry.GetShoppingCartService(), jwtService, jsonWriter)
+	shoppingCartRestService := NewShoppingCartRestService(serviceRegistry.GetShoppingCartService(), app.Stripe.Key.Webook, jwtService, jsonWriter)
 
 	restServices = append(restServices, channelRestService)
 	restServices = append(restServices, metricRestService)

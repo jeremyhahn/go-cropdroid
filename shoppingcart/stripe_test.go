@@ -39,6 +39,11 @@ func TestGetProducts(t *testing.T) {
 	assert.Greater(t, len(products), 0)
 }
 
+func TestGetPublishableKey(t *testing.T) {
+	service := NewStripeService(CurrentTest.app, nil)
+	assert.Equal(t, service.GetPublishableKey(), CurrentTest.app.Stripe.Key.Publishable)
+}
+
 func TestCreatePaymentIntent(t *testing.T) {
 	service := NewStripeService(CurrentTest.app, nil)
 	createPaymentIntentRequest := CreatePaymentIntentRequest{
@@ -50,9 +55,17 @@ func TestCreatePaymentIntent(t *testing.T) {
 	assert.Equal(t, paymentIntent.PublishableKey, CurrentTest.app.Stripe.Key.Publishable)
 }
 
+func TestListSetupIntents(t *testing.T) {
+	service := NewStripeService(CurrentTest.app, nil)
+	setupIntents := service.ListSetupIntents()
+	assert.Greater(t, 0, len(setupIntents))
+	assert.NotEmpty(t, setupIntents)
+}
+
 func TestGetPaymentIntent(t *testing.T) {
 	service := NewStripeService(CurrentTest.app, nil)
 	createPaymentIntentRequest := CreatePaymentIntentRequest{
+
 		Amount:       "123",
 		CurrencyCode: string(stripe.CurrencyUSD),
 	}
@@ -72,6 +85,19 @@ func TestGetPaymentIntent(t *testing.T) {
 	assert.NotEmpty(t, persistedPaymentIntent.ClientSecret)
 	assert.NotEmpty(t, persistedPaymentIntent.EphemeralKey)
 	assert.NotEmpty(t, persistedPaymentIntent.PublishableKey)
+}
+
+func TestGetOrCreateCustomerWithEphemeralKey(t *testing.T) {
+	customerDAO := createCustomerDAO()
+	service := NewStripeService(CurrentTest.app, customerDAO)
+	customer := createTestCustomer()
+	customerWithEphemeralKeyResponse, err := service.GetOrCreateCustomerWithEphemeralKey(&model.User{
+		ID:    customer.ID,
+		Email: customer.Email})
+	assert.Nil(t, err)
+	assert.Equal(t, customerWithEphemeralKeyResponse.Customer.Name, "SetupIntent")
+	assert.NotEmpty(t, customerWithEphemeralKeyResponse.Customer.ProcessorID)
+	assert.NotEmpty(t, customerWithEphemeralKeyResponse.EphemeralKey)
 }
 
 func TestCreateCustomer(t *testing.T) {
@@ -146,15 +172,14 @@ func TestUpdateCustomer(t *testing.T) {
 
 func TestGetPaymentMethods(t *testing.T) {
 
+	SKIP_TEARDOWN_FLAG = true
+
 	customerDAO := createCustomerDAO()
 	service := NewStripeService(CurrentTest.app, customerDAO)
-	customer := createTestCustomer()
 
-	customerConfig, err := service.CreateCustomer(customer)
+	customerConfig, err := service.GetCustomer(1)
 	assert.Nil(t, err)
-	assert.Equal(t, customerConfig.Name, customer.Name)
-	assert.Equal(t, customerConfig.Email, customer.Email)
-	assert.NotEmpty(t, customerConfig.ProcessorID)
+	assert.NotNil(t, customerConfig)
 
 	paymentMethods := service.GetPaymentMethods(customerConfig.ProcessorID)
 
@@ -195,10 +220,13 @@ func TestSetDefaultPaymentMethod(t *testing.T) {
 	customerConfig, err := service.GetCustomer(TEST_CUSTOMER_ID)
 	assert.Nil(t, err)
 
-	customerConfig, err = service.SetDefaultPaymentMethod(customerConfig.ID,
-		customerConfig.ProcessorID)
+	customerConfig, err = service.SetDefaultPaymentMethod(&SetDefaultPaymentMethodRequest{
+		CustomerID:      customerConfig.ID,
+		ProcessorID:     customerConfig.ProcessorID,
+		PaymentMethodID: ""})
 	assert.Nil(t, err)
-	assert.NotEmpty(t, customerConfig.DefaultPaymentMethodID)
+	assert.NotEmpty(t, customerConfig.PaymentMethodID)
+	assert.NotEmpty(t, customerConfig.PaymentMethodLast4)
 }
 
 // NOTE: This method requires the payment method to already be saved to the customer
@@ -256,10 +284,13 @@ func TestCreateInvoice(t *testing.T) {
 	assert.Greater(t, len(jsonProducts), 0)
 
 	// Set the default payment method
-	customerWithDefaultPaymentMethod, err := service.SetDefaultPaymentMethod(paymentIntentResponse.Customer.ID,
-		paymentIntentResponse.Customer.ProcessorID)
+	customerWithDefaultPaymentMethod, err := service.SetDefaultPaymentMethod(&SetDefaultPaymentMethodRequest{
+		CustomerID:      paymentIntentResponse.Customer.ID,
+		ProcessorID:     paymentIntentResponse.Customer.ProcessorID,
+		PaymentMethodID: ""})
 	assert.Nil(t, err)
-	assert.NotEmpty(t, customerWithDefaultPaymentMethod.DefaultPaymentMethodID)
+	assert.NotEmpty(t, customerWithDefaultPaymentMethod.PaymentMethodID)
+	assert.NotEmpty(t, customerWithDefaultPaymentMethod.PaymentMethodLast4)
 
 	// Pay the invoice
 	invoice, err := service.PayInvoice(paymentIntentResponse.InvoiceID)

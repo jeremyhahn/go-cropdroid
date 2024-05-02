@@ -22,6 +22,34 @@ type CreatePaymentIntentRequest struct {
 	CurrencyCode string `json:"currencyCode"`
 }
 
+type SetupIntentRequest struct {
+	ClientSecret string `json:"client_secret"`
+	//ProcessorID string `json:"processor_id"`
+}
+
+type SetupIntentResponse struct {
+	Customer       *config.Customer `json:"customer"`
+	EphemeralKey   string           `json:"ephemeral_key"`
+	ClientSecret   string           `json:"client_secret"`
+	PublishableKey string           `json:"publishable_key"`
+}
+
+type CustomerEphemeralKeyResponse struct {
+	Customer     *config.Customer `json:"customer"`
+	EphemeralKey string           `json:"ephemeral_key"`
+}
+
+type AttachPaymentMethodRequest struct {
+	ProcessorID     string `json:"processor_id"`
+	PaymentMethodID string `json:"payment_method_id"`
+}
+
+type SetDefaultPaymentMethodRequest struct {
+	CustomerID      uint64 `json:"customer_id"`
+	ProcessorID     string `json:"processor_id"`
+	PaymentMethodID string `json:"payment_method_id"`
+}
+
 type Invoice struct {
 	ID              string     `json:"id"`
 	Description     string     `json:"description"`

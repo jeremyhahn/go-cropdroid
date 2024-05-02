@@ -51,9 +51,10 @@ func (dao *GormCustomerDAO) GetByEmail(email string, CONSISTENCY_LEVEL int) (*co
 		Preload("Shipping.Address").
 		Table("customers").
 		First(&customer, "email = ?", email).Error; err != nil {
-		if err != gorm.ErrRecordNotFound {
-			return nil, err
-		}
+		// if err != gorm.ErrRecordNotFound {
+		// 	return nil, err
+		// }
+		return nil, err
 	}
 	return customer, nil
 }

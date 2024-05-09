@@ -83,6 +83,6 @@ func (provisioner *GormFarmProvisioner) Deprovision(
 	if err != nil {
 		return err
 	}
-	provisioner.farmDeprovisionerChan <- farmConfig
+	provisioner.farmDeprovisionerChan <- *farmConfig
 	return nil
 }

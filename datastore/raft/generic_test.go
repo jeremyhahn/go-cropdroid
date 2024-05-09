@@ -78,10 +78,10 @@ func TestGenericRaftCRUD(t *testing.T) {
 	testEntity2 := NewTestEntity()
 	testEntity2.Name = "Test Entity 2"
 
-	err := genericDAO.Save(&testEntity1)
+	err := genericDAO.Save(testEntity1)
 	assert.Nil(t, err)
 
-	err = genericDAO.Save(&testEntity2)
+	err = genericDAO.Save(testEntity2)
 	assert.Nil(t, err)
 
 	algorithmConfigs, err := genericDAO.GetPage(1, 10, common.CONSISTENCY_LOCAL)
@@ -96,15 +96,15 @@ func TestGenericRaftCRUD(t *testing.T) {
 
 	testEntity1ID := testEntity1.ID
 	testEntity1.Name = "New updated name"
-	err = genericDAO.Update(&testEntity1)
+	err = genericDAO.Update(testEntity1)
 	assert.Nil(t, err)
 
 	updatedAlgo, err := genericDAO.Get(testEntity1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, testEntity1.Name, (*(updatedAlgo)).Name)
+	assert.Equal(t, testEntity1.Name, updatedAlgo.Name)
 	assert.Equal(t, testEntity1ID, testEntity1.ID) // Make sure ID doesnt change when the entity key changes
 
-	err = genericDAO.Delete(&updatedAlgo)
+	err = genericDAO.Delete(updatedAlgo)
 	assert.Nil(t, err)
 
 	deletedAlgo, err := genericDAO.Get(testEntity1.ID, common.CONSISTENCY_LOCAL)
@@ -116,7 +116,7 @@ func TestGenericRaftGetPage(t *testing.T) {
 
 	ClusterID = 2
 
-	genericDAO := NewGenericRaftDAO[TestEntity](IntegrationTestCluster.app.Logger,
+	genericDAO := NewGenericRaftDAO[*TestEntity](IntegrationTestCluster.app.Logger,
 		IntegrationTestCluster.GetRaftNode1(), ClusterID)
 	assert.NotNil(t, genericDAO)
 
@@ -125,11 +125,11 @@ func TestGenericRaftGetPage(t *testing.T) {
 
 	//numberOfAlgorithmsToCreate := 5000
 	numberOfAlgorithmsToCreate := 100
-	entities := make([]*TestEntity, numberOfAlgorithmsToCreate)
+	entities := make([]TestEntity, numberOfAlgorithmsToCreate)
 	for i := 0; i < numberOfAlgorithmsToCreate; i++ {
 		name := fmt.Sprintf("Test Algorithm %d", i)
-		te := &TestEntity{Name: name}
-		err := genericDAO.Save(te)
+		te := TestEntity{Name: name}
+		err := genericDAO.Save(&te)
 		assert.Nil(t, err)
 		entities[i] = te
 	}
@@ -195,10 +195,10 @@ func TestGenericRaftCRUDWithTimeSeriesIndex(t *testing.T) {
 	testEntity2.ID = 2
 	testEntity2.Name = "Test Entity 2"
 
-	err := genericDAO.SaveWithTimeSeriesIndex(&testEntity1)
+	err := genericDAO.SaveWithTimeSeriesIndex(testEntity1)
 	assert.Nil(t, err)
 
-	err = genericDAO.SaveWithTimeSeriesIndex(&testEntity2)
+	err = genericDAO.SaveWithTimeSeriesIndex(testEntity2)
 	assert.Nil(t, err)
 
 	algorithmConfigs, err := genericDAO.GetPage(1, 10, common.CONSISTENCY_LOCAL)
@@ -213,7 +213,7 @@ func TestGenericRaftCRUDWithTimeSeriesIndex(t *testing.T) {
 
 	testEntity1ID := testEntity1.ID
 	testEntity1.Name = "New updated name"
-	err = genericDAO.Update(&testEntity1)
+	err = genericDAO.Update(testEntity1)
 	assert.Nil(t, err)
 
 	updatedAlgo, err := genericDAO.Get(testEntity1.ID, common.CONSISTENCY_LOCAL)
@@ -221,7 +221,7 @@ func TestGenericRaftCRUDWithTimeSeriesIndex(t *testing.T) {
 	assert.Equal(t, testEntity1.Name, updatedAlgo.Name)
 	assert.Equal(t, testEntity1ID, testEntity1.ID) // Make sure ID doesnt change when the entity key changes
 
-	err = genericDAO.Delete(&updatedAlgo)
+	err = genericDAO.Delete(updatedAlgo)
 	assert.Nil(t, err)
 
 	deletedAlgo, err := genericDAO.Get(testEntity1.ID, common.CONSISTENCY_LOCAL)
@@ -249,7 +249,7 @@ func TestGenericRaftGetPageWithTimeSeriesIndex(t *testing.T) {
 		te := &TestEntityWithTimeSeriesIndex{
 			ID:   idGenerator.NewID([]byte(name)),
 			Name: name}
-		err := genericDAO.SaveWithTimeSeriesIndex(&te)
+		err := genericDAO.SaveWithTimeSeriesIndex(te)
 		assert.Nil(t, err)
 		entities[i] = te
 	}

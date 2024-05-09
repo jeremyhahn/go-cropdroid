@@ -42,7 +42,7 @@ func (dao *RaftChannelDAO) Save(farmID uint64, channel *config.Channel) error {
 			// }
 			device.SetChannel(channel)
 			farmConfig.SetDevice(device)
-			return dao.farmDAO.Save(&farmConfig)
+			return dao.farmDAO.Save(farmConfig)
 		}
 	}
 	return datastore.ErrNotFound

@@ -26,15 +26,15 @@ func TestFarmAssociations(t *testing.T) {
 		UserClusterID)
 	assert.NotNil(t, userDAO)
 
-	// farmDAO := NewRaftFarmConfigDAO(
-	// 	IntegrationTestCluster.app.Logger,
-	// 	raftNode1,
-	// 	FarmConfigClusterID,
-	// 	serverDAO,
-	// 	userDAO)
+	farmDAO := NewRaftFarmConfigDAO(
+		IntegrationTestCluster.app.Logger,
+		raftNode1,
+		FarmConfigClusterID,
+		serverDAO,
+		userDAO)
 
-	// userDAO.StartLocalCluster(IntegrationTestCluster, true)
-	// farmDAO.StartLocalCluster(IntegrationTestCluster, true)
+	userDAO.StartLocalCluster(IntegrationTestCluster, true)
+	farmDAO.StartLocalCluster(IntegrationTestCluster, true)
 
 	// org := createRaftTestOrganization(t, Cluster,
 	// 	ClusterID, serverDAO, userDAO, farmDAO)

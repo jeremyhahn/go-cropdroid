@@ -182,7 +182,7 @@ func (farm *DefaultFarmService) GetConfig() *config.Farm {
 		farm.app.Logger.Errorf("Error: %s", err)
 		return nil
 	}
-	return &conf
+	return conf
 }
 
 func (farm *DefaultFarmService) SetConfig(farmConfig *config.Farm) error {
@@ -241,8 +241,8 @@ func (farm *DefaultFarmService) SetDeviceConfig(deviceConfig *config.Device) err
 		return err
 	}
 	farmConfig.SetDevice(deviceConfig)
-	farm.farmDAO.Save(&farmConfig)
-	farm.PublishConfig(&farmConfig)
+	farm.farmDAO.Save(farmConfig)
+	farm.PublishConfig(farmConfig)
 	return nil
 }
 
@@ -264,7 +264,7 @@ func (farm *DefaultFarmService) SetConfigValue(session Session, farmID, deviceID
 	farmConfig, err := farm.farmDAO.Get(farm.farmID, common.CONSISTENCY_LOCAL)
 
 	// This doesnt update raft state in cluster mode
-	farm.channels.FarmConfigChangeChan <- farmConfig
+	farm.channels.FarmConfigChangeChan <- *farmConfig
 
 	// This causes an infinite loop
 	//farm.SetConfig(farmConfig)

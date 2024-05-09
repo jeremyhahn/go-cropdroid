@@ -33,10 +33,10 @@ func TestAlgorithmCRUD(t *testing.T) {
 	algorithm2 := config.NewAlgorithm()
 	algorithm2.Name = "Test Algorithm 2"
 
-	err := genericDAO.Save(&algorithm1)
+	err := genericDAO.Save(algorithm1)
 	assert.Nil(t, err)
 
-	err = genericDAO.Save(&algorithm2)
+	err = genericDAO.Save(algorithm2)
 	assert.Nil(t, err)
 
 	algorithmConfigs, err := genericDAO.GetPage(1, 10, common.CONSISTENCY_LOCAL)
@@ -51,7 +51,7 @@ func TestAlgorithmCRUD(t *testing.T) {
 
 	algorithm1ID := algorithm1.ID
 	algorithm1.Name = "New updated name"
-	err = genericDAO.Update(&algorithm1)
+	err = genericDAO.Update(algorithm1)
 	assert.Nil(t, err)
 
 	updatedAlgo, err := genericDAO.Get(algorithm1.ID, common.CONSISTENCY_LOCAL)
@@ -59,7 +59,7 @@ func TestAlgorithmCRUD(t *testing.T) {
 	assert.Equal(t, algorithm1.Name, (*(updatedAlgo)).Name)
 	assert.Equal(t, algorithm1ID, algorithm1.ID) // Make sure ID doesnt change when the entity key changes
 
-	err = genericDAO.Delete(&algorithm1)
+	err = genericDAO.Delete(algorithm1)
 	assert.Nil(t, err)
 
 	deletedAlgo, err := genericDAO.Get(algorithm1.ID, common.CONSISTENCY_LOCAL)
@@ -84,7 +84,7 @@ func TestAlgorithmGetPage(t *testing.T) {
 	for i := 0; i < numberOfAlgorithmsToCreate; i++ {
 		name := fmt.Sprintf("Test Algorithm %d", i)
 		algo := &config.Algorithm{Name: name}
-		err := genericDAO.Save(&algo)
+		err := genericDAO.Save(algo)
 		assert.Nil(t, err)
 		entities[i] = algo
 	}

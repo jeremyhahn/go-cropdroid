@@ -19,7 +19,7 @@ func TestGenericSaveAndSerializeToAndFromJson(t *testing.T) {
 
 	currentTest.gorm.AutoMigrate(&config.Algorithm{})
 
-	algorithmDAO := NewGenericGormDAO[config.Algorithm](currentTest.logger, currentTest.gorm)
+	algorithmDAO := NewGenericGormDAO[*config.Algorithm](currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, algorithmDAO)
 
 	algorithm1 := config.Algorithm{
@@ -65,7 +65,7 @@ func TestGenericUpdateAndDelete(t *testing.T) {
 
 	currentTest.gorm.AutoMigrate(&config.Algorithm{})
 
-	algorithmDAO := NewGenericGormDAO[config.Algorithm](currentTest.logger, currentTest.gorm)
+	algorithmDAO := NewGenericGormDAO[*config.Algorithm](currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, algorithmDAO)
 
 	algorithm1 := config.Algorithm{
@@ -81,7 +81,7 @@ func TestGenericUpdateAndDelete(t *testing.T) {
 
 	newName := "updated name"
 	savedAlgo.Name = newName
-	err = algorithmDAO.Update(&savedAlgo)
+	err = algorithmDAO.Update(savedAlgo)
 	assert.Nil(t, err)
 
 	updatedAlgo, err := algorithmDAO.Get(savedAlgo.ID, common.CONSISTENCY_LOCAL)
@@ -89,7 +89,7 @@ func TestGenericUpdateAndDelete(t *testing.T) {
 	assert.Equal(t, updatedAlgo.ID, savedAlgo.ID)
 	assert.Equal(t, updatedAlgo.Name, newName)
 
-	err = algorithmDAO.Delete(&updatedAlgo)
+	err = algorithmDAO.Delete(updatedAlgo)
 	assert.Nil(t, err)
 
 	_, err = algorithmDAO.Get(updatedAlgo.ID, common.CONSISTENCY_LOCAL)
@@ -103,7 +103,7 @@ func TestGenericGetPage(t *testing.T) {
 
 	currentTest.gorm.AutoMigrate(&config.Algorithm{})
 
-	algorithmDAO := NewGenericGormDAO[config.Algorithm](currentTest.logger, currentTest.gorm)
+	algorithmDAO := NewGenericGormDAO[*config.Algorithm](currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, algorithmDAO)
 
 	numberOfAlgorithmsToCreate := 40

@@ -17,7 +17,7 @@ func TestCustomer_CRUD(t *testing.T) {
 	currentTest.gorm.AutoMigrate(&config.ShippingAddress{})
 	currentTest.gorm.AutoMigrate(&config.Customer{})
 
-	customerDAO := NewGenericGormDAO[config.Customer](currentTest.logger, currentTest.gorm)
+	customerDAO := NewGenericGormDAO[*config.Customer](currentTest.logger, currentTest.gorm)
 	customer1 := config.Customer{
 		ProcessorID: "123",
 		Name:        "admin",

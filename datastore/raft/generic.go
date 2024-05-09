@@ -20,7 +20,7 @@ type RaftDAO[E any] interface {
 	dao.GenericDAO[E]
 	StartClusterNode(waitForClusterReady bool) error
 	StartLocalCluster(localCluster *LocalCluster, waitForClusterReady bool) error
-	SaveWithTimeSeriesIndex(entity *E) error
+	SaveWithTimeSeriesIndex(entity E) error
 }
 
 type GenericRaftDAO[E any] struct {
@@ -75,11 +75,11 @@ func (dao *GenericRaftDAO[E]) StartLocalCluster(localCluster *LocalCluster, wait
 	return nil
 }
 
-func (dao *GenericRaftDAO[E]) SaveWithTimeSeriesIndex(entity *E) error {
+func (dao *GenericRaftDAO[E]) SaveWithTimeSeriesIndex(entity E) error {
 
-	dao.logger.Infof("Save Raft entity: %+v", *entity)
+	dao.logger.Infof("Save Raft entity: %+v", entity)
 
-	tsEntity := any(*entity).(config.TimeSeriesIndexeder)
+	tsEntity := any(entity).(config.TimeSeriesIndexeder)
 
 	if tsEntity != nil {
 		// The entity ID is expected to be set by the caller
@@ -88,37 +88,6 @@ func (dao *GenericRaftDAO[E]) SaveWithTimeSeriesIndex(entity *E) error {
 	}
 
 	perm, err := json.Marshal(tsEntity)
-	if err != nil {
-		dao.logger.Errorf("Error: %s", err)
-		return err
-	}
-
-	proposal, err := statemachine.CreateProposal(
-		statemachine.QUERY_TYPE_UPDATE, perm).Serialize()
-	if err != nil {
-		dao.logger.Errorf("Error: %s", err)
-		return err
-	}
-
-	if err := dao.raft.SyncPropose(dao.clusterID, proposal); err != nil {
-		dao.logger.Errorf("Error: %s", err)
-		return err
-	}
-
-	return nil
-}
-
-func (dao *GenericRaftDAO[E]) Save(entity *E) error {
-
-	dao.logger.Infof("Save Raft entity: %+v", *entity)
-
-	kvEntity := any(*entity).(config.KeyValueEntity)
-
-	if kvEntity.Identifier() == 0 {
-		kvEntity.SetID(uint64(time.Now().UnixMicro()))
-	}
-
-	perm, err := json.Marshal(entity)
 	if err != nil {
 		dao.logger.Errorf("Error: %s", err)
 		return err
@@ -194,7 +163,38 @@ func (dao *GenericRaftDAO[E]) GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]
 	}
 }
 
-func (dao *GenericRaftDAO[E]) Delete(entity *E) error {
+func (dao *GenericRaftDAO[E]) Save(entity E) error {
+
+	dao.logger.Infof("Save Raft entity: %+v", entity)
+
+	kvEntity := any(entity).(config.KeyValueEntity)
+
+	if kvEntity.Identifier() == 0 {
+		kvEntity.SetID(uint64(time.Now().UnixMicro()))
+	}
+
+	perm, err := json.Marshal(entity)
+	if err != nil {
+		dao.logger.Errorf("Error: %s", err)
+		return err
+	}
+
+	proposal, err := statemachine.CreateProposal(
+		statemachine.QUERY_TYPE_UPDATE, perm).Serialize()
+	if err != nil {
+		dao.logger.Errorf("Error: %s", err)
+		return err
+	}
+
+	if err := dao.raft.SyncPropose(dao.clusterID, proposal); err != nil {
+		dao.logger.Errorf("Error: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *GenericRaftDAO[E]) Delete(entity E) error {
 	dao.logger.Infof("Delete Raft entity: %+v", entity)
 	marshaledEntity, err := json.Marshal(entity)
 	if err != nil {
@@ -215,6 +215,6 @@ func (dao *GenericRaftDAO[E]) Delete(entity *E) error {
 }
 
 // Only here to satisfy interface compatibility with ORM DAO's
-func (dao *GenericRaftDAO[E]) Update(entity *E) error {
+func (dao *GenericRaftDAO[E]) Update(entity E) error {
 	return dao.Save(entity)
 }

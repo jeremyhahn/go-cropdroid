@@ -7,7 +7,7 @@ import (
 )
 
 type AlgorithmService interface {
-	GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]config.Algorithm, error)
+	GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]*config.Algorithm, error)
 }
 
 type DefaultAlgorithmService struct {
@@ -19,7 +19,7 @@ func NewAlgorithmService(dao dao.AlgorithmDAO) AlgorithmService {
 	return &DefaultAlgorithmService{dao: dao}
 }
 
-func (service *DefaultAlgorithmService) GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]config.Algorithm, error) {
+func (service *DefaultAlgorithmService) GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]*config.Algorithm, error) {
 	entities, err := service.dao.GetPage(common.CONSISTENCY_LOCAL, page, pageSize)
 	if err != nil {
 		return nil, err

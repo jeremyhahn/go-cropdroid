@@ -46,28 +46,26 @@ func (algorithmDAO *RaftAlgorithmDAO) StartCluster() {
 	}
 }
 
-func (algorithmDAO *RaftAlgorithmDAO) Get(algorithmID uint64, CONSISTENCY_LEVEL int) (config.Algorithm, error) {
+func (algorithmDAO *RaftAlgorithmDAO) Get(algorithmID uint64, CONSISTENCY_LEVEL int) (*config.Algorithm, error) {
 	var result interface{}
 	var err error
-	var empyyAlgorithm = config.Algorithm{}
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
 		result, err = algorithmDAO.raft.ReadLocal(algorithmDAO.clusterID, algorithmID)
 		if err != nil {
 			algorithmDAO.logger.Errorf("Error (algorithmID=%d): %s", algorithmID, err)
-			return empyyAlgorithm, err
+			return nil, err
 		}
 	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
 		result, err = algorithmDAO.raft.SyncRead(algorithmDAO.clusterID, algorithmID)
 		if err != nil {
 			algorithmDAO.logger.Errorf("Error (algorithmID=%d): %s", algorithmID, err)
-			return empyyAlgorithm, err
+			return nil, err
 		}
 	}
 	if result != nil {
-		r := result.(*config.Algorithm)
-		return *r, nil
+		return result.(*config.Algorithm), nil
 	}
-	return empyyAlgorithm, datastore.ErrNotFound
+	return nil, datastore.ErrNotFound
 }
 
 func (algorithmDAO *RaftAlgorithmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Algorithm, error) {

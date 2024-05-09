@@ -515,7 +515,7 @@ func createCustomerDAO() dao.CustomerDAO {
 	return gorm.NewCustomerDAO(CurrentTest.logger, CurrentTest.gorm)
 }
 
-func createTestCustomer() config.Customer {
+func createTestCustomer() *config.Customer {
 	address := &config.Address{
 		Line1:      "123 test street",
 		Line2:      "Apt 1",
@@ -535,7 +535,7 @@ func createTestCustomer() config.Customer {
 			PostalCode: "54321",
 			Country:    "ShipCountry"}}
 
-	return config.Customer{
+	return &config.Customer{
 		ID:          1,
 		Description: "Integration test user",
 		Name:        "test",

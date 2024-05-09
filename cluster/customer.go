@@ -43,36 +43,33 @@ func (customerDAO *RaftCustomerDAO) StartCluster() {
 	//customerDAO.raft.WaitForClusterReady(clusterID)
 }
 
-func (customerDAO *RaftCustomerDAO) Get(customerID uint64, CONSISTENCY_LEVEL int) (config.Customer, error) {
+func (customerDAO *RaftCustomerDAO) Get(customerID uint64, CONSISTENCY_LEVEL int) (*config.Customer, error) {
 	var result interface{}
 	var err error
-	var emptyCustomer = config.Customer{}
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
 		result, err = customerDAO.raft.ReadLocal(customerDAO.clusterID, customerID)
 		if err != nil {
 			customerDAO.logger.Errorf("Error (customerClusterID=%d, customerID=%d): %s",
 				customerDAO.clusterID, customerID, err)
-			return emptyCustomer, err
+			return nil, err
 		}
 	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
 		result, err = customerDAO.raft.SyncRead(customerDAO.clusterID, customerID)
 		if err != nil {
 			customerDAO.logger.Errorf("Error (customerClusterID=%d, customerID=%d): %s",
 				customerDAO.clusterID, customerID, err)
-			return emptyCustomer, err
+			return nil, err
 		}
 	}
 	if result != nil {
-		r := result.(*config.Customer)
-		return *r, nil
+		return result.(*config.Customer), nil
 	}
-	return emptyCustomer, datastore.ErrNotFound
+	return nil, datastore.ErrNotFound
 }
 
-func (customerDAO *RaftCustomerDAO) GetByEmail(customerName string, CONSISTENCY_LEVEL int) (config.Customer, error) {
+func (customerDAO *RaftCustomerDAO) GetByEmail(customerName string, CONSISTENCY_LEVEL int) (*config.Customer, error) {
 	customerID := customerDAO.raft.GetParams().IdGenerator.NewStringID(customerName)
-	customer, err := customerDAO.Get(customerID, CONSISTENCY_LEVEL)
-	return customer, err
+	return customerDAO.Get(customerID, CONSISTENCY_LEVEL)
 }
 
 func (customerDAO *RaftCustomerDAO) Save(customer *config.Customer) error {

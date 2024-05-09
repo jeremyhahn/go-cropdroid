@@ -12,22 +12,27 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+type RaftFarmConfiger interface {
+	RaftDAO[*config.Farm]
+	dao.FarmDAO
+}
+
 type RaftFarmConfigDAO struct {
 	logger    *logging.Logger
 	raft      cluster.RaftNode
 	serverDAO dao.ServerDAO
 	userDAO   dao.UserDAO
-	GenericRaftDAO[config.Farm]
-	dao.FarmDAO
+	GenericRaftDAO[*config.Farm]
+	RaftFarmConfiger
 }
 
 func NewRaftFarmConfigDAO(logger *logging.Logger, raftNode cluster.RaftNode,
-	clusterID uint64, serverDAO dao.ServerDAO, userDAO dao.UserDAO) dao.FarmDAO {
+	clusterID uint64, serverDAO dao.ServerDAO, userDAO dao.UserDAO) RaftFarmConfiger {
 
 	return &RaftFarmConfigDAO{
 		logger: logger,
 		raft:   raftNode,
-		GenericRaftDAO: GenericRaftDAO[config.Farm]{
+		GenericRaftDAO: GenericRaftDAO[*config.Farm]{
 			logger:    logger,
 			raft:      raftNode,
 			clusterID: clusterID,
@@ -40,8 +45,16 @@ func (farmDAO *RaftFarmConfigDAO) StartClusterNode(waitForClusterReady bool) err
 	return farmDAO.GenericRaftDAO.StartClusterNode(waitForClusterReady)
 }
 
+func (farmDAO *RaftFarmConfigDAO) StartLocalCluster(localCluster *LocalCluster, waitForClusterReady bool) error {
+	return farmDAO.GenericRaftDAO.StartLocalCluster(localCluster, waitForClusterReady)
+}
+
 func (farmDAO *RaftFarmConfigDAO) Save(farmConfig *config.Farm) error {
 	return farmDAO.GenericRaftDAO.Save(farmConfig)
+}
+
+func (farmDAO *RaftFarmConfigDAO) SaveWithTimeSeriesIndex(farmConfig *config.Farm) error {
+	return farmDAO.GenericRaftDAO.SaveWithTimeSeriesIndex(farmConfig)
 }
 
 func (farmDAO *RaftFarmConfigDAO) Update(farmConfig *config.Farm) error {
@@ -52,13 +65,12 @@ func (farmDAO *RaftFarmConfigDAO) Delete(farmConfig *config.Farm) error {
 	return farmDAO.GenericRaftDAO.Delete(farmConfig)
 }
 
-func (farmDAO *RaftFarmConfigDAO) Get(id uint64, CONSISTENCY_LEVEL int) (config.Farm, error) {
+func (farmDAO *RaftFarmConfigDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
 	return farmDAO.GenericRaftDAO.Get(id, CONSISTENCY_LEVEL)
 }
 
-func (farmDAO *RaftFarmConfigDAO) GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]config.Farm, error) {
-	farms, err := farmDAO.GenericRaftDAO.GetPage(page, pageSize, CONSISTENCY_LEVEL)
-	return farms, err
+func (farmDAO *RaftFarmConfigDAO) GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
+	return farmDAO.GenericRaftDAO.GetPage(page, pageSize, CONSISTENCY_LEVEL)
 }
 
 func (farmDAO *RaftFarmConfigDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error) {

@@ -18,7 +18,7 @@ func NewGenericGormDAO[E any](logger *logging.Logger, db *gorm.DB) dao.GenericDA
 	return &GenericGormDAO[E]{logger: logger, db: db}
 }
 
-func (dao *GenericGormDAO[E]) Save(entity *E) error {
+func (dao *GenericGormDAO[E]) Save(entity E) error {
 	dao.logger.Infof("Save GORM entity: %+v", entity)
 	return dao.db.Save(&entity).Error
 }
@@ -38,7 +38,6 @@ func (dao *GenericGormDAO[E]) GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]
 	if page < 1 {
 		page = 1
 	}
-	//var offset = (page-1)*pageSize + 1
 	var offset = (page - 1) * pageSize
 	var entities []E
 	if err := dao.db.Limit(pageSize).
@@ -49,20 +48,20 @@ func (dao *GenericGormDAO[E]) GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]
 	return entities, nil
 }
 
-func (dao *GenericGormDAO[E]) Update(entity *E) error {
+func (dao *GenericGormDAO[E]) Update(entity E) error {
 	dao.logger.Infof("Update GORM entity: %+v", entity)
 	return dao.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(entity).Error
 }
 
-func (dao *GenericGormDAO[E]) Delete(entity *E) error {
+func (dao *GenericGormDAO[E]) Delete(entity E) error {
 	dao.logger.Infof("Delete GORM entity: %+v", entity)
 	return dao.db.Delete(entity).Error
 }
 
 // This method is only here to provide compatiiblty with the interface while refactoring
 // to prevent the rest of the project from breaking if its removed
-func (dao *GenericGormDAO[E]) GetAll(CONSISTENCY_LEVEL int) ([]*E, error) {
-	return make([]*E, 0), nil
+func (dao *GenericGormDAO[E]) GetAll(CONSISTENCY_LEVEL int) ([]E, error) {
+	return make([]E, 0), nil
 }
 
 // func (dao *GenericGormDAO[E]) GetAll(CONSISTENCY_LEVEL int) ([]E, error) {

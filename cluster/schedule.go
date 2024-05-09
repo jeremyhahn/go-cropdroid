@@ -48,7 +48,7 @@ func (dao *RaftScheduleDAO) Save(farmID, deviceID uint64,
 				// 	return dao.farmDAO.Save(farmConfig)
 				// }
 				channel.SetScheduleItem(schedule)
-				return dao.farmDAO.Save(&farmConfig)
+				return dao.farmDAO.Save(farmConfig)
 			}
 		}
 	}
@@ -99,7 +99,7 @@ func (dao *RaftScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.Sch
 						channel.SetSchedule(newScheduleList)
 						device.SetChannel(channel)
 						farmConfig.SetDevice(device)
-						if err := dao.farmDAO.Save(&farmConfig); err != nil {
+						if err := dao.farmDAO.Save(farmConfig); err != nil {
 							return err
 						}
 						return nil

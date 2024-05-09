@@ -132,7 +132,7 @@ func (permissionDAO *RaftPermissionDAO) Save(permission *config.Permission) erro
 			return err
 		}
 		farm.AddUser(user)
-		if err := permissionDAO.farmDAO.Save(&farm); err != nil {
+		if err := permissionDAO.farmDAO.Save(farm); err != nil {
 			return err
 		}
 	}
@@ -250,7 +250,7 @@ func (permissionDAO *RaftPermissionDAO) Delete(permission *config.Permission) er
 			return err
 		}
 		farm.RemoveUser(user)
-		if err := permissionDAO.farmDAO.Save(&farm); err != nil {
+		if err := permissionDAO.farmDAO.Save(farm); err != nil {
 			return err
 		}
 	}

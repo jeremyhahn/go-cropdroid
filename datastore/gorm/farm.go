@@ -58,9 +58,9 @@ func (dao *GormFarmDAO) Save(farm *config.Farm) error {
 	return nil
 }
 
-func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.Farm, error) {
+func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
 	dao.logger.Debugf("Getting farm: %d", farmID)
-	var farm config.Farm
+	var farm *config.Farm
 	if err := dao.db.
 		Preload("Devices").
 		Preload("Users").

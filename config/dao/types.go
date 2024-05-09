@@ -6,15 +6,15 @@ import (
 )
 
 type GenericDAO[E any] interface {
-	Save(entity *E) error
+	Save(entity E) error
 	Get(id uint64, CONSISTENCY_LEVEL int) (E, error)
 	GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]E, error)
-	Update(entity *E) error
-	Delete(entity *E) error
+	Update(entity E) error
+	Delete(entity E) error
 
 	// This is only here to prevent the rest of the projet from
 	//  breaking if its removed while refactoring
-	GetAll(CONSISTENCY_LEVEL int) ([]*E, error)
+	GetAll(CONSISTENCY_LEVEL int) ([]E, error)
 }
 
 type ServerDAO interface {
@@ -24,25 +24,26 @@ type ServerDAO interface {
 type FarmDAO interface {
 	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
 	GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
-	GenericDAO[config.Farm]
+	GenericDAO[*config.Farm]
 }
 
 type CustomerDAO interface {
-	GetByEmail(name string, CONSISTENCY_LEVEL int) (config.Customer, error)
+	GetByEmail(name string, CONSISTENCY_LEVEL int) (*config.Customer, error)
 	//GetByProcessorID(id string, CONSISTENCY_LEVEL int) (*config.Customer, error)
 	//GetAll(CONSISTENCY_LEVEL int) ([]*config.Customer, error)
-	GenericDAO[config.Customer]
+	GenericDAO[*config.Customer]
 }
 
 type AlgorithmDAO interface {
-	GenericDAO[config.Algorithm]
+	GenericDAO[*config.Algorithm]
 	//GetAll(CONSISTENCY_LEVEL int) ([]config.Algorithm, error)
 }
 
 type UserDAO interface {
-	Delete(user *config.User) error
-	Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error)
-	Save(user *config.User) error
+	// Delete(user *config.User) error
+	// Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error)
+	// Save(user *config.User) error
+	GenericDAO[*config.User]
 }
 
 type RoleDAO interface {

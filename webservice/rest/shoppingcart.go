@@ -332,9 +332,9 @@ func (restService *DefaultShoppingCartRestService) CreateCustomer(w http.Respons
 	}
 	defer session.Close()
 
-	var customerConfig config.Customer
+	var customerConfig *config.Customer
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&customerConfig); err != nil {
+	if err := decoder.Decode(customerConfig); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
@@ -359,7 +359,7 @@ func (restService *DefaultShoppingCartRestService) UpdateCustomer(w http.Respons
 	}
 	defer session.Close()
 
-	var customerConfig config.Customer
+	var customerConfig *config.Customer
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&customerConfig); err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)

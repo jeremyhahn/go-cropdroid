@@ -40,7 +40,7 @@ func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.Workflo
 			workflow.SetStep(workflowStep)
 			idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
 			farmConfig.SetWorkflow(workflow)
-			return dao.farmDAO.Save(&farmConfig)
+			return dao.farmDAO.Save(farmConfig)
 		}
 	}
 	return datastore.ErrNotFound
@@ -80,7 +80,7 @@ func (dao *RaftWorkflowStepDAO) Delete(farmID uint64, workflowStep *config.Workf
 			newWorkflowStepList = append(newWorkflowStepList, workflowStep)
 			workflow.SetSteps(newWorkflowStepList)
 			farmConfig.SetWorkflow(workflow)
-			return dao.farmDAO.Save(&farmConfig)
+			return dao.farmDAO.Save(farmConfig)
 		}
 	}
 	return datastore.ErrNotFound

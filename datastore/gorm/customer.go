@@ -10,7 +10,7 @@ import (
 type GormCustomerDAO struct {
 	logger         *logging.Logger
 	db             *gorm.DB
-	GenericGormDAO dao.GenericDAO[config.Customer]
+	GenericGormDAO dao.GenericDAO[*config.Customer]
 	dao.CustomerDAO
 }
 
@@ -18,12 +18,12 @@ func NewCustomerDAO(logger *logging.Logger, db *gorm.DB) dao.CustomerDAO {
 	return &GormCustomerDAO{
 		logger:         logger,
 		db:             db,
-		GenericGormDAO: NewGenericGormDAO[config.Customer](logger, db)}
+		GenericGormDAO: NewGenericGormDAO[*config.Customer](logger, db)}
 }
 
-func (dao *GormCustomerDAO) GetByEmail(email string, CONSISTENCY_LEVEL int) (config.Customer, error) {
+func (dao *GormCustomerDAO) GetByEmail(email string, CONSISTENCY_LEVEL int) (*config.Customer, error) {
 	dao.logger.Debugf("Getting customer by email: %s", email)
-	var customer config.Customer
+	var customer *config.Customer
 	if err := dao.db.
 		Preload("Address").
 		Preload("Shipping").
@@ -39,11 +39,11 @@ func (dao *GormCustomerDAO) Save(customer *config.Customer) error {
 	return dao.GenericGormDAO.Save(customer)
 }
 
-func (dao *GormCustomerDAO) Get(id uint64, CONSISTENCY_LEVEL int) (config.Customer, error) {
+func (dao *GormCustomerDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Customer, error) {
 	return dao.GenericGormDAO.Get(id, CONSISTENCY_LEVEL)
 }
 
-func (dao *GormCustomerDAO) GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]config.Customer, error) {
+func (dao *GormCustomerDAO) GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]*config.Customer, error) {
 	return dao.GenericGormDAO.GetPage(CONSISTENCY_LEVEL, page, pageSize)
 }
 

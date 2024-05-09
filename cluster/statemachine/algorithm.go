@@ -158,7 +158,7 @@ func (d *AlgorithmDiskKV) Update(ents []sm.Entry) ([]sm.Entry, error) {
 		}
 
 		kvdata := &KVData{
-			Key: d.idGenerator.Uint64Bytes(algorithmConfig.GetID()),
+			Key: d.idGenerator.Uint64Bytes(algorithmConfig.ID),
 			Val: proposal.Data}
 
 		jsonDataKV, err := json.Marshal(kvdata)

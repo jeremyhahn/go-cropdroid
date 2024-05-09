@@ -102,8 +102,8 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	}
 
 	phAlgoID := initializer.newID(common.ALGORITHM_PH_KEY)
-	phAlgo := &config.Algorithm{ID: phAlgoID, Name: common.ALGORITHM_PH_KEY}
-	initializer.algorithmDAO.Save(phAlgo)
+	phAlgo := config.Algorithm{ID: phAlgoID, Name: common.ALGORITHM_PH_KEY}
+	initializer.algorithmDAO.Save(&phAlgo)
 
 	// Oxidizer can be set up with a simple condition
 	// oxidizerAlgoID := initializer.newID(common.ALGORITHM_ORP_KEY)
@@ -116,11 +116,11 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 }
 
 func (initializer *ConfigInitializer) newID(key string) uint64 {
-	return initializer.idGenerator.NewID(key)
+	return initializer.idGenerator.NewStringID(key)
 }
 
 func (initializer *ConfigInitializer) newFarmID(farmID uint64, key string) uint64 {
-	return initializer.idGenerator.NewID(fmt.Sprintf("%d-%s", farmID, key))
+	return initializer.idGenerator.NewStringID(fmt.Sprintf("%d-%s", farmID, key))
 }
 
 func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerParams,
@@ -129,7 +129,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	permissions := make([]config.Permission, 0)
 
 	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
-	farmID := initializer.idGenerator.NewID(farmKey)
+	farmID := initializer.idGenerator.NewStringID(farmKey)
 
 	// Add permissions for all existing users in the organization
 	users, _ := initializer.permissionDAO.GetUsers(params.OrganizationID,

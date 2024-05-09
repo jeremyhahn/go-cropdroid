@@ -75,7 +75,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 	}
 	service.app.Logger.Debugf("tokenInfo: %+v", tokenInfo)
 
-	userID := service.idGenerator.NewID(tokenInfo.Email)
+	userID := service.idGenerator.NewStringID(tokenInfo.Email)
 	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 
 	// Create a new trial account if this is a new user
@@ -181,7 +181,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	}
 	email := userCredentials.Email
 	token := userCredentials.Password
-	userID := service.idGenerator.NewID(email)
+	userID := service.idGenerator.NewStringID(email)
 	_, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		service.app.Logger.Errorf("%s", err.Error())
@@ -208,7 +208,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	}
 
 	userConfig := &config.User{
-		ID:       service.idGenerator.NewID(email),
+		ID:       service.idGenerator.NewStringID(email),
 		Email:    email,
 		Password: string(encrypted),
 		Roles:    []*config.Role{defaultRole}}

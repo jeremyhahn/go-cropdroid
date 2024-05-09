@@ -37,7 +37,7 @@ func (dao *RaftDeviceSettingDAO) Save(farmID uint64,
 	if setting.GetID() == 0 {
 		key := fmt.Sprintf("%d-%d-%s", farmID, setting.GetDeviceID(),
 			setting.GetKey())
-		id := dao.raft.GetParams().IdGenerator.NewID(key)
+		id := dao.raft.GetParams().IdGenerator.NewStringID(key)
 		setting.SetID(id)
 	}
 	dao.logger.Debugf("Saving farm %d device setting %+v",

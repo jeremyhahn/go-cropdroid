@@ -22,10 +22,10 @@ func TestAlgorithmCRUD(t *testing.T) {
 	assert.NotNil(t, algorithmDAO)
 
 	algorithm1 := config.NewAlgorithm()
-	algorithm1.SetName("Test Algorithm 1")
+	algorithm1.Name = "Test Algorithm 1"
 
 	algorithm2 := config.NewAlgorithm()
-	algorithm2.SetName("Test Algorithm 2")
+	algorithm2.Name = "Test Algorithm 2"
 
 	err = algorithmDAO.Save(algorithm1)
 	assert.Nil(t, err)
@@ -37,9 +37,9 @@ func TestAlgorithmCRUD(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(algorithmConfigs))
 
-	assert.Equal(t, algorithm1.ID, algorithmConfigs[1].GetID())
-	assert.Equal(t, algorithm1.Name, algorithmConfigs[1].GetName())
+	assert.Equal(t, algorithm1.ID, algorithmConfigs[1].ID)
+	assert.Equal(t, algorithm1.Name, algorithmConfigs[1].Name)
 
-	assert.Equal(t, algorithm2.ID, algorithmConfigs[0].GetID())
-	assert.Equal(t, algorithm2.Name, algorithmConfigs[0].GetName())
+	assert.Equal(t, algorithm2.ID, algorithmConfigs[0].ID)
+	assert.Equal(t, algorithm2.Name, algorithmConfigs[0].Name)
 }

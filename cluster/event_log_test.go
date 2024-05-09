@@ -18,7 +18,7 @@ func TestEventLogCRUD(t *testing.T) {
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
 
 	farmName := "farm1"
-	farmID := idGenerator.NewID(farmName)
+	farmID := idGenerator.NewStringID(farmName)
 
 	Cluster.CreateEventLogCluster(farmID)
 

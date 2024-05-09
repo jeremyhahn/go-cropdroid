@@ -14,22 +14,21 @@ type Customer struct {
 	PaymentMethodID    string           `json:"payment_method_id"`
 	AddressID          uint64           `yaml:"address_id" json:"address_id"`
 	ShippingID         uint64           `yaml:"shipping_id" json:"shipping_id"`
+	KeyValueEntity     `gorm:"-" yaml:"-" json:"-"`
 }
 
-type Address struct {
-	ID         uint64 `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	Line1      string `yaml:"line1" json:"line1"`
-	Line2      string `yaml:"line2" json:"line2"`
-	City       string `yaml:"city" json:"city"`
-	State      string `yaml:"state" json:"state"`
-	PostalCode string `yaml:"postal_code" json:"postal_code"`
-	Country    string `yaml:"country" json:"country"`
+func NewCustomer() *Customer {
+	return new(Customer)
 }
 
-type ShippingAddress struct {
-	ID        uint64   `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	Name      string   `yaml:"name" json:"name"`
-	Phone     string   `yaml:"phone" json:"phone"`
-	Address   *Address `gorm:"foreignKey:AddressID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"address" json:"address"`
-	AddressID uint64   `yaml:"address_id" json:"address_id"`
+func (customer *Customer) SetID(id uint64) {
+	customer.ID = id
+}
+
+func (customer *Customer) Identifier() uint64 {
+	return customer.ID
+}
+
+func (customer *Customer) KVKey() []byte {
+	return []byte(customer.Email)
 }

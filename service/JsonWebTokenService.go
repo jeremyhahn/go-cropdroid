@@ -125,9 +125,10 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 
 	roles := make([]*config.Role, 0)
 	var isFarmMember = false
+	var consistencyLevel = common.CONSISTENCY_LOCAL
 
 	// The organizationID the user is requesting to operate on
-	requestedOrgID := uint64(0)
+	var requestedOrgID = uint64(0)
 
 	// If an organizationID REST parameter is present, scope the session
 	// to the requested organization
@@ -170,6 +171,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 				break
 			}
 		}
+		consistencyLevel = farmConfig.GetConsistencyLevel()
 	} else {
 		// Get the roles the user has been assigned from the organization
 		// and all of the farms the user has been granted permissions within
@@ -184,7 +186,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 						isFarmMember = true
 						for _, role := range farm.Roles {
 							roles = append(roles, &config.Role{
-								ID:   service.idGenerator.NewID(role),
+								ID:   service.idGenerator.NewStringID(role),
 								Name: role})
 						}
 						break ORGS_LOOP
@@ -200,7 +202,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 	if len(roles) == 0 {
 		if claims.Email == common.DEFAULT_USER {
 			roles = append(roles, &config.Role{
-				ID:   service.idGenerator.NewID(common.ROLE_ADMIN),
+				ID:   service.idGenerator.NewStringID(common.ROLE_ADMIN),
 				Name: common.ROLE_ADMIN})
 		} else {
 			roles = append(roles, service.defaultRole)
@@ -218,7 +220,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 	for i, role := range roles {
 		roleName := role.GetName()
 		commonRoles[i] = &model.Role{
-			ID:   service.idGenerator.NewID(roleName),
+			ID:   service.idGenerator.NewStringID(roleName),
 			Name: roleName}
 	}
 	user := &model.User{
@@ -229,7 +231,7 @@ func (service *JsonWebTokenServiceImpl) CreateSession(w http.ResponseWriter,
 	farmService := service.serviceRegistry.GetFarmService(requestedFarmID)
 
 	return CreateSession(service.app.Logger, orgClaims,
-		farmClaims, farmService, requestedOrgID, requestedFarmID, user), nil
+		farmClaims, farmService, requestedOrgID, requestedFarmID, consistencyLevel, user), nil
 }
 
 // GenerateToken parses an authentication HTTP request for UserCredentials and returns

@@ -37,7 +37,7 @@ func TestUserRoleRelationship(t *testing.T) {
 
 	roleName := "test"
 	role := config.NewRole()
-	role.SetID(idGenerator.NewID(roleName))
+	role.SetID(idGenerator.NewStringID(roleName))
 	role.SetName(roleName)
 
 	userEmail := "root@localhost"
@@ -200,7 +200,7 @@ func TestGetOrganizations(t *testing.T) {
 
 	roleName := "test"
 	role := config.NewRole()
-	role.SetID(idGenerator.NewID(roleName))
+	role.SetID(idGenerator.NewStringID(roleName))
 	role.SetName("test")
 
 	err = roleDAO.Save(role)
@@ -208,7 +208,7 @@ func TestGetOrganizations(t *testing.T) {
 
 	userEmail := "root@localhost"
 	user := config.NewUser()
-	user.SetID(idGenerator.NewID(userEmail))
+	user.SetID(idGenerator.NewStringID(userEmail))
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
 	//user.SetRoles([]config.Role{*role})
@@ -221,13 +221,13 @@ func TestGetOrganizations(t *testing.T) {
 	testFarmName := "Test Farm"
 
 	farmConfig := config.NewFarm()
-	farmConfig.SetID(idGenerator.NewID(testFarmName))
+	farmConfig.SetID(idGenerator.NewStringID(testFarmName))
 	farmConfig.SetName(testFarmName)
 
 	Cluster.CreateFarmConfigCluster(farmConfig.GetID())
 
 	orgConfig := &config.Organization{
-		ID:    idGenerator.NewID(testOrgName),
+		ID:    idGenerator.NewStringID(testOrgName),
 		Name:  testOrgName,
 		Farms: []*config.Farm{farmConfig}}
 
@@ -239,7 +239,7 @@ func TestGetOrganizations(t *testing.T) {
 	testFarmName2 := "Test Org - Farm 1"
 
 	farmConfig2 := config.NewFarm()
-	farmConfig2.SetID(idGenerator.NewID(testFarmName))
+	farmConfig2.SetID(idGenerator.NewStringID(testFarmName))
 	farmConfig2.SetName(testFarmName2)
 
 	err = farmDAO.Save(farmConfig)
@@ -248,7 +248,7 @@ func TestGetOrganizations(t *testing.T) {
 	Cluster.CreateFarmConfigCluster(farmConfig2.GetID())
 
 	orgConfig2 := &config.Organization{
-		ID:    idGenerator.NewID(testOrgName2),
+		ID:    idGenerator.NewStringID(testOrgName2),
 		Name:  testOrgName2,
 		Farms: []*config.Farm{farmConfig2}}
 

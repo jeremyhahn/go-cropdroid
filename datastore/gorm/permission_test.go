@@ -21,7 +21,7 @@ func TestUserRoleRelationship(t *testing.T) {
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 	email := "root@localhost"
-	userID := idGenerator.NewID(email)
+	userID := idGenerator.NewStringID(email)
 
 	farmDAO := NewFarmDAO(currentTest.logger, currentTest.gorm,
 		currentTest.idGenerator)

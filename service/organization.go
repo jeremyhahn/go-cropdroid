@@ -31,7 +31,7 @@ func NewOrganizationService(logger *logging.Logger, idGenerator util.IdGenerator
 
 // Creates a new organization
 func (service *DefaultOrganizationService) Create(organization *config.Organization) error {
-	organization.SetID(service.idGenerator.NewID(organization.GetName()))
+	organization.SetID(service.idGenerator.NewStringID(organization.GetName()))
 	return service.orgDAO.Save(organization)
 }
 

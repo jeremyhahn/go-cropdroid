@@ -125,33 +125,34 @@ func (farmDAO *RaftFarmConfigDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL i
 		if err != nil {
 			return nil, err
 		}
-		farms = append(farms, farm)
+		farms = append(farms, &farm)
 	}
 	return farms, nil
 }
 
-func (farmDAO *RaftFarmConfigDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
+func (farmDAO *RaftFarmConfigDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.Farm, error) {
 	var result interface{}
 	var err error
+	var emptyFarmConfig = config.Farm{}
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
 		result, err = farmDAO.raft.ReadLocal(farmID, farmID)
 		if err != nil {
 			farmDAO.logger.Errorf("Error (farmID=%d): %s", farmID, err)
-			return nil, err
+			return emptyFarmConfig, err
 		}
 	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
 		result, err = farmDAO.raft.SyncRead(farmID, farmID)
 		if err != nil {
 			farmDAO.logger.Errorf("Error (farmID=%d): %s", farmID, err)
-			return nil, err
+			return emptyFarmConfig, err
 		}
 	}
 	if result != nil {
 		farmConfig := result.(*config.Farm)
 		farmConfig.ParseSettings()
-		return farmConfig, nil
+		return *farmConfig, nil
 	}
-	return nil, datastore.ErrNotFound
+	return emptyFarmConfig, datastore.ErrNotFound
 }
 
 func (farmDAO *RaftFarmConfigDAO) Save(farm *config.Farm) error {

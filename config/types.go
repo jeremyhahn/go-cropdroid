@@ -27,6 +27,17 @@ var (
 	ErrWorkflowStepNotFound = errors.New("workflow step not found")
 )
 
+type KeyValueEntity interface {
+	SetID(id uint64)
+	Identifier() uint64
+}
+
+type TimeSeriesIndexeder interface {
+	KeyValueEntity
+	SetTimestamp(timestamp uint64)
+	Timestamp() uint64
+}
+
 // type ServerConfig interface {
 // 	SetID(id uint64)
 // 	GetID() uint64

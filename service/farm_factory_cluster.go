@@ -82,7 +82,7 @@ func (cff *ClusteredFarmFactory) BuildClusterService(
 
 	// TODO: DRY this up with Gossip.Priovision
 	farmStateKey := fmt.Sprintf("%s-%d", farmConfig.GetName(), farmID)
-	farmStateID := cff.app.IdGenerator.NewID(farmStateKey)
+	farmStateID := cff.app.IdGenerator.NewStringID(farmStateKey)
 
 	cff.app.Logger.Debugf("[ClusteredFarmFactory.BuildClusterService] Creating farm, farmID=%d, farmStateID=%d",
 		farmID, farmStateID)

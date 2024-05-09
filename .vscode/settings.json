@@ -18,7 +18,6 @@
         "build.buildFlags": ["-tags=cluster,pebble"],
     //    "build.buildFlags": ["-tags=!cluster"],
         "usePlaceholders": true, // add parameter placeholders when completing a function
-        "enhancedHover": true,   // experimental to improve quality of hover (will be on by default soon)
     },
     "go.testTags": "cluster,pebble"
     //"go.testTags": "!cluster"

@@ -5,14 +5,38 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 )
 
+type GenericDAO[E any] interface {
+	Save(entity *E) error
+	Get(id uint64, CONSISTENCY_LEVEL int) (E, error)
+	GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]E, error)
+	Update(entity *E) error
+	Delete(entity *E) error
+
+	// This is only here to prevent the rest of the projet from
+	//  breaking if its removed while refactoring
+	GetAll(CONSISTENCY_LEVEL int) ([]*E, error)
+}
+
+type ServerDAO interface {
+	GenericDAO[*config.Server]
+}
+
+type FarmDAO interface {
+	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+	GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+	GenericDAO[config.Farm]
+}
+
 type CustomerDAO interface {
-	Delete(user *config.Customer) error
-	Get(userID uint64, CONSISTENCY_LEVEL int) (*config.Customer, error)
-	GetByEmail(name string, CONSISTENCY_LEVEL int) (*config.Customer, error)
-	GetByProcessorID(id string, CONSISTENCY_LEVEL int) (*config.Customer, error)
-	GetAll(CONSISTENCY_LEVEL int) ([]*config.Customer, error)
-	Update(customer *config.Customer) error
-	Save(user *config.Customer) error
+	GetByEmail(name string, CONSISTENCY_LEVEL int) (config.Customer, error)
+	//GetByProcessorID(id string, CONSISTENCY_LEVEL int) (*config.Customer, error)
+	//GetAll(CONSISTENCY_LEVEL int) ([]*config.Customer, error)
+	GenericDAO[config.Customer]
+}
+
+type AlgorithmDAO interface {
+	GenericDAO[config.Algorithm]
+	//GetAll(CONSISTENCY_LEVEL int) ([]config.Algorithm, error)
 }
 
 type UserDAO interface {
@@ -46,14 +70,14 @@ type OrganizationDAO interface {
 	Save(organization *config.Organization) error
 }
 
-type FarmDAO interface {
-	Delete(farm *config.Farm) error
-	Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error)
-	GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error)
-	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
-	GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
-	Save(farm *config.Farm) error
-}
+// type FarmDAO interface {
+// 	Delete(farm *config.Farm) error
+// 	Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error)
+// 	GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+// 	GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+// 	GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error)
+// 	Save(farm *config.Farm) error
+// }
 
 type DeviceDAO interface {
 	Save(device *config.Device) error
@@ -102,11 +126,6 @@ type WorkflowStepDAO interface {
 	Delete(farmID uint64, workflowStep *config.WorkflowStep) error
 	Get(farmID, workflowID, workflowStepID uint64, CONSISTENCY_LEVEL int) (*config.WorkflowStep, error)
 	GetByWorkflowID(farmID, workflowID uint64, CONSISTENCY_LEVEL int) ([]*config.WorkflowStep, error)
-}
-
-type AlgorithmDAO interface {
-	Save(clgorithm *config.Algorithm) error // used by test only
-	GetAll(CONSISTENCY_LEVEL int) ([]*config.Algorithm, error)
 }
 
 type RegistrationDAO interface {

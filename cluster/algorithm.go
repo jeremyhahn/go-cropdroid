@@ -5,6 +5,7 @@ package cluster
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
@@ -45,26 +46,28 @@ func (algorithmDAO *RaftAlgorithmDAO) StartCluster() {
 	}
 }
 
-func (algorithmDAO *RaftAlgorithmDAO) Get(algorithmID uint64, CONSISTENCY_LEVEL int) (*config.Algorithm, error) {
+func (algorithmDAO *RaftAlgorithmDAO) Get(algorithmID uint64, CONSISTENCY_LEVEL int) (config.Algorithm, error) {
 	var result interface{}
 	var err error
+	var empyyAlgorithm = config.Algorithm{}
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
 		result, err = algorithmDAO.raft.ReadLocal(algorithmDAO.clusterID, algorithmID)
 		if err != nil {
 			algorithmDAO.logger.Errorf("Error (algorithmID=%d): %s", algorithmID, err)
-			return nil, err
+			return empyyAlgorithm, err
 		}
 	} else if CONSISTENCY_LEVEL == common.CONSISTENCY_QUORUM {
 		result, err = algorithmDAO.raft.SyncRead(algorithmDAO.clusterID, algorithmID)
 		if err != nil {
 			algorithmDAO.logger.Errorf("Error (algorithmID=%d): %s", algorithmID, err)
-			return nil, err
+			return empyyAlgorithm, err
 		}
 	}
 	if result != nil {
-		return result.(*config.Algorithm), nil
+		r := result.(*config.Algorithm)
+		return *r, nil
 	}
-	return nil, datastore.ErrNotFound
+	return empyyAlgorithm, datastore.ErrNotFound
 }
 
 func (algorithmDAO *RaftAlgorithmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Algorithm, error) {
@@ -89,16 +92,17 @@ func (algorithmDAO *RaftAlgorithmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.A
 	case []*config.Algorithm:
 		return v, nil
 	default:
-		algorithmDAO.logger.Errorf("unexpected query type %T", v)
-		return []*config.Algorithm{}, nil
+		errmsg := fmt.Sprintf("unexpected query type %T", v)
+		algorithmDAO.logger.Error(errmsg)
+		return nil, errors.New(errmsg)
 	}
 }
 
 func (algorithmDAO *RaftAlgorithmDAO) Save(algorithm *config.Algorithm) error {
 
-	if algorithm.GetID() == 0 {
-		id := algorithmDAO.raft.GetParams().IdGenerator.NewID(algorithm.GetName())
-		algorithm.SetID(id)
+	if algorithm.ID == 0 {
+		id := algorithmDAO.raft.GetParams().IdGenerator.NewStringID(algorithm.Name)
+		algorithm.ID = id
 	}
 
 	algorithmDAO.logger.Debugf("Saving algorithm: %+v", algorithm)
@@ -123,7 +127,7 @@ func (algorithmDAO *RaftAlgorithmDAO) Save(algorithm *config.Algorithm) error {
 
 func (algorithmDAO *RaftAlgorithmDAO) Delete(algorithm *config.Algorithm) error {
 	algorithmDAO.logger.Debugf(fmt.Sprintf("Deleting algorithm record: %+v", algorithm))
-	perm, err := json.Marshal(algorithm)
+	perm, err := json.Marshal(&algorithm)
 	if err != nil {
 		algorithmDAO.logger.Errorf("Error: %s", err)
 		return err

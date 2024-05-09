@@ -24,7 +24,7 @@ func TestRegistrationCRUD(t *testing.T) {
 	assert.NotNil(t, registrationDAO)
 
 	registration := &config.Registration{
-		ID:    Cluster.app.IdGenerator.NewID(testRegistrationName),
+		ID:    Cluster.app.IdGenerator.NewStringID(testRegistrationName),
 		Email: testRegistrationName}
 	err = registrationDAO.Save(registration)
 	assert.Nil(t, err)

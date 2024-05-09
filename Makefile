@@ -6,6 +6,7 @@ ARCH                    := $(shell go env GOARCH)
 OS                      := $(shell go env GOOS)
 LONG_BITS               := $(shell getconf LONG_BIT)
 
+#GOBIN                   := $(HOME)/go/bin
 GOBIN                   := $(shell dirname `which go`)
 
 ARM_CC                  ?= arm-linux-gnueabihf-gcc-8
@@ -36,6 +37,12 @@ endif
 .PHONY: deps
 
 default: build-standalone
+
+swagger:
+	$(GOBIN)/swag init \
+		--dir webservice/,webservice/rest \
+		--generalInfo webserver_cluster.go
+		--output public_html/swagger/
 
 certs:
 	mkdir -p keys/

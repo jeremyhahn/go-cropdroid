@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
@@ -48,7 +49,7 @@ func NewGormRegistry(logger *logging.Logger, gormDB GormDB) dao.Registry {
 		channelDAO:      NewChannelDAO(logger, db),
 		scheduleDAO:     NewScheduleDAO(logger, db),
 		conditionDAO:    NewConditionDAO(logger, db),
-		algorithmDAO:    NewAlgorithmDAO(logger, db),
+		algorithmDAO:    NewGenericGormDAO[config.Algorithm](logger, db),
 		eventLogDAO:     NewEventLogDAO(logger, db, 0),
 		userDAO:         NewUserDAO(logger, db),
 		roleDAO:         NewRoleDAO(logger, db),

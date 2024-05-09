@@ -26,7 +26,7 @@ func NewOrganizationDAO(logger *logging.Logger, db *gorm.DB,
 func (dao *GormOrganizationDAO) Save(organization *config.Organization) error {
 	dao.logger.Debugf("Creating organization record")
 	if organization.GetID() == 0 {
-		id := dao.idGenerator.NewID(organization.GetName())
+		id := dao.idGenerator.NewStringID(organization.GetName())
 		organization.SetID(id)
 	}
 	return dao.db.

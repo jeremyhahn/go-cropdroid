@@ -45,7 +45,7 @@ func (dao *RaftConditionDAO) Save(farmID, deviceID uint64,
 					// 	idSetter.SetConditionIds(deviceID, []*config.Condition{condition})
 					// }
 					channel.SetCondition(condition)
-					return dao.farmDAO.Save(farmConfig)
+					return dao.farmDAO.Save(&farmConfig)
 				}
 			}
 		}
@@ -96,7 +96,7 @@ func (dao *RaftConditionDAO) Delete(farmID, deviceID uint64, condition *config.C
 					channel.SetConditions(newConditionList)
 					device.SetChannel(channel)
 					farmConfig.SetDevice(device)
-					if err := dao.farmDAO.Save(farmConfig); err != nil {
+					if err := dao.farmDAO.Save(&farmConfig); err != nil {
 						return err
 					}
 					return nil

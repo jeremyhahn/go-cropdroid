@@ -50,7 +50,7 @@ func (dao *GormFarmDAO) Delete(farm *config.Farm) error {
 func (dao *GormFarmDAO) Save(farm *config.Farm) error {
 	dao.logger.Debugf("Saving farm record: %s", farm.GetName())
 	if farm.GetID() == 0 {
-		farm.SetID(dao.idGenerator.NewID(farm.GetName()))
+		farm.SetID(dao.idGenerator.NewStringID(farm.GetName()))
 	}
 	if err := dao.db.Save(farm).Error; err != nil {
 		return err
@@ -58,7 +58,7 @@ func (dao *GormFarmDAO) Save(farm *config.Farm) error {
 	return nil
 }
 
-func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
+func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (config.Farm, error) {
 	dao.logger.Debugf("Getting farm: %d", farmID)
 	var farm config.Farm
 	if err := dao.db.
@@ -75,13 +75,13 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm,
 		Preload("Workflows.Schedules").
 		Preload("Workflows.Steps").
 		First(&farm, farmID).Error; err != nil {
-		return nil, err
+		return farm, err
 	}
 	if farm.ID == 0 {
-		return nil, datastore.ErrNotFound
+		return farm, datastore.ErrNotFound
 	}
 	if err := farm.ParseSettings(); err != nil {
-		return nil, err
+		return farm, err
 	}
 	for _, workflow := range farm.GetWorkflows() {
 		workflowSteps := workflow.GetSteps()
@@ -89,7 +89,7 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm,
 			return workflowSteps[i].GetSortOrder() < workflowSteps[j].GetSortOrder()
 		})
 	}
-	return &farm, nil
+	return farm, nil
 }
 
 func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {

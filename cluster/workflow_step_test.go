@@ -37,7 +37,7 @@ func TestWorkflowStepCRUD(t *testing.T) {
 	// TODO: ConfigRefactor
 	workflowName := "Test Workflow"
 	workflowKey := fmt.Sprintf("%d-%s", farmID, workflowName)
-	workflowID := Cluster.app.IdGenerator.NewID(workflowKey)
+	workflowID := Cluster.app.IdGenerator.NewStringID(workflowKey)
 	// end TODO
 
 	testWorkflow := config.NewWorkflow()
@@ -74,7 +74,7 @@ func TestWorkflowStepCRUD(t *testing.T) {
 		persistedSteps1.GetDeviceID(), persistedSteps1.GetChannelID(),
 		persistedSteps1.GetDuration(), persistedSteps1.GetState())
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)
-	id := idGenerator.NewID(key)
+	id := idGenerator.NewStringID(key)
 
 	assert.Equal(t, id, persistedSteps1.GetID())
 	assert.Equal(t, uint64(1), persistedSteps1.GetDeviceID())

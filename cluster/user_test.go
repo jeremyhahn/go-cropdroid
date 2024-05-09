@@ -25,7 +25,7 @@ func TestUserCRUD(t *testing.T) {
 	assert.NotNil(t, userDAO)
 
 	user := &config.User{
-		ID:    Cluster.app.IdGenerator.NewID(testUserName),
+		ID:    Cluster.app.IdGenerator.NewStringID(testUserName),
 		Email: testUserName}
 	err = userDAO.Save(user)
 	assert.Nil(t, err)

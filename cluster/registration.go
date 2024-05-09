@@ -70,7 +70,7 @@ func (registrationDAO *RaftRegistrationDAO) Get(registrationID uint64,
 func (registrationDAO *RaftRegistrationDAO) Save(registration *config.Registration) error {
 
 	if registration.GetID() == 0 {
-		id := registrationDAO.raft.GetParams().IdGenerator.NewID(registration.GetEmail())
+		id := registrationDAO.raft.GetParams().IdGenerator.NewStringID(registration.GetEmail())
 		registration.SetID(id)
 	}
 

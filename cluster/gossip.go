@@ -508,10 +508,10 @@ func (cluster *Gossip) Provision(params *common.ProvisionerParams) error {
 		cluster.GossipAddress(), cluster.raft.GetPeers())
 
 	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
-	farmID := cluster.params.IdGenerator.NewID(farmKey)
+	farmID := cluster.params.IdGenerator.NewStringID(farmKey)
 
 	stateClusterKey := fmt.Sprintf("%s-%d", params.FarmName, farmID)
-	stateClusterID := cluster.params.IdGenerator.NewID(stateClusterKey)
+	stateClusterID := cluster.params.IdGenerator.NewStringID(stateClusterKey)
 
 	bytes, err := json.Marshal(&gossip.ProvisionRequest{
 		FarmName:         params.FarmName,

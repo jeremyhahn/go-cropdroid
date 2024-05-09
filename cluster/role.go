@@ -68,7 +68,7 @@ func (roleDAO *RaftRoleDAO) Get(roleID uint64, CONSISTENCY_LEVEL int) (*config.R
 }
 
 func (roleDAO *RaftRoleDAO) GetByName(roleName string, CONSISTENCY_LEVEL int) (*config.Role, error) {
-	roleID := roleDAO.raft.GetParams().IdGenerator.NewID(roleName)
+	roleID := roleDAO.raft.GetParams().IdGenerator.NewStringID(roleName)
 	return roleDAO.Get(roleID, CONSISTENCY_LEVEL)
 }
 

@@ -27,7 +27,7 @@ func TestRoleCRUD(t *testing.T) {
 	assert.NotNil(t, roleDAO)
 
 	role := &config.Role{
-		ID:   idGenerator.NewID(testRoleName),
+		ID:   idGenerator.NewStringID(testRoleName),
 		Name: testRoleName}
 	err = roleDAO.Save(role)
 	assert.Nil(t, err)

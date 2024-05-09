@@ -73,7 +73,7 @@ func NewLocalAuthService(app *app.App, permissionDAO dao.PermissionDAO,
 // ResetPassword looks the user up from the database, encrypts the UserCredentials.Password
 // and updates the database with the encrypted value.
 func (service *LocalAuthService) ResetPassword(userCredentials *UserCredentials) error {
-	userID := service.idGenerator.NewID(userCredentials.Email)
+	userID := service.idGenerator.NewStringID(userCredentials.Email)
 	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common
 
 	service.app.Logger.Debugf("Authenticating user: %s", userCredentials.Email)
 
-	userID := service.idGenerator.NewID(userCredentials.Email)
+	userID := service.idGenerator.NewStringID(userCredentials.Email)
 	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		return nil, nil, nil, ErrInvalidCredentials
@@ -139,7 +139,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		return nil, ErrInvalidEmailAddress
 	}
 
-	userID := service.idGenerator.NewID(userCredentials.Email)
+	userID := service.idGenerator.NewStringID(userCredentials.Email)
 	persistedUser, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
@@ -154,7 +154,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		return nil, err
 	}
 
-	registrationID := service.idGenerator.NewID(userCredentials.Email)
+	registrationID := service.idGenerator.NewStringID(userCredentials.Email)
 	registration := config.CreateRegistration(registrationID)
 	registration.SetEmail(userCredentials.Email)
 	registration.SetPassword(string(encrypted))
@@ -163,7 +163,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		// if service.app.Mode == common.CONFIG_MODE_SERVER {
 		// 	return nil, ErrOrgRegistrationUnsupported
 		// }
-		userCredentials.OrgID = service.idGenerator.NewID(userCredentials.OrgName)
+		userCredentials.OrgID = service.idGenerator.NewStringID(userCredentials.OrgName)
 		persistedOrg, err := service.orgDAO.Get(userCredentials.OrgID, common.CONSISTENCY_LOCAL)
 		if err != nil && err.Error() != ErrRecordNotFound.Error() {
 			service.app.Logger.Errorf("%s", err.Error())
@@ -214,7 +214,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	}
 
 	userConfig := &config.User{
-		ID:       service.idGenerator.NewID(registration.GetEmail()),
+		ID:       service.idGenerator.NewStringID(registration.GetEmail()),
 		Email:    registration.GetEmail(),
 		Password: registration.GetPassword()}
 
@@ -232,7 +232,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	if orgName != "" {
 
 		org := &config.Organization{
-			ID:   service.idGenerator.NewID(orgName),
+			ID:   service.idGenerator.NewStringID(orgName),
 			Name: orgName}
 		service.orgDAO.Save(org)
 

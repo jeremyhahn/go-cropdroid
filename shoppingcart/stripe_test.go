@@ -112,7 +112,7 @@ func TestCreateCustomer(t *testing.T) {
 	assert.Equal(t, stripeCustomer.Email, customer.Email)
 	assert.NotEmpty(t, stripeCustomer.ProcessorID)
 
-	customers, err := customerDAO.GetAll(common.CONSISTENCY_LOCAL)
+	customers, err := customerDAO.GetPage(common.CONSISTENCY_LOCAL, 1, 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(customers))
 	assert.Equal(t, customer.Name, customers[0].Name)
@@ -158,7 +158,7 @@ func TestUpdateCustomer(t *testing.T) {
 	assert.Equal(t, updatedCustomerConfig.Shipping.Address.PostalCode, customer.Shipping.Address.PostalCode)
 	assert.Equal(t, updatedCustomerConfig.Shipping.Address.Country, customer.Shipping.Address.Country)
 
-	customers, err := customerDAO.GetAll(common.CONSISTENCY_LOCAL)
+	customers, err := customerDAO.GetPage(common.CONSISTENCY_LOCAL, 1, 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(customers))
 	assert.Equal(t, newCustomerName, customers[0].Name)
@@ -515,7 +515,7 @@ func createCustomerDAO() dao.CustomerDAO {
 	return gorm.NewCustomerDAO(CurrentTest.logger, CurrentTest.gorm)
 }
 
-func createTestCustomer() *config.Customer {
+func createTestCustomer() config.Customer {
 	address := &config.Address{
 		Line1:      "123 test street",
 		Line2:      "Apt 1",
@@ -535,7 +535,7 @@ func createTestCustomer() *config.Customer {
 			PostalCode: "54321",
 			Country:    "ShipCountry"}}
 
-	return &config.Customer{
+	return config.Customer{
 		ID:          1,
 		Description: "Integration test user",
 		Name:        "test",

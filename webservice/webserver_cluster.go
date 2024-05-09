@@ -1,6 +1,20 @@
 //go:build cluster
 // +build cluster
 
+// @title CropDroid REST API
+// @version v0.0.3
+// @description This is the RESTful web servce for CropDroid.
+// @termsOfService https://www.cropdroid.com/terms/
+
+// @contact.name API Support
+// @contact.url https://www.cropdroid.com/support
+// @contact.email support@cropdroid.com
+
+// @license.name GNU AFFERO GENERAL PUBLIC LICENSE
+// @license.url https://www.gnu.org/licenses/agpl-3.0.txt
+
+// @host www.cropdroid.com
+// @BasePath /
 package webservice
 
 import (
@@ -28,6 +42,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
 	"github.com/jeremyhahn/go-cropdroid/webservice/websocket"
+	httpSwagger "github.com/swaggo/http-swagger"
+	//_ "github.com/jeremyhahn/go-cropdroid/public_html/docs"
 )
 
 var (
@@ -195,6 +211,8 @@ func (server *Webserver) buildRoutes() {
 	registrationService := rest.NewRegistrationRestService(server.app,
 		server.registry.GetUserService(), jsonWriter)
 
+	router.HandleFunc("/swagger", httpSwagger.WrapHandler)
+
 	// REST Handlers - Public Access
 	router.HandleFunc("/endpoints", server.endpoints)
 	router.HandleFunc("/system", server.systemStatus)
@@ -202,6 +220,7 @@ func (server *Webserver) buildRoutes() {
 	router.HandleFunc("/api/v1/register", registrationService.Register)
 	router.HandleFunc("/api/v1/login", server.jsonWebTokenService.GenerateToken)
 	router.HandleFunc("/api/v1/login/refresh", server.jsonWebTokenService.RefreshToken)
+
 	endpointList = append(endpointList, "/api/v1/register")
 	endpointList = append(endpointList, "/api/v1/login")
 

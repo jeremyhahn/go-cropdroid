@@ -11,7 +11,7 @@ import (
 )
 
 type AlgorithmRestService interface {
-	GetAll(w http.ResponseWriter, r *http.Request)
+	GetPage(w http.ResponseWriter, r *http.Request)
 	RestService
 }
 
@@ -35,27 +35,27 @@ func (restService *DefaultAlgorithmRestService) RegisterEndpoints(router *mux.Ro
 	algorithmsEndpoint := fmt.Sprintf("%s/algorithms", baseFarmURI)
 	router.Handle(algorithmsEndpoint, negroni.New(
 		negroni.HandlerFunc(restService.middlewareService.Validate),
-		negroni.Wrap(http.HandlerFunc(restService.GetAll)),
+		negroni.Wrap(http.HandlerFunc(restService.GetPage)),
 	)).Methods("GET")
 	return []string{algorithmsEndpoint}
 }
 
-func (restService *DefaultAlgorithmRestService) GetAll(w http.ResponseWriter, r *http.Request) {
+func (restService *DefaultAlgorithmRestService) GetPage(w http.ResponseWriter, r *http.Request) {
 
-	ctx, err := restService.middlewareService.CreateSession(w, r)
+	session, err := restService.middlewareService.CreateSession(w, r)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-	defer ctx.Close()
+	defer session.Close()
 
-	algorithms, err := restService.algorithmService.GetAll()
+	algorithms, err := restService.algorithmService.GetPage(session.GetConsistencyLevel(), 1, 10)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
 
-	ctx.GetLogger().Debugf("algorithms=%+v", algorithms)
+	session.GetLogger().Debugf("algorithms=%+v", algorithms)
 
 	restService.jsonWriter.Write(w, http.StatusOK, algorithms)
 

@@ -39,7 +39,7 @@ func (dao *RaftWorkflowDAO) Save(workflow *config.Workflow) error {
 	}
 	idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
 	farmConfig.SetWorkflow(workflow)
-	return dao.farmDAO.Save(farmConfig)
+	return dao.farmDAO.Save(&farmConfig)
 }
 
 func (dao *RaftWorkflowDAO) Get(farmID, workflowID uint64,
@@ -71,7 +71,7 @@ func (dao *RaftWorkflowDAO) Delete(workflow *config.Workflow) error {
 		newWorkflowList = append(newWorkflowList, wflow)
 	}
 	farmConfig.SetWorkflows(newWorkflowList)
-	return dao.farmDAO.Save(farmConfig)
+	return dao.farmDAO.Save(&farmConfig)
 }
 
 func (dao *RaftWorkflowDAO) GetByFarmID(farmID uint64,

@@ -211,10 +211,10 @@ func CreateTestOrganization(idGenerator util.IdGenerator) *config.Organization {
 
 func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 
-	farmID := idGenerator.NewID(FARM1_NAME)
-	device1ID := idGenerator.NewID("farm1-device1")
-	channel1ID := idGenerator.NewID("farm1-channel1")
-	channel2ID := idGenerator.NewID("farm1-channel2")
+	farmID := idGenerator.NewStringID(FARM1_NAME)
+	device1ID := idGenerator.NewStringID("farm1-device1")
+	channel1ID := idGenerator.NewStringID("farm1-channel1")
+	channel2ID := idGenerator.NewStringID("farm1-channel2")
 
 	roleName := "test"
 	role := config.NewRole()
@@ -229,7 +229,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	schedule1 := config.NewSchedule()
 	days := "MO,WE,FR"
 	endDate := time.Now().AddDate(0, 1, 0)
-	schedule1.SetID(idGenerator.NewID("farm1-schedule1"))
+	schedule1.SetID(idGenerator.NewStringID("farm1-schedule1"))
 	schedule1.SetChannelID(channel1ID)
 	schedule1.SetStartDate(time.Now())
 	schedule1.SetEndDate(&endDate)
@@ -243,7 +243,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	schedule2 := config.NewSchedule()
 	days = "TU,TH,SU"
 	endDate = time.Now().AddDate(0, 3, 0)
-	schedule2.SetID(idGenerator.NewID("farm1-schedule2"))
+	schedule2.SetID(idGenerator.NewStringID("farm1-schedule2"))
 	schedule2.SetChannelID(channel1ID)
 	schedule2.SetStartDate(time.Now())
 	schedule2.SetEndDate(&endDate)
@@ -257,7 +257,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	schedules := []*config.Schedule{schedule1, schedule2}
 
 	metric1 := config.NewMetric()
-	metric1.SetID(idGenerator.NewID("farm1-metric1"))
+	metric1.SetID(idGenerator.NewStringID("farm1-metric1"))
 	metric1.SetDeviceID(device1ID)
 	metric1.SetName("Fake Temperature")
 	metric1.SetKey("sensor1")
@@ -268,7 +268,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	metric1.SetAlarmHigh(100.0)
 
 	metric2 := config.NewMetric()
-	metric2.SetID(idGenerator.NewID("farm1-metric2"))
+	metric2.SetID(idGenerator.NewStringID("farm1-metric2"))
 	metric2.SetDeviceID(device1ID)
 	metric2.SetName("Fake Relative Humidity")
 	metric2.SetKey("sensor2")
@@ -279,14 +279,14 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	metric2.SetAlarmHigh(70.0)
 
 	condition1 := config.NewCondition()
-	condition1.SetID(idGenerator.NewID("farm1-condition1"))
+	condition1.SetID(idGenerator.NewStringID("farm1-condition1"))
 	condition1.SetChannelID(channel1ID)
 	//condition1.SetMetricID(metric1.GetID()) // TODO: How to get this to persist?!
 	condition1.SetComparator(">")
 	condition1.SetThreshold(120.0)
 
 	condition2 := config.NewCondition()
-	condition2.SetID(idGenerator.NewID("farm1-condition2"))
+	condition2.SetID(idGenerator.NewStringID("farm1-condition2"))
 	condition2.SetChannelID(channel1ID)
 	//condition2.SetMetricID(metric1.GetID()) // TODO: How to get this to persist?!
 	condition2.SetComparator("<")
@@ -319,17 +319,17 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	channel2.SetBackoff(3)
 
 	enableConfigItem := config.NewDeviceSetting()
-	//enableConfigItem.SetID(idGenerator.NewID("enableConfigItem"))
+	//enableConfigItem.SetID(idGenerator.NewStringID("enableConfigItem"))
 	enableConfigItem.SetKey("fakedevice.enable")
 	enableConfigItem.SetValue("true")
 
 	notifyConfigItem := config.NewDeviceSetting()
-	//notifyConfigItem.SetID(idGenerator.NewID("notifyConfigItem"))
+	//notifyConfigItem.SetID(idGenerator.NewStringID("notifyConfigItem"))
 	notifyConfigItem.SetKey("fakedevice.notify")
 	notifyConfigItem.SetValue("false")
 
 	uriConfigItem := config.NewDeviceSetting()
-	//uriConfigItem.SetID(idGenerator.NewID("uriConfigItem"))
+	//uriConfigItem.SetID(idGenerator.NewStringID("uriConfigItem"))
 	uriConfigItem.SetKey("fakedevice.uri")
 	uriConfigItem.SetValue("http://mydevice.mydomain.com")
 
@@ -337,47 +337,47 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 		Type: SERVER_TYPE,
 		Settings: []*config.DeviceSetting{
 			{
-				ID:    idGenerator.NewID("farm1-server-name"),
+				ID:    idGenerator.NewStringID("farm1-server-name"),
 				Key:   "name",
 				Value: FARM1_NAME},
 			{
-				ID:    idGenerator.NewID("farm1-server-interval"),
+				ID:    idGenerator.NewStringID("farm1-server-interval"),
 				Key:   "interval",
 				Value: "58"},
 			{
-				ID:    idGenerator.NewID("farm1-server-mode"),
+				ID:    idGenerator.NewStringID("farm1-server-mode"),
 				Key:   "mode",
 				Value: "test"},
 			{
-				ID:    idGenerator.NewID("farm1-server-timezone"),
+				ID:    idGenerator.NewStringID("farm1-server-timezone"),
 				Key:   "timezone",
 				Value: "America/New_York"},
 			{
-				ID:    idGenerator.NewID("farm1-server-smtp-enable"),
+				ID:    idGenerator.NewStringID("farm1-server-smtp-enable"),
 				Key:   "smtp.enable",
 				Value: "true"},
 			{
-				ID:    idGenerator.NewID("farm1-server-smtp-host"),
+				ID:    idGenerator.NewStringID("farm1-server-smtp-host"),
 				Key:   "smtp.host",
 				Value: "127.0.0.1"},
 			{
-				ID:    idGenerator.NewID("farm1-server-smtp-port"),
+				ID:    idGenerator.NewStringID("farm1-server-smtp-port"),
 				Key:   "smtp.port",
 				Value: "587"},
 			{
-				ID:    idGenerator.NewID("farm1-server-smtp-username"),
+				ID:    idGenerator.NewStringID("farm1-server-smtp-username"),
 				Key:   "smtp.username",
 				Value: "foo"},
 			{
-				ID:    idGenerator.NewID("farm1-server-smtp-password"),
+				ID:    idGenerator.NewStringID("farm1-server-smtp-password"),
 				Key:   "smtp.password",
 				Value: "bar"},
 			{
-				ID:    idGenerator.NewID("farm1-server-smtp-recipient"),
+				ID:    idGenerator.NewStringID("farm1-server-smtp-recipient"),
 				Key:   "smtp.recipient",
 				Value: "user@domain.com"},
 		}}
-	serverDevice.SetID(idGenerator.NewID("farm1-server"))
+	serverDevice.SetID(idGenerator.NewStringID("farm1-server"))
 	serverDevice.SetFarmID(farmID)
 
 	settings := []*config.DeviceSetting{
@@ -412,10 +412,10 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 
 func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 
-	farmID := idGenerator.NewID(FARM2_NAME)
-	device1ID := idGenerator.NewID("farm2-device1")
-	channel1ID := idGenerator.NewID("farm2-channel1")
-	channel2ID := idGenerator.NewID("farm2-channel2")
+	farmID := idGenerator.NewStringID(FARM2_NAME)
+	device1ID := idGenerator.NewStringID("farm2-device1")
+	channel1ID := idGenerator.NewStringID("farm2-channel1")
+	channel2ID := idGenerator.NewStringID("farm2-channel2")
 
 	roleName := "test"
 	role := config.NewRole()
@@ -430,7 +430,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	schedule1 := config.NewSchedule()
 	days := "MO,WE,FR"
 	endDate := time.Now().AddDate(0, 1, 0)
-	schedule1.SetID(idGenerator.NewID("farm2-schedule1"))
+	schedule1.SetID(idGenerator.NewStringID("farm2-schedule1"))
 	schedule1.SetChannelID(channel1ID)
 	schedule1.SetStartDate(time.Now())
 	schedule1.SetEndDate(&endDate)
@@ -444,7 +444,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	schedule2 := config.NewSchedule()
 	days = "TU,TH,SU"
 	endDate = time.Now().AddDate(0, 3, 0)
-	schedule2.SetID(idGenerator.NewID("farm2-schedule2"))
+	schedule2.SetID(idGenerator.NewStringID("farm2-schedule2"))
 	schedule1.SetChannelID(channel2ID)
 	schedule2.SetStartDate(time.Now())
 	schedule2.SetEndDate(&endDate)
@@ -458,7 +458,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	schedules := []*config.Schedule{schedule1, schedule2}
 
 	metric1 := config.NewMetric()
-	metric1.SetID(idGenerator.NewID("farm2-metric1"))
+	metric1.SetID(idGenerator.NewStringID("farm2-metric1"))
 	metric1.SetDeviceID(device1ID)
 	metric1.SetName("Fake Temperature")
 	metric1.SetKey("sensor1")
@@ -469,7 +469,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	metric1.SetAlarmHigh(100.0)
 
 	metric2 := config.NewMetric()
-	metric2.SetID(idGenerator.NewID("farm2-metric2"))
+	metric2.SetID(idGenerator.NewStringID("farm2-metric2"))
 	metric2.SetDeviceID(device1ID)
 	metric2.SetName("Fake Relative Humidity")
 	metric2.SetKey("sensor2")
@@ -480,14 +480,14 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	metric2.SetAlarmHigh(70.0)
 
 	condition1 := config.NewCondition()
-	condition1.SetID(idGenerator.NewID("farm2-condition1"))
+	condition1.SetID(idGenerator.NewStringID("farm2-condition1"))
 	condition1.SetChannelID(channel1ID)
 	//condition1.SetMetricID(metric1.GetID()) // TODO: How to get this to persist?!
 	condition1.SetComparator(">")
 	condition1.SetThreshold(120.0)
 
 	condition2 := config.NewCondition()
-	condition2.SetID(idGenerator.NewID("farm2-condition2"))
+	condition2.SetID(idGenerator.NewStringID("farm2-condition2"))
 	condition2.SetChannelID(channel1ID)
 	//condition2.SetMetricID(metric1.GetID()) // TODO: How to get this to persist?!
 	condition2.SetComparator("<")
@@ -520,17 +520,17 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	channel2.SetBackoff(3)
 
 	enableConfigItem := config.NewDeviceSetting()
-	//enableConfigItem.SetID(idGenerator.NewID("enableConfigItem"))
+	//enableConfigItem.SetID(idGenerator.NewStringID("enableConfigItem"))
 	enableConfigItem.SetKey("fakedevice.enable")
 	enableConfigItem.SetValue("true")
 
 	notifyConfigItem := config.NewDeviceSetting()
-	//notifyConfigItem.SetID(idGenerator.NewID("notifyConfigItem"))
+	//notifyConfigItem.SetID(idGenerator.NewStringID("notifyConfigItem"))
 	notifyConfigItem.SetKey("fakedevice.notify")
 	notifyConfigItem.SetValue("false")
 
 	uriConfigItem := config.NewDeviceSetting()
-	//uriConfigItem.SetID(idGenerator.NewID("uriConfigItem"))
+	//uriConfigItem.SetID(idGenerator.NewStringID("uriConfigItem"))
 	uriConfigItem.SetKey("fakedevice.uri")
 	uriConfigItem.SetValue("http://mydevice.mydomain.com")
 
@@ -538,47 +538,47 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 		Type: SERVER_TYPE,
 		Settings: []*config.DeviceSetting{
 			{
-				ID:    idGenerator.NewID("farm2-server-name"),
+				ID:    idGenerator.NewStringID("farm2-server-name"),
 				Key:   "name",
 				Value: FARM2_NAME},
 			{
-				ID:    idGenerator.NewID("farm2-server-interval"),
+				ID:    idGenerator.NewStringID("farm2-server-interval"),
 				Key:   "interval",
 				Value: "58"},
 			{
-				ID:    idGenerator.NewID("farm2-server-mode"),
+				ID:    idGenerator.NewStringID("farm2-server-mode"),
 				Key:   "mode",
 				Value: "test2"},
 			{
-				ID:    idGenerator.NewID("farm2-server-timezone"),
+				ID:    idGenerator.NewStringID("farm2-server-timezone"),
 				Key:   "timezone",
 				Value: "America/New_York"},
 			{
-				ID:    idGenerator.NewID("farm2-server-smtp-enable"),
+				ID:    idGenerator.NewStringID("farm2-server-smtp-enable"),
 				Key:   "smtp.enable",
 				Value: "true"},
 			{
-				ID:    idGenerator.NewID("farm2-server-smtp-host"),
+				ID:    idGenerator.NewStringID("farm2-server-smtp-host"),
 				Key:   "smtp.host",
 				Value: "127.0.0.1"},
 			{
-				ID:    idGenerator.NewID("farm2-server-smtp-port"),
+				ID:    idGenerator.NewStringID("farm2-server-smtp-port"),
 				Key:   "smtp.port",
 				Value: "587"},
 			{
-				ID:    idGenerator.NewID("farm2-server-smtp-username"),
+				ID:    idGenerator.NewStringID("farm2-server-smtp-username"),
 				Key:   "smtp.username",
 				Value: "foo"},
 			{
-				ID:    idGenerator.NewID("farm2-server-smtp=password"),
+				ID:    idGenerator.NewStringID("farm2-server-smtp=password"),
 				Key:   "smtp.password",
 				Value: "bar"},
 			{
-				ID:    idGenerator.NewID("farm2-server-smtp-recipient"),
+				ID:    idGenerator.NewStringID("farm2-server-smtp-recipient"),
 				Key:   "smtp.recipient",
 				Value: "user@domain.com"},
 		}}
-	serverDevice.SetID(idGenerator.NewID("farm2-server"))
+	serverDevice.SetID(idGenerator.NewStringID("farm2-server"))
 	serverDevice.SetFarmID(farmID)
 
 	settings := []*config.DeviceSetting{
@@ -587,7 +587,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	channels := []*config.Channel{channel1, channel2}
 
 	device1 := config.NewDevice()
-	device1.SetID(idGenerator.NewID("farm2-device1"))
+	device1.SetID(idGenerator.NewStringID("farm2-device1"))
 	device1.SetFarmID(farmID)
 	device1.SetType(DEVICE1_TYPE)
 	device1.SetInterval(59)
@@ -601,7 +601,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	devices := []*config.Device{serverDevice, device1}
 
 	farm2 := config.NewFarm()
-	farm2.SetID(idGenerator.NewID(FARM2_NAME))
+	farm2.SetID(idGenerator.NewStringID(FARM2_NAME))
 	farm2.SetMode("test")
 	farm2.SetName(FARM2_NAME)
 	farm2.SetInterval(60)

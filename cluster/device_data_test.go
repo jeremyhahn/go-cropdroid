@@ -20,7 +20,7 @@ func TestDeviceDataCRUD(t *testing.T) {
 	//testFarmStateName := "root@localhost"
 
 	deviceName := "device1"
-	deviceID := idGenerator.NewID(deviceName)
+	deviceID := idGenerator.NewStringID(deviceName)
 
 	Cluster.CreateDeviceDataCluster(deviceID)
 

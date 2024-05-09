@@ -14,6 +14,7 @@ type Session interface {
 	GetOrganizationMembership() []uint64
 	GetRequestedOrganizationID() uint64
 	GetRequestedFarmID() uint64
+	GetConsistencyLevel() int
 	HasRole(string) bool
 	IsMemberOfOrganization(orgID uint64) bool
 	IsMemberOfFarm(farmID uint64) bool
@@ -25,28 +26,30 @@ type Session interface {
 }
 
 type DefaultSession struct {
-	logger          *logging.Logger
-	requestedOrgID  uint64
-	requestedFarmID uint64
-	orgClaims       []organizationClaim
-	farmClaims      []farmClaim
-	farmService     FarmService
-	user            common.UserAccount
+	logger           *logging.Logger
+	requestedOrgID   uint64
+	requestedFarmID  uint64
+	consistencyLevel int
+	orgClaims        []organizationClaim
+	farmClaims       []farmClaim
+	farmService      FarmService
+	user             common.UserAccount
 	Session
 }
 
 func CreateSession(logger *logging.Logger, orgClaims []organizationClaim,
 	farmClaims []farmClaim, farmService FarmService, requestedOrgID,
-	requestedFarmID uint64, user common.UserAccount) Session {
+	requestedFarmID uint64, consistencyLevel int, user common.UserAccount) Session {
 
 	return &DefaultSession{
-		logger:          logger,
-		requestedOrgID:  requestedOrgID,
-		requestedFarmID: requestedFarmID,
-		orgClaims:       orgClaims,
-		farmClaims:      farmClaims,
-		farmService:     farmService,
-		user:            user}
+		logger:           logger,
+		requestedOrgID:   requestedOrgID,
+		requestedFarmID:  requestedFarmID,
+		consistencyLevel: consistencyLevel,
+		orgClaims:        orgClaims,
+		farmClaims:       farmClaims,
+		farmService:      farmService,
+		user:             user}
 }
 
 func CreateSystemSession(logger *logging.Logger, farmService FarmService) Session {
@@ -69,6 +72,10 @@ func (session *DefaultSession) GetRequestedOrganizationID() uint64 {
 
 func (session *DefaultSession) GetRequestedFarmID() uint64 {
 	return session.requestedFarmID
+}
+
+func (session *DefaultSession) GetConsistencyLevel() int {
+	return session.consistencyLevel
 }
 
 func (session *DefaultSession) HasRole(role string) bool {

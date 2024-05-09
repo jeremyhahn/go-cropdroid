@@ -10,7 +10,7 @@ func CreateTestOrganization1(idGenerator util.IdGenerator) *config.Organization 
 	farm1Name := "Test Farm 1"
 	farm2Name := "Test Farm 2"
 	farm1 := config.NewFarm()
-	farm1.SetID(idGenerator.NewID(farm1Name))
+	farm1.SetID(idGenerator.NewStringID(farm1Name))
 	farm1.SetName(farm1Name)
 	farm1.SetMode("test")
 	farm1.SetDevices([]*config.Device{
@@ -28,7 +28,7 @@ func CreateTestOrganization1(idGenerator util.IdGenerator) *config.Organization 
 					Value: "59"}}}})
 
 	farm2 := config.NewFarm()
-	farm2.SetID(idGenerator.NewID(farm2Name))
+	farm2.SetID(idGenerator.NewStringID(farm2Name))
 	farm2.SetMode(farm2Name)
 	farm2.SetDevices([]*config.Device{
 		{
@@ -45,7 +45,7 @@ func CreateTestOrganization1(idGenerator util.IdGenerator) *config.Organization 
 					Value: "60"}}}})
 
 	org := config.NewOrganization()
-	org.SetID(idGenerator.NewID(orgName))
+	org.SetID(idGenerator.NewStringID(orgName))
 	org.SetName(orgName)
 	org.SetFarms([]*config.Farm{farm1, farm2})
 
@@ -57,7 +57,7 @@ func CreateTestOrganization2(idGenerator util.IdGenerator) *config.Organization 
 	farm3Name := "Test Farm 3"
 	farm4Name := "Test Farm 4"
 	farm3 := config.NewFarm()
-	farm3.SetID(idGenerator.NewID(farm3Name))
+	farm3.SetID(idGenerator.NewStringID(farm3Name))
 	farm3.SetName(farm3Name)
 	farm3.SetMode("test")
 	farm3.SetDevices([]*config.Device{
@@ -75,7 +75,7 @@ func CreateTestOrganization2(idGenerator util.IdGenerator) *config.Organization 
 					Value: "59"}}}})
 
 	farm4 := config.NewFarm()
-	farm4.SetID(idGenerator.NewID(farm4Name))
+	farm4.SetID(idGenerator.NewStringID(farm4Name))
 	farm4.SetName(farm4Name)
 	farm4.SetMode("test")
 	farm4.SetDevices([]*config.Device{
@@ -93,7 +93,7 @@ func CreateTestOrganization2(idGenerator util.IdGenerator) *config.Organization 
 					Value: "60"}}}})
 
 	org := config.NewOrganization()
-	org.SetID(idGenerator.NewID(orgName))
+	org.SetID(idGenerator.NewStringID(orgName))
 	org.SetName(orgName)
 	org.SetFarms([]*config.Farm{farm3, farm4})
 

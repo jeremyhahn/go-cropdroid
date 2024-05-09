@@ -26,7 +26,7 @@ func TestFarmStateCRUD(t *testing.T) {
 
 	deviceName := "device1"
 	timestamp := time.Now().Unix()
-	deviceID := idGenerator.NewID(deviceName)
+	deviceID := idGenerator.NewStringID(deviceName)
 
 	metrics := map[string]float64{
 		"metric1": 12.34,

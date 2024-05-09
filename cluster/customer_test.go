@@ -27,21 +27,21 @@ func TestCustomerCRUD(t *testing.T) {
 		Cluster.GetRaftNode1(), CustomerClusterID)
 	assert.NotNil(t, customerDAO)
 
-	customer := &config.Customer{
+	customer := config.Customer{
 		ID:    idGenerator.NewCustomerID(testCustomerEmail),
 		Name:  testCustomerName,
 		Email: testCustomerEmail}
-	err = customerDAO.Save(customer)
+	err = customerDAO.Save(&customer)
 	assert.Nil(t, err)
 
 	persistedCustomer1, err := customerDAO.GetByEmail(customer.Email, consistencyLevel)
 	assert.Nil(t, err)
 	assert.Equal(t, customer.Email, persistedCustomer1.Email)
 
-	err = customerDAO.Delete(customer)
+	err = customerDAO.Delete(&customer)
 	assert.Nil(t, err)
 
 	persistedCustomer2, err := customerDAO.GetByEmail(customer.Email, consistencyLevel)
-	assert.Nil(t, persistedCustomer2)
+	assert.Empty(t, persistedCustomer2.ID)
 	assert.Equal(t, err, datastore.ErrNotFound)
 }

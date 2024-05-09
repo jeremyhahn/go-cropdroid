@@ -19,6 +19,7 @@ var (
 	ErrNotFound          = errors.New("not found")
 	ErrUnexpectedQuery   = errors.New("unexpected query")
 	ErrMetricKeyNotFound = errors.New("metric key not found")
+	ErrNullEntityId      = errors.New("null entity id")
 	//ErrOrganizationNotFound = errors.New("organization not found")
 	//ErrOrganizationsNotFound = errors.New("organizations not found")
 )

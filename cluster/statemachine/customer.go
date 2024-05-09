@@ -113,7 +113,7 @@ func (d *CustomerDiskKV) Lookup(key interface{}) (interface{}, error) {
 				}
 				values = append(values, kv)
 			}
-			Customers := make([]*config.Customer, 0)
+			Customers := make([]config.Customer, 0)
 			for _, CustomerKV := range values {
 				if string(CustomerKV.Key) == appliedIndexKey {
 					continue
@@ -122,7 +122,7 @@ func (d *CustomerDiskKV) Lookup(key interface{}) (interface{}, error) {
 				if err := json.Unmarshal(CustomerKV.Val, &Customer); err != nil {
 					return nil, err
 				}
-				Customers = append(Customers, &Customer)
+				Customers = append(Customers, Customer)
 			}
 			return Customers, nil
 		}

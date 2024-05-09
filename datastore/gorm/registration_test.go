@@ -22,7 +22,7 @@ func TestRegistrationCRUD(t *testing.T) {
 	assert.NotNil(t, registrationDAO)
 
 	registration := &config.Registration{
-		ID:    currentTest.idGenerator.NewID(testRegistrationName),
+		ID:    currentTest.idGenerator.NewStringID(testRegistrationName),
 		Email: testRegistrationName}
 	err := registrationDAO.Save(registration)
 	assert.Nil(t, err)

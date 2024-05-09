@@ -111,7 +111,7 @@ func (farm *DefaultFarmService) RunCluster() {
 func (farm *DefaultFarmService) PollCluster(raftCluster cluster.RaftNode) {
 
 	farmConfig, err := farm.farmDAO.Get(farm.farmID, common.CONSISTENCY_LOCAL)
-	if err != nil || farmConfig == nil {
+	if err != nil || farmConfig.ID == 0 {
 		farm.app.Logger.Errorf("Farm config not found: farmID: %d", farm.farmID)
 		return
 	}

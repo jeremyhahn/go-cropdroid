@@ -45,7 +45,7 @@ func NewChannelAlgorithmHandler(logger *logging.Logger, idGenerator util.IdGener
 func (h *ChannelAlgorithmHandler) Handle() (bool, error) {
 	deviceType := h.device.GetType()
 	h.logger.Debugf("Processing %s %s algorithm", deviceType, h.channel.GetName())
-	phAlgorithmID := h.idGenerator.NewID(common.ALGORITHM_PH_KEY)
+	phAlgorithmID := h.idGenerator.NewStringID(common.ALGORITHM_PH_KEY)
 	if h.channel.GetAlgorithmID() == phAlgorithmID {
 		settings := h.device.GetSettings()
 		gallons := 0

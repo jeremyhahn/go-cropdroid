@@ -38,7 +38,7 @@ func (dao *RaftDeviceConfigDAO) Save(device *config.Device) error {
 	}
 	farmConfig.SetDevice(device)
 	dao.logger.Debugf("Saving device config %+v", device)
-	return dao.farmDAO.Save(farmConfig)
+	return dao.farmDAO.Save(&farmConfig)
 }
 
 func (dao *RaftDeviceConfigDAO) Get(farmID, deviceID uint64, CONSISTENCY_LEVEL int) (*config.Device, error) {

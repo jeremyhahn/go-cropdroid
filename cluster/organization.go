@@ -50,7 +50,7 @@ func (dao *RaftOrganizationDAO) StartCluster() {
 
 func (dao *RaftOrganizationDAO) Save(organization *config.Organization) error {
 	if organization.GetID() == 0 {
-		id := dao.raft.GetParams().IdGenerator.NewID(organization.GetName())
+		id := dao.raft.GetParams().IdGenerator.NewStringID(organization.GetName())
 		organization.SetID(id)
 	}
 	dao.logger.Debugf("Saving organization: %+v", organization)

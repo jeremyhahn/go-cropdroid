@@ -45,7 +45,7 @@ func (dao *RaftMetricDAO) Save(farmID uint64, metric *config.Metric) error {
 			}
 			device.SetMetric(metric)
 			farmConfig.SetDevice(device)
-			return dao.farmDAO.Save(farmConfig)
+			return dao.farmDAO.Save(&farmConfig)
 		}
 	}
 	return datastore.ErrNotFound

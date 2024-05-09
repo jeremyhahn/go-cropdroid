@@ -84,7 +84,7 @@ func TestUserDAO_CreateAndGetByEmail(t *testing.T) {
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 
 	email := "root@localhost"
-	userID := idGenerator.NewID(email)
+	userID := idGenerator.NewStringID(email)
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 
@@ -113,7 +113,7 @@ func TestUserDAO_Update(t *testing.T) {
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 
 	email := "root@localhost"
-	userID := idGenerator.NewID(email)
+	userID := idGenerator.NewStringID(email)
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 
@@ -154,7 +154,7 @@ func TestUserDAO_WithRoles(t *testing.T) {
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 
 	email := "root@localhost"
-	userID := idGenerator.NewID(email)
+	userID := idGenerator.NewStringID(email)
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	permissionDAO := NewPermissionDAO(currentTest.logger, currentTest.gorm)

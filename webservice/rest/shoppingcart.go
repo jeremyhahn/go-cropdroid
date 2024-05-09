@@ -160,6 +160,11 @@ func (restService *DefaultShoppingCartRestService) RegisterEndpoints(
 		invoiceEndpoint, paymentIntentEndpoint, taxRateEndpoint, webhooksEndpoint}
 }
 
+// @Summary GetProducts
+// @Description Returns a list of products from the merchange provider / credit card processor
+// @Produce  json
+// @Success 200
+// @Router /api/v1/shoppingcart [get]
 func (restService *DefaultShoppingCartRestService) GetProducts(w http.ResponseWriter, r *http.Request) {
 
 	session, err := restService.middlewareService.CreateSession(w, r)
@@ -334,7 +339,7 @@ func (restService *DefaultShoppingCartRestService) CreateCustomer(w http.Respons
 		return
 	}
 
-	response, err := restService.shoppingCartService.CreateCustomer(&customerConfig)
+	response, err := restService.shoppingCartService.CreateCustomer(customerConfig)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
@@ -361,7 +366,7 @@ func (restService *DefaultShoppingCartRestService) UpdateCustomer(w http.Respons
 		return
 	}
 
-	response, err := restService.shoppingCartService.UpdateCustomer(&customerConfig)
+	response, err := restService.shoppingCartService.UpdateCustomer(customerConfig)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

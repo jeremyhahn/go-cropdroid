@@ -1,0 +1,26 @@
+basePath: /
+host: www.cropdroid.com
+info:
+  contact:
+    email: support@cropdroid.com
+    name: API Support
+    url: https://www.cropdroid.com/support
+  description: This is the RESTful web servce for CropDroid.
+  license:
+    name: GNU AFFERO GENERAL PUBLIC LICENSE
+    url: https://www.gnu.org/licenses/agpl-3.0.txt
+  termsOfService: https://www.cropdroid.com/terms/
+  title: CropDroid REST API
+  version: v0.0.3
+paths:
+  /api/v1/shoppingcart:
+    get:
+      description: Returns a list of products from the merchange provider / credit
+        card processor
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: GetProducts
+swagger: "2.0"

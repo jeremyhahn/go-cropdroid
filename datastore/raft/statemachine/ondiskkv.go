@@ -511,6 +511,13 @@ func (d *DiskKV[E]) UpdateWithTimeSeriesIndex(ents []sm.Entry, entities []config
 
 		entity := entities[idx]
 
+		// Not sure whether to set the ID here if its zero or not. The initial
+		// use case for TimeSeriesIndex is for entities that don't default
+		// to using a timeseries ID...
+		// if entity.Identifier() == 0 {
+		// 	entity.SetID(entity.Timestamp())
+		// }
+
 		timeSeriesIndex := index.CreateTimeSeriesIndex(entity)
 		wb.Set(timeSeriesIndex.TimestampKey, timeSeriesIndex.EntityIDKey, db.wo)
 

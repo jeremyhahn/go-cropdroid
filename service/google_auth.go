@@ -8,7 +8,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/util"
@@ -96,7 +96,7 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 		}
 		userAccount.SetRoles([]common.Role{
 			&model.Role{
-				ID:   roleConfig.GetID(),
+				ID:   roleConfig.ID,
 				Name: roleConfig.GetName()}})
 
 		// provisionerParams := &provisioner.ProvisionerParams{}
@@ -158,13 +158,13 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 			organizations = append(organizations, &org)
 		}*/
 
-	organizations, err := service.permissionDAO.GetOrganizations(userEntity.GetID(), common.CONSISTENCY_LOCAL)
+	organizations, err := service.permissionDAO.GetOrganizations(userEntity.ID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		service.app.Logger.Errorf("Database error: %s", err)
 		return nil, nil, nil, ErrInternalDatabase
 	}
 
-	farms, err := service.farmDAO.GetByUserID(userEntity.GetID(), common.CONSISTENCY_LOCAL)
+	farms, err := service.farmDAO.GetByUserID(userEntity.ID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -219,7 +219,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	}
 
 	userAccount := &model.User{
-		ID:       userConfig.GetID(),
+		ID:       userConfig.ID,
 		Email:    email,
 		Password: token}
 

@@ -2,7 +2,8 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
 )
@@ -49,11 +50,48 @@ func (dao *GormRoleDAO) GetByName(name string, CONSISTENCY_LEVEL int) (*config.R
 	return &role, nil
 }
 
-func (dao *GormRoleDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Role, error) {
-	dao.logger.Debug("Getting all roles")
-	var roles []*config.Role
-	if err := dao.db.Order("name asc").Find(&roles).Error; err != nil {
-		return nil, err
+func (roleDAO *GormRoleDAO) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Role], error) {
+	roleDAO.logger.Debugf("Fetching role page: %v+", pageQuery)
+	pageResult := dao.PageResult[*config.Role]{
+		Page:     pageQuery.Page,
+		PageSize: pageQuery.PageSize}
+	page := pageQuery.Page
+	if page < 1 {
+		page = 1
 	}
-	return roles, nil
+	var offset = (page - 1) * pageQuery.PageSize
+	var roles []*config.Role
+	if err := roleDAO.db.
+		Offset(offset).
+		Limit(pageQuery.PageSize + 1). // peek one record to set HasMore flag
+		Find(&roles).Error; err != nil {
+		return pageResult, err
+	}
+	// If the peek record was returned, set the HasMore flag and remove the +1 record
+	if len(roles) == pageQuery.PageSize+1 {
+		pageResult.HasMore = true
+		roles = roles[:len(roles)-1]
+	}
+	pageResult.Entities = roles
+	return pageResult, nil
+}
+
+func (roleDAO *GormRoleDAO) ForEachPage(pageQuery query.PageQuery,
+	pagerProcFunc query.PagerProcFunc[*config.Role], CONSISTENCY_LEVEL int) error {
+
+	pageResult, err := roleDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
+	if err != nil {
+		return nil
+	}
+	if err = pagerProcFunc(pageResult.Entities); err != nil {
+		return err
+	}
+	if pageResult.HasMore {
+		nextPageQuery := query.PageQuery{
+			Page:      pageQuery.Page + 1,
+			PageSize:  pageQuery.PageSize,
+			SortOrder: pageQuery.SortOrder}
+		return roleDAO.ForEachPage(nextPageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
+	}
+	return nil
 }

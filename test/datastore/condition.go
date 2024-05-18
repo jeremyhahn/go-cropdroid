@@ -5,7 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -22,31 +22,31 @@ func TestConditionCRUD(t *testing.T, conditionDAO dao.ConditionDAO,
 	assert.Equal(t, condition1.GetComparator(), ">")
 	assert.Equal(t, condition2.GetComparator(), "<")
 
-	err := conditionDAO.Save(farm1.GetID(), device1.GetID(), condition1)
+	err := conditionDAO.Save(farm1.ID, device1.ID, condition1)
 	assert.Nil(t, err)
 
-	err = conditionDAO.Save(farm1.GetID(), device1.GetID(), condition2)
+	err = conditionDAO.Save(farm1.ID, device1.ID, condition2)
 	assert.Nil(t, err)
 
 	persistedConditions, err := conditionDAO.GetByChannelID(
-		farm1.GetID(), device1.GetID(), channel1.GetID(),
+		farm1.ID, device1.ID, channel1.ID,
 		common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(persistedConditions))
 
 	persistedCondition1 := persistedConditions[0]
-	assert.Equal(t, condition1.GetID(), persistedCondition1.GetID())
+	assert.Equal(t, condition1.ID, persistedCondition1.ID)
 	assert.Equal(t, condition1.GetChannelID(), persistedCondition1.GetChannelID())
 	assert.Equal(t, condition1.GetMetricID(), persistedCondition1.GetMetricID())
 	assert.Equal(t, condition1.GetComparator(), persistedCondition1.GetComparator())
 	assert.Equal(t, condition1.GetThreshold(), persistedCondition1.GetThreshold())
 
-	err = conditionDAO.Delete(farm1.GetID(),
-		device1.GetID(), persistedCondition1)
+	err = conditionDAO.Delete(farm1.ID,
+		device1.ID, persistedCondition1)
 	assert.Nil(t, err)
 
 	persistedConditions, err = conditionDAO.GetByChannelID(
-		farm1.GetID(), device1.GetID(), channel1.GetID(),
+		farm1.ID, device1.ID, channel1.ID,
 		common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(persistedConditions))

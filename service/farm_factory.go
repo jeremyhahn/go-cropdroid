@@ -1,8 +1,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
@@ -11,7 +9,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/util"
 
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 )
 
 // "Global" farm factory used to manage all farms on the platform
@@ -21,7 +19,8 @@ type FarmFactory interface {
 		eventLogDAO dao.EventLogDAO,
 		deviceDataStore datastore.DeviceDataStore,
 		deviceStateStore state.DeviceStorer,
-		farmConfig *config.Farm) (FarmService, error)
+		farmConfig *config.Farm,
+		farmChannels *FarmChannels) (FarmService, error)
 	GetFarms(session Session) ([]*config.Farm, error)
 	GetFarmProvisionerChan() chan config.Farm
 	GetDeviceIndexMap() map[uint64]config.Device
@@ -41,7 +40,6 @@ type DefaultFarmFactory struct {
 	serviceRegistry           ServiceRegistry
 	farmProvisionerChan       chan config.Farm
 	farmTickerProvisionerChan chan uint64
-	farmChannels              *FarmChannels
 	FarmFactory
 }
 
@@ -49,7 +47,7 @@ func NewFarmFactory(app *app.App, farmDAO dao.FarmDAO, deviceDAO dao.DeviceDAO,
 	deviceSettingDAO dao.DeviceSettingDAO, serviceRegistry ServiceRegistry,
 	deviceMapper mapper.DeviceMapper, changefeeders map[string]datastore.Changefeeder,
 	farmProvisionerChan chan config.Farm, farmTickerProvisionerChan chan uint64,
-	farmChannels *FarmChannels, idGenerator util.IdGenerator) FarmFactory {
+	idGenerator util.IdGenerator) FarmFactory {
 
 	return &DefaultFarmFactory{
 		app:              app,
@@ -63,8 +61,7 @@ func NewFarmFactory(app *app.App, farmDAO dao.FarmDAO, deviceDAO dao.DeviceDAO,
 		//datastoreRegistry:         datastoreRegistry,
 		serviceRegistry:           serviceRegistry,
 		farmProvisionerChan:       farmProvisionerChan,
-		farmTickerProvisionerChan: farmTickerProvisionerChan,
-		farmChannels:              farmChannels}
+		farmTickerProvisionerChan: farmTickerProvisionerChan}
 }
 
 func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
@@ -72,18 +69,17 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	eventLogDAO dao.EventLogDAO,
 	deviceDataStore datastore.DeviceDataStore,
 	deviceStateStore state.DeviceStorer,
-	farmConfig *config.Farm) (FarmService, error) {
+	farmConfig *config.Farm,
+	farmChannels *FarmChannels) (FarmService, error) {
 
 	consistencyLevel := farmConfig.GetConsistencyLevel()
-
-	farmID := farmConfig.GetID()
 	farmName := farmConfig.GetName()
 	deviceConfigs := farmConfig.GetDevices()
 
 	// Build device services
-	deviceFactory := NewDeviceFactory(ff.app, farmID, farmName,
+	deviceFactory := NewDeviceFactory(ff.app, farmConfig.ID, farmName,
 		ff.deviceDAO, eventLogDAO, farmConfig.GetConfigStore(), consistencyLevel,
-		deviceStateStore, ff.deviceMapper, ff.serviceRegistry, ff.farmChannels)
+		deviceStateStore, ff.deviceMapper, ff.serviceRegistry, farmChannels)
 
 	deviceServices, err := deviceFactory.BuildServices(deviceConfigs,
 		deviceDataStore, farmConfig.GetMode())
@@ -94,13 +90,13 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	// Build farm service
 	farmService, err := CreateFarmService(ff.app, farmDAO, ff.app.IdGenerator,
 		farmStateStore, deviceDataStore, farmConfig, consistencyLevel,
-		ff.serviceRegistry, ff.farmChannels, ff.deviceSettingDAO)
+		ff.serviceRegistry, farmChannels, ff.deviceSettingDAO)
 	if err != nil {
 		return nil, err
 	}
 
 	// Build event log service
-	eventLogService := NewEventLogService(ff.app, eventLogDAO, farmID)
+	eventLogService := NewEventLogService(ff.app, eventLogDAO, farmConfig.ID)
 
 	// deviceIndexMap := make(map[uint64]config.Device, 0)
 	// channelIndexMap := make(map[int]config.Channel, 0)
@@ -125,17 +121,9 @@ func (ff *DefaultFarmFactory) BuildService(farmStateStore state.FarmStorer,
 	// }
 
 	ff.serviceRegistry.SetDeviceFactory(deviceFactory)
-	ff.serviceRegistry.SetDeviceServices(farmID, deviceServices)
+	ff.serviceRegistry.SetDeviceServices(farmConfig.ID, deviceServices)
 	ff.serviceRegistry.AddFarmService(farmService)
 	ff.serviceRegistry.AddEventLogService(eventLogService)
-
-	ff.app.Logger.Debugf("Farm Name: %s", farmConfig.GetName())
-	ff.app.Logger.Debugf("Mode: %s", farmConfig.GetMode())
-	ff.app.Logger.Debugf("Timezone: %s", farmConfig.GetTimezone())
-	ff.app.Logger.Debugf("Polling interval: %d", farmConfig.GetInterval())
-
-	startupEventLogItem := fmt.Sprintf("Starting farm on node %d", ff.app.NodeID)
-	eventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, "System", startupEventLogItem)
 
 	return farmService, nil
 }

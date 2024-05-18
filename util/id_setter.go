@@ -31,7 +31,7 @@ func NewIdSetter(idGenerator IdGenerator) IdSetter {
 }
 
 func (setter *KeyValueSetter) SetIds(farm *config.Farm) *config.Farm {
-	farmID := farm.GetID()
+	farmID := farm.ID
 	if farmID == 0 {
 		farmID := setter.idGenerator.NewFarmID(farm.GetOrganizationID(), farm.GetName())
 		farm.SetID(farmID)
@@ -44,7 +44,7 @@ func (setter *KeyValueSetter) SetIds(farm *config.Farm) *config.Farm {
 
 func (setter *KeyValueSetter) SetDeviceIds(farmID uint64, devices []*config.Device) []*config.Device {
 	for _, device := range devices {
-		if device.GetID() == 0 {
+		if device.ID == 0 {
 			deviceID := setter.idGenerator.NewDeviceID(farmID, device.GetType())
 			device.SetID(deviceID)
 		}
@@ -57,9 +57,9 @@ func (setter *KeyValueSetter) SetDeviceIds(farmID uint64, devices []*config.Devi
 }
 
 func (setter *KeyValueSetter) SetDeviceSettingIds(device *config.Device, deviceSettings []*config.DeviceSetting) []*config.DeviceSetting {
-	deviceID := device.GetID()
+	deviceID := device.ID
 	for _, deviceSetting := range deviceSettings {
-		if deviceSetting.GetID() == 0 {
+		if deviceSetting.ID == 0 {
 			deviceSettingID := setter.idGenerator.NewDeviceSettingID(deviceID, deviceSetting.GetKey())
 			deviceSetting.SetID(deviceSettingID)
 		}
@@ -71,7 +71,7 @@ func (setter *KeyValueSetter) SetDeviceSettingIds(device *config.Device, deviceS
 
 func (setter *KeyValueSetter) SetMetricIds(deviceID uint64, metrics []*config.Metric) []*config.Metric {
 	for _, metric := range metrics {
-		if metric.GetID() == 0 {
+		if metric.ID == 0 {
 			metricID := setter.idGenerator.NewMetricID(deviceID, metric.GetKey())
 			metric.SetID(metricID)
 		}
@@ -84,22 +84,22 @@ func (setter *KeyValueSetter) SetMetricIds(deviceID uint64, metrics []*config.Me
 
 func (setter *KeyValueSetter) SetChannelsIds(farmID, deviceID uint64, channels []*config.Channel) []*config.Channel {
 	for _, channel := range channels {
-		if channel.GetID() == 0 {
+		if channel.ID == 0 {
 			channelID := setter.idGenerator.NewChannelID(deviceID, channel.GetName())
 			channel.SetID(channelID)
 		}
 		if channel.GetDeviceID() == 0 {
 			channel.SetDeviceID(deviceID)
 		}
-		setter.SetConditionIds(channel.GetID(), deviceID, channel.GetConditions())
-		setter.SetScheduleIds(farmID, deviceID, channel.GetID(), channel.GetSchedule())
+		setter.SetConditionIds(channel.ID, deviceID, channel.GetConditions())
+		setter.SetScheduleIds(farmID, deviceID, channel.ID, channel.GetSchedule())
 	}
 	return channels
 }
 
 func (setter *KeyValueSetter) SetConditionIds(channelID, deviceID uint64, conditions []*config.Condition) []*config.Condition {
 	for _, condition := range conditions {
-		if condition.GetID() == 0 {
+		if condition.ID == 0 {
 			conditionKey := fmt.Sprintf("%d-%d-%d-%d-%s-%2f", deviceID,
 				condition.GetWorkflowID(), condition.GetChannelID(),
 				condition.GetMetricID(), condition.GetComparator(),
@@ -116,7 +116,7 @@ func (setter *KeyValueSetter) SetConditionIds(channelID, deviceID uint64, condit
 
 func (setter *KeyValueSetter) SetScheduleIds(farmID, deviceID, channelID uint64, schedules []*config.Schedule) []*config.Schedule {
 	for _, schedule := range schedules {
-		if schedule.GetID() == 0 {
+		if schedule.ID == 0 {
 			scheduleKey := fmt.Sprintf("%d-%d-%d-%s-%s-%d-%d", farmID, deviceID,
 				schedule.GetChannelID(), schedule.GetStartDate(),
 				schedule.GetEndDate(), schedule.GetFrequency(),
@@ -133,7 +133,7 @@ func (setter *KeyValueSetter) SetScheduleIds(farmID, deviceID, channelID uint64,
 
 func (setter *KeyValueSetter) SetUserIds(users []*config.User) []*config.User {
 	for _, user := range users {
-		if user.GetID() == 0 {
+		if user.ID == 0 {
 			user.SetID(setter.idGenerator.NewUserID(user.GetEmail()))
 		}
 		setter.SetRoleIds(user.GetRoles())
@@ -143,7 +143,7 @@ func (setter *KeyValueSetter) SetUserIds(users []*config.User) []*config.User {
 
 func (setter *KeyValueSetter) SetRoleIds(roles []*config.Role) []*config.Role {
 	for _, role := range roles {
-		if role.GetID() == 0 {
+		if role.ID == 0 {
 			role.SetID(setter.idGenerator.NewRoleID(role.GetName()))
 		}
 	}
@@ -152,18 +152,18 @@ func (setter *KeyValueSetter) SetRoleIds(roles []*config.Role) []*config.Role {
 
 func (setter *KeyValueSetter) SetWorkflowIds(farmID uint64, workflows []*config.Workflow) []*config.Workflow {
 	for _, workflow := range workflows {
-		if workflow.GetID() == 0 {
+		if workflow.ID == 0 {
 			workflowID := setter.idGenerator.NewWorkflowID(farmID, workflow.GetName())
 			workflow.SetID(workflowID)
 		}
-		setter.SetWorkflowStepIds(workflow.GetID(), workflow.GetSteps())
+		setter.SetWorkflowStepIds(workflow.ID, workflow.GetSteps())
 	}
 	return workflows
 }
 
 func (setter *KeyValueSetter) SetWorkflowStepIds(workflowID uint64, workflowSteps []*config.WorkflowStep) []*config.WorkflowStep {
 	for _, workflowStep := range workflowSteps {
-		if workflowStep.GetID() == 0 {
+		if workflowStep.ID == 0 {
 			workflowStepKey := fmt.Sprintf("%d-%d-%d-%d-%d", workflowID, workflowStep.GetDeviceID(),
 				workflowStep.GetChannelID(), workflowStep.GetDuration(), workflowStep.GetState())
 			workflowStepID := setter.idGenerator.NewWorkflowStepID(workflowID, workflowStepKey)

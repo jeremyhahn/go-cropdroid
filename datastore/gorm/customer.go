@@ -2,7 +2,8 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
 )
@@ -43,12 +44,8 @@ func (dao *GormCustomerDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Custo
 	return dao.GenericGormDAO.Get(id, CONSISTENCY_LEVEL)
 }
 
-func (dao *GormCustomerDAO) GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]*config.Customer, error) {
-	return dao.GenericGormDAO.GetPage(CONSISTENCY_LEVEL, page, pageSize)
-}
-
-func (dao *GormCustomerDAO) Update(customer *config.Customer) error {
-	return dao.GenericGormDAO.Update(customer)
+func (dao *GormCustomerDAO) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Customer], error) {
+	return dao.GenericGormDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 }
 
 func (dao *GormCustomerDAO) Delete(customer *config.Customer) error {

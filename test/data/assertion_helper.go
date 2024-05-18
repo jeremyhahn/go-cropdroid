@@ -3,7 +3,7 @@ package data
 import "github.com/jeremyhahn/go-cropdroid/config"
 
 func OrgsEqual(org1, org2 *config.Organization) bool {
-	if org1.GetID() != org2.GetID() {
+	if org1.ID != org2.ID {
 		return false
 	}
 	if org1.GetName() != org2.GetName() {
@@ -17,7 +17,7 @@ func OrgsEqual(org1, org2 *config.Organization) bool {
 }
 
 func FarmsEqual(farm1, farm2 *config.Farm) bool {
-	if farm1.GetID() != farm2.GetID() {
+	if farm1.ID != farm2.ID {
 		return false
 	}
 	if farm1.GetName() != farm2.GetName() {

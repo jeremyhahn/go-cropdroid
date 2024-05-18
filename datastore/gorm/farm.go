@@ -5,8 +5,9 @@ import (
 	"sort"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -28,40 +29,40 @@ func NewFarmDAO(logger *logging.Logger, db *gorm.DB,
 		idGenerator: idGenerator}
 }
 
-func (dao *GormFarmDAO) Delete(farm *config.Farm) error {
-	dao.logger.Debugf("Deleting farm record: %s", farm.GetName())
+func (farmDAO *GormFarmDAO) Delete(farm *config.Farm) error {
+	farmDAO.logger.Debugf("Deleting farm record: %s", farm.GetName())
 	for _, device := range farm.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			dao.db.Where("channel_id = ?", channel.GetID()).Delete(&config.Condition{})
-			dao.db.Where("channel_id = ?", channel.GetID()).Delete(&config.Schedule{})
+			farmDAO.db.Where("channel_id = ?", channel.ID).Delete(&config.Condition{})
+			farmDAO.db.Where("channel_id = ?", channel.ID).Delete(&config.Schedule{})
 		}
-		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.DeviceSetting{})
-		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.Channel{})
-		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.Metric{})
-		dao.db.Where("device_id = ?", device.GetID()).Delete(&config.WorkflowStep{})
-		dao.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS state_%d", device.GetID()))
+		farmDAO.db.Where("device_id = ?", device.ID).Delete(&config.DeviceSetting{})
+		farmDAO.db.Where("device_id = ?", device.ID).Delete(&config.Channel{})
+		farmDAO.db.Where("device_id = ?", device.ID).Delete(&config.Metric{})
+		farmDAO.db.Where("device_id = ?", device.ID).Delete(&config.WorkflowStep{})
+		farmDAO.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS state_%d", device.ID))
 	}
-	dao.db.Where("farm_id = ?", farm.GetID()).Delete(&config.Device{})
-	dao.db.Where("farm_id = ?", farm.GetID()).Delete(&config.Permission{})
-	dao.db.Where("farm_id = ?", farm.GetID()).Delete(&config.Workflow{})
-	return dao.db.Delete(farm).Error
+	farmDAO.db.Where("farm_id = ?", farm.ID).Delete(&config.Device{})
+	farmDAO.db.Where("farm_id = ?", farm.ID).Delete(&config.Permission{})
+	farmDAO.db.Where("farm_id = ?", farm.ID).Delete(&config.Workflow{})
+	return farmDAO.db.Delete(farm).Error
 }
 
-func (dao *GormFarmDAO) Save(farm *config.Farm) error {
-	dao.logger.Debugf("Saving farm record: %s", farm.GetName())
-	if farm.GetID() == 0 {
-		farm.SetID(dao.idGenerator.NewStringID(farm.GetName()))
+func (farmDAO *GormFarmDAO) Save(farm *config.Farm) error {
+	farmDAO.logger.Debugf("Saving farm record: %s", farm.GetName())
+	if farm.ID == 0 {
+		farm.SetID(farmDAO.idGenerator.NewStringID(farm.GetName()))
 	}
-	if err := dao.db.Save(farm).Error; err != nil {
+	if err := farmDAO.db.Save(farm).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
-	dao.logger.Debugf("Getting farm: %d", farmID)
+func (farmDAO *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
+	farmDAO.logger.Debugf("Getting farm: %d", farmID)
 	var farm *config.Farm
-	if err := dao.db.
+	if err := farmDAO.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
@@ -92,10 +93,10 @@ func (dao *GormFarmDAO) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm,
 	return farm, nil
 }
 
-func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
-	dao.logger.Debugf("Getting farms: %+v", farmIds)
+func (farmDAO *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
+	farmDAO.logger.Debugf("Getting farms: %+v", farmIds)
 	var farms []*config.Farm
-	if err := dao.db.
+	if err := farmDAO.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
@@ -126,10 +127,18 @@ func (dao *GormFarmDAO) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*co
 	return farms, nil
 }
 
-func (dao *GormFarmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
-	dao.logger.Debug("Getting all farms")
+func (farmDAO *GormFarmDAO) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Farm], error) {
+	farmDAO.logger.Debug("Getting farm page %+v", pageQuery)
+	pageResult := dao.PageResult[*config.Farm]{
+		Page:     pageQuery.Page,
+		PageSize: pageQuery.PageSize}
+	page := pageQuery.Page
+	if page < 1 {
+		page = 1
+	}
+	var offset = (page - 1) * pageQuery.PageSize
 	var farms []*config.Farm
-	if err := dao.db.
+	if err := farmDAO.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
@@ -142,12 +151,14 @@ func (dao *GormFarmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
 		Preload("Workflows.Conditions").
 		Preload("Workflows.Schedules").
 		Preload("Workflows.Steps").
+		Offset(offset).
+		Limit(pageQuery.PageSize + 1). // peek one record to set HasMore flag
 		Find(&farms).Error; err != nil {
-		return nil, err
+		return pageResult, err
 	}
 	for _, farm := range farms {
 		if err := farm.ParseSettings(); err != nil {
-			return nil, err
+			return pageResult, err
 		}
 		for _, workflow := range farm.GetWorkflows() {
 			workflowSteps := workflow.GetSteps()
@@ -156,13 +167,39 @@ func (dao *GormFarmDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
 			})
 		}
 	}
-	return farms, nil
+	// If the peek record was returned, set the HasMore flag and remove the +1 record
+	if len(farms) == pageQuery.PageSize+1 {
+		pageResult.HasMore = true
+		farms = farms[:len(farms)-1]
+	}
+	pageResult.Entities = farms
+	return pageResult, nil
 }
 
-func (dao *GormFarmDAO) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
-	dao.logger.Debug("Getting all farms for user: %d", userID)
+func (farmDAO *GormFarmDAO) ForEachPage(pageQuery query.PageQuery,
+	pagerProcFunc query.PagerProcFunc[*config.Farm], CONSISTENCY_LEVEL int) error {
+
+	pageResult, err := farmDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
+	if err != nil {
+		return nil
+	}
+	if err = pagerProcFunc(pageResult.Entities); err != nil {
+		return err
+	}
+	if pageResult.HasMore {
+		nextPageQuery := query.PageQuery{
+			Page:      pageQuery.Page + 1,
+			PageSize:  pageQuery.PageSize,
+			SortOrder: pageQuery.SortOrder}
+		return farmDAO.ForEachPage(nextPageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
+	}
+	return nil
+}
+
+func (farmDAO *GormFarmDAO) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
+	farmDAO.logger.Debug("Getting all farms for user: %d", userID)
 	var farms []*config.Farm
-	if err := dao.db.
+	if err := farmDAO.db.
 		Preload("Devices").
 		Preload("Users").
 		Preload("Users.Roles").
@@ -194,36 +231,12 @@ func (dao *GormFarmDAO) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*co
 	return farms, nil
 }
 
-func (dao *GormFarmDAO) Count() (int64, error) {
-	dao.logger.Debugf("Getting farm count")
+func (farmDAO *GormFarmDAO) Count(CONSISTENCY_LEVEL int) (int64, error) {
+	farmDAO.logger.Debugf("Getting farm count")
 	var farm config.Farm
 	var count int64
-	if err := dao.db.Model(&farm).Count(&count).Error; err != nil {
+	if err := farmDAO.db.Model(&farm).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
 }
-
-// func (dao *GormFarmDAO) First() (config.Farm, error) {
-// 	dao.logger.Debugf("Getting first farm record")
-// 	var farm config.Farm
-// 	if err := dao.db.First(&farm).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	if err := farm.ParseConfigs(); err != nil {
-// 		return nil, err
-// 	}
-// 	return &farm, nil
-// }
-
-// func (dao *GormFarmDAO) Create(farm config.Farm) error {
-// 	dao.logger.Debugf("Creating farm record: %s", farm.GetName())
-// 	return dao.db.Create(farm).Error
-// }
-
-// func (dao *GormFarmDAO) DeleteById(farmID uint64) error {
-// 	dao.logger.Debugf("Deleing farm record: %d", farmID)
-// 	//	return dao.db.Delete(&config.Farm{}, farmID).Error
-// 	model := dao.db.Model(farm).AddForeignKey("farm_id", "devices(farm_id)", "UPDATE", "UPDATE")
-// 	return dao.db.Delete(model).Error
-// }

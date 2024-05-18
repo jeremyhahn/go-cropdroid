@@ -53,6 +53,8 @@ var (
 
 func init() {
 
+	supportedDatastores = []string{"memory", "sqlite", "mysql", "postgres", "cockroach", "raft"}
+
 	// IaaS
 	clusterCmd.PersistentFlags().StringVarP(&ClusterIaasProvider, "provider", "", "kvm",
 		"Infrastructure-as-a-Service (IaaS) provider [ libvirt | terraform ]")
@@ -180,6 +182,8 @@ var clusterCmd = &cobra.Command{
 			time.Sleep(1 * time.Second)
 			raftNode = gossipNode.GetSystemRaft()
 		}
+		App.ClusterID = raftNode.GetParams().ClusterID
+		App.NodeID = int(raftNode.GetParams().NodeID)
 
 		//App.ServerStore = cluster.NewRaftFarmConfigStore(App.Logger, App.RaftCluster)
 		//App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)

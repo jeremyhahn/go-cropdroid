@@ -5,7 +5,8 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
 )
@@ -36,11 +37,13 @@ func (service *DefaultOrganizationService) Create(organization *config.Organizat
 }
 
 // Returns a list of User entities that belong to the organization
-func (service *DefaultOrganizationService) GetAll(session Session) ([]*config.Organization, error) {
+func (service *DefaultOrganizationService) GetPage(session Session,
+	pageQuery query.PageQuery) (dao.PageResult[*config.Organization], error) {
+
 	if !session.GetUser().HasRole(common.ROLE_ADMIN) {
-		return nil, ErrPermissionDenied
+		return dao.PageResult[*config.Organization]{}, ErrPermissionDenied
 	}
-	return service.orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+	return service.orgDAO.GetPage(pageQuery, common.CONSISTENCY_LOCAL)
 }
 
 // Returns a list of User entities that belong to the organization

@@ -6,13 +6,14 @@ import "time"
 // of WorkflowStep, which can be triggered manually or based on a
 // Schedule or Condition.
 type Workflow struct {
-	ID            uint64          `gorm:"primaryKey" yaml:"id" json:"id"`
-	FarmID        uint64          `yaml:"farm" json:"farm_id"`
-	Name          string          `gorm:"name" yaml:"name" json:"name"`
-	Conditions    []*Condition    `gorm:"conditions" yaml:"conditions" json:"conditions"`
-	Schedules     []*Schedule     `gorm:"schedules" yaml:"schedules" json:"schedules"`
-	Steps         []*WorkflowStep `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"steps" json:"steps"`
-	LastCompleted *time.Time      `gorm:"type:timestamp" yaml:"lastCompleted" json:"lastCompleted"`
+	ID             uint64          `gorm:"primaryKey" yaml:"id" json:"id"`
+	FarmID         uint64          `yaml:"farm" json:"farm_id"`
+	Name           string          `gorm:"name" yaml:"name" json:"name"`
+	Conditions     []*Condition    `gorm:"conditions" yaml:"conditions" json:"conditions"`
+	Schedules      []*Schedule     `gorm:"schedules" yaml:"schedules" json:"schedules"`
+	Steps          []*WorkflowStep `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"steps" json:"steps"`
+	LastCompleted  *time.Time      `gorm:"type:timestamp" yaml:"lastCompleted" json:"lastCompleted"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewWorkflow() *Workflow {
@@ -22,8 +23,8 @@ func NewWorkflow() *Workflow {
 		Steps:      make([]*WorkflowStep, 0)}
 }
 
-// GetID gets the workflow ID
-func (w *Workflow) GetID() uint64 {
+// Identifier gets the workflow ID
+func (w *Workflow) Identifier() uint64 {
 	return w.ID
 }
 
@@ -80,7 +81,7 @@ func (w *Workflow) GetSteps() []*WorkflowStep {
 // SetStep updates / sets an existing workflow step
 func (w *Workflow) SetStep(step *WorkflowStep) {
 	for i, s := range w.GetSteps() {
-		if s.GetID() == step.GetID() {
+		if s.ID == step.ID {
 			w.Steps[i] = step
 			return
 		}
@@ -108,7 +109,7 @@ func (w *Workflow) AddStep(step *WorkflowStep) {
 // The steps are re-ordered after the step is removed.
 func (w *Workflow) RemoveStep(step *WorkflowStep) error {
 	for i, s := range w.Steps {
-		if s.GetID() == step.GetID() {
+		if s.ID == step.ID {
 			w.Steps = append(w.Steps[:i], w.Steps[i+1:]...)
 			return nil
 		}

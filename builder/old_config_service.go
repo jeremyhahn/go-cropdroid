@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package service
@@ -9,7 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -23,20 +24,20 @@ type ConfigService interface {
 }
 
 type ConfigurationService struct {
-	app              *app.App
-	organizationDAO  dao.OrganizationDAO
-	farmDAO          dao.FarmDAO
-	userDAO          dao.UserDAO
-	deviceDAO    dao.DeviceDAO
-	configDAO        dao.ConfigDAO
-	metricDAO        dao.MetricDAO
-	channelDAO       dao.ChannelDAO
-	conditionDAO     dao.ConditionDAO
-	scheduleDAO      dao.ScheduleDAO
-	deviceMapper mapper.DeviceMapper
-	conditionMapper  mapper.ConditionMapper
-	scheduleMapper   mapper.ScheduleMapper
-	supportsReload   bool
+	app             *app.App
+	organizationDAO dao.OrganizationDAO
+	farmDAO         dao.FarmDAO
+	userDAO         dao.UserDAO
+	deviceDAO       dao.DeviceDAO
+	configDAO       dao.ConfigDAO
+	metricDAO       dao.MetricDAO
+	channelDAO      dao.ChannelDAO
+	conditionDAO    dao.ConditionDAO
+	scheduleDAO     dao.ScheduleDAO
+	deviceMapper    mapper.DeviceMapper
+	conditionMapper mapper.ConditionMapper
+	scheduleMapper  mapper.ScheduleMapper
+	supportsReload  bool
 	ConfigService
 }
 
@@ -46,20 +47,20 @@ func NewConfigService(app *app.App, organizationDAO dao.OrganizationDAO, farmDAO
 	conditionMapper mapper.ConditionMapper, scheduleMapper mapper.ScheduleMapper, supportsReload bool) ConfigService {
 
 	return &ConfigurationService{
-		app:              app,
-		organizationDAO:  organizationDAO,
-		farmDAO:          farmDAO,
-		userDAO:          userDAO,
-		deviceDAO:    deviceDAO,
-		configDAO:        configDAO,
-		metricDAO:        metricDAO,
-		channelDAO:       channelDAO,
-		conditionDAO:     conditionDAO,
-		scheduleDAO:      scheduleDAO,
-		deviceMapper: deviceMapper,
-		conditionMapper:  conditionMapper,
-		scheduleMapper:   scheduleMapper,
-		supportsReload:   supportsReload}
+		app:             app,
+		organizationDAO: organizationDAO,
+		farmDAO:         farmDAO,
+		userDAO:         userDAO,
+		deviceDAO:       deviceDAO,
+		configDAO:       configDAO,
+		metricDAO:       metricDAO,
+		channelDAO:      channelDAO,
+		conditionDAO:    conditionDAO,
+		scheduleDAO:     scheduleDAO,
+		deviceMapper:    deviceMapper,
+		conditionMapper: conditionMapper,
+		scheduleMapper:  scheduleMapper,
+		supportsReload:  supportsReload}
 }
 
 func (service *ConfigurationService) GetConfiguration() config.ServerConfig {
@@ -174,7 +175,7 @@ func (service *ConfigurationService) BuildOrganization(serverConfig config.Serve
 	farm := &config.Farm{
 		ID:             0,
 		OrganizationID: 0,
-		Devices:    make([]config.Device, 0)}
+		Devices:        make([]config.Device, 0)}
 
 	for _, device := range deviceEntities {
 

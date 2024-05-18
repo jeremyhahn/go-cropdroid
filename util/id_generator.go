@@ -19,6 +19,7 @@ type IdGenerator interface {
 	TimestampBytes(t time.Time) []byte
 
 	NewFarmID(orgID uint64, farmName string) uint64
+	NewFarmStateID(farmID uint64) uint64
 	NewDeviceID(farmID uint64, deviceType string) uint64
 	NewDeviceDataID(farmID, deviceID uint64, timestamp time.Time) uint64
 	NewDeviceSettingID(deviceID uint64, deviceSettingKey string) uint64
@@ -103,6 +104,10 @@ func (hasher *Fnv1aHasher) TimestampBytes(t time.Time) []byte {
 // Implementation specific ID hashes
 func (hasher *Fnv1aHasher) NewFarmID(orgID uint64, farmName string) uint64 {
 	return hasher.NewStringID(fmt.Sprintf("%d-%s", orgID, farmName))
+}
+
+func (hasher *Fnv1aHasher) NewFarmStateID(farmID uint64) uint64 {
+	return hasher.NewStringID(fmt.Sprintf("%d-%s", farmID, "state"))
 }
 
 func (hasher *Fnv1aHasher) NewDeviceID(farmID uint64, deviceType string) uint64 {

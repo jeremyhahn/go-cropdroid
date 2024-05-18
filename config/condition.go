@@ -6,19 +6,20 @@ import (
 )
 
 type Condition struct {
-	ID         uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	WorkflowID uint64  `yaml:"workflow" json:"workflow_id"`
-	ChannelID  uint64  `yaml:"channel" json:"channel_id"`
-	MetricID   uint64  `yaml:"metric" json:"metric_id"`
-	Comparator string  `yaml:"comparator" json:"comparator"`
-	Threshold  float64 `yaml:"threshold" json:"threshold"`
+	ID             uint64  `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	WorkflowID     uint64  `yaml:"workflow" json:"workflow_id"`
+	ChannelID      uint64  `yaml:"channel" json:"channel_id"`
+	MetricID       uint64  `yaml:"metric" json:"metric_id"`
+	Comparator     string  `yaml:"comparator" json:"comparator"`
+	Threshold      float64 `yaml:"threshold" json:"threshold"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewCondition() *Condition {
 	return &Condition{}
 }
 
-func (condition *Condition) GetID() uint64 {
+func (condition *Condition) Identifier() uint64 {
 	return condition.ID
 }
 

@@ -58,7 +58,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 	parse := func(condition *config.Condition) (*config.Device, *config.Metric, error) {
 		for _, device := range h.farmService.GetConfig().GetDevices() {
 			for _, metric := range device.GetMetrics() {
-				if metric.GetID() == condition.GetMetricID() {
+				if metric.ID == condition.GetMetricID() {
 					return device, metric, nil
 				}
 			}
@@ -120,7 +120,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 		if position == common.SWITCH_OFF {
 
 			h.logger.Debugf("Switching ON channel: id=%d, name=%s, metric.key=%s, metric.value=%.2f",
-				h.channelConfig.GetID(), h.channelConfig.GetName(), conditionMetric.GetKey(), value)
+				h.channelConfig.ID, h.channelConfig.GetName(), conditionMetric.GetKey(), value)
 
 			if h.channelConfig.GetDuration() > 0 {
 				message := fmt.Sprintf("Switching ON %s for %d seconds. %s %.2f%s",
@@ -138,7 +138,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 			}
 
 			if backoff > 0 {
-				h.backoffTable[h.channelConfig.GetID()] = time.Now()
+				h.backoffTable[h.channelConfig.ID] = time.Now()
 			}
 
 			return true, nil
@@ -160,7 +160,7 @@ func (h *ChannelConditionHandler) Handle() (bool, error) {
 		if position == common.SWITCH_ON {
 
 			h.logger.Debugf("Switching OFF channel: id=%d, name=%s, metric.key=%s, value=%.2f. debounce=%d",
-				h.channelConfig.GetID(), h.channelConfig.GetName(), conditionMetric.GetKey(), value, debounce)
+				h.channelConfig.ID, h.channelConfig.GetName(), conditionMetric.GetKey(), value, debounce)
 
 			message := fmt.Sprintf("Switching OFF %s. %s %.2f%s", h.channelConfig.GetName(), conditionMetric.GetName(), value, conditionMetric.GetUnit())
 			_, err := h.deviceService.Switch(h.channelConfig.GetChannelID(), common.SWITCH_OFF, message)

@@ -2,7 +2,8 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -13,6 +14,7 @@ type GormOrganizationDAO struct {
 	db          *gorm.DB
 	idGenerator util.IdGenerator
 	dao.OrganizationDAO
+	dao.GenericDAO[*config.Organization]
 }
 
 func NewOrganizationDAO(logger *logging.Logger, db *gorm.DB,
@@ -25,7 +27,7 @@ func NewOrganizationDAO(logger *logging.Logger, db *gorm.DB,
 
 func (dao *GormOrganizationDAO) Save(organization *config.Organization) error {
 	dao.logger.Debugf("Creating organization record")
-	if organization.GetID() == 0 {
+	if organization.ID == 0 {
 		id := dao.idGenerator.NewStringID(organization.GetName())
 		organization.SetID(id)
 	}
@@ -63,10 +65,18 @@ func (dao *GormOrganizationDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.O
 	return org, nil
 }
 
-func (dao *GormOrganizationDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Organization, error) {
-	dao.logger.Debugf("Fetching all organizations")
+func (organizationDAO *GormOrganizationDAO) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Organization], error) {
+	organizationDAO.logger.Debugf("Fetching organization page: %v+", pageQuery)
+	pageResult := dao.PageResult[*config.Organization]{
+		Page:     pageQuery.Page,
+		PageSize: pageQuery.PageSize}
+	page := pageQuery.Page
+	if page < 1 {
+		page = 1
+	}
+	var offset = (page - 1) * pageQuery.PageSize
 	var orgs []*config.Organization
-	if err := dao.db.
+	if err := organizationDAO.db.
 		Preload("Farms").
 		Preload("Users").
 		Preload("Users.Roles").
@@ -81,8 +91,10 @@ func (dao *GormOrganizationDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Organiz
 		Preload("Farms.Workflows.Conditions").
 		Preload("Farms.Workflows.Schedules").
 		Preload("Farms.Workflows.Steps").
+		Offset(offset).
+		Limit(pageQuery.PageSize + 1). // peek one record to set HasMore flag
 		Find(&orgs).Error; err != nil {
-		return nil, err
+		return pageResult, err
 	}
 	//orgConfigs := make([]config.Organization, len(orgs))
 	for _, org := range orgs {
@@ -91,7 +103,33 @@ func (dao *GormOrganizationDAO) GetAll(CONSISTENCY_LEVEL int) ([]*config.Organiz
 		}
 		//	orgConfigs[i] = org
 	}
-	return orgs, nil
+	// If the peek record was returned, set the HasMore flag and remove the +1 record
+	if len(orgs) == pageQuery.PageSize+1 {
+		pageResult.HasMore = true
+		orgs = orgs[:len(orgs)-1]
+	}
+	pageResult.Entities = orgs
+	return pageResult, nil
+}
+
+func (dao *GormOrganizationDAO) ForEachPage(pageQuery query.PageQuery,
+	pagerProcFunc query.PagerProcFunc[*config.Organization], CONSISTENCY_LEVEL int) error {
+
+	pageResult, err := dao.GetPage(pageQuery, CONSISTENCY_LEVEL)
+	if err != nil {
+		return nil
+	}
+	if err = pagerProcFunc(pageResult.Entities); err != nil {
+		return err
+	}
+	if pageResult.HasMore {
+		nextPageQuery := query.PageQuery{
+			Page:      pageQuery.Page + 1,
+			PageSize:  pageQuery.PageSize,
+			SortOrder: pageQuery.SortOrder}
+		return dao.ForEachPage(nextPageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
+	}
+	return nil
 }
 
 func (dao *GormOrganizationDAO) GetUsers(orgID uint64) ([]*config.User, error) {
@@ -107,31 +145,10 @@ func (dao *GormOrganizationDAO) GetUsers(orgID uint64) ([]*config.User, error) {
 	return org.Users, nil
 }
 
-// func (dao *GormOrganizationDAO) First() (config.Organization, error) {
-// 	dao.logger.Debugf("Updating organization record")
-// 	var org config.Organization
-// 	if err := dao.db.Preload("Farms").
-// 		Preload("Users").
-// 		Preload("Users.Roles").
-// 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
-// 		Preload("Farms.Devices").
-// 		Preload("Farms.Devices.Settings").
-// 		Preload("Farms.Devices.Metrics").
-// 		Preload("Farms.Devices.Channels").
-// 		Preload("Farms.Devices.Channels.Conditions").
-// 		Preload("Farms.Devices.Channels.Schedule").
-// 		Preload("Farms.Workflows").
-// 		Preload("Farms.Workflows.Conditions").
-// 		Preload("Farms.Workflows.Schedules").
-// 		Preload("Farms.Workflows.Steps").
-// 		First(&org).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	for i, farm := range org.GetFarms() {
-// 		if err := farm.ParseConfigs(); err != nil {
-// 			return nil, err
-// 		}
-// 		org.Farms[i] = *farm.(*config.Farm)
-// 	}
-// 	return &org, nil
-// }
+func (dao *GormOrganizationDAO) Count(CONSISTENCY_LEVEL int) (int64, error) {
+	var count int64
+	if err := dao.db.Model(&config.Organization{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}

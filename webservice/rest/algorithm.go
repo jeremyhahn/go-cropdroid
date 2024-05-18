@@ -7,6 +7,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/service"
 )
 
@@ -49,7 +50,7 @@ func (restService *DefaultAlgorithmRestService) GetPage(w http.ResponseWriter, r
 	}
 	defer session.Close()
 
-	algorithms, err := restService.algorithmService.GetPage(session.GetConsistencyLevel(), 1, 10)
+	algorithms, err := restService.algorithmService.GetPage(query.NewPageQuery(), session.GetConsistencyLevel())
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return

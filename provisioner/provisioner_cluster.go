@@ -11,7 +11,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -30,16 +30,18 @@ type RaftFarmProvisioner struct {
 
 func NewRaftFarmProvisioner(app *app.App, gossip cluster.GossipNode,
 	location *time.Location, farmDAO dao.FarmDAO, userDAO dao.UserDAO,
-	userMapper mapper.UserMapper, initializer dao.Initializer) FarmProvisioner {
+	permissionDAO dao.PermissionDAO, userMapper mapper.UserMapper,
+	initializer dao.Initializer) FarmProvisioner {
 
 	return &RaftFarmProvisioner{
-		app:         app,
-		gossip:      gossip,
-		location:    location,
-		farmDAO:     farmDAO,
-		userDAO:     userDAO,
-		userMapper:  userMapper,
-		initializer: initializer}
+		app:           app,
+		gossip:        gossip,
+		location:      location,
+		farmDAO:       farmDAO,
+		userDAO:       userDAO,
+		permissionDAO: permissionDAO,
+		userMapper:    userMapper,
+		initializer:   initializer}
 }
 
 func (provisioner *RaftFarmProvisioner) Provision(
@@ -63,7 +65,7 @@ func (provisioner *RaftFarmProvisioner) Provision(
 	if params.OrganizationID > 0 {
 		userConfig.AddOrganizationRef(params.OrganizationID)
 	}
-	userConfig.AddFarmRef(farmConfig.GetID())
+	userConfig.AddFarmRef(farmConfig.ID)
 	if err := provisioner.userDAO.Save(userConfig); err != nil {
 		return nil, err
 	}

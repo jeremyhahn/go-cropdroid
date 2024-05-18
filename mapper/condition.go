@@ -31,9 +31,9 @@ func (mapper *DefaultConditionMapper) MapConfigToView(entity *config.Condition, 
 		entity.GetComparator(),
 		entity.GetThreshold())
 	return &viewmodel.Condition{
-		ID:         entity.GetID(),
+		ID:         entity.ID,
 		DeviceType: deviceType,
-		MetricID:   metric.GetID(),
+		MetricID:   metric.ID,
 		MetricName: metric.GetName(),
 		WorkflowID: entity.GetWorkflowID(),
 		ChannelID:  channelID,
@@ -44,7 +44,7 @@ func (mapper *DefaultConditionMapper) MapConfigToView(entity *config.Condition, 
 
 func (mapper *DefaultConditionMapper) MapViewToConfig(viewModel viewmodel.Condition) *config.Condition {
 	return &config.Condition{
-		ID:         viewModel.GetID(),
+		ID:         viewModel.ID,
 		WorkflowID: viewModel.GetWorkflowID(),
 		MetricID:   viewModel.GetMetricID(),
 		ChannelID:  viewModel.GetChannelID(),

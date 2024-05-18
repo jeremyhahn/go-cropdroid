@@ -55,7 +55,7 @@ func (h *FarmHub) Run() {
 				select {
 				case client.send <- farmConfig:
 					h.logger.Errorf("[FarmHub.Run] Broadcasting configuration update for farm.id=%d, farm.name=%s\n",
-						farmConfig.GetID(), farmConfig.GetName())
+						farmConfig.ID, farmConfig.GetName())
 				default:
 					h.logger.Errorf("[FarmHub.Run] Unable to send config update to client: %s", client.conn.RemoteAddr())
 					close(client.send)

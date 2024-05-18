@@ -18,9 +18,10 @@ type Device struct {
 	FirmwareVersion string            `gorm:"fw_version" yaml:"fwVersion" json:"fwVersion"`
 	ConfigMap       map[string]string `gorm:"-" yaml:"configMap" json:"configMap"`
 	//Configs         []DeviceConfigItem `yaml:"-" json:"-"`
-	Settings []*DeviceSetting `yaml:"settings" json:"settings"`
-	Metrics  []*Metric        `yaml:"metrics" json:"metrics"`
-	Channels []*Channel       `yaml:"channels" json:"channels"`
+	Settings       []*DeviceSetting `yaml:"settings" json:"settings"`
+	Metrics        []*Metric        `yaml:"metrics" json:"metrics"`
+	Channels       []*Channel       `yaml:"channels" json:"channels"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewDevice() *Device {
@@ -31,7 +32,7 @@ func NewDevice() *Device {
 		Channels:  make([]*Channel, 0)}
 }
 
-func (device *Device) GetID() uint64 {
+func (device *Device) Identifier() uint64 {
 	return device.ID
 }
 
@@ -127,10 +128,10 @@ func (device *Device) SetSettings(settings []*DeviceSetting) {
 }
 
 func (device *Device) SetSetting(deviceSetting *DeviceSetting) {
-	id := deviceSetting.GetID()
+	id := deviceSetting.ID
 	value := deviceSetting.GetValue()
 	for i, configItem := range device.Settings {
-		if configItem.GetID() == id {
+		if configItem.ID == id {
 			device.Settings[i].Value = value
 			device.ConfigMap[configItem.GetKey()] = value
 			return
@@ -155,7 +156,7 @@ func (device *Device) GetMetrics() []*Metric {
 
 func (device *Device) SetMetric(metric *Metric) {
 	for i, m := range device.Metrics {
-		if m.GetID() == metric.GetID() {
+		if m.ID == metric.ID {
 			device.Metrics[i] = metric
 			return
 		}
@@ -180,7 +181,7 @@ func (device *Device) GetChannels() []*Channel {
 
 func (device *Device) SetChannel(channel *Channel) {
 	for i, c := range device.Channels {
-		if c.GetID() == channel.GetID() {
+		if c.ID == channel.ID {
 			device.Channels[i] = channel
 			return
 		}

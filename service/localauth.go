@@ -9,7 +9,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/util"
@@ -112,13 +113,13 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common
 	}
 	userEntity.RedactPassword()
 
-	organizations, err := service.permissionDAO.GetOrganizations(userEntity.GetID(), common.CONSISTENCY_LOCAL)
+	organizations, err := service.permissionDAO.GetOrganizations(userEntity.ID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		service.app.Logger.Errorf("Error looking up organization user: %s", err)
 		return nil, nil, nil, err
 	}
 
-	farms, err := service.farmDAO.GetByUserID(userEntity.GetID(), common.CONSISTENCY_LOCAL)
+	farms, err := service.farmDAO.GetByUserID(userEntity.ID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -172,7 +173,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		if err != nil {
 			return nil, err
 		}
-		if persistedOrg.GetID() != 0 {
+		if persistedOrg.ID != 0 {
 			return nil, ErrOrgAlreadyExists
 		}
 		registration.SetOrganizationName(userCredentials.OrgName)
@@ -224,7 +225,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	}
 
 	userAccount := &model.User{
-		ID:       userConfig.GetID(),
+		ID:       userConfig.ID,
 		Email:    registration.GetEmail(),
 		Password: registration.GetPassword()}
 
@@ -237,46 +238,69 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 		service.orgDAO.Save(org)
 
 		if service.app.DefaultPermission == common.FARM_ACCESS_ALL {
-			orgs, err := service.orgDAO.GetAll(common.CONSISTENCY_QUORUM)
-			orgIds := make([]uint64, len(orgs))
-			if err != nil {
-				return nil, err
-			}
-			for i, org := range orgs {
-				for _, farmConfig := range org.GetFarms() {
-					permission := config.NewPermission()
-					permission.SetOrgID(org.GetID())
-					permission.SetFarmID(farmConfig.GetID())
-					permission.SetUserID(userConfig.GetID())
-					permission.SetRoleID(defaultRole.GetID())
-					service.permissionDAO.Save(permission)
+			err := service.orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Organization) error {
+				orgIds := make([]uint64, len(entities), len(entities))
+				for i, org := range entities {
+					for _, farmConfig := range org.GetFarms() {
+						permission := config.NewPermission()
+						permission.SetOrgID(org.ID)
+						permission.SetFarmID(farmConfig.ID)
+						permission.SetUserID(userConfig.ID)
+						permission.SetRoleID(defaultRole.ID)
+						service.permissionDAO.Save(permission)
+					}
+					orgIds[i] = org.ID
 				}
-				orgIds[i] = org.GetID()
+				userConfig.SetOrganizationRefs(orgIds)
+				return nil
+			}, common.CONSISTENCY_LOCAL)
+			if err != nil {
+				service.app.Logger.Error(err)
 			}
-			userConfig.SetOrganizationRefs(orgIds)
 		}
 	} else {
 		if service.app.DefaultPermission == common.FARM_ACCESS_ALL {
-			farms, err := service.farmDAO.GetAll(common.CONSISTENCY_LOCAL)
-			farmIds := make([]uint64, len(farms))
-			if err != nil {
-				return nil, err
-			}
-			for i, farmConfig := range farms {
-				permission := config.NewPermission()
-				permission.SetOrgID(0)
-				permission.SetFarmID(farmConfig.GetID())
-				permission.SetUserID(userConfig.GetID())
-				permission.SetRoleID(defaultRole.GetID())
-				service.permissionDAO.Save(permission)
 
-				farmIds[i] = farmConfig.GetID()
+			err := service.orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Organization) error {
+				orgIds := make([]uint64, 0, len(entities))
+				for i, org := range entities {
+					for _, farmConfig := range org.GetFarms() {
+						permission := config.NewPermission()
+						permission.SetOrgID(org.ID)
+						permission.SetFarmID(farmConfig.ID)
+						permission.SetUserID(userConfig.ID)
+						permission.SetRoleID(defaultRole.ID)
+						service.permissionDAO.Save(permission)
+					}
+					orgIds[i] = org.ID
+				}
+				userConfig.SetOrganizationRefs(orgIds)
+				return nil
+			}, common.CONSISTENCY_LOCAL)
+			if err != nil {
+				service.app.Logger.Error(err)
 			}
-			userConfig.SetFarmRefs(farmIds)
-			// Set a default role if this is a new user
-			// and there arent any farms in the system.
-			if len(farms) == 0 {
-				userConfig.SetRoles([]*config.Role{defaultRole})
+
+			err = service.farmDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Farm) error {
+				farmIDs := make([]uint64, 0, len(entities))
+				for i, farmConfig := range entities {
+					permission := config.NewPermission()
+					// permission.SetOrgID(0)
+					permission.SetFarmID(farmConfig.ID)
+					permission.SetUserID(userConfig.ID)
+					permission.SetRoleID(defaultRole.ID)
+					service.permissionDAO.Save(permission)
+
+					farmIDs[i] = farmConfig.ID
+				}
+				userConfig.SetFarmRefs(farmIDs)
+				if len(entities) == 0 {
+					userConfig.SetRoles([]*config.Role{defaultRole})
+				}
+				return nil
+			}, common.CONSISTENCY_LOCAL)
+			if err != nil {
+				service.app.Logger.Error(err)
 			}
 		}
 	}

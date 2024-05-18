@@ -20,7 +20,7 @@ func NewMetricMapper() MetricMapper {
 
 func (mapper *DefaultMetricMapper) MapConfigToModel(config *config.Metric) common.Metric {
 	return &model.Metric{
-		ID:        config.GetID(),
+		ID:        config.ID,
 		DeviceID:  config.GetDeviceID(),
 		DataType:  config.GetDataType(),
 		Name:      config.GetName(),

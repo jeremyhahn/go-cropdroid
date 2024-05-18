@@ -14,6 +14,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/util"
 )
 
@@ -30,8 +31,9 @@ const (
 	RegistrationClusterID = uint64(107)
 	DeviceStateClusterID  = uint64(108)
 	DeviceDataClusterID   = uint64(109)
+	CustomerClusterID     = uint64(110)
 	NodeCount             = 3
-	RaftLeaderID          = 3
+	RaftLeaderID          = 1
 	NodeID                = 1
 )
 
@@ -87,4 +89,54 @@ func NewClusterIntegrationTest() *LocalCluster {
 		IdSetter:    util.NewIdSetter(idGenerator)}
 
 	return NewLocalCluster(app, 3, ClusterID)
+}
+
+// TestEntity is a standard time series entity using the ID field
+type TestEntity struct {
+	ID                    uint64 `yaml:"id" json:"id"`
+	Name                  string `yaml:"name" json:"name"`
+	config.KeyValueEntity `yaml:"-" json:"-"`
+}
+
+func NewTestEntity() *TestEntity {
+	return new(TestEntity)
+}
+
+func (te *TestEntity) SetID(id uint64) {
+	te.ID = id
+}
+
+func (te *TestEntity) Identifier() uint64 {
+	return te.ID
+}
+
+// TestEntityWithTimeSeriesIndex is a cusotm entity whose ID field is set
+// to an arbitary ID, and uses the Created field to store the timestamp value
+// of when the entity was created. The Raft DAO and state machines will see
+// that this entity implements the TimeSeries
+type TestEntityWithTimeSeriesIndex struct {
+	ID                         uint64 `yaml:"id" json:"id"`
+	Name                       string `yaml:"name" json:"name"`
+	Created                    uint64 `yaml:"created" json:"created"`
+	config.TimeSeriesIndexeder `yaml:"-" json:"-"`
+}
+
+func NewTestEntityWithTimeSeriesIndex() *TestEntityWithTimeSeriesIndex {
+	return new(TestEntityWithTimeSeriesIndex)
+}
+
+func (te *TestEntityWithTimeSeriesIndex) SetID(id uint64) {
+	te.ID = id
+}
+
+func (te *TestEntityWithTimeSeriesIndex) Identifier() uint64 {
+	return te.ID
+}
+
+func (te *TestEntityWithTimeSeriesIndex) SetTimestamp(timestamp uint64) {
+	te.Created = timestamp
+}
+
+func (te *TestEntityWithTimeSeriesIndex) Timestamp() uint64 {
+	return te.Created
 }

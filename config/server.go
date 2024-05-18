@@ -4,6 +4,7 @@ type Server struct {
 	ID               uint64
 	OrganizationRefs []uint64 `yaml:"organizationRefs" json:"organizationRefs" mapstructure:"organizations"`
 	FarmRefs         []uint64 `yaml:"farmRefs" json:"farmRefs" mapstructure:"farms"`
+	KeyValueEntity   `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewServer() *Server {
@@ -16,7 +17,7 @@ func (server *Server) SetID(id uint64) {
 	server.ID = id
 }
 
-func (server *Server) GetID() uint64 {
+func (server *Server) Identifier() uint64 {
 	return server.ID
 }
 

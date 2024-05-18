@@ -18,8 +18,10 @@ import (
 	"github.com/lni/dragonboat/v3/logger"
 	"github.com/lni/dragonboat/v3/raftio"
 
-	"github.com/jeremyhahn/go-cropdroid/cluster/statemachine"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	cdconfig "github.com/jeremyhahn/go-cropdroid/config"
+
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/statemachine"
 
 	"github.com/jeremyhahn/go-cropdroid/cluster/util"
 
@@ -115,7 +117,6 @@ func NewRaftNode(params *util.ClusterParams, hashring *util.Consistent) RaftNode
 		}*/
 
 	var nodeAddr string
-	raftNodeID := params.NodeID + uint64(1)
 	initialMembers := make(map[uint64]string)
 	if !params.Join {
 		// Bootsrap the cluster
@@ -129,10 +130,10 @@ func NewRaftNode(params *util.ClusterParams, hashring *util.Consistent) RaftNode
 		hashring.Add(nodeAddr)
 	}
 	if nodeAddr == "" {
-		nodeAddr = initialMembers[raftNodeID]
+		nodeAddr = initialMembers[params.NodeID]
 	}
 
-	fmt.Fprintf(os.Stdout, "Raft node=%d, address=%s\n", raftNodeID, nodeAddr)
+	fmt.Fprintf(os.Stdout, "Raft node=%d, address=%s\n", params.NodeID, nodeAddr)
 
 	// change the log verbosity
 	logger.GetLogger("raft").SetLevel(logger.ERROR)
@@ -141,7 +142,7 @@ func NewRaftNode(params *util.ClusterParams, hashring *util.Consistent) RaftNode
 	logger.GetLogger("grpc").SetLevel(logger.WARNING)
 
 	rc := config.Config{
-		NodeID: raftNodeID,
+		NodeID: params.NodeID,
 		//ElectionRTT:        5,
 		//HeartbeatRTT:       1,
 		ElectionRTT:        10,
@@ -180,8 +181,9 @@ func NewRaftNode(params *util.ClusterParams, hashring *util.Consistent) RaftNode
 	r.session[params.ClusterID] = nh.GetNoOPSession(params.ClusterID)
 	r.proposalChan[params.ClusterID] = make(chan []byte, common.BUFFERED_CHANNEL_SIZE)
 
-	systemSM := statemachine.NewServerConfigMachine(params.Logger, params.IdGenerator, params.DataDir, params.ClusterID, params.NodeID)
-	if err := nh.StartOnDiskCluster(initialMembers, params.Join, systemSM.CreateServerConfigMachine, rc); err != nil {
+	systemSM := statemachine.NewGenericOnDiskStateMachine[*cdconfig.Server](params.Logger,
+		params.IdGenerator, params.DataDir, params.ClusterID, params.NodeID)
+	if err := nh.StartOnDiskCluster(initialMembers, params.Join, systemSM.CreateOnDiskStateMachine, rc); err != nil {
 		params.Logger.Fatalf("Failed to create system raft cluster: %s", err)
 	}
 
@@ -217,7 +219,8 @@ func (r *Raft) WaitForClusterReady(clusterID uint64) bool {
 		_, ready, _ = getLeaderFunc()
 	}
 	if r.params.RaftOptions.RequestedLeaderID > 0 && leaderID != r.params.RaftOptions.RequestedLeaderID {
-		r.params.Logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader", r.params.RaftOptions.RequestedLeaderID)
+		r.params.Logger.Infof("[Raft.WaitForClusterReady] Requesting node %d be raft leader for cluster %d",
+			r.params.RaftOptions.RequestedLeaderID, clusterID)
 		err = r.nodeHost.RequestLeaderTransfer(clusterID, r.params.RaftOptions.RequestedLeaderID)
 		if err != nil {
 			r.params.Logger.Error(err)

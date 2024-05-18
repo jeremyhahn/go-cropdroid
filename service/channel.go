@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -39,7 +39,7 @@ func (service *DefaultChannelService) Get(session Session, id uint64) (common.Ch
 func (service *DefaultChannelService) GetAll(session Session, deviceID uint64) ([]common.Channel, error) {
 	farmService := session.GetFarmService()
 	orgID := session.GetRequestedOrganizationID()
-	//userID := session.GetUser().GetID()
+	//userID := session.GetUser().ID
 	farmID := farmService.GetFarmID()
 	consistencyLevel := farmService.GetConsistencyLevel()
 	entities, err := service.dao.GetByDevice(orgID, farmID, deviceID, consistencyLevel)
@@ -59,7 +59,7 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 	orgID := session.GetRequestedOrganizationID()
 	farmID := session.GetRequestedFarmID()
 	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
-	persisted, err := service.dao.Get(orgID, farmID, channelConfig.GetID(), consistencyLevel)
+	persisted, err := service.dao.Get(orgID, farmID, channelConfig.ID, consistencyLevel)
 	if err != nil {
 		return err
 	}
@@ -71,9 +71,9 @@ func (service *DefaultChannelService) Update(session Session, viewModel common.C
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
-		if device.GetID() == channelConfig.GetDeviceID() {
+		if device.ID == channelConfig.GetDeviceID() {
 			for _, ch := range device.GetChannels() {
-				if ch.GetID() == channelConfig.GetID() {
+				if ch.ID == channelConfig.ID {
 					// conditions and schedules not sent by android client
 					// android ui bug?
 					channelConfig.SetConditions(ch.GetConditions())

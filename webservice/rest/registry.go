@@ -17,7 +17,7 @@ func NewRestServiceRegistry(app *app.App, publicKey string,
 	mapperRegistry mapper.MapperRegistry,
 	serviceRegistry service.ServiceRegistry) RestServiceRegistry {
 
-	jsonWriter := NewJsonWriter()
+	jsonWriter := NewJsonWriter(app.Logger)
 	jwtService := serviceRegistry.GetJsonWebTokenService()
 	farmProvisioner := serviceRegistry.GetFarmProvisioner()
 

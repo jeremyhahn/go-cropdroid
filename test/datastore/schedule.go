@@ -5,7 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,21 +19,21 @@ func TestScheduleCRUD(t *testing.T, scheduleDAO dao.ScheduleDAO,
 	schedule1 := schedules[0]
 	schedule2 := schedules[1]
 
-	err := scheduleDAO.Save(farm1.GetID(), device1.GetID(), schedule1)
+	err := scheduleDAO.Save(farm1.ID, device1.ID, schedule1)
 	assert.Nil(t, err)
 
-	err = scheduleDAO.Save(farm1.GetID(), device1.GetID(), schedule2)
+	err = scheduleDAO.Save(farm1.ID, device1.ID, schedule2)
 	assert.Nil(t, err)
 
-	persistedSchedules, err := scheduleDAO.GetByChannelID(farm1.GetID(),
-		device1.GetID(), channel1.GetID(), common.CONSISTENCY_LOCAL)
+	persistedSchedules, err := scheduleDAO.GetByChannelID(farm1.ID,
+		device1.ID, channel1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(persistedSchedules))
 
 	found := false
 	for _, persistedSchedule := range persistedSchedules {
-		if schedule1.GetID() == persistedSchedule.GetID() {
-			assert.Equal(t, schedule1.GetID(), persistedSchedule.GetID())
+		if schedule1.ID == persistedSchedule.ID {
+			assert.Equal(t, schedule1.ID, persistedSchedule.ID)
 			assert.Equal(t, schedule1.GetChannelID(), persistedSchedule.GetChannelID())
 			assert.Equal(t, schedule1.GetFrequency(), persistedSchedule.GetFrequency())
 			assert.Equal(t, schedule1.GetInterval(), persistedSchedule.GetInterval())
@@ -45,11 +45,11 @@ func TestScheduleCRUD(t *testing.T, scheduleDAO dao.ScheduleDAO,
 	}
 	assert.True(t, found)
 
-	err = scheduleDAO.Delete(farm1.GetID(), device1.GetID(),
+	err = scheduleDAO.Delete(farm1.ID, device1.ID,
 		persistedSchedules[0])
 
-	persistedSchedules, err = scheduleDAO.GetByChannelID(farm1.GetID(),
-		device1.GetID(), channel1.GetID(), common.CONSISTENCY_LOCAL)
+	persistedSchedules, err = scheduleDAO.GetByChannelID(farm1.ID,
+		device1.ID, channel1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(persistedSchedules))
 }

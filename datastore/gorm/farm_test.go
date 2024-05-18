@@ -70,7 +70,7 @@ func TestFarmGetByIds(t *testing.T) {
 	dstest.TestFarmGetByIds(t, farmDAO, farm1, farm2)
 }
 
-func TestFarmGetAll(t *testing.T) {
+func TestFarmGetPage(t *testing.T) {
 
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
@@ -102,7 +102,7 @@ func TestFarmGetAll(t *testing.T) {
 	err = farmDAO.Save(farm2)
 	assert.Nil(t, err)
 
-	dstest.TestFarmGetAll(t, farmDAO, farm1, farm2)
+	dstest.TestFarmGetPage(t, farmDAO, farm1, farm2)
 }
 
 func TestFarmGet(t *testing.T) {

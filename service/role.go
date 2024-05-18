@@ -5,7 +5,8 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	logging "github.com/op/go-logging"
 )
 
@@ -28,6 +29,6 @@ func NewRoleService(logger *logging.Logger,
 }
 
 // Returns a list of all Role entities in the database
-func (service *DefaultRoleService) GetAll() ([]*config.Role, error) {
-	return service.roleDAO.GetAll(common.CONSISTENCY_LOCAL)
+func (service *DefaultRoleService) GetPage(pageQuery query.PageQuery) (dao.PageResult[*config.Role], error) {
+	return service.roleDAO.GetPage(pageQuery, common.CONSISTENCY_LOCAL)
 }

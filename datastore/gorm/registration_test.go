@@ -27,14 +27,14 @@ func TestRegistrationCRUD(t *testing.T) {
 	err := registrationDAO.Save(registration)
 	assert.Nil(t, err)
 
-	persistedRegistration, err := registrationDAO.Get(registration.GetID(), consistencyLevel)
+	persistedRegistration, err := registrationDAO.Get(registration.ID, consistencyLevel)
 	assert.Nil(t, err)
 	assert.Equal(t, testRegistrationName, persistedRegistration.GetEmail())
 
 	err = registrationDAO.Delete(persistedRegistration)
 	assert.Nil(t, err)
 
-	persistedRegistration2, err := registrationDAO.Get(registration.GetID(), consistencyLevel)
+	persistedRegistration2, err := registrationDAO.Get(registration.ID, consistencyLevel)
 	assert.Nil(t, persistedRegistration2)
 	assert.Equal(t, err.Error(), "record not found")
 }

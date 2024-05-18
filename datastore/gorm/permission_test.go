@@ -5,6 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestUserRoleRelationship(t *testing.T) {
 	persisted, err := userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 
-	assert.Equal(t, persisted.GetID(), user.GetID())
+	assert.Equal(t, persisted.ID, user.ID)
 	assert.Equal(t, "root@localhost", persisted.GetEmail())
 	assert.Equal(t, "$ecret", persisted.GetPassword())
 	assert.Equal(t, 1, len(persisted.GetRoles()))
@@ -98,22 +99,22 @@ func TestPermissions(t *testing.T) {
 
 	permission := &config.Permission{
 		OrganizationID: 0,
-		FarmID:         farm.GetID(),
-		UserID:         user.GetID(),
-		RoleID:         role.GetID()}
+		FarmID:         farm.ID,
+		UserID:         user.ID,
+		RoleID:         role.ID}
 
 	permissionDAO.Save(permission)
 
 	// Verify Get(id)
-	persisted, err := farmDAO.Get(farm.GetID(), common.CONSISTENCY_LOCAL)
+	persisted, err := farmDAO.Get(farm.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, farm.GetID(), persisted.GetID())
+	assert.Equal(t, farm.ID, persisted.ID)
 
 	// Verify GetByUserID(userID)
-	userFarms, err := farmDAO.GetByUserID(user.GetID(), common.CONSISTENCY_LOCAL)
+	userFarms, err := farmDAO.GetByUserID(user.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(userFarms))
-	assert.Equal(t, farm.GetID(), userFarms[0].GetID())
+	assert.Equal(t, farm.ID, userFarms[0].ID)
 }
 
 func TestGetOrganizations(t *testing.T) {
@@ -190,28 +191,28 @@ func TestGetOrganizations(t *testing.T) {
 	assert.Nil(t, err)
 
 	// make sure orgs are returned fully hydrated
-	orgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(orgs))
-	assert.Equal(t, 1, len(orgs[0].GetFarms()))
-	assert.Equal(t, 1, len(orgs[1].GetFarms()))
+	assert.Equal(t, 2, len(page1.Entities))
+	assert.Equal(t, 1, len(page1.Entities[0].GetFarms()))
+	assert.Equal(t, 1, len(page1.Entities[1].GetFarms()))
 
 	permissionDAO.Save(&config.Permission{
-		OrganizationID: orgConfig.GetID(),
+		OrganizationID: orgConfig.ID,
 		FarmID:         0,
-		UserID:         user.GetID(),
-		RoleID:         role.GetID()})
+		UserID:         user.ID,
+		RoleID:         role.ID})
 
 	permissionDAO.Save(&config.Permission{
-		OrganizationID: orgConfig2.GetID(),
+		OrganizationID: orgConfig2.ID,
 		FarmID:         0,
-		UserID:         user.GetID(),
-		RoleID:         role.GetID()})
+		UserID:         user.ID,
+		RoleID:         role.ID})
 
-	persistedOrgs, err := permissionDAO.GetOrganizations(user.GetID(),
+	persistedOrgs, err := permissionDAO.GetOrganizations(user.ID,
 		common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(persistedOrgs))
-	assert.Equal(t, persistedOrgs[0].GetID(), orgConfig.GetID())
-	assert.Equal(t, persistedOrgs[1].GetID(), orgConfig2.GetID())
+	assert.Equal(t, persistedOrgs[0].ID, orgConfig.ID)
+	assert.Equal(t, persistedOrgs[1].ID, orgConfig2.ID)
 }

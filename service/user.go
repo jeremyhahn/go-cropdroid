@@ -6,7 +6,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -114,7 +114,7 @@ func (service *DefaultUserService) Refresh(userID uint64) (common.UserAccount,
 ORG_LOOP:
 	for _, org := range organizations {
 		for _, u := range org.GetUsers() {
-			if user.GetID() == userID {
+			if user.ID == userID {
 				user = u
 				user.RedactPassword()
 				break ORG_LOOP
@@ -137,11 +137,11 @@ ORG_LOOP:
 		return userAccount, organizations, farms, nil
 	}
 
-	if user.GetID() == 0 && len(organizations) == 0 {
+	if user.ID == 0 && len(organizations) == 0 {
 	FARM_LOOP:
 		for _, farm := range farms {
 			for _, u := range farm.GetUsers() {
-				if u.GetID() == userID {
+				if u.ID == userID {
 					user = u
 					user.RedactPassword()
 					break FARM_LOOP
@@ -150,7 +150,7 @@ ORG_LOOP:
 		}
 	}
 
-	if user.GetID() == 0 {
+	if user.ID == 0 {
 		return nil, nil, nil, ErrUserNotFound
 	}
 

@@ -1,11 +1,12 @@
 {
- "farm_id": 1575691750,
+ "ID": 2390370646,
+ "farm_id": 2525190991,
  "device_id": 2574880661,
  "metrics": {
   "co2": 800,
   "heatIndex": 1,
   "heatIndex0": 72,
-  "heatIndex1": 66,
+  "heatIndex1": 889,
   "heatIndex2": 24.9,
   "humidity0": 60,
   "humidity1": 3,
@@ -25,12 +26,12 @@
   "water1": 63
  },
  "channels": [
-  1,
+  0,
   1,
   0,
   1,
   0,
   0
  ],
- "timestamp": "2024-04-16T11:59:38.548819059-04:00"
+ "timestamp": "2024-05-18T13:15:33.924813458-04:00"
 }

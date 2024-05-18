@@ -6,7 +6,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
@@ -43,7 +43,7 @@ func (service *DefaultWorkflowService) GetWorkflow(session Session,
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
-		if workflow.GetID() == workflowID {
+		if workflow.ID == workflowID {
 			return workflow, nil
 		}
 	}
@@ -90,7 +90,7 @@ func (service *DefaultWorkflowService) GetListView(session Session, farmID uint6
 			step.SetDeviceType(deviceType)
 			//viewWorkflow.SetStep(step)
 			for _, channel := range device.GetChannels() {
-				if channel.GetID() == step.GetChannelID() {
+				if channel.ID == step.GetChannelID() {
 					channelName := channel.GetName()
 					step.SetChannelName(channelName)
 					step.SetText(fmt.Sprintf("%s %s ON for %ds, wait %ds",
@@ -141,7 +141,7 @@ func (service *DefaultWorkflowService) Run(session Session, workflowID uint64) e
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
-		if workflow.GetID() == workflowID {
+		if workflow.ID == workflowID {
 			session.GetFarmService().RunWorkflow(workflow)
 			return nil
 		}

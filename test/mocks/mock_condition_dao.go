@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/stretchr/testify/mock"
 )
 

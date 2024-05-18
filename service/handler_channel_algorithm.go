@@ -74,7 +74,7 @@ func (h *ChannelAlgorithmHandler) Handle() (bool, error) {
 			return false, err
 		}
 		if h.channel.GetBackoff() > 0 {
-			h.backoffTable[h.channel.GetID()] = time.Now()
+			h.backoffTable[h.channel.ID] = time.Now()
 		}
 		return true, nil
 	}

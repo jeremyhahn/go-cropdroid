@@ -6,96 +6,67 @@ package raft
 import (
 	"testing"
 
-	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
+	dstest "github.com/jeremyhahn/go-cropdroid/test/datastore"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFarmAssociations(t *testing.T) {
 
-	raftNode1 := IntegrationTestCluster.GetRaftNode1()
+	org, _, farm1DAO, _ := createRaftTestOrganization(t, IntegrationTestCluster, ClusterID)
+	farm1 := org.GetFarms()[0]
 
-	serverDAO := NewGenericRaftDAO[*config.Server](
-		IntegrationTestCluster.app.Logger,
-		raftNode1,
-		ClusterID)
-	assert.NotNil(t, serverDAO)
-
-	userDAO := NewGenericRaftDAO[*config.User](
-		IntegrationTestCluster.app.Logger,
-		raftNode1,
-		UserClusterID)
-	assert.NotNil(t, userDAO)
-
-	farmDAO := NewRaftFarmConfigDAO(
-		IntegrationTestCluster.app.Logger,
-		raftNode1,
-		FarmConfigClusterID,
-		serverDAO,
-		userDAO)
-
-	userDAO.StartLocalCluster(IntegrationTestCluster, true)
-	farmDAO.StartLocalCluster(IntegrationTestCluster, true)
-
-	// org := createRaftTestOrganization(t, Cluster,
-	// 	ClusterID, serverDAO, userDAO, farmDAO)
-	// farm1 := org.GetFarms()[0]
-
-	// dstest.TestFarmAssociations(t, Cluster.app.IdGenerator, farmDAO, farm1)
+	dstest.TestFarmAssociations(t, IntegrationTestCluster.app.IdGenerator, farm1DAO, farm1)
 }
 
-// func TestFarmGetByIds(t *testing.T) {
+func TestFarmGetPage(t *testing.T) {
 
-// 	serverDAO := NewRaftServerDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), ClusterID)
+	org, _, farm1DAO, farm2DAO := createRaftTestOrganization(t, IntegrationTestCluster, ClusterID)
+	farm1 := org.GetFarms()[0]
 
-// 	userDAO := NewRaftUserDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), UserClusterID)
+	page1, err := farm1DAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(page1.Entities))
+	assert.Equal(t, farm1.Name, page1.Entities[0].GetName())
 
-// 	farmDAO := NewRaftFarmConfigDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), serverDAO, userDAO)
+	farm2 := org.GetFarms()[1]
+	page1, err = farm2DAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(page1.Entities))
+	assert.Equal(t, farm2.Name, page1.Entities[0].GetName())
+}
 
-// 	org := createRaftTestOrganization(t, Cluster, ClusterID,
-// 		serverDAO, userDAO, farmDAO)
-// 	farm1 := org.GetFarms()[0]
-// 	farm2 := org.GetFarms()[1]
+func TestFarmGet(t *testing.T) {
 
-// 	dstest.TestFarmGetByIds(t, farmDAO, farm1, farm2)
-// }
+	org, _, farm1DAO, farm2DAO := createRaftTestOrganization(t, IntegrationTestCluster, ClusterID)
+	farm1 := org.GetFarms()[0]
+	farm2 := org.GetFarms()[1]
 
-// func TestFarmGetAll(t *testing.T) {
+	result, err := farm1DAO.Get(farm1.ID, common.CONSISTENCY_LOCAL)
+	assert.Nil(t, err)
+	assert.Equal(t, farm1.Name, result.GetName())
 
-// 	serverDAO := NewRaftServerDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), ClusterID)
+	result, err = farm2DAO.Get(farm2.ID, common.CONSISTENCY_LOCAL)
+	assert.Nil(t, err)
+	assert.Equal(t, farm2.Name, result.GetName())
+}
 
-// 	userDAO := NewRaftUserDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), UserClusterID)
+func TestFarmGetByIds(t *testing.T) {
 
-// 	farmDAO := NewRaftFarmConfigDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), serverDAO, userDAO)
+	org, _, farm1DAO, farm2DAO := createRaftTestOrganization(t, IntegrationTestCluster, ClusterID)
+	farm1 := org.GetFarms()[0]
+	farm2 := org.GetFarms()[1]
 
-// 	org := createRaftTestOrganization(t, Cluster, ClusterID,
-// 		serverDAO, userDAO, farmDAO)
-// 	farm1 := org.GetFarms()[0]
-// 	farm2 := org.GetFarms()[1]
+	err := farm1DAO.Save(farm1)
+	assert.Nil(t, err)
 
-// 	dstest.TestFarmGetAll(t, farmDAO, farm1, farm2)
-// }
+	err = farm2DAO.Save(farm2)
+	assert.Nil(t, err)
 
-// func TestFarmGet(t *testing.T) {
+	farmIDs := []uint64{farm1.ID, farm2.ID}
+	farms, err := farm1DAO.GetByIds(farmIDs, common.CONSISTENCY_LOCAL)
+	assert.Nil(t, err)
 
-// 	serverDAO := NewRaftServerDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), ClusterID)
-
-// 	userDAO := NewRaftUserDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), UserClusterID)
-
-// 	farmDAO := NewRaftFarmConfigDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), serverDAO, userDAO)
-
-// 	org := createRaftTestOrganization(t, Cluster, ClusterID,
-// 		serverDAO, userDAO, farmDAO)
-// 	farm1 := org.GetFarms()[0]
-// 	farm2 := org.GetFarms()[1]
-
-// 	dstest.TestFarmGet(t, farmDAO, farm1, farm2)
-// }
+	assert.Equal(t, 2, len(farms))
+}

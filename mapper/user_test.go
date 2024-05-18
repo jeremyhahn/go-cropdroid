@@ -18,12 +18,12 @@ func TestUserMapper(t *testing.T) {
 	entity := mapper.MapUserModelToConfig(user)
 	assert.NotNil(t, entity)
 
-	assert.Equal(t, user.GetID(), entity.GetID())
+	assert.Equal(t, user.ID, entity.ID)
 	assert.Equal(t, user.GetEmail(), entity.GetEmail())
 	assert.Equal(t, user.GetPassword(), entity.GetPassword())
 
 	model := mapper.MapUserConfigToModel(entity)
-	assert.Equal(t, entity.GetID(), model.GetID())
+	assert.Equal(t, entity.ID, model.GetID())
 	assert.Equal(t, entity.GetEmail(), model.GetEmail())
 	assert.Equal(t, entity.GetPassword(), model.GetPassword())
 }

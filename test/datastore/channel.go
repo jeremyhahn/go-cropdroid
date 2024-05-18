@@ -5,7 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,19 +17,19 @@ func TestChannelCRUD(t *testing.T, channelDAO dao.ChannelDAO,
 	channel1 := device1.GetChannels()[0]
 	channel2 := device1.GetChannels()[1]
 
-	err := channelDAO.Save(farm1.GetID(), channel1)
+	err := channelDAO.Save(farm1.ID, channel1)
 	assert.Nil(t, err)
 
-	err = channelDAO.Save(farm1.GetID(), channel2)
+	err = channelDAO.Save(farm1.ID, channel2)
 	assert.Nil(t, err)
 
 	orgID := uint64(0)
-	farmID := farm1.GetID()
+	farmID := farm1.ID
 	persistedChannel, err := channelDAO.Get(orgID, farmID,
-		channel1.GetID(), common.CONSISTENCY_LOCAL)
+		channel1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 
-	assert.Equal(t, channel1.GetID(), persistedChannel.GetID())
+	assert.Equal(t, channel1.ID, persistedChannel.ID)
 	assert.Equal(t, channel1.GetDeviceID(), persistedChannel.GetDeviceID())
 	assert.Equal(t, channel1.GetName(), persistedChannel.GetName())
 	assert.Equal(t, channel1.IsEnabled(), persistedChannel.IsEnabled())
@@ -53,22 +53,22 @@ func TestChannelGetByDevice(t *testing.T, farmDAO dao.FarmDAO,
 
 	permissionDAO.Save(&config.Permission{
 		OrganizationID: 0,
-		FarmID:         farm1.GetID(),
-		UserID:         farm1.GetUsers()[0].GetID(),
-		RoleID:         farm1.GetUsers()[0].GetRoles()[0].GetID()})
+		FarmID:         farm1.ID,
+		UserID:         farm1.GetUsers()[0].ID,
+		RoleID:         farm1.GetUsers()[0].GetRoles()[0].ID})
 
 	newChannelName := "newtest"
 	channel1.SetName(newChannelName)
-	err = channelDAO.Save(farm1.GetID(), channel1)
+	err = channelDAO.Save(farm1.ID, channel1)
 	assert.Nil(t, err)
 
-	device, err := deviceDAO.Get(farm1.GetID(), device1.GetID(), common.CONSISTENCY_LOCAL)
+	device, err := deviceDAO.Get(farm1.ID, device1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.NotNil(t, device)
-	assert.Equal(t, device1.GetID(), device.GetID())
+	assert.Equal(t, device1.ID, device.ID)
 
-	persistedChannels, err := channelDAO.GetByDevice(org.GetID(),
-		farm1.GetID(), device1.GetID(), common.CONSISTENCY_LOCAL)
+	persistedChannels, err := channelDAO.GetByDevice(org.ID,
+		farm1.ID, device1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(persistedChannels))
 
@@ -78,7 +78,7 @@ func TestChannelGetByDevice(t *testing.T, farmDAO dao.FarmDAO,
 	// This loop performs assertions regardless of order
 	found := false
 	for _, persistedChannel := range persistedChannels {
-		if channel1.GetID() == persistedChannel.GetID() {
+		if channel1.ID == persistedChannel.ID {
 			assert.Equal(t, channel1.GetDeviceID(), persistedChannel.GetDeviceID())
 			assert.Equal(t, newChannelName, persistedChannel.GetName())
 			assert.Equal(t, channel1.IsEnabled(), persistedChannel.IsEnabled())

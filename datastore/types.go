@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	ErrNotFound          = errors.New("not found")
+	ErrNotFound          = errors.New("record not found")
 	ErrUnexpectedQuery   = errors.New("unexpected query")
 	ErrMetricKeyNotFound = errors.New("metric key not found")
 	ErrNullEntityId      = errors.New("null entity id")
@@ -46,7 +46,6 @@ type Changefeed interface {
 }
 
 type DeviceDataStore interface {
-	//CreateTable(tableName string, deviceState state.DeviceStateMap) error
 	Save(deviceID uint64, deviceState state.DeviceStateMap) error
 	GetLast30Days(deviceID uint64, metric string) ([]float64, error)
 }

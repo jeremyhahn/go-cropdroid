@@ -6,8 +6,9 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stripe/stripe-go/v78"
@@ -112,16 +113,16 @@ func TestCreateCustomer(t *testing.T) {
 	assert.Equal(t, stripeCustomer.Email, customer.Email)
 	assert.NotEmpty(t, stripeCustomer.ProcessorID)
 
-	customers, err := customerDAO.GetPage(common.CONSISTENCY_LOCAL, 1, 10)
+	page1, err := customerDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(customers))
-	assert.Equal(t, customer.Name, customers[0].Name)
-	assert.Equal(t, customer.Email, customers[0].Email)
+	assert.Equal(t, 1, len(page1.Entities))
+	assert.Equal(t, customer.Name, page1.Entities[0].Name)
+	assert.Equal(t, customer.Email, page1.Entities[0].Email)
 	assert.Equal(t, customer.ProcessorID, stripeCustomer.ProcessorID)
-	assert.NotEmpty(t, customer.ProcessorID, customers[0].ProcessorID)
+	assert.NotEmpty(t, customer.ProcessorID, page1.Entities[0].ProcessorID)
 
-	assert.Equal(t, customer.Address, customers[0].Address)
-	assert.Equal(t, customer.Shipping, customers[0].Shipping)
+	assert.Equal(t, customer.Address, page1.Entities[0].Address)
+	assert.Equal(t, customer.Shipping, page1.Entities[0].Shipping)
 }
 
 func TestUpdateCustomer(t *testing.T) {
@@ -158,16 +159,16 @@ func TestUpdateCustomer(t *testing.T) {
 	assert.Equal(t, updatedCustomerConfig.Shipping.Address.PostalCode, customer.Shipping.Address.PostalCode)
 	assert.Equal(t, updatedCustomerConfig.Shipping.Address.Country, customer.Shipping.Address.Country)
 
-	customers, err := customerDAO.GetPage(common.CONSISTENCY_LOCAL, 1, 10)
+	page1, err := customerDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(customers))
-	assert.Equal(t, newCustomerName, customers[0].Name)
-	assert.Equal(t, customer.Email, customers[0].Email)
-	assert.NotEmpty(t, customerConfig.ProcessorID, customers[0].ProcessorID)
-	assert.NotEmpty(t, updatedCustomerConfig.ProcessorID, customers[0].ProcessorID)
+	assert.Equal(t, 1, len(page1.Entities))
+	assert.Equal(t, newCustomerName, page1.Entities[0].Name)
+	assert.Equal(t, customer.Email, page1.Entities[0].Email)
+	assert.NotEmpty(t, customerConfig.ProcessorID, page1.Entities[0].ProcessorID)
+	assert.NotEmpty(t, updatedCustomerConfig.ProcessorID, page1.Entities[0].ProcessorID)
 
-	assert.Equal(t, customer.Address, customers[0].Address)
-	assert.Equal(t, customer.Shipping, customers[0].Shipping)
+	assert.Equal(t, customer.Address, page1.Entities[0].Address)
+	assert.Equal(t, customer.Shipping, page1.Entities[0].Shipping)
 }
 
 func TestGetPaymentMethods(t *testing.T) {

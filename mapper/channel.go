@@ -20,7 +20,7 @@ func NewChannelMapper() ChannelMapper {
 
 func (mapper *DefaultChannelMapper) MapConfigToModel(channel *config.Channel) common.Channel {
 	return &model.Channel{
-		ID:          channel.GetID(),
+		ID:          channel.ID,
 		DeviceID:    channel.GetDeviceID(),
 		ChannelID:   channel.GetChannelID(),
 		Name:        channel.GetName(),

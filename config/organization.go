@@ -15,7 +15,8 @@ type Organization struct {
 	//Devices        []Device `yaml:"devices" json:"devices"`
 	Users []*User `gorm:"foreignKey:ID" yaml:"users" json:"users"`
 	//Users              []User   `yaml:"users" json:"users"`
-	License *License `yaml:"license" json:"license"`
+	License        *License `yaml:"license" json:"license"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewOrganization() *Organization {
@@ -36,7 +37,7 @@ func (org *Organization) SetID(id uint64) {
 }
 
 // GetID returns the unique identifier for the org
-func (org *Organization) GetID() uint64 {
+func (org *Organization) Identifier() uint64 {
 	return org.ID
 }
 
@@ -68,7 +69,7 @@ func (org *Organization) GetFarms() []*Farm {
 // GetFarm returns the specified farm from the org
 func (org *Organization) GetFarm(id uint64) (*Farm, error) {
 	for _, farm := range org.Farms {
-		if farm.GetID() == id {
+		if farm.ID == id {
 			return farm, nil
 		}
 	}
@@ -81,7 +82,7 @@ func (org *Organization) AddUser(user *User) {
 
 func (org *Organization) RemoveUser(user *User) {
 	for i, u := range org.Users {
-		if u.ID == user.GetID() {
+		if u.ID == user.ID {
 			org.Users = append(org.Users[:i], org.Users[i+1:]...)
 			break
 		}

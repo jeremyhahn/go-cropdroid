@@ -10,7 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -86,7 +86,7 @@ func (service *DefaultScheduleService) GetSchedule(session Session, channelID ui
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			if channel.GetID() == channelID {
+			if channel.ID == channelID {
 				return channel.GetSchedule(), farmService.SetConfig(farmConfig)
 			}
 		}
@@ -115,7 +115,7 @@ func (service *DefaultScheduleService) Create(session Session, schedule *config.
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			if channel.GetID() == schedule.GetChannelID() {
+			if channel.ID == schedule.GetChannelID() {
 				schedule.SetID(schedule.Hash())
 				channel.SetScheduleItem(schedule)
 				device.SetChannel(channel)
@@ -135,7 +135,7 @@ func (service *DefaultScheduleService) Update(session Session, schedule *config.
 		for _, channel := range device.GetChannels() {
 			schedules := channel.GetSchedule()
 			for i := range schedules {
-				if channel.GetID() == schedule.GetChannelID() {
+				if channel.ID == schedule.GetChannelID() {
 					//s := schedule.(*config.Schedule)
 					//channel.Schedule[i] = *s
 					schedules[i] = schedule
@@ -159,7 +159,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule *config.
 			//if channel.GetChannelID() == schedule.GetChannelID() {
 			schedules := channel.GetSchedule()
 			for i, _schedule := range schedules {
-				if _schedule.GetID() == schedule.GetID() {
+				if _schedule.ID == schedule.ID {
 					schedules = append(schedules[:i], schedules[i+1:]...)
 					//channel.Schedule = append(channel.Schedule[:i], channel.Schedule[i+1:]...)
 					device.SetChannel(channel)

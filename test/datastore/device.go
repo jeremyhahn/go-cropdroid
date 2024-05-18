@@ -5,7 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,9 +20,9 @@ func TestDeviceCRUD(t *testing.T, deviceDAO dao.DeviceDAO,
 	err = deviceDAO.Save(device1)
 	assert.Nil(t, err)
 
-	persisetdDevice, err := deviceDAO.Get(farm.GetID(),
-		device1.GetID(), common.CONSISTENCY_LOCAL)
+	persisetdDevice, err := deviceDAO.Get(farm.ID,
+		device1.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, device1.GetFarmID(), farm.GetID())
+	assert.Equal(t, device1.GetFarmID(), farm.ID)
 	assert.Equal(t, "newdevice", persisetdDevice.GetType())
 }

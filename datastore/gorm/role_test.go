@@ -5,6 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,12 +40,12 @@ func TestRole_GetByUserAndOrgID_SingleRole(t *testing.T) {
 		RoleID:         1,
 		OrganizationID: 0})
 
-	roles, err := roleDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := roleDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(roles))
-	assert.Equal(t, "admin", roles[0].GetName())
-	assert.Equal(t, "analyst", roles[1].GetName())
-	assert.Equal(t, "cultivator", roles[2].GetName())
+	assert.Equal(t, 3, len(page1.Entities))
+	assert.Equal(t, "admin", page1.Entities[0].GetName())
+	assert.Equal(t, "analyst", page1.Entities[1].GetName())
+	assert.Equal(t, "cultivator", page1.Entities[2].GetName())
 }
 
 func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
@@ -82,12 +83,12 @@ func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 		RoleID:         3,
 		OrganizationID: 0})
 
-	roles, err := roleDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := roleDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(roles))
-	assert.Equal(t, "admin", roles[0].GetName())
-	assert.Equal(t, "analyst", roles[1].GetName())
-	assert.Equal(t, "cultivator", roles[2].GetName())
+	assert.Equal(t, 3, len(page1.Entities))
+	assert.Equal(t, "admin", page1.Entities[0].GetName())
+	assert.Equal(t, "analyst", page1.Entities[1].GetName())
+	assert.Equal(t, "cultivator", page1.Entities[2].GetName())
 }
 
 func TestRole_GetAll(t *testing.T) {
@@ -108,10 +109,10 @@ func TestRole_GetAll(t *testing.T) {
 		ID:   3,
 		Name: "analyst"})
 
-	roles, err := roleDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := roleDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(roles))
-	assert.Equal(t, "admin", roles[0].GetName())
-	assert.Equal(t, "analyst", roles[1].GetName())
-	assert.Equal(t, "cultivator", roles[2].GetName())
+	assert.Equal(t, 3, len(page1.Entities))
+	assert.Equal(t, "admin", page1.Entities[0].GetName())
+	assert.Equal(t, "analyst", page1.Entities[1].GetName())
+	assert.Equal(t, "cultivator", page1.Entities[2].GetName())
 }

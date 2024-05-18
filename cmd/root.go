@@ -54,7 +54,7 @@ var DataStoreTlsCert string
 var DefaultRole string
 var DefaultFarmPermission string
 
-var supportedGormEngines = []string{"memory", "sqlite", "mysql", "postgres", "cockroach"}
+var supportedDatastores = []string{"memory", "sqlite", "mysql", "postgres", "cockroach"}
 
 var logFormat = logging.MustStringFormatter(
 	`%{color}%{time:15:04:05.000} %{shortpkg}.%{longfunc} ▶ %{level:.4s} %{color:reset} %{message}`,
@@ -62,7 +62,7 @@ var logFormat = logging.MustStringFormatter(
 
 var rootCmd = &cobra.Command{
 	Use:   "cropdroid",
-	Short: "Automated farming and cultivation",
+	Short: "Automated agriculture and local farmers market",
 	Long: `
   _______  ______  _____   _____  ______   ______  _____  _____ ______
   |       |_____/ |     | |_____] |     \ |_____/ |     |   |   |     \
@@ -87,8 +87,9 @@ var rootCmd = &cobra.Command{
  device is used to manage water quality and flow while the "dosing" device
  allows precise amounts of nutrients and chemicals, and has the ability to act as a
  general purpose switching device. An "irrigation" device is used to individually monitor
- soil moisture on a pot by pot basis and hydrate them when necessary.Custom devices are
- also available to meet your specific requirements.
+ soil moisture on a pot by pot basis and hydrate them when necessary. Custom devices are
+ also available via Professional Services to meet your specific requirements, or you can
+ build your own and seamlessly integrate it with the rest of the CropDroid ecosystem.
 
  Complete documentation is available at https://github.com/jeremyhahn/go-cropdroid`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -220,7 +221,7 @@ func initConfig() {
 		Location:          App.Location}
 
 	configTypeSupported := false
-	for _, t := range supportedGormEngines {
+	for _, t := range supportedDatastores {
 		if datastoreEngine == t {
 			configTypeSupported = true
 			break

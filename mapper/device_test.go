@@ -99,7 +99,7 @@ func TestDeviceMapStateToEntity(t *testing.T) {
 
 	device, err := mapper.MapStateToDevice(state, config)
 	assert.Nil(t, err)
-	assert.Equal(t, config.GetID(), device.GetID())
+	assert.Equal(t, config.ID, device.GetID())
 	assert.Equal(t, config.GetType(), device.GetType())
 	assert.Equal(t, config.GetDescription(), device.GetDescription())
 	/*assert.Equal(t, config.IsEnabled(), device.IsEnabled())
@@ -161,7 +161,7 @@ func TestDeviceMapConfigToModel(t *testing.T) {
 
 	deviceModel, err := mapper.MapConfigToModel(deviceEntity, settingEntities)
 	assert.Nil(t, err)
-	assert.Equal(t, deviceEntity.GetID(), deviceModel.GetID())
+	assert.Equal(t, deviceEntity.ID, deviceModel.GetID())
 	assert.Equal(t, deviceEntity.GetType(), deviceModel.GetType())
 	assert.Equal(t, deviceEntity.GetDescription(), deviceModel.GetDescription())
 	//assert.Equal(t, deviceEntity.GetHardwareVersion(), deviceModel.GetHardwareVersion())

@@ -23,7 +23,7 @@ func TestChannelMapperMapConfigToModel(t *testing.T) {
 		Backoff:     3,
 		AlgorithmID: 4}
 	model := mapper.MapConfigToModel(entity)
-	assert.Equal(t, model.GetID(), entity.GetID())
+	assert.Equal(t, model.GetID(), entity.ID)
 	assert.Equal(t, model.GetDeviceID(), entity.GetDeviceID())
 	assert.Equal(t, model.GetChannelID(), entity.GetChannelID())
 	assert.Equal(t, model.GetName(), entity.GetName())
@@ -53,7 +53,7 @@ func TestChannelMapperMapModelToConfig(t *testing.T) {
 	entity := mapper.MapModelToConfig(channel)
 	assert.ObjectsAreEqual(channel, entity)
 
-	assert.Equal(t, channel.GetID(), entity.GetID())
+	assert.Equal(t, channel.GetID(), entity.ID)
 	assert.Equal(t, channel.GetDeviceID(), entity.GetDeviceID())
 	assert.Equal(t, channel.GetChannelID(), entity.GetChannelID())
 	assert.Equal(t, channel.GetName(), entity.GetName())

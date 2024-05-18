@@ -13,9 +13,10 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
-	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/entity"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/state"
-	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 )
 
 var (
@@ -155,8 +156,7 @@ type NotificationService interface {
 type EventLogService interface {
 	GetFarmID() uint64
 	Create(deviceID uint64, deviceName, eventType, message string)
-	GetAll() []*entity.EventLog
-	GetPage(page int64) *viewmodel.EventsPage
+	GetPage(pageQuery query.PageQuery) (dao.PageResult[*entity.EventLog], error)
 }
 
 type ServiceRegistry interface {

@@ -63,7 +63,7 @@ func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, de
 		channels[i] = channel
 	}
 	return &model.Device{
-		ID:              device.GetID(),
+		ID:              device.ID,
 		Type:            device.GetType(),
 		Description:     device.GetDescription(),
 		Enable:          device.IsEnabled(),
@@ -84,7 +84,7 @@ func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity *config.Device,
 		configs[entity.GetKey()] = entity.GetValue()
 	}
 	return &model.Device{
-		ID: deviceEntity.GetID(),
+		ID: deviceEntity.ID,
 		//FarmID:      deviceEntity.GetFarmID(),
 		Type:        deviceEntity.GetType(),
 		Description: deviceEntity.GetDescription(),

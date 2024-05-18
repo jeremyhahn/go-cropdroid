@@ -34,11 +34,11 @@ type FarmStateMap interface {
 }
 
 type FarmState struct {
-	mutex        *sync.RWMutex             `json:"-"`
-	ID           uint64                    `json:"id"`
-	Devices      map[string]DeviceStateMap `json:"devices"`
-	Timestamp    int64                     `json:"timestamp"`
-	FarmStateMap `json:"-"`
+	ID           uint64                    `yaml:"id" json:"id"`
+	Devices      map[string]DeviceStateMap `yaml:"devices" json:"devices"`
+	Timestamp    int64                     `yaml:"timestamp" json:"timestamp"`
+	mutex        *sync.RWMutex             `yaml:"-" json:"-"`
+	FarmStateMap `yaml:"-" json:"-"`
 }
 
 func NewFarmStateMap(id uint64) FarmStateMap {

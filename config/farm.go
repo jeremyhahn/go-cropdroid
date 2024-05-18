@@ -24,6 +24,7 @@ type Farm struct {
 	Devices        []*Device   `yaml:"devices" json:"devices"`
 	Users          []*User     `gorm:"many2many:user_farm" yaml:"users" json:"users"`
 	Workflows      []*Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewFarm() *Farm {
@@ -49,7 +50,7 @@ func (farm *Farm) SetID(id uint64) {
 	farm.ID = id
 }
 
-func (farm *Farm) GetID() uint64 {
+func (farm *Farm) Identifier() uint64 {
 	return farm.ID
 }
 
@@ -167,7 +168,7 @@ func (farm *Farm) AddUser(user *User) {
 
 func (farm *Farm) RemoveUser(user *User) {
 	for i, u := range farm.Users {
-		if u.ID == user.GetID() {
+		if u.ID == user.ID {
 			farm.Users = append(farm.Users[:i], farm.Users[i+1:]...)
 			break
 		}
@@ -196,7 +197,7 @@ func (farm *Farm) SetDevices(devices []*Device) {
 
 func (farm *Farm) SetDevice(device *Device) {
 	for i, c := range farm.Devices {
-		if c.GetID() == device.GetID() {
+		if c.ID == device.ID {
 			farm.Devices[i] = device
 			return
 		}
@@ -216,7 +217,7 @@ func (farm *Farm) GetDevice(deviceType string) (*Device, error) {
 
 func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
 	for _, device := range farm.Devices {
-		if device.GetID() == id {
+		if device.ID == id {
 			return device, nil
 		}
 	}
@@ -246,7 +247,7 @@ func (farm *Farm) AddWorkflow(workflow *Workflow) {
 
 func (farm *Farm) SetWorkflow(workflow *Workflow) {
 	for i, w := range farm.Workflows {
-		if w.GetID() == workflow.GetID() {
+		if w.ID == workflow.ID {
 			farm.Workflows[i] = workflow
 			return
 		}
@@ -256,7 +257,7 @@ func (farm *Farm) SetWorkflow(workflow *Workflow) {
 
 func (farm *Farm) RemoveWorkflow(workflow *Workflow) error {
 	for i, w := range farm.Workflows {
-		if w.GetID() == workflow.GetID() {
+		if w.ID == workflow.ID {
 			farm.Workflows = append(farm.Workflows[:i], farm.Workflows[i+1:]...)
 			return nil
 		}

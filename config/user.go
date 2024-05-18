@@ -8,14 +8,17 @@ type User struct {
 	Roles            []*Role  `gorm:"many2many:user_role" yaml:"roles" json:"roles"`
 	OrganizationRefs []uint64 `gorm:"-" yaml:"organizationRefs" json:"organizationRefs"`
 	FarmRefs         []uint64 `gorm:"-" yaml:"farmRefs" json:"farmRefs"`
+	KeyValueEntity   `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewUser() *User {
-	return &User{Roles: make([]*Role, 0)}
+	user := new(User)
+	user.Roles = make([]*Role, 0)
+	return user
 }
 
-// GetID gets the users ID
-func (user *User) GetID() uint64 {
+// Identifier gets the users ID
+func (user *User) Identifier() uint64 {
 	return user.ID
 }
 

@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/op/go-logging"
 )
 
 type JsonResponse struct {
@@ -18,11 +19,12 @@ type JsonResponse struct {
 }
 
 type JsonWriter struct {
+	logger *logging.Logger
 	common.HttpWriter
 }
 
-func NewJsonWriter() *JsonWriter {
-	return &JsonWriter{}
+func NewJsonWriter(logger *logging.Logger) *JsonWriter {
+	return &JsonWriter{logger: logger}
 }
 
 func (writer *JsonWriter) Write(w http.ResponseWriter, status int, response interface{}) {
@@ -41,13 +43,23 @@ func (writer *JsonWriter) Write(w http.ResponseWriter, status int, response inte
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(jsonResponse)
+
+	writer.logger.Debugf("JsonWriter.Write: HTTP Status: %d, Response: %s", status, jsonResponse)
 }
 
-func (writer *JsonWriter) Success200(w http.ResponseWriter, response interface{}) {
+func (writer *JsonWriter) Success200(w http.ResponseWriter, payload interface{}) {
 	writer.Write(w, http.StatusOK, JsonResponse{
 		Code:    200,
 		Success: true,
-		Payload: response})
+		Payload: payload})
+}
+
+func (writer *JsonWriter) Success404(w http.ResponseWriter, payload interface{}, err error) {
+	writer.Write(w, http.StatusNotFound, JsonResponse{
+		Code:    404,
+		Success: true,
+		Error:   err.Error(),
+		Payload: payload})
 }
 
 func (writer *JsonWriter) Error200(w http.ResponseWriter, err error) {

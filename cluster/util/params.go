@@ -23,23 +23,23 @@ type RaftOptions struct {
 	UserClusterID         uint64 `json:"userId"`
 	RoleClusterID         uint64 `json:"roleId"`
 	CustomerClusterID     uint64 `json:"customerId"`
-	AlgorithmClusterID    uint64 `json:"algorithmId`
-	RegistrationClusterID uint64 `json:"registrationId`
+	AlgorithmClusterID    uint64 `json:"algorithmId"`
+	RegistrationClusterID uint64 `json:"registrationId"`
 }
 
 type ClusterParams struct {
-	Logger                    *logging.Logger `json:"-"`
-	IdGenerator               util.IdGenerator
-	IdSetter                  util.IdSetter
-	RaftOptions               RaftOptions
+	Logger                    *logging.Logger  `json:"-"`
+	IdGenerator               util.IdGenerator `json:"-"`
+	IdSetter                  util.IdSetter    `json:"-"`
+	RaftOptions               RaftOptions      `json:"raftOptions"`
 	NodeName                  string           `json:"name"`
-	ClusterID                 uint64           `json:"clusterId`
-	NodeID                    uint64           `json:"nodeId`
+	ClusterID                 uint64           `json:"clusterId"`
+	NodeID                    uint64           `json:"nodeId"`
 	Provider                  string           `json:"provider"`
 	Region                    string           `json:"region"`
 	Zone                      string           `json:"zone"`
 	DataDir                   string           `json:"dataDir"`
-	LocalAddress              string           `json:"dataDir"`
+	LocalAddress              string           `json:"localAddress"`
 	Listen                    string           `json:"listen"`
 	Join                      bool             `json:"join"`
 	Initialize                bool             `json:"initialize"`
@@ -65,7 +65,7 @@ func NewClusterParams(logger *logging.Logger, raftOptions RaftOptions, nodeID ui
 
 	if bootstrap > 0 {
 
-		logger.Debugf("Bootstrapping new cluster with raft groups: %v", raftOptions)
+		logger.Debugf("Bootstrapping new Gossip/Raft cluster with raft options: %v", raftOptions)
 
 		// if gossipPeers[0] == "" {
 		// 	gossipPeers = make([]string, 0)
@@ -97,15 +97,15 @@ func NewClusterParams(logger *logging.Logger, raftOptions RaftOptions, nodeID ui
 				// Found the host in the array of raft peers, use its
 				// ordinal position to assign a node id to this host
 
-				//nodeID = uint64(_nodeID + 1)
-				nodeID = uint64(_nodeID)
+				nodeID = uint64(_nodeID + 1)
+				//nodeID = uint64(_nodeID)
 				logger.Debugf("Assigning member node id %d", nodeID)
 				break
 			}
 		}
 
 		nodeName = fmt.Sprintf("%s-%d-%d", hostname, raftOptions.SystemClusterID, nodeID)
-		logger.Debugf("Assigning nodeName %s with id %d", nodeName, nodeID)
+		logger.Debugf("Assigning nodeName %s with node id %d", nodeName, nodeID)
 		//}
 	} else {
 

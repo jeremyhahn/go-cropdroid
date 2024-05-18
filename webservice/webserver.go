@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -30,7 +31,7 @@ import (
 )
 
 var (
-	ErrFarmNotFound = errors.New("Farm not found")
+	ErrFarmNotFound = errors.New("farm not found")
 )
 
 type Webserver struct {
@@ -51,7 +52,6 @@ type Webserver struct {
 	notificationService       service.NotificationService
 	notificationHubs          map[int]*websocket.NotificationHub
 	notificationHubMutex      sync.Mutex
-	farmTickerSubrouter       *mux.Router
 	eventLogService           service.EventLogService
 }
 
@@ -238,14 +238,7 @@ func (server *Webserver) buildRoutes() {
 		}
 	}
 
-	endpoint := fmt.Sprintf("%s/events", baseFarmURI)
-	router.Handle(endpoint, negroni.New(
-		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(server.events)),
-	))
-	endpointList = append(endpointList, endpoint)
-
-	endpoint = fmt.Sprintf("%s/events/{page}", baseFarmURI)
+	endpoint := fmt.Sprintf("%s/events/{page}", baseFarmURI)
 	router.Handle(endpoint, negroni.New(
 		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(server.eventsPage)),
@@ -330,35 +323,35 @@ func (server *Webserver) Shutdown() {
 	cancel()
 }*/
 
-func (server *Webserver) farmTicker(w http.ResponseWriter, r *http.Request) {
+// func (server *Webserver) farmTicker(w http.ResponseWriter, r *http.Request) {
 
-	params := mux.Vars(r)
-	farmid := params["farmID"]
-	farmID, err := strconv.ParseUint(farmid, 10, 64)
-	if err != nil {
-		server.app.Logger.Errorf("[Webserver.farmTicker] Error: %s", err)
-		return
-	}
+// 	params := mux.Vars(r)
+// 	farmid := params["farmID"]
+// 	farmID, err := strconv.ParseUint(farmid, 10, 64)
+// 	if err != nil {
+// 		server.app.Logger.Errorf("[Webserver.farmTicker] Error: %s", err)
+// 		return
+// 	}
 
-	farmService := server.registry.GetFarmService(farmID)
-	if farmService == nil {
-		server.app.Logger.Error("[Webserver.farmTicker] Can find farm service with farmID %d", farmID)
-		return
-	}
+// 	farmService := server.registry.GetFarmService(farmID)
+// 	if farmService == nil {
+// 		server.app.Logger.Error("[Webserver.farmTicker] Can find farm service with farmID %d", farmID)
+// 		return
+// 	}
 
-	farmHub := websocket.NewFarmHub(server.app.Logger, server.notificationService, farmService)
-	go farmHub.Run()
+// 	farmHub := websocket.NewFarmHub(server.app.Logger, server.notificationService, farmService)
+// 	go farmHub.Run()
 
-	endpoint := fmt.Sprintf("%s/farmticker/%d", server.baseURI, farmID)
-	server.router.Handle(endpoint, negroni.New(
-		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handler := websocket.NewFarmHandler(server.app.Logger, farmHub, server.notificationService, server.jsonWebTokenService)
-			handler.OnConnect(w, r)
-		})),
-	))
-	server.endpointList = append(server.endpointList, endpoint)
-}
+// 	endpoint := fmt.Sprintf("%s/farmticker/%d", server.baseURI, farmID)
+// 	server.router.Handle(endpoint, negroni.New(
+// 		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
+// 		negroni.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 			handler := websocket.NewFarmHandler(server.app.Logger, farmHub, server.notificationService, server.jsonWebTokenService)
+// 			handler.OnConnect(w, r)
+// 		})),
+// 	))
+// 	server.endpointList = append(server.endpointList, endpoint)
+// }
 
 func (server *Webserver) sendNotification(w http.ResponseWriter, r *http.Request) {
 
@@ -521,20 +514,6 @@ func (server *Webserver) publicKey(w http.ResponseWriter, r *http.Request) {
 	rest.NewJsonWriter().Write(w, http.StatusOK, string(pubkey))
 }
 
-func (server *Webserver) events(w http.ResponseWriter, r *http.Request) {
-	//server.eventLogService.Create(server.eventType,
-	//	fmt.Sprintf("/events requested by %s", server.clientIP(r)))
-
-	params := mux.Vars(r)
-	sFarmID := params["farmID"]
-	farmID, _ := strconv.ParseUint(sFarmID, 10, 64) // ignore errors to default to system log
-
-	entities := server.registry.GetEventLogService(farmID).GetAll()
-	w.Header().Set("Content-Type", "application/json")
-	json, _ := json.MarshalIndent(entities, "", " ")
-	fmt.Fprintln(w, string(json))
-}
-
 func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
@@ -545,7 +524,7 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 	//server.eventLogService.Create(server.eventType,
 	//	fmt.Sprintf("/eventsPage/%s requested by %s", page, server.clientIP(r)))
 
-	p, err := strconv.ParseInt(page, 10, 64)
+	p, err := strconv.Atoi(page)
 	if err != nil {
 		server.sendBadRequest(w, r, err)
 	}
@@ -553,9 +532,15 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 	server.app.Logger.Debugf("[Webserver.eventsPage] page %s requested for farmID=%d",
 		page, farmID)
 
-	entities := server.registry.GetEventLogService(farmID).GetPage(p)
+	pageQuery := query.NewPageQuery()
+	pageQuery.Page = p
+	pageQuery.SortOrder = query.SORT_DESCENDING
+	pageResult, err := server.registry.GetEventLogService(farmID).GetPage(pageQuery)
+	if err != nil {
+		server.sendBadRequest(w, r, err)
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json, _ := json.MarshalIndent(entities, "", " ")
+	json, _ := json.MarshalIndent(pageResult, "", " ")
 	fmt.Fprintln(w, string(json))
 }
 

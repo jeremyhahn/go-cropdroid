@@ -6,7 +6,8 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
 
 	"github.com/stretchr/testify/assert"
@@ -14,9 +15,9 @@ import (
 
 func TestOrganizationCRUD(t *testing.T, orgDAO dao.OrganizationDAO) {
 
-	orgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 0, len(orgs))
+	assert.Equal(t, 0, len(page1.Entities))
 
 	err = orgDAO.Save(&config.Organization{
 		Name: "Test Org"})
@@ -24,13 +25,13 @@ func TestOrganizationCRUD(t *testing.T, orgDAO dao.OrganizationDAO) {
 
 	assert.NotNil(t, orgDAO)
 
-	orgs, err = orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err = orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(orgs))
-	assert.Equal(t, "Test Org", orgs[0].GetName())
+	assert.Equal(t, 1, len(page1.Entities))
+	assert.Equal(t, "Test Org", page1.Entities[0].GetName())
 }
 
-func TestOrganizationGetAll(t *testing.T, orgDAO dao.OrganizationDAO) {
+func TestOrganizationGetPage(t *testing.T, orgDAO dao.OrganizationDAO) {
 
 	// create first org
 	testOrgName := "Test Org"
@@ -61,11 +62,11 @@ func TestOrganizationGetAll(t *testing.T, orgDAO dao.OrganizationDAO) {
 	assert.Nil(t, err)
 
 	// make sure orgs are returned fully hydrated
-	orgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(orgs))
-	assert.Equal(t, 1, len(orgs[0].GetFarms()))
-	assert.Equal(t, 1, len(orgs[1].GetFarms()))
+	assert.Equal(t, 2, len(page1.Entities))
+	assert.Equal(t, 1, len(page1.Entities[0].GetFarms()))
+	assert.Equal(t, 1, len(page1.Entities[1].GetFarms()))
 }
 
 func TestOrganizationDelete(t *testing.T, orgDAO dao.OrganizationDAO) {
@@ -99,18 +100,18 @@ func TestOrganizationDelete(t *testing.T, orgDAO dao.OrganizationDAO) {
 	assert.Nil(t, err)
 
 	// make sure orgs are returned fully hydrated
-	orgs, err := orgDAO.GetAll(DEFAULT_CONSISTENCY_LEVEL)
+	page1, err := orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(orgs))
-	assert.Equal(t, 1, len(orgs[0].GetFarms()))
-	assert.Equal(t, 1, len(orgs[1].GetFarms()))
+	assert.Equal(t, 2, len(page1.Entities))
+	assert.Equal(t, 1, len(page1.Entities[0].GetFarms()))
+	assert.Equal(t, 1, len(page1.Entities[1].GetFarms()))
 
 	err = orgDAO.Delete(orgConfig)
 	assert.Nil(t, err)
 
-	orgs, err = orgDAO.GetAll(DEFAULT_CONSISTENCY_LEVEL)
+	page1, err = orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(orgs))
+	assert.Equal(t, 1, len(page1.Entities))
 }
 
 func TestOrganizationEnchilada(t *testing.T, orgDAO dao.OrganizationDAO,
@@ -119,7 +120,7 @@ func TestOrganizationEnchilada(t *testing.T, orgDAO dao.OrganizationDAO,
 
 	err := orgDAO.Save(org)
 	assert.Nil(t, err)
-	assert.NotNil(t, org.GetID())
+	assert.NotNil(t, org.ID)
 
 	role := config.NewRole()
 	role.SetName("admin")
@@ -133,20 +134,20 @@ func TestOrganizationEnchilada(t *testing.T, orgDAO dao.OrganizationDAO,
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
 
-	farmID := org.GetFarms()[0].GetID()
+	farmID := org.GetFarms()[0].ID
 	permission := config.NewPermission()
 	permission.SetFarmID(farmID)
-	permission.SetOrgID(org.GetID())
-	permission.SetUserID(user.GetID())
-	permission.SetRoleID(role.GetID())
+	permission.SetOrgID(org.ID)
+	permission.SetUserID(user.ID)
+	permission.SetRoleID(role.ID)
 	err = permissionDAO.Save(permission)
 	assert.Nil(t, err)
 
-	allOrgs, err := orgDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := orgDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(allOrgs))
+	assert.Equal(t, 1, len(page1.Entities))
 
-	persistedOrg := allOrgs[0]
+	persistedOrg := page1.Entities[0]
 	assert.Equal(t, org.GetName(), persistedOrg.GetName())
 
 	farms := persistedOrg.GetFarms()
@@ -225,6 +226,21 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
 	user.SetRoles([]*config.Role{role})
+
+	// Add a workflow
+	testWorkflow := config.NewWorkflow()
+	testWorkflow.SetFarmID(farmID)
+	testWorkflow.SetName("Test Workflow")
+
+	// Add a workflow step
+	// testStep := config.NewWorkflowStep()
+	// testStep.SetWorkflowID(testWorkflow.ID) // todo: remove
+	// testStep.SetDeviceID(1)
+	// testStep.SetChannelID(1)
+	// testStep.SetDuration(600) // seconds; 10 minutes
+	// testStep.SetWait(600)     // seconds; 10 minutes
+
+	//testWorkflow.SetSteps([]*config.WorkflowStep{testStep})
 
 	schedule1 := config.NewSchedule()
 	days := "MO,WE,FR"
@@ -406,6 +422,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	farm1.SetInterval(60)
 	farm1.SetDevices(devices)
 	farm1.SetUsers([]*config.User{user})
+	farm1.SetWorkflow(testWorkflow)
 
 	return farm1
 }

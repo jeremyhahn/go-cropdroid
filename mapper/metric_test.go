@@ -40,12 +40,12 @@ func TestMetricMapperMapConfigToModel(t *testing.T) {
 
 	// Mapper must return new model object to prevent config objects from being updated by model pointer.
 	metricConfig.SetID(2)
-	assert.Equal(t, uint64(2), metricConfig.GetID())
+	assert.Equal(t, uint64(2), metricConfig.ID)
 
 	model := mapper.MapConfigToModel(metricConfig)
 	assert.ObjectsAreEqual(metricConfig, model)
 	model.SetID(3)
-	assert.Equal(t, uint64(2), metricConfig.GetID()) // This is the desired behavior
+	assert.Equal(t, uint64(2), metricConfig.ID) // This is the desired behavior
 }
 
 func TestMetricMapperMapModelToConfig(t *testing.T) {
@@ -66,7 +66,7 @@ func TestMetricMapperMapModelToConfig(t *testing.T) {
 	config := mapper.MapModelToConfig(metric)
 	assert.ObjectsAreEqual(metric, config)
 
-	assert.Equal(t, metric.GetID(), config.GetID())
+	assert.Equal(t, metric.GetID(), config.ID)
 	assert.Equal(t, metric.GetDeviceID(), config.GetDeviceID())
 	assert.Equal(t, metric.GetName(), config.GetName())
 	assert.Equal(t, metric.GetKey(), config.GetKey())

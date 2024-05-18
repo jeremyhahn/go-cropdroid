@@ -22,11 +22,11 @@ func (mapper *DefaultUserMapper) MapUserConfigToModel(config *config.User) commo
 	roles := make([]common.Role, len(config.GetRoles()))
 	for i, role := range config.GetRoles() {
 		roles[i] = &model.Role{
-			ID:   role.GetID(),
+			ID:   role.ID,
 			Name: role.GetName()}
 	}
 	return &model.User{
-		ID:               config.GetID(),
+		ID:               config.Identifier(),
 		Email:            config.GetEmail(),
 		Password:         config.GetPassword(),
 		OrganizationRefs: config.GetOrganizationRefs(),

@@ -4,7 +4,8 @@ import (
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
 
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 )
 
 type GenericGormDAO[E any] struct {
@@ -14,61 +15,87 @@ type GenericGormDAO[E any] struct {
 }
 
 func NewGenericGormDAO[E any](logger *logging.Logger, db *gorm.DB) dao.GenericDAO[E] {
-	logger.Infof("Creatnig new %T GORM DAO", *new(E))
+	logger.Infof("Creating new %T GORM DAO", *new(E))
 	return &GenericGormDAO[E]{logger: logger, db: db}
 }
 
-func (dao *GenericGormDAO[E]) Save(entity E) error {
-	dao.logger.Infof("Save GORM entity: %+v", entity)
-	return dao.db.Save(&entity).Error
+func (genericDAO *GenericGormDAO[E]) Save(entity E) error {
+	genericDAO.logger.Infof("Save GORM entity: %+v", entity)
+	return genericDAO.db.Save(&entity).Error
 }
 
-func (dao *GenericGormDAO[E]) Get(id uint64, CONSISTENCY_LEVEL int) (E, error) {
-	dao.logger.Infof("Get GORM entity with id: %d", id)
+func (genericDAO *GenericGormDAO[E]) Get(id uint64, CONSISTENCY_LEVEL int) (E, error) {
+	genericDAO.logger.Infof("Get GORM entity with id: %d", id)
 	var entity = new(E)
-	if err := dao.db.
+	if err := genericDAO.db.
 		First(entity, id).Error; err != nil {
-		dao.logger.Warningf("GenericGormDAO.Get error: %s", err.Error())
+		genericDAO.logger.Warningf("GenericGormDAO.Get error: %s", err.Error())
 		return *entity, err
 	}
 	return *entity, nil
 }
 
-func (dao *GenericGormDAO[E]) GetPage(page, pageSize, CONSISTENCY_LEVEL int) ([]E, error) {
+func (genericDAO *GenericGormDAO[E]) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[E], error) {
+	page := pageQuery.Page
+	pageSize := pageQuery.PageSize
+	pageResult := dao.PageResult[E]{
+		Page:     page,
+		PageSize: pageSize}
 	if page < 1 {
 		page = 1
 	}
 	var offset = (page - 1) * pageSize
 	var entities []E
-	if err := dao.db.Limit(pageSize).
+	if err := genericDAO.db.
+		Limit(pageSize + 1). // peek one record to set HasMore flag
 		Offset(offset).
 		Find(&entities).Error; err != nil {
-		return nil, err
+		return pageResult, err
 	}
-	return entities, nil
+	// If the peek record was returned, set the HasMore flag and remove the +1 record
+	if len(entities) == pageSize+1 {
+		pageResult.HasMore = true
+		entities = entities[:len(entities)-1]
+	}
+	pageResult.Entities = entities
+	return pageResult, nil
 }
 
-func (dao *GenericGormDAO[E]) Update(entity E) error {
-	dao.logger.Infof("Update GORM entity: %+v", entity)
-	return dao.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(entity).Error
+func (genericDAO *GenericGormDAO[E]) ForEachPage(pageQuery query.PageQuery,
+	pagerProcFunc query.PagerProcFunc[E], CONSISTENCY_LEVEL int) error {
+
+	pageResult, err := genericDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
+	if err != nil {
+		return nil
+	}
+	if err = pagerProcFunc(pageResult.Entities); err != nil {
+		return err
+	}
+	if pageResult.HasMore {
+		nextPageQuery := query.PageQuery{
+			Page:      pageQuery.Page + 1,
+			PageSize:  pageQuery.PageSize,
+			SortOrder: pageQuery.SortOrder}
+		return genericDAO.ForEachPage(nextPageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
+	}
+	return nil
 }
 
-func (dao *GenericGormDAO[E]) Delete(entity E) error {
-	dao.logger.Infof("Delete GORM entity: %+v", entity)
-	return dao.db.Delete(entity).Error
+func (genericDAO *GenericGormDAO[E]) Update(entity E) error {
+	genericDAO.logger.Infof("Update GORM entity: %+v", entity)
+	return genericDAO.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(entity).Error
 }
 
-// This method is only here to provide compatiiblty with the interface while refactoring
-// to prevent the rest of the project from breaking if its removed
-func (dao *GenericGormDAO[E]) GetAll(CONSISTENCY_LEVEL int) ([]E, error) {
-	return make([]E, 0), nil
+func (genericDAO *GenericGormDAO[E]) Delete(entity E) error {
+	genericDAO.logger.Infof("Delete GORM entity: %+v", entity)
+	return genericDAO.db.Delete(entity).Error
 }
 
-// func (dao *GenericGormDAO[E]) GetAll(CONSISTENCY_LEVEL int) ([]E, error) {
-// 	dao.logger.Infof("Getting all entities")
-// 	var entities []E
-// 	if err := dao.db.Find(&entities).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	return entities, nil
-// }
+func (genericDAO *GenericGormDAO[E]) Count(CONSISTENCY_LEVEL int) (int64, error) {
+	var count int64
+	var entity E
+	if err := genericDAO.db.Model(&entity).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}

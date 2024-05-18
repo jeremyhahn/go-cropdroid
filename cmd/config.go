@@ -9,7 +9,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	gormds "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 	"github.com/jeremyhahn/go-cropdroid/util"

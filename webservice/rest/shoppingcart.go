@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/shoppingcart"
 
@@ -175,10 +176,7 @@ func (restService *DefaultShoppingCartRestService) GetProducts(w http.ResponseWr
 	defer session.Close()
 
 	products := restService.shoppingCartService.GetProducts()
-	if err != nil {
-		BadRequestError(w, r, err, restService.jsonWriter)
-		return
-	}
+
 	// Set a default product image if one is not configured
 	// Doing this in the rest layer instead of service layer
 	// because the baseURI is created in the webserver class
@@ -278,25 +276,27 @@ func (restService *DefaultShoppingCartRestService) GetCustomer(w http.ResponseWr
 	}
 	defer session.Close()
 
+	logger := session.GetLogger()
+
 	params := mux.Vars(r)
 	customerID := params["id"]
 
-	session.GetLogger().Debugf("customerID=%s", customerID)
+	logger.Debugf("customerID=%s", customerID)
 
 	id, err := strconv.ParseUint(customerID, 0, 64)
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-
 	response, err := restService.shoppingCartService.GetCustomer(id)
+	if err == datastore.ErrNotFound {
+		NewJsonWriter(logger).Success404(w, response, err)
+		return
+	}
 	if err != nil {
 		BadRequestError(w, r, err, restService.jsonWriter)
 		return
 	}
-
-	session.GetLogger().Debugf("response=%+v", response)
-
 	restService.jsonWriter.Success200(w, response)
 }
 

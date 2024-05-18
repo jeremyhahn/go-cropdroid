@@ -3,7 +3,7 @@ package service
 // import (
 // 	"github.com/jeremyhahn/go-cropdroid/common"
 // 	"github.com/jeremyhahn/go-cropdroid/config"
-// 	"github.com/jeremyhahn/go-cropdroid/config/dao"
+// 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 // 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
 // )
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
@@ -35,27 +36,27 @@ func TestAlgorithmSaveAndSerializeToAndFromJson(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Test Save and GetAll
-	algorithmConfigs, err := algorithmDAO.GetPage(1, 10, common.CONSISTENCY_LOCAL)
+	pageResult, err := algorithmDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(algorithmConfigs))
-	assert.Equal(t, algorithm1.ID, algorithmConfigs[0].ID)
-	assert.Equal(t, algorithm1.Name, algorithmConfigs[0].Name)
-	assert.Equal(t, algorithm2.ID, algorithmConfigs[1].ID)
-	assert.Equal(t, algorithm2.Name, algorithmConfigs[1].Name)
+	assert.Equal(t, 2, len(pageResult.Entities))
+	assert.Equal(t, algorithm1.ID, pageResult.Entities[0].ID)
+	assert.Equal(t, algorithm1.Name, pageResult.Entities[0].Name)
+	assert.Equal(t, algorithm2.ID, pageResult.Entities[1].ID)
+	assert.Equal(t, algorithm2.Name, pageResult.Entities[1].Name)
 
 	// Test JSON marshalling
-	jsonAlgorithmConfigs, err := json.Marshal(algorithmConfigs)
+	jsonAlgorithmConfigs, err := json.Marshal(pageResult.Entities)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, jsonAlgorithmConfigs)
 
 	var unmarshalledAlgorithms []*config.Algorithm
 	err = json.Unmarshal(jsonAlgorithmConfigs, &unmarshalledAlgorithms)
 	assert.Nil(t, err)
-	assert.Equal(t, len(algorithmConfigs), len(unmarshalledAlgorithms))
-	assert.Equal(t, algorithmConfigs[0].ID, unmarshalledAlgorithms[0].ID)
-	assert.Equal(t, algorithmConfigs[0].Name, unmarshalledAlgorithms[0].Name)
-	assert.Equal(t, algorithmConfigs[1].ID, unmarshalledAlgorithms[1].ID)
-	assert.Equal(t, algorithmConfigs[1].Name, unmarshalledAlgorithms[1].Name)
+	assert.Equal(t, len(pageResult.Entities), len(unmarshalledAlgorithms))
+	assert.Equal(t, pageResult.Entities[0].ID, unmarshalledAlgorithms[0].ID)
+	assert.Equal(t, pageResult.Entities[0].Name, unmarshalledAlgorithms[0].Name)
+	assert.Equal(t, pageResult.Entities[1].ID, unmarshalledAlgorithms[1].ID)
+	assert.Equal(t, pageResult.Entities[1].Name, unmarshalledAlgorithms[1].Name)
 }
 
 func TestAlgorithmUpdateAndDelete(t *testing.T) {
@@ -81,7 +82,7 @@ func TestAlgorithmUpdateAndDelete(t *testing.T) {
 
 	newName := "updated name"
 	savedAlgo.Name = newName
-	err = algorithmDAO.Update(savedAlgo)
+	err = algorithmDAO.Save(savedAlgo)
 	assert.Nil(t, err)
 
 	updatedAlgo, err := algorithmDAO.Get(savedAlgo.ID, common.CONSISTENCY_LOCAL)
@@ -115,40 +116,39 @@ func TestAlgorithmGetPage(t *testing.T) {
 		err := algorithmDAO.Save(&algo)
 		assert.Nil(t, err)
 		algorithms[i] = algo
-
 	}
 
 	pageSize := 5
 
-	page1, err := algorithmDAO.GetPage(1, pageSize, common.CONSISTENCY_LOCAL)
+	page1, err := algorithmDAO.GetPage(query.PageQuery{Page: 1, PageSize: pageSize}, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, pageSize, len(page1))
-	assert.Equal(t, uint64(1), page1[0].ID)
+	assert.Equal(t, pageSize, len(page1.Entities))
+	assert.Equal(t, uint64(1), page1.Entities[0].ID)
 
-	page2, err := algorithmDAO.GetPage(2, pageSize, common.CONSISTENCY_LOCAL)
+	page2, err := algorithmDAO.GetPage(query.PageQuery{Page: 2, PageSize: pageSize}, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, pageSize, len(page2))
-	assert.Equal(t, uint64(6), page2[0].ID)
+	assert.Equal(t, pageSize, len(page2.Entities))
+	assert.Equal(t, uint64(6), page2.Entities[0].ID)
 
-	page3, err := algorithmDAO.GetPage(3, pageSize, common.CONSISTENCY_LOCAL)
+	page3, err := algorithmDAO.GetPage(query.PageQuery{Page: 3, PageSize: pageSize}, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, pageSize, len(page3))
-	assert.Equal(t, uint64(11), page3[0].ID)
+	assert.Equal(t, pageSize, len(page3.Entities))
+	assert.Equal(t, uint64(11), page3.Entities[0].ID)
 
 	pageSize = 10
 
-	page1, err = algorithmDAO.GetPage(1, pageSize, common.CONSISTENCY_LOCAL)
+	page1, err = algorithmDAO.GetPage(query.PageQuery{Page: 1, PageSize: pageSize}, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, pageSize, len(page1))
-	assert.Equal(t, uint64(1), page1[0].ID)
+	assert.Equal(t, pageSize, len(page1.Entities))
+	assert.Equal(t, uint64(1), page1.Entities[0].ID)
 
-	page2, err = algorithmDAO.GetPage(2, pageSize, common.CONSISTENCY_LOCAL)
+	page2, err = algorithmDAO.GetPage(query.PageQuery{Page: 2, PageSize: pageSize}, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, pageSize, len(page2))
-	assert.Equal(t, uint64(11), page2[0].ID)
+	assert.Equal(t, pageSize, len(page2.Entities))
+	assert.Equal(t, uint64(11), page2.Entities[0].ID)
 
-	page3, err = algorithmDAO.GetPage(3, pageSize, common.CONSISTENCY_LOCAL)
+	page3, err = algorithmDAO.GetPage(query.PageQuery{Page: 3, PageSize: pageSize}, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, pageSize, len(page3))
-	assert.Equal(t, uint64(21), page3[0].ID)
+	assert.Equal(t, pageSize, len(page3.Entities))
+	assert.Equal(t, uint64(21), page3.Entities[0].ID)
 }

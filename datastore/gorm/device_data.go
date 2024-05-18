@@ -29,28 +29,6 @@ func NewGormDeviceDataStore(logger *logging.Logger, db *gorm.DB, dbtype string,
 	return &GormDeviceStore{logger: logger, db: db, dbtype: dbtype, location: location}
 }
 
-func (gds *GormDeviceStore) parseMetricKeysAndValues(data map[string]float64) ([]string, []float64) {
-	keys := make([]string, len(data))
-	values := make([]float64, len(data))
-	i := 0
-	for k, v := range data {
-		keys[i] = k
-		values[i] = v
-		i++
-	}
-	return keys, values
-}
-
-func (gds *GormDeviceStore) parseChannelKeysAndValues(data []int) ([]string, []int) {
-	keys := make([]string, len(data))
-	values := make([]int, len(data))
-	for i, v := range data {
-		keys[i] = fmt.Sprintf("c%d", i)
-		values[i] = v
-	}
-	return keys, values
-}
-
 func (gds *GormDeviceStore) Save(deviceID uint64, deviceState state.DeviceStateMap) error {
 	tableName := fmt.Sprintf("state_%d", deviceID)
 	metrics := deviceState.GetMetrics()
@@ -163,4 +141,26 @@ func (gds *GormDeviceStore) createTable(tableName string, deviceState state.Devi
 		return err
 	}
 	return nil
+}
+
+func (gds *GormDeviceStore) parseMetricKeysAndValues(data map[string]float64) ([]string, []float64) {
+	keys := make([]string, len(data))
+	values := make([]float64, len(data))
+	i := 0
+	for k, v := range data {
+		keys[i] = k
+		values[i] = v
+		i++
+	}
+	return keys, values
+}
+
+func (gds *GormDeviceStore) parseChannelKeysAndValues(data []int) ([]string, []int) {
+	keys := make([]string, len(data))
+	values := make([]int, len(data))
+	for i, v := range data {
+		keys[i] = fmt.Sprintf("c%d", i)
+		values[i] = v
+	}
+	return keys, values
 }

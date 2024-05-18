@@ -5,6 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,12 +45,12 @@ func TestCustomer_CRUD(t *testing.T) {
 	// assert.NotNil(t, customerByProcessorID)
 	// assert.Equal(t, customerByProcessorID.ID, customer2.ID)
 
-	allCustomers, err := customerDAO.GetPage(1, 10, common.CONSISTENCY_LOCAL)
+	page1, err := customerDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(allCustomers))
-	assert.Equal(t, "admin", allCustomers[0].Name)
-	assert.Equal(t, "analyst", allCustomers[1].Name)
-	assert.Equal(t, "cultivator", allCustomers[2].Name)
+	assert.Equal(t, 3, len(page1.Entities))
+	assert.Equal(t, "admin", page1.Entities[0].Name)
+	assert.Equal(t, "analyst", page1.Entities[1].Name)
+	assert.Equal(t, "cultivator", page1.Entities[2].Name)
 }
 
 func TestCustomer_CustomerDoesntExist_ReturnsNull(t *testing.T) {

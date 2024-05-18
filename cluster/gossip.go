@@ -14,7 +14,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/cluster/gossip"
 	"github.com/jeremyhahn/go-cropdroid/cluster/util"
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
@@ -47,23 +47,21 @@ type GossipNode interface {
 }
 
 type Gossip struct {
-	mutex       *sync.RWMutex
-	stateMutex  *sync.Mutex
-	raftMutex   *sync.Mutex
-	params      *util.ClusterParams
+	nodeID      uint64 // unique id of this node in the Gossip cluster
 	port        int
+	params      *util.ClusterParams
 	serf        *serf.Serf
-	state       ClusterState
+	gossipState ClusterState
 	eventCh     chan serf.Event
-	hashring    *util.Consistent    // Raft clusters on the network
-	vnodes      int                 // Number of consistent hash ring virtual nodes
-	member      serf.Member         // local node
-	nodemeta    *nodeMeta           // local node metadata (unserialized)
+	hashring    *util.Consistent // Raft clusters on the network
+	vnodes      int              // Number of consistent hash ring virtual nodes
+	member      serf.Member      // local node
+	nodemeta    *nodeMeta        // local node metadata (unserialized)
+	raftMutex   *sync.RWMutex
 	raft        RaftNode            // control-plane / system raft
 	rafts       map[uint64][]uint64 // data-plane; map[raft_cluster_id][]raft_node_id
 	shutdownCh  chan struct{}
 	hosts       map[string]uint64 // map raft address to its node id
-	nodeID      uint64            // unique id of this node in the Gossip cluster
 	initializer dao.Initializer
 	GossipNode
 }
@@ -86,15 +84,15 @@ type ClusterState int
 
 const (
 	ClusterBootstrapping ClusterState = iota
-	ClusterAssigned
+	ClusterQuorum
 )
 
 func (s ClusterState) String() string {
 	switch s {
 	case ClusterBootstrapping:
 		return "bootstrapping"
-	case ClusterAssigned:
-		return "assigned"
+	case ClusterQuorum:
+		return "quorum"
 	default:
 		return "unknown"
 	}
@@ -106,15 +104,13 @@ func (s ClusterState) String() string {
 func NewGossipNode(params *util.ClusterParams, hashring *util.Consistent) GossipNode {
 
 	cluster := &Gossip{
-		mutex:      &sync.RWMutex{},
-		stateMutex: &sync.Mutex{},
-		raftMutex:  &sync.Mutex{},
-		params:     params,
-		state:      ClusterBootstrapping,
-		eventCh:    make(chan serf.Event, 1024),
-		port:       params.GossipPort,
-		rafts:      make(map[uint64][]uint64, 0),
-		hashring:   hashring,
+		raftMutex:   &sync.RWMutex{},
+		params:      params,
+		gossipState: ClusterBootstrapping,
+		eventCh:     make(chan serf.Event, 1024),
+		port:        params.GossipPort,
+		rafts:       make(map[uint64][]uint64, 0),
+		hashring:    hashring,
 		//nodes:      make(map[string]*memberlist.Node, 0),
 		//nodePool:   make(map[uint64]*memberlist.Node, 0),
 		hosts:      make(map[string]uint64, 0),
@@ -225,7 +221,7 @@ func (cluster *Gossip) Join() {
 		cluster.serf.UserEvent(gossip.EventWorkerAvailable.String(), []byte(raftAddress), false)
 	}
 
-	//cluster.state = ClusterAlive
+	cluster.gossipState = ClusterQuorum
 }
 
 func (cluster *Gossip) Run() {
@@ -286,10 +282,10 @@ func (cluster *Gossip) join(member serf.Member) {
 
 	if cluster.raft == nil {
 		cluster.params.Logger.Warningf("[Gossip.NotifyJoin] Aborting, cluster.raft is nil... (clusterID=%d, nodeID=%d, raftAddress=%s, cluster.state=%d)",
-			cluster.params.RaftOptions.SystemClusterID, cluster.params.NodeID, raftAddress, cluster.state)
+			cluster.params.RaftOptions.SystemClusterID, cluster.params.NodeID, raftAddress, cluster.gossipState)
 	} else {
 		cluster.params.Logger.Warningf("[Gossip.NotifyJoin] Aborting, not the control plane leader... (clusterID=%d, nodeID=%d, raftAddress=%s, cluster.state=%d)",
-			cluster.params.RaftOptions.SystemClusterID, cluster.params.NodeID, raftAddress, cluster.state)
+			cluster.params.RaftOptions.SystemClusterID, cluster.params.NodeID, raftAddress, cluster.gossipState)
 	}
 }
 
@@ -373,9 +369,9 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 
 		// If the node just joined the network, it will start receving provisioning requests immediately.
 		// Wait until the Raft cluster has bootstrapped before proceeding.
-		cluster.raftMutex.Lock()
+		cluster.raftMutex.RLock()
 		_, ok := cluster.rafts[cluster.params.RaftOptions.SystemClusterID]
-		cluster.raftMutex.Unlock()
+		cluster.raftMutex.RUnlock()
 		for !ok {
 			cluster.params.Logger.Debug("[Gossip.handleMessage] provision-request Waiting for the system Raft cluster become available...")
 			time.Sleep(1 * time.Second)
@@ -478,8 +474,8 @@ func (cluster *Gossip) RaftAddress() string {
 }
 
 func (cluster *Gossip) HasRaft(clusterID uint64) bool {
-	cluster.raftMutex.Lock()
-	defer cluster.raftMutex.Unlock()
+	cluster.raftMutex.RLock()
+	defer cluster.raftMutex.RUnlock()
 	if _, ok := cluster.rafts[clusterID]; !ok {
 		return false
 	}
@@ -507,16 +503,13 @@ func (cluster *Gossip) Provision(params *common.ProvisionerParams) error {
 	cluster.params.Logger.Errorf("Provision request! gossip.address=%s, raft.peers=%+v",
 		cluster.GossipAddress(), cluster.raft.GetPeers())
 
-	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
-	farmID := cluster.params.IdGenerator.NewStringID(farmKey)
-
-	stateClusterKey := fmt.Sprintf("%s-%d", params.FarmName, farmID)
-	stateClusterID := cluster.params.IdGenerator.NewStringID(stateClusterKey)
+	farmID := cluster.params.IdGenerator.NewFarmID(params.OrganizationID, params.FarmName)
+	farmStateClusterID := cluster.params.IdGenerator.NewFarmStateID(farmID)
 
 	bytes, err := json.Marshal(&gossip.ProvisionRequest{
 		FarmName:         params.FarmName,
 		ConfigClusterID:  farmID,
-		StateClusterID:   stateClusterID,
+		StateClusterID:   farmStateClusterID,
 		ConfigStoreType:  params.ConfigStoreType,
 		StateStoreType:   params.StateStoreType,
 		DataStoreType:    params.DataStoreType,
@@ -532,19 +525,18 @@ func (cluster *Gossip) Provision(params *common.ProvisionerParams) error {
 	cluster.serf.UserEvent(gossip.EventProvisionRequest.String(), bytes, false)
 
 	cluster.raft.WaitForClusterReady(farmID)
-	cluster.raft.WaitForClusterReady(stateClusterID)
+	cluster.raft.WaitForClusterReady(farmStateClusterID)
 
-	cluster.raftMutex.Lock()
-	_, ok := cluster.rafts[stateClusterID]
-	cluster.raftMutex.Unlock()
+	cluster.raftMutex.RLock()
+	_, ok := cluster.rafts[farmStateClusterID]
+	cluster.raftMutex.RUnlock()
 	for !ok {
-		cluster.params.Logger.Debugf("[Gossip.Provision] Waiting on provisioning completion: stateClusterID=%d, configClusterID=%d",
-			stateClusterID, farmID)
+		cluster.params.Logger.Debugf("[Gossip.Provision] Waiting on provisioning completion: farmID=%d, farmStateClusterID=%d",
+			farmID, farmStateClusterID)
 		time.Sleep(1 * time.Second)
-		cluster.raftMutex.Lock()
-		_, ok = cluster.rafts[stateClusterID]
-		cluster.raftMutex.
-			Unlock()
+		cluster.raftMutex.RLock()
+		_, ok = cluster.rafts[farmStateClusterID]
+		cluster.raftMutex.RUnlock()
 	}
 	return nil
 }

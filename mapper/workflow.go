@@ -21,7 +21,7 @@ func (mapper *DefaultWorkflowMapper) MapConfigToView(config *config.Workflow) *v
 	steps := make([]viewmodel.WorkflowStep, len(config.GetSteps()))
 	for i, step := range config.GetSteps() {
 		steps[i] = viewmodel.WorkflowStep{
-			ID:         step.GetID(),
+			ID:         step.ID,
 			WorkflowID: step.GetWorkflowID(),
 			DeviceID:   step.GetDeviceID(),
 			ChannelID:  step.GetChannelID(),
@@ -31,7 +31,7 @@ func (mapper *DefaultWorkflowMapper) MapConfigToView(config *config.Workflow) *v
 			State:      step.GetState()}
 	}
 	return &viewmodel.Workflow{
-		ID:            config.GetID(),
+		ID:            config.ID,
 		FarmID:        config.GetFarmID(),
 		Name:          config.GetName(),
 		LastCompleted: config.GetLastCompleted(),
@@ -42,7 +42,7 @@ func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflo
 	steps := make([]*config.WorkflowStep, len(workflow.GetSteps()))
 	for i, step := range workflow.GetSteps() {
 		steps[i] = &config.WorkflowStep{
-			ID:         step.GetID(),
+			ID:         step.ID,
 			WorkflowID: step.GetWorkflowID(),
 			DeviceID:   step.GetDeviceID(),
 			ChannelID:  step.GetChannelID(),
@@ -52,7 +52,7 @@ func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflo
 			State:      step.GetState()}
 	}
 	return &config.Workflow{
-		ID:            workflow.GetID(),
+		ID:            workflow.ID,
 		FarmID:        workflow.GetFarmID(),
 		Name:          workflow.GetName(),
 		LastCompleted: workflow.GetLastCompleted(),

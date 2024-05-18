@@ -6,13 +6,14 @@ package statemachine
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"sync/atomic"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/index"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
@@ -22,6 +23,7 @@ import (
 
 type OnDiskStateMachine interface {
 	CreateOnDiskStateMachine(clusterID, nodeID uint64) sm.IOnDiskStateMachine
+	Count() int64
 	sm.IOnDiskStateMachine
 }
 
@@ -37,7 +39,7 @@ func NewGenericOnDiskStateMachine[E interface{}](logger *logging.Logger,
 	idGenerator util.IdGenerator, dbPath string,
 	clusterID, nodeID uint64) OnDiskStateMachine {
 
-	logger.Infof("Creatnig new %T Raft state machine", *new(E))
+	logger.Infof("Creating new %T Raft state machine", *new(E))
 
 	return &GenericDiskKV[E]{
 		logger:      logger,
@@ -87,7 +89,6 @@ func (d *GenericDiskKV[E]) Lookup(key interface{}) (interface{}, error) {
 	switch t := key.(type) {
 
 	case uint64: // get by id
-		//id := d.idGenerator.Uint64Bytes(t)
 		id := []byte(strconv.FormatUint(key.(uint64), 10))
 		v, err := d.diskKV.Lookup(id)
 		if err != nil {
@@ -101,8 +102,8 @@ func (d *GenericDiskKV[E]) Lookup(key interface{}) (interface{}, error) {
 		}
 		return entity, err
 
-	case []uint8: // query
-		var pageQuery query.Page
+	case []uint8: // json serialized struct
+		var pageQuery query.PageQuery
 		err := json.Unmarshal([]byte(string(key.([]uint8))), &pageQuery)
 		if err != nil {
 			d.logger.Error(err)
@@ -116,15 +117,41 @@ func (d *GenericDiskKV[E]) Lookup(key interface{}) (interface{}, error) {
 		}
 		return d.GetPage(pageQuery) // else config.KeyValueEntity
 
+	case int: // simple query type with no parameters to parse
+		if key.(int) == query.QUERY_TYPE_COUNT {
+			return d.Count(), nil
+		}
+		errmsg := fmt.Sprintf("Unsupported int type query: %T, key: %d", t, key)
+		d.logger.Error(errmsg)
+		return nil, ErrUnsupportedQuery
+
 	default:
-		d.logger.Errorf("[keyType] %s\n", t)
+		errmsg := fmt.Sprintf("Unsupported key type: %T", t)
+		d.logger.Error(errmsg)
+		return nil, ErrUnsupportedQuery
 	}
-	return nil, datastore.ErrNotFound
 }
 
-func (d *GenericDiskKV[E]) GetPage(pageQuery query.Page) (interface{}, error) {
+func (d *GenericDiskKV[E]) Count() int64 {
+	db := (*pebbledb)(atomic.LoadPointer(&d.diskKV.db))
+	iter := db.db.NewIter(db.ro)
+	defer iter.Close()
+	i := int64(0)
+	for iter.First(); iter.Valid(); iter.Next() {
+		if string(iter.Key()) == "applied_index" {
+			// This is the dragonboat applied_index field
+			continue
+		}
+		i++
+	}
+	return i
+}
 
-	var entities = make([]E, 0)
+func (d *GenericDiskKV[E]) GetPage(pageQuery query.PageQuery) (interface{}, error) {
+
+	pageResult := dao.PageResult[E]{
+		Page:     pageQuery.Page,
+		PageSize: pageQuery.PageSize}
 
 	page := pageQuery.Page
 	if page < 1 {
@@ -137,6 +164,78 @@ func (d *GenericDiskKV[E]) GetPage(pageQuery query.Page) (interface{}, error) {
 	defer iter.Close()
 
 	i := 0
+	var entities = make([]E, 0)
+	if pageQuery.SortOrder == query.SORT_ASCENDING {
+		for iter.First(); iter.Valid(); iter.Next() {
+			if i < offset {
+				i++
+				continue
+			}
+			if i == offset+pageQuery.PageSize {
+				pageResult.HasMore = iter.Next() // peek the next record
+				break
+			}
+			i++
+			key := iter.Key()
+			value := iter.Value()
+			if string(key) == "applied_index" {
+				// This is the dragonboat applied_index field
+				continue
+			}
+			var entity E
+			err := json.Unmarshal(value, &entity)
+			if err != nil {
+				d.logger.Errorf("[Page] Error: %s\n", err)
+				return nil, err
+			}
+			entities = append(entities, entity)
+		}
+	} else {
+		for iter.Last(); iter.Valid(); iter.Prev() {
+			if i < offset {
+				i++
+				continue
+			}
+			if i == offset+pageQuery.PageSize {
+				pageResult.HasMore = iter.Next()
+				break
+			}
+			i++
+			key := iter.Key()
+			value := iter.Value()
+			if string(key) == "applied_index" {
+				continue
+			}
+			var entity E
+			err := json.Unmarshal(value, &entity)
+			if err != nil {
+				d.logger.Errorf("[Page] Error: %s\n", err)
+				return nil, err
+			}
+			entities = append(entities, entity)
+		}
+	}
+	pageResult.Entities = entities
+	return pageResult, nil
+}
+
+func (d *GenericDiskKV[E]) GetPageUsingTimeSeriesIndex(pageQuery query.PageQuery) (interface{}, error) {
+	var entities = make([]E, 0)
+
+	page := pageQuery.Page
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * pageQuery.PageSize
+
+	db := (*pebbledb)(atomic.LoadPointer(&d.diskKV.db))
+	iter := db.db.NewIter(db.ro)
+	defer iter.Close()
+
+	// Query the database TimeSeries index
+	i := 0
+	entityKeys := make([][]byte, 0)
+	// hasMore := true
 	for iter.First(); iter.Valid(); iter.Next() {
 		if i < offset {
 			i++
@@ -146,23 +245,40 @@ func (d *GenericDiskKV[E]) GetPage(pageQuery query.Page) (interface{}, error) {
 			break
 		}
 		i++
-
 		key := iter.Key()
 		value := iter.Value()
-
 		if string(key) == "applied_index" {
-			// This is the dragonboat applied_index field
+			// This is the dragonboat applied_index record
 			continue
 		}
+		timeSeriesIndex := index.NewTimeSeriesIndex()
+		if err := timeSeriesIndex.ParseKeyValue(key, value); err != nil {
+			if err == index.ErrInvalidKeyPrefix {
+				// hasMore = false
+				break // Iterator has scrolled past the timeseries record
+			}
+			return nil, err
+		}
+		entityKeys = append(entityKeys, timeSeriesIndex.EntityIDKey)
+	}
 
+	// Retrieve all of the entities from the TimeSeries index result set
+	entityValues, err := d.diskKV.LookupBatch(entityKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode all of the returned entities being returned as []byte
+	for _, ev := range entityValues {
 		var entity E
-		err := json.Unmarshal(value, &entity)
+		err = json.Unmarshal(ev.([]byte), &entity)
 		if err != nil {
 			d.logger.Errorf("[Page] Error: %s\n", err)
 			return nil, err
 		}
 		entities = append(entities, entity)
 	}
+
 	return entities, nil
 }
 
@@ -214,81 +330,13 @@ func (d *GenericDiskKV[E]) Update(ents []sm.Entry) ([]sm.Entry, error) {
 	return ents, nil
 }
 
-func (d *GenericDiskKV[E]) GetPageUsingTimeSeriesIndex(pageQuery query.Page) (interface{}, error) {
-	var entities = make([]E, 0)
-
-	page := pageQuery.Page
-	if page < 1 {
-		page = 1
-	}
-	offset := (page - 1) * pageQuery.PageSize
-
-	db := (*pebbledb)(atomic.LoadPointer(&d.diskKV.db))
-	iter := db.db.NewIter(db.ro)
-	defer iter.Close()
-
-	// Query the database TimeSeries index
-	i := 0
-	//entityIDs := make([]uint64, 0)
-	entityKeys := make([][]byte, 0)
-	for iter.First(); iter.Valid(); iter.Next() {
-
-		if i < offset {
-			i++
-			continue
-		}
-		if i == offset+pageQuery.PageSize {
-			break
-		}
-		i++
-
-		key := iter.Key()
-		value := iter.Value()
-
-		if string(key) == "applied_index" {
-			// This is the dragonboat applied_index record
-			continue
-		}
-
-		timeSeriesIndex := index.NewTimeSeriesIndex()
-		if err := timeSeriesIndex.ParseKeyValue(key, value); err != nil {
-			if err == index.ErrInvalidKeyPrefix {
-				break // Iterator has scrolled past the timeseries record
-			}
-			return nil, err
-		}
-
-		//entityIDs = append(entityIDs, timeSeriesIndex.EntityID)
-		entityKeys = append(entityKeys, timeSeriesIndex.EntityIDKey)
-	}
-
-	// Retrieve all of the entities from the TimeSeries index result set
-	entityValues, err := d.diskKV.LookupBatch(entityKeys)
-	if err != nil {
-		return nil, err
-	}
-
-	// Decode all of the returned entities being returned as []byte
-	for _, ev := range entityValues {
-		var entity E
-		err = json.Unmarshal(ev.([]byte), &entity)
-		if err != nil {
-			d.logger.Errorf("[Page] Error: %s\n", err)
-			return nil, err
-		}
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
-}
-
 func (d *GenericDiskKV[E]) UpdateTimeSeries(ents []sm.Entry) ([]sm.Entry, error) {
 
 	entities := make([]config.TimeSeriesIndexeder, len(ents))
 	kvEnts := make([]sm.Entry, 0)
 	for idx, e := range ents {
 
-		proposal, entity, err := d.parseProposalWithTimeSeries(e.Cmd)
+		proposal, entity, err := d.parseProposalWithTimeSeriesIndex(e.Cmd)
 		if err != nil {
 			return kvEnts, err
 		}
@@ -338,7 +386,7 @@ func (d *GenericDiskKV[E]) parseProposal(cmd []byte) (Proposal, config.KeyValueE
 	return proposal, kvEntity, nil
 }
 
-func (d *GenericDiskKV[E]) parseProposalWithTimeSeries(cmd []byte) (Proposal, config.TimeSeriesIndexeder, error) {
+func (d *GenericDiskKV[E]) parseProposalWithTimeSeriesIndex(cmd []byte) (Proposal, config.TimeSeriesIndexeder, error) {
 	var proposal Proposal
 	err := json.Unmarshal(cmd, &proposal)
 	if err != nil {

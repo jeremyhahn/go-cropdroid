@@ -72,7 +72,7 @@ func (h *ChannelScheduleHandler) Handle() error {
 	// 	return errors.New("activeSchedule not found")
 	// }
 
-	if activeSchedule != nil && activeSchedule.GetID() != 0 {
+	if activeSchedule != nil && activeSchedule.ID != 0 {
 		h.logger.Debugf("%s scheduled ON condition met. Current position: %d", h.channelConfig.GetName(), position)
 		if position == common.SWITCH_OFF {
 

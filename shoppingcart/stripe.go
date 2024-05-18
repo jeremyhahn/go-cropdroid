@@ -22,7 +22,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/stripe/stripe-go/v78"
 	"github.com/stripe/stripe-go/v78/checkout/session"
 	"github.com/stripe/stripe-go/v78/customer"
@@ -210,7 +211,7 @@ func (client *StripeClient) GetSetupIntent(setupIntentRequest *SetupIntentReques
 // Retrieve a user with their ephemeral key. A new user is created if they don't already exist
 func (client *StripeClient) GetOrCreateCustomerWithEphemeralKey(user common.UserAccount) (*CustomerEphemeralKeyResponse, error) {
 	customerConfig, err := client.customerDAO.Get(user.GetID(), common.CONSISTENCY_LOCAL)
-	if err == gorm.ErrRecordNotFound {
+	if err == gorm.ErrRecordNotFound || err == datastore.ErrNotFound {
 		customerConfig, err = client.CreateCustomer(&config.Customer{
 			ID:    user.GetID(),
 			Name:  user.GetEmail(),
@@ -240,9 +241,6 @@ func (client *StripeClient) GetOrCreateCustomerWithEphemeralKey(user common.User
 
 func (client *StripeClient) GetCustomer(id uint64) (*config.Customer, error) {
 	customerConfig, err := client.customerDAO.Get(id, common.CONSISTENCY_LOCAL)
-	// if err == gorm.ErrRecordNotFound {
-	// 	return emptyCustomer, nil
-	// }
 	if err != nil {
 		client.app.Logger.Error(err)
 		return nil, err
@@ -297,7 +295,7 @@ func (client *StripeClient) UpdateCustomer(customerConfig *config.Customer) (*co
 		client.app.Logger.Error(err)
 		return nil, err
 	}
-	if err := client.customerDAO.Update(customerConfig); err != nil {
+	if err := client.customerDAO.Save(customerConfig); err != nil {
 		client.app.Logger.Error(err)
 		return nil, err
 	}

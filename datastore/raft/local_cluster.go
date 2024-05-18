@@ -9,6 +9,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/util"
 
 	clusterutil "github.com/jeremyhahn/go-cropdroid/cluster/util"
@@ -26,6 +27,7 @@ type LocalCluster struct {
 	roleClusterID uint64
 	raftLeaderID  uint64
 	dataDir       string
+	serverDAO     dao.ServerDAO
 }
 
 func NewLocalCluster(app *app.App, nodeCount int, clusterID uint64) *LocalCluster {
@@ -71,7 +73,7 @@ func (localCluster *LocalCluster) StartCluster() {
 
 	for i := 0; i < localCluster.nodeCount; i++ {
 
-		nodeID := uint64(i)
+		nodeID := uint64(i + 1)
 		clusterGossipPort := gossipStartPort + i
 		clusterRaftPort := raftStartPort + i
 
@@ -97,13 +99,6 @@ func (localCluster *LocalCluster) StartCluster() {
 			gossipNode.Join()
 			go gossipNode.Run()
 
-			// Need to pass in a new cluster ID
-			// raftNode := cluster.NewRaftNode(params, util.NewHashring(1))
-			// for raftNode == nil {
-			// 	localCluster.app.Logger.Info("Waiting for enough nodes to build the Raft quorum...")
-			// 	time.Sleep(1 * time.Second)
-			// 	raftNode = gossipNode.GetSystemRaft()
-			// }
 			raftNode := gossipNode.GetSystemRaft()
 
 			localCluster.gossipMutex.Lock()
@@ -113,6 +108,10 @@ func (localCluster *LocalCluster) StartCluster() {
 			localCluster.raftMutex.Lock()
 			localCluster.raftNodes = append(localCluster.raftNodes, raftNode)
 			localCluster.raftMutex.Unlock()
+
+			if params.NodeID == localCluster.raftLeaderID {
+				localCluster.serverDAO = NewRaftServerDAO(localCluster.app.Logger, raftNode, localCluster.clusterID)
+			}
 
 			wg.Done()
 		}(params)

@@ -8,8 +8,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -46,10 +46,11 @@ func CreateFarmService(app *app.App, farmDAO dao.FarmDAO, idGenerator util.IdGen
 	farmConfig *config.Farm, consistencyLevel int, serviceRegistry ServiceRegistry,
 	farmChannels *FarmChannels, deviceConfigDAO dao.DeviceSettingDAO) (FarmService, error) {
 
-	farmID := farmConfig.GetID()
+	farmID := farmConfig.ID
 
-	farmStateKey := fmt.Sprintf("%s-%d", farmConfig.GetName(), farmID)
-	farmStateID := idGenerator.NewStringID(farmStateKey)
+	// farmStateKey := fmt.Sprintf("%s-%d", farmConfig.GetName(), farmID)
+	// farmStateID := idGenerator.NewStringID(farmStateKey)
+	farmStateID := idGenerator.NewFarmStateID(farmID)
 
 	mode := farmConfig.GetMode()
 
@@ -105,7 +106,7 @@ func (farm *DefaultFarmService) InitializeState(saveToStateStore bool) error {
 				time.Sleep(1 * time.Minute)
 			}
 		}
-		deviceID := deviceConfig.GetID()
+		deviceID := deviceConfig.ID
 		deviceType := deviceConfig.GetType()
 		metrics := deviceConfig.GetMetrics()
 		channels := deviceConfig.GetChannels()
@@ -626,7 +627,7 @@ func (farm *DefaultFarmService) Stop() {
 func (farm *DefaultFarmService) Poll() {
 
 	farmConfig, err := farm.farmDAO.Get(farm.farmID, common.CONSISTENCY_LOCAL)
-	if err != nil || farmConfig.GetID() == 0 {
+	if err != nil || farmConfig.ID == 0 {
 		farm.app.Logger.Errorf("Farm config not found: %d", farm.farmID)
 		return
 	}
@@ -657,8 +658,7 @@ func (farm *DefaultFarmService) poll() {
 	}
 }
 
-func (farm *DefaultFarmService) Manage(deviceConfig *config.Device,
-	farmState state.FarmStateMap) {
+func (farm *DefaultFarmService) Manage(deviceConfig *config.Device, farmState state.FarmStateMap) {
 
 	//eventType := "Manage"
 
@@ -681,7 +681,7 @@ func (farm *DefaultFarmService) Manage(deviceConfig *config.Device,
 	}
 
 	if farmState == nil {
-		farm.app.Logger.Warningf("No farm state, waiting until initialized. farm.id: %d", farmConfig.GetID())
+		farm.app.Logger.Warningf("No farm state, waiting until initialized. farm.id: %d", farmConfig.ID)
 		return
 	}
 
@@ -762,7 +762,7 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig *config.Device,
 
 			farm.app.Logger.Debugf("farm.backoffTable=%+v", farm.backoffTable)
 
-			if timer, ok := farm.backoffTable[farm.farmID][channel.GetID()]; ok {
+			if timer, ok := farm.backoffTable[farm.farmID][channel.ID]; ok {
 
 				farm.app.Logger.Debugf("timer=%s, backoff=%d, channel=%+v",
 					timer.String(), backoff, channel)
@@ -773,7 +773,7 @@ func (farm *DefaultFarmService) ManageChannels(deviceConfig *config.Device,
 						channel.GetName(), timer.String(), time.Now().String(), elapsed, backoff)
 					return nil
 				} else {
-					delete(farm.backoffTable[farm.farmID], channel.GetID())
+					delete(farm.backoffTable[farm.farmID], channel.ID)
 				}
 			}
 		}
@@ -840,7 +840,7 @@ func (farm *DefaultFarmService) RunWorkflow(workflow *config.Workflow) {
 				farm.app.Logger.Error(err)
 			}
 			for _, channel := range deviceConfig.GetChannels() {
-				if channel.GetID() == step.GetChannelID() {
+				if channel.ID == step.GetChannelID() {
 					duration := step.GetDuration()
 					boardID := channel.GetChannelID()
 					_, err := deviceService.TimerSwitch(boardID,

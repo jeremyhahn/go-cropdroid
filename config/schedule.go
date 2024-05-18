@@ -18,13 +18,14 @@ type Schedule struct {
 	Days           *string    `gorm:"type:varchar(50);default:NULL" yaml:"days" json:"days"`
 	LastExecuted   time.Time  `gorm:"type:timestamp" yaml:"lastExecuted" json:"lastExecuted"`
 	ExecutionCount int        `yaml:"executionCount" json:"executionCount"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewSchedule() *Schedule {
 	return &Schedule{}
 }
 
-func (schedule *Schedule) GetID() uint64 {
+func (schedule *Schedule) Identifier() uint64 {
 	return schedule.ID
 }
 

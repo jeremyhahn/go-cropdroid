@@ -11,6 +11,7 @@ import (
 	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	//_ "gorm.io/driver/mysql"
 	//_ "gorm.io/driver/postgres"
@@ -159,7 +160,13 @@ func (database *GormDatabase) Drop() {
 
 // Create a new sqlite database connection
 func (database *GormDatabase) newSQLite(dbname string) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(dbname), &gorm.Config{})
+	gormConfig := &gorm.Config{}
+	if database.params.DebugFlag {
+		gormConfig.Logger = logger.Default.LogMode(logger.Info)
+	} else {
+		gormConfig.Logger = logger.Default.LogMode(logger.Error)
+	}
+	db, err := gorm.Open(sqlite.Open(dbname), gormConfig)
 	if err != nil {
 		database.logger.Fatalf("SQLite Error: %s", err)
 	}

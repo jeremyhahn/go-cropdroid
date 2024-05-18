@@ -5,7 +5,7 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +13,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	org *config.Organization) {
 
 	farm := org.GetFarms()[0]
-	farmID := farm.GetID()
+	farmID := farm.ID
 	reservoirID := uint64(3)
 	doserID := uint64(4)
 
@@ -84,12 +84,12 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 
 	persistedWorkflow1 := persistedWorkflows[0]
 
-	//assert.Equal(t, uint64(1), persistedWorkflow1.GetID())
+	//assert.Equal(t, uint64(1), persistedWorkflow1.ID)
 	assert.Equal(t, waterChangeWorkflow.GetFarmID(), persistedWorkflow1.GetFarmID())
 	assert.Equal(t, len(waterChangeWorkflow.GetSteps()), len(persistedSteps))
 
 	persistedStep1 := persistedSteps[0]
-	assert.Equal(t, persistedWorkflow1.GetID(), persistedStep1.GetWorkflowID())
+	assert.Equal(t, persistedWorkflow1.ID, persistedStep1.GetWorkflowID())
 	assert.Equal(t, drainStep.GetDeviceID(), persistedStep1.GetDeviceID())
 	assert.Equal(t, drainStep.GetChannelID(), persistedStep1.GetChannelID())
 	assert.Equal(t, drainStep.GetDeviceID(), persistedStep1.GetDeviceID())
@@ -98,7 +98,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	assert.Equal(t, 1, persistedStep1.GetSortOrder())
 
 	persistedStep2 := persistedSteps[1]
-	assert.Equal(t, persistedWorkflow1.GetID(), persistedStep2.GetWorkflowID())
+	assert.Equal(t, persistedWorkflow1.ID, persistedStep2.GetWorkflowID())
 	assert.Equal(t, fillStep.GetDeviceID(), persistedStep2.GetDeviceID())
 	assert.Equal(t, fillStep.GetChannelID(), persistedStep2.GetChannelID())
 	assert.Equal(t, fillStep.GetDeviceID(), persistedStep2.GetDeviceID())
@@ -107,7 +107,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	assert.Equal(t, 2, persistedStep2.GetSortOrder())
 
 	persistedStep3 := persistedSteps[2]
-	assert.Equal(t, persistedWorkflow1.GetID(), persistedStep3.GetWorkflowID())
+	assert.Equal(t, persistedWorkflow1.ID, persistedStep3.GetWorkflowID())
 	assert.Equal(t, phDownStep.GetDeviceID(), persistedStep3.GetDeviceID())
 	assert.Equal(t, phDownStep.GetChannelID(), persistedStep3.GetChannelID())
 	assert.Equal(t, phDownStep.GetDeviceID(), persistedStep3.GetDeviceID())
@@ -116,7 +116,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	assert.Equal(t, 3, persistedStep3.GetSortOrder())
 
 	persistedStep4 := persistedSteps[3]
-	assert.Equal(t, persistedWorkflow1.GetID(), persistedStep4.GetWorkflowID())
+	assert.Equal(t, persistedWorkflow1.ID, persistedStep4.GetWorkflowID())
 	assert.Equal(t, nutePart1Step.GetDeviceID(), persistedStep4.GetDeviceID())
 	assert.Equal(t, nutePart1Step.GetChannelID(), persistedStep4.GetChannelID())
 	assert.Equal(t, nutePart1Step.GetDeviceID(), persistedStep4.GetDeviceID())
@@ -125,7 +125,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	assert.Equal(t, 4, persistedStep4.GetSortOrder())
 
 	persistedStep5 := persistedSteps[4]
-	assert.Equal(t, persistedWorkflow1.GetID(), persistedStep5.GetWorkflowID())
+	assert.Equal(t, persistedWorkflow1.ID, persistedStep5.GetWorkflowID())
 	assert.Equal(t, nutePart2Step.GetDeviceID(), persistedStep5.GetDeviceID())
 	assert.Equal(t, nutePart2Step.GetChannelID(), persistedStep5.GetChannelID())
 	assert.Equal(t, nutePart2Step.GetDeviceID(), persistedStep5.GetDeviceID())
@@ -134,7 +134,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	assert.Equal(t, 5, persistedStep5.GetSortOrder())
 
 	persistedStep6 := persistedSteps[5]
-	assert.Equal(t, persistedWorkflow1.GetID(), persistedStep6.GetWorkflowID())
+	assert.Equal(t, persistedWorkflow1.ID, persistedStep6.GetWorkflowID())
 	assert.Equal(t, nutePart3Step.GetDeviceID(), persistedStep6.GetDeviceID())
 	assert.Equal(t, nutePart3Step.GetChannelID(), persistedStep6.GetChannelID())
 	assert.Equal(t, nutePart3Step.GetDeviceID(), persistedStep6.GetDeviceID())

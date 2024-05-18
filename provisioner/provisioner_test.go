@@ -5,8 +5,9 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/util"
@@ -73,9 +74,9 @@ func TestProvisioner(t *testing.T) {
 	assert.NotNil(t, farm)
 	assert.Equal(t, 4, len(farm.GetDevices()))
 
-	farms, err := farmDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := farmDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(farms))
+	assert.Equal(t, 1, len(page1.Entities))
 
 	CurrentTest.Cleanup()
 }
@@ -159,9 +160,9 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	assert.Equal(t, 4, len(farm2.GetDevices()))
 	assert.Equal(t, 4, len(farm3.GetDevices()))
 
-	farms, err := farmDAO.GetAll(common.CONSISTENCY_LOCAL)
+	page1, err := farmDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(farms))
+	assert.Equal(t, 3, len(page1.Entities))
 
 	CurrentTest.Cleanup()
 }

@@ -4,12 +4,11 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/config/store"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 	logging "github.com/op/go-logging"
@@ -78,13 +77,13 @@ func (service *DefaultConditionService) GetListView(session Session, channelID u
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			if channel.GetID() == channelID {
+			if channel.ID == channelID {
 				channelConditions := channel.GetConditions()
 				viewConditions := make([]*viewmodel.Condition, 0, len(channelConditions))
 				for _, condition := range channelConditions {
 					// Look up the metric for this condition
 					for _, metric := range device.GetMetrics() {
-						if metric.GetID() == condition.GetMetricID() {
+						if metric.ID == condition.GetMetricID() {
 							viewConditions = append(viewConditions,
 								service.mapper.MapConfigToView(
 									condition, device.GetType(), metric, channelID))
@@ -146,7 +145,7 @@ func (service *DefaultConditionService) Create(session Session, condition *confi
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			if channel.GetID() == condition.GetChannelID() {
+			if channel.ID == condition.GetChannelID() {
 				channel.AddCondition(condition)
 				device.SetChannel(channel)
 				return condition, farmService.SetDeviceConfig(device)
@@ -168,7 +167,7 @@ func (service *DefaultConditionService) Update(session Session, condition *confi
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			if channel.GetID() == condition.GetChannelID() {
+			if channel.ID == condition.GetChannelID() {
 				channel.SetCondition(condition)
 				device.SetChannel(channel)
 				return farmService.SetDeviceConfig(device)
@@ -191,7 +190,7 @@ func (service *DefaultConditionService) Delete(session Session, condition *confi
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			for i, _condition := range channel.GetConditions() {
-				if _condition.GetID() == condition.GetID() {
+				if _condition.ID == condition.ID {
 					// c := *channel.(*config.Channel)
 					// c.Conditions = append(c.Conditions[:i], c.Conditions[i+1:]...)
 					//device.SetChannel(&c)
@@ -234,5 +233,5 @@ func (service *DefaultConditionService) IsTrue(condition *config.Condition, valu
 		}
 		return false, nil
 	}
-	return false, errors.New(fmt.Sprintf("Unsupported comparison operator: %s", condition.GetComparator()))
+	return false, fmt.Errorf("unsupported comparison operator: %s", condition.GetComparator())
 }

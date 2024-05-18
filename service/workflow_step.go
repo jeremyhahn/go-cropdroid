@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 )
 
 type WorkflowStepService interface {
@@ -32,9 +32,9 @@ func (service *DefaultWorkflowStepService) GetStep(session Session, workflowID, 
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
-		if workflow.GetID() == workflowID {
+		if workflow.ID == workflowID {
 			for _, step := range workflow.GetSteps() {
-				if step.GetID() == stepID {
+				if step.ID == stepID {
 					return step, nil
 				}
 			}
@@ -47,7 +47,7 @@ func (service *DefaultWorkflowStepService) GetStep(session Session, workflowID, 
 // GetWorkflows retrieves a list of workflow entries from the current FarmConfig
 func (service *DefaultWorkflowStepService) GetSteps(session Session, workflowID uint64) ([]*config.WorkflowStep, error) {
 	for _, workflow := range session.GetFarmService().GetConfig().GetWorkflows() {
-		if workflow.GetID() == workflowID {
+		if workflow.ID == workflowID {
 			return workflow.GetSteps(), nil
 		}
 	}
@@ -60,7 +60,7 @@ func (service *DefaultWorkflowStepService) Create(session Session, step *config.
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
-		if workflow.GetID() == step.GetWorkflowID() {
+		if workflow.ID == step.GetWorkflowID() {
 			workflow.AddStep(step)
 			farmConfig.SetWorkflow(workflow)
 			return step, farmService.SetConfig(farmConfig)
@@ -75,7 +75,7 @@ func (service *DefaultWorkflowStepService) Update(session Session, step *config.
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
-		if workflow.GetID() == step.GetWorkflowID() {
+		if workflow.ID == step.GetWorkflowID() {
 			workflow.SetStep(step)
 			return farmService.SetConfig(farmConfig)
 		}
@@ -94,7 +94,7 @@ func (service *DefaultWorkflowStepService) Delete(session Session, step *config.
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
-		if workflow.GetID() == step.GetWorkflowID() {
+		if workflow.ID == step.GetWorkflowID() {
 			workflow.RemoveStep(step)
 			farmConfig.SetWorkflow(workflow)
 			return farmService.SetConfig(farmConfig)

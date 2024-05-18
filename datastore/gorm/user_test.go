@@ -53,14 +53,14 @@ func TestUserDAO_CreateAndGetByOrgID(t *testing.T) {
 	assert.Nil(t, err)
 
 	permission := config.NewPermission()
-	permission.SetOrgID(org.GetID())
-	permission.SetUserID(user.GetID())
-	permission.SetRoleID(role.GetID())
-	permission.SetFarmID(farm.GetID())
+	permission.SetOrgID(org.ID)
+	permission.SetUserID(user.ID)
+	permission.SetRoleID(role.ID)
+	permission.SetFarmID(farm.ID)
 	err = permissionDAO.Save(permission)
 	assert.Nil(t, err)
 
-	users, err := orgDAO.GetUsers(org.GetID())
+	users, err := orgDAO.GetUsers(org.ID)
 	assert.Nil(t, err)
 	assert.NotNil(t, users)
 	assert.Equal(t, len(users), 1)
@@ -131,14 +131,14 @@ func TestUserDAO_Update(t *testing.T) {
 	assert.Equal(t, "test", persistedUser.GetPassword())
 
 	user := &config.User{
-		ID:       persistedUser.GetID(),
+		ID:       persistedUser.ID,
 		Email:    "nologin@localhost",
 		Password: "test123"}
 
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
 
-	persistedUser2, err := userDAO.Get(persistedUser.GetID(), common.CONSISTENCY_LOCAL)
+	persistedUser2, err := userDAO.Get(persistedUser.ID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
 	assert.Equal(t, user.GetPassword(), persistedUser2.GetPassword())
 }
@@ -172,8 +172,8 @@ func TestUserDAO_WithRoles(t *testing.T) {
 	assert.Nil(t, err)
 
 	permissionDAO.Save(&config.Permission{
-		UserID: user.GetID(),
-		RoleID: role.GetID()})
+		UserID: user.ID,
+		RoleID: role.ID})
 
 	persisted, err := userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)

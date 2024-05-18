@@ -25,7 +25,7 @@ func TestDeviceIndex(t *testing.T) {
 	device, ok := store.Get(1)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, device, deviceConfig)
-	assert.Equal(t, 1, device.GetID())
+	assert.Equal(t, 1, device.ID)
 	assert.Equal(t, 1, device.GetFarmID())
 	assert.Equal(t, "Test", device.GetType())
 }

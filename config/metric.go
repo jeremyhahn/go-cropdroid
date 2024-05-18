@@ -1,16 +1,17 @@
 package config
 
 type Metric struct {
-	ID        uint64  `gorm:"primaryKey" yaml:"id" json:"id"`
-	DeviceID  uint64  `yaml:"deviceID" json:"device_id"`
-	DataType  int     `gorm:"column:datatype" yaml:"datatype" json:"datatype"`
-	Name      string  `yaml:"name" json:"name"`
-	Key       string  `yaml:"key" json:"key"`
-	Enable    bool    `yaml:"enable" json:"enable"`
-	Notify    bool    `yaml:"notify" json:"notify"`
-	Unit      string  `yaml:"unit" json:"unit"`
-	AlarmLow  float64 `yaml:"alarmLow" json:"alarmLow"`
-	AlarmHigh float64 `yaml:"alarmHigh" json:"alarmHigh"`
+	ID             uint64  `gorm:"primaryKey" yaml:"id" json:"id"`
+	DeviceID       uint64  `yaml:"deviceID" json:"device_id"`
+	DataType       int     `gorm:"column:datatype" yaml:"datatype" json:"datatype"`
+	Name           string  `yaml:"name" json:"name"`
+	Key            string  `yaml:"key" json:"key"`
+	Enable         bool    `yaml:"enable" json:"enable"`
+	Notify         bool    `yaml:"notify" json:"notify"`
+	Unit           string  `yaml:"unit" json:"unit"`
+	AlarmLow       float64 `yaml:"alarmLow" json:"alarmLow"`
+	AlarmHigh      float64 `yaml:"alarmHigh" json:"alarmHigh"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewMetric() *Metric {
@@ -31,7 +32,7 @@ func (metric *Metric) SetID(id uint64) {
 	metric.ID = id
 }
 
-func (metric *Metric) GetID() uint64 {
+func (metric *Metric) Identifier() uint64 {
 	return metric.ID
 }
 

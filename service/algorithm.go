@@ -3,11 +3,12 @@ package service
 import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 )
 
 type AlgorithmService interface {
-	GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]*config.Algorithm, error)
+	GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Algorithm], error)
 }
 
 type DefaultAlgorithmService struct {
@@ -19,10 +20,6 @@ func NewAlgorithmService(dao dao.AlgorithmDAO) AlgorithmService {
 	return &DefaultAlgorithmService{dao: dao}
 }
 
-func (service *DefaultAlgorithmService) GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]*config.Algorithm, error) {
-	entities, err := service.dao.GetPage(common.CONSISTENCY_LOCAL, page, pageSize)
-	if err != nil {
-		return nil, err
-	}
-	return entities, nil
+func (service *DefaultAlgorithmService) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Algorithm], error) {
+	return service.dao.GetPage(pageQuery, common.CONSISTENCY_LOCAL)
 }

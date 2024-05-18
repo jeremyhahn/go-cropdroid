@@ -37,6 +37,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/cluster"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -203,7 +204,7 @@ func (server *Webserver) buildRoutes() {
 	router := mux.NewRouter().StrictSlash(true)
 	endpointList := make([]string, 0)
 
-	jsonWriter := rest.NewJsonWriter()
+	jsonWriter := rest.NewJsonWriter(server.app.Logger)
 	//baseOrgURI := fmt.Sprintf("%s/organizations/{organizationID}", server.baseURI)
 	baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", server.baseURI)
 	//baseFarmURI := fmt.Sprintf("%s/farms/{farmID}", baseOrgURI)
@@ -249,14 +250,7 @@ func (server *Webserver) buildRoutes() {
 		}
 	}
 
-	endpoint := fmt.Sprintf("%s/events", baseFarmURI)
-	router.Handle(endpoint, negroni.New(
-		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
-		negroni.Wrap(http.HandlerFunc(server.events)),
-	))
-	endpointList = append(endpointList, endpoint)
-
-	endpoint = fmt.Sprintf("%s/events/{page}", baseFarmURI)
+	endpoint := fmt.Sprintf("%s/events/{page}", baseFarmURI)
 	router.Handle(endpoint, negroni.New(
 		negroni.HandlerFunc(server.jsonWebTokenService.Validate),
 		negroni.Wrap(http.HandlerFunc(server.eventsPage)),
@@ -403,16 +397,16 @@ func (server *Webserver) state(w http.ResponseWriter, r *http.Request) {
 	for _, farmService := range server.registry.GetFarmServices() {
 		states = append(states, farmService.GetState())
 	}
-	rest.NewJsonWriter().Write(w, http.StatusOK, states)
+	rest.NewJsonWriter(server.app.Logger).Write(w, http.StatusOK, states)
 }
 
 func (server *Webserver) config(w http.ResponseWriter, r *http.Request) {
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.app)
+	rest.NewJsonWriter(server.app.Logger).Write(w, http.StatusOK, server.app)
 }
 
 func (server *Webserver) endpoints(w http.ResponseWriter, r *http.Request) {
 	server.WalkRoutes() // TODO remove
-	rest.NewJsonWriter().Write(w, http.StatusOK, server.endpointList)
+	rest.NewJsonWriter(server.app.Logger).Write(w, http.StatusOK, server.endpointList)
 }
 
 func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
@@ -473,7 +467,7 @@ func (server *Webserver) systemStatus(w http.ResponseWriter, r *http.Request) {
 			Hashring:    &model.Hashring{Loads: server.raftNode.GetHashring().GetLoads()}}
 	}
 
-	rest.NewJsonWriter().Write(w, http.StatusOK, systemStatus)
+	rest.NewJsonWriter(server.app.Logger).Write(w, http.StatusOK, systemStatus)
 }
 
 func (server *Webserver) WalkRoutes() {
@@ -536,7 +530,7 @@ func (server *Webserver) MaintenanceMode(w http.ResponseWriter, r *http.Request)
 
 	farmState := farmService.GetState()
 	if farmState == nil {
-		server.app.Logger.Error(err.Error())
+		server.app.Logger.Error(err)
 		server.sendBadRequest(w, r, err)
 		return
 	}
@@ -561,21 +555,7 @@ func (server *Webserver) publicKey(w http.ResponseWriter, r *http.Request) {
 	//encoded := base64.StdEncoding.EncodeToString(pubkey)
 	//rest.NewJsonWriter().Write(w, http.StatusOK, encoded)
 
-	rest.NewJsonWriter().Write(w, http.StatusOK, string(pubkey))
-}
-
-func (server *Webserver) events(w http.ResponseWriter, r *http.Request) {
-	//server.eventLogService.Create(server.eventType,
-	//	fmt.Sprintf("/events requested by %s", server.clientIP(r)))
-
-	params := mux.Vars(r)
-	sFarmID := params["farmID"]
-	farmID, _ := strconv.ParseUint(sFarmID, 10, 64) // ignore errors to default to system log
-
-	entities := server.registry.GetEventLogService(farmID).GetAll()
-	w.Header().Set("Content-Type", "application/json")
-	json, _ := json.MarshalIndent(entities, "", " ")
-	fmt.Fprintln(w, string(json))
+	rest.NewJsonWriter(server.app.Logger).Write(w, http.StatusOK, string(pubkey))
 }
 
 func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
@@ -588,16 +568,22 @@ func (server *Webserver) eventsPage(w http.ResponseWriter, r *http.Request) {
 	//server.eventLogService.Create(server.eventType,
 	//	fmt.Sprintf("/eventsPage/%s requested by %s", page, server.clientIP(r)))
 
-	p, err := strconv.ParseInt(page, 10, 0)
+	p, err := strconv.Atoi(page)
 	if err != nil {
 		server.sendBadRequest(w, r, err)
 	}
 
 	server.app.Logger.Debugf("[Webserver.eventsPage] page %s requested", page)
 
-	entities := server.registry.GetEventLogService(farmID).GetPage(p)
+	pageQuery := query.NewPageQuery()
+	pageQuery.Page = p
+	pageQuery.SortOrder = query.SORT_DESCENDING
+	pageResult, err := server.registry.GetEventLogService(farmID).GetPage(pageQuery)
+	if err != nil {
+		server.sendBadRequest(w, r, err)
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json, _ := json.MarshalIndent(entities, "", " ")
+	json, _ := json.MarshalIndent(pageResult, "", " ")
 	fmt.Fprintln(w, string(json))
 }
 

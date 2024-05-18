@@ -10,7 +10,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -93,10 +93,11 @@ func (service *DefaultScheduleService) GetSchedule(session Session,
 		return nil, err
 	}
 	schedules := make([]*config.Schedule, len(entities))
-	for i, entity := range entities {
-		//schedules[i] = service.mapper.MapEntityToModel(&entity)
-		schedules[i] = entity
-	}
+	copy(schedules, entities)
+	// for i, entity := range entities {
+	// 	//schedules[i] = service.mapper.MapEntityToModel(&entity)
+	// 	schedules[i] = entity
+	// }
 	return schedules, nil
 	//return entities, nil
 }
@@ -127,7 +128,7 @@ func (service *DefaultScheduleService) Create(session Session, schedule *config.
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
-			if channel.GetID() == schedule.GetChannelID() {
+			if channel.ID == schedule.GetChannelID() {
 				channel.SetScheduleItem(schedule)
 				device.SetChannel(channel)
 				return schedule, farmService.SetDeviceConfig(device)
@@ -148,7 +149,7 @@ func (service *DefaultScheduleService) Update(session Session, schedule *config.
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			for _, _schedule := range channel.GetSchedule() {
-				if channel.GetID() == _schedule.GetChannelID() {
+				if channel.ID == _schedule.GetChannelID() {
 					channel.SetScheduleItem(schedule)
 					device.SetChannel(channel)
 					return farmService.SetDeviceConfig(device)
@@ -174,7 +175,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule *config.
 			// Android client only sends the schedule id on delete
 			//if channel.GetChannelID() == schedule.GetChannelID() {
 			for i, _schedule := range channel.GetSchedule() {
-				if _schedule.GetID() == schedule.GetID() {
+				if _schedule.ID == schedule.ID {
 					channel.Schedule = append(channel.Schedule[:i], channel.Schedule[i+1:]...)
 					device.SetChannel(channel)
 					return farmService.SetDeviceConfig(device)

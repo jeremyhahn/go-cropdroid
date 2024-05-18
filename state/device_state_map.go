@@ -2,6 +2,8 @@ package state
 
 import (
 	"time"
+
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
 // DeviceStateMap stores the current data points collected from a device
@@ -12,8 +14,6 @@ type DeviceStateMap interface {
 		GetFirmwareVersion() string
 		SetFirmwareVersion(string)
 	*/
-	GetID() uint64
-	SetID(uint64)
 	SetFarmID(uint64)
 	GetFarmID() uint64
 	GetMetrics() map[string]float64
@@ -23,11 +23,13 @@ type DeviceStateMap interface {
 	GetTimestamp() time.Time
 	SetTimestamp(time.Time)
 	Clone() DeviceStateMap
+	config.KeyValueEntity
 }
 
 type DeviceState struct {
 	//HardwareVersion    string             `yaml:"hardwareVersion" json:"hardwareVersion"`
 	//FirmwareVersion    string             `yaml:"firmwareVersion" json:"firmwareVersion"`
+	ID             uint64             `gorm:"default:CURRENT_TIMESTAMP()"" yaml:"id" json:"id"`
 	FarmID         uint64             `yaml:"farm_id" json:"farm_id"`
 	DeviceID       uint64             `yaml:"device_id" json:"device_id"`
 	Metrics        map[string]float64 `yaml:"metrics" json:"metrics"`
@@ -72,11 +74,20 @@ func CreateEmptyDeviceStateMap(deviceID uint64, numMetrics, numChannels int) Dev
 		state.FirmwareVersion = version
 	}
 */
-func (state *DeviceState) GetID() uint64 {
-	return state.DeviceID
+
+func (state *DeviceState) Identifier() uint64 {
+	return state.ID
 }
 
 func (state *DeviceState) SetID(id uint64) {
+	state.ID = id
+}
+
+func (state *DeviceState) GetDeviceID() uint64 {
+	return state.DeviceID
+}
+
+func (state *DeviceState) SetDeviceID(id uint64) {
 	state.DeviceID = id
 }
 
@@ -115,12 +126,14 @@ func (state *DeviceState) SetTimestamp(timestamp time.Time) {
 func (state *DeviceState) Clone() DeviceStateMap {
 	metrics := make(map[string]float64, len(state.Metrics))
 	channels := make([]int, len(state.Channels))
+	copy(channels, state.Channels)
 	for i, metric := range state.Metrics {
 		metrics[i] = metric
 	}
-	for i, channel := range state.Channels {
-		channels[i] = channel
-	}
+	copy(channels, state.Channels)
+	// for i, channel := range state.Channels {
+	// 	channels[i] = channel
+	// }
 	return &DeviceState{
 		DeviceID:  state.DeviceID,
 		Metrics:   metrics,

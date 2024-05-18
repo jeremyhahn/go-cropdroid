@@ -6,8 +6,8 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -79,7 +79,7 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 	deviceConfig *config.Device, mode string) (DeviceService, error) {
 
 	var _device device.IOSwitcher
-	deviceID := deviceConfig.GetID()
+	deviceID := deviceConfig.ID
 	deviceType := deviceConfig.GetType()
 
 	factory.app.Logger.Debugf("Building %s service", deviceType)
@@ -124,7 +124,7 @@ func (factory *DefaultDeviceFactory) GetDevices(session Session) ([]common.Devic
 		if deviceConfig.GetType() == common.CONTROLLER_TYPE_SERVER {
 			continue
 		}
-		deviceState, err := factory.stateStore.Get(deviceConfig.GetID())
+		deviceState, err := factory.stateStore.Get(deviceConfig.ID)
 		if err != nil {
 			return nil, err
 		}

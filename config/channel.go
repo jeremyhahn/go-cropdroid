@@ -1,18 +1,19 @@
 package config
 
 type Channel struct {
-	ID          uint64       `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	DeviceID    uint64       `yaml:"device" json:"device_id"`
-	ChannelID   int          `yaml:"channel" json:"channel_id"`
-	Name        string       `yaml:"name" json:"name"`
-	Enable      bool         `yaml:"enable" json:"enable"`
-	Notify      bool         `yaml:"notify" json:"notify"`
-	Conditions  []*Condition `yaml:"conditions" json:"conditions"`
-	Schedule    []*Schedule  `yaml:"schedule" json:"schedule"`
-	Duration    int          `yaml:"duration" json:"duration"`
-	Debounce    int          `yaml:"debounce" json:"debounce"`
-	Backoff     int          `yaml:"backoff" json:"backoff"`
-	AlgorithmID uint64       `yaml:"algorithm" json:"algorithm_id"`
+	ID             uint64       `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	DeviceID       uint64       `yaml:"device" json:"device_id"`
+	ChannelID      int          `yaml:"channel" json:"channel_id"`
+	Name           string       `yaml:"name" json:"name"`
+	Enable         bool         `yaml:"enable" json:"enable"`
+	Notify         bool         `yaml:"notify" json:"notify"`
+	Conditions     []*Condition `yaml:"conditions" json:"conditions"`
+	Schedule       []*Schedule  `yaml:"schedule" json:"schedule"`
+	Duration       int          `yaml:"duration" json:"duration"`
+	Debounce       int          `yaml:"debounce" json:"debounce"`
+	Backoff        int          `yaml:"backoff" json:"backoff"`
+	AlgorithmID    uint64       `yaml:"algorithm" json:"algorithm_id"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewChannel() *Channel {
@@ -25,7 +26,7 @@ func (channel *Channel) SetID(id uint64) {
 	channel.ID = id
 }
 
-func (channel *Channel) GetID() uint64 {
+func (channel *Channel) Identifier() uint64 {
 	return channel.ID
 }
 
@@ -77,7 +78,7 @@ func (channel *Channel) SetConditions(conditions []*Condition) {
 
 func (channel *Channel) SetCondition(condition *Condition) {
 	for i, c := range channel.Conditions {
-		if c.GetID() == condition.GetID() {
+		if c.ID == condition.ID {
 			channel.Conditions[i] = condition
 			return
 		}
@@ -99,7 +100,7 @@ func (channel *Channel) SetSchedule(schedule []*Schedule) {
 
 func (channel *Channel) SetScheduleItem(schedule *Schedule) {
 	for i, s := range channel.Schedule {
-		if s.GetID() == schedule.GetID() {
+		if s.ID == schedule.ID {
 			channel.Schedule[i] = schedule
 			return
 		}

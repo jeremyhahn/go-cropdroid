@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/common"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
@@ -55,7 +55,7 @@ func (service *DefaultMetricService) Update(session Session, metric common.Metri
 	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
 	entity := service.mapper.MapModelToConfig(metric)
 	persisted, err := service.dao.Get(farmID, metric.GetDeviceID(),
-		entity.GetID(), consistencyLevel)
+		entity.ID, consistencyLevel)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (service *DefaultMetricService) Update(session Session, metric common.Metri
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, device := range farmConfig.GetDevices() {
-		if device.GetID() == metric.GetDeviceID() {
+		if device.ID == metric.GetDeviceID() {
 			metricConfig := service.mapper.MapModelToConfig(metric)
 			device.SetMetric(metricConfig)
 			return farmService.SetDeviceConfig(device)

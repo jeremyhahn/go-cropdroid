@@ -3,11 +3,12 @@ package config
 // Config represents a configuration value for a given user within a
 // a specific organization for a specific device
 type DeviceSetting struct {
-	ID       uint64 `gorm:"primaryKey" json:"id"`
-	UserID   uint64 `gorm:"index:user_id" json:"user_id"`
-	DeviceID uint64 `gorm:"index:config_device_id" json:"device_id"`
-	Key      string `gorm:"size:255;index:key" json:"key"`
-	Value    string `gorm:"size:255" json:"value"`
+	ID             uint64 `gorm:"primaryKey" json:"id"`
+	UserID         uint64 `gorm:"index:user_id" json:"user_id"`
+	DeviceID       uint64 `gorm:"index:config_device_id" json:"device_id"`
+	Key            string `gorm:"size:255;index:key" json:"key"`
+	Value          string `gorm:"size:255" json:"value"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewDeviceSetting() *DeviceSetting {
@@ -29,8 +30,8 @@ func (ds *DeviceSetting) SetID(id uint64) {
 	ds.ID = id
 }
 
-// GetID returns the unique identifier
-func (ds *DeviceSetting) GetID() uint64 {
+// Identifier returns the unique identifier
+func (ds *DeviceSetting) Identifier() uint64 {
 	return ds.ID
 }
 

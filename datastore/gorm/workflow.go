@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
 )
@@ -25,7 +25,7 @@ func (dao *GormWorkflowDAO) Save(workflow *config.Workflow) error {
 
 func (dao *GormWorkflowDAO) Delete(workflow *config.Workflow) error {
 	if err := dao.db.
-		Where("workflow_id = ?", workflow.GetID()).
+		Where("workflow_id = ?", workflow.ID).
 		Delete(&config.WorkflowStep{}).
 		Error; err != nil {
 		return err

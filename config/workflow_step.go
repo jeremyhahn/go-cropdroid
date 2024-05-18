@@ -10,18 +10,19 @@ type WorkflowStep struct {
 	ChannelID  uint64 `yaml:"channel" json:"channel_id"`
 	Webhook    string `yaml:"webhook" json:"webhook"`
 	//AlgorithmID        int    `yaml:"algorithm" json:"algorithm_id"`
-	Duration  int `yaml:"duration" json:"duration"`
-	Wait      int `yaml:"wait" json:"wait"`
-	State     int `yaml:"state" json:"state"`
-	SortOrder int `yaml:"sortOrder" json:"sort_order"`
+	Duration       int `yaml:"duration" json:"duration"`
+	Wait           int `yaml:"wait" json:"wait"`
+	State          int `yaml:"state" json:"state"`
+	SortOrder      int `yaml:"sortOrder" json:"sort_order"`
+	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewWorkflowStep() *WorkflowStep {
 	return &WorkflowStep{}
 }
 
-// GetID gets the workflow step ID
-func (ws *WorkflowStep) GetID() uint64 {
+// Identifier gets the workflow step ID
+func (ws *WorkflowStep) Identifier() uint64 {
 	return ws.ID
 }
 

@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/dao"
 	"github.com/jeremyhahn/go-cropdroid/config/store"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 )
 
 type GormDeviceConfigStore struct {

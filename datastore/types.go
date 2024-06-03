@@ -1,10 +1,8 @@
 package datastore
 
 import (
-	"encoding/json"
 	"errors"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
@@ -16,7 +14,7 @@ const (
 )
 
 var (
-	ErrNotFound          = errors.New("record not found")
+	ErrRecordNotFound    = errors.New("record not found")
 	ErrUnexpectedQuery   = errors.New("unexpected query")
 	ErrMetricKeyNotFound = errors.New("metric key not found")
 	ErrNullEntityId      = errors.New("null entity id")
@@ -26,23 +24,7 @@ var (
 
 type Initializer interface {
 	Initialize(includeFarm bool) error
-	BuildConfig(orgID uint64, user *config.User,
-		role common.Role) (*config.Farm, error)
-}
-
-type ChangefeedCallback func(Changefeed)
-
-type Changefeeder interface {
-	Subscribe(callback ChangefeedCallback)
-}
-
-type Changefeed interface {
-	GetTable() string
-	GetKey() int64
-	GetValue() interface{}
-	GetUpdated() string
-	GetBytes() []byte
-	GetRawMessage() map[string]*json.RawMessage
+	BuildConfig(orgID uint64, user *config.UserStruct, role config.Role) (config.Farm, error)
 }
 
 type DeviceDataStore interface {

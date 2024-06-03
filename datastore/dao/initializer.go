@@ -16,9 +16,9 @@ var (
 )
 
 type Initializer interface {
-	Initialize(includeFarm bool, params *common.ProvisionerParams) (*config.Farm, error)
+	Initialize(includeFarm bool, params *common.ProvisionerParams) (*config.FarmStruct, error)
 	BuildConfig(params *common.ProvisionerParams,
-		adminUser *config.User) (*config.Farm, []config.Permission, error)
+		adminUser *config.UserStruct) (*config.FarmStruct, []*config.PermissionStruct, error)
 }
 
 type ConfigInitializer struct {
@@ -54,7 +54,7 @@ func NewConfigInitializer(logger *logging.Logger, idGenerator util.IdGenerator,
 
 // Initializes a new database, including a new administrative user and default Farm.
 func (initializer *ConfigInitializer) Initialize(includeFarm bool,
-	params *common.ProvisionerParams) (*config.Farm, error) {
+	params *common.ProvisionerParams) (*config.FarmStruct, error) {
 
 	encrypted, err := initializer.passwordHasher.Encrypt(common.DEFAULT_PASSWORD)
 	if err != nil {
@@ -81,10 +81,10 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	adminUser.ID = initializer.newID(common.DEFAULT_USER)
 	adminUser.SetEmail(common.DEFAULT_USER)
 	adminUser.SetPassword(string(encrypted))
-	adminUser.SetRoles([]*config.Role{adminRole})
+	adminUser.SetRoles([]*config.RoleStruct{adminRole})
 	initializer.userDAO.Save(adminUser)
 
-	var farm *config.Farm
+	var farm *config.FarmStruct
 	if includeFarm {
 		farm, permissions, err := initializer.BuildConfig(params, adminUser)
 		if err != nil {
@@ -94,7 +94,7 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 			return nil, err
 		}
 		for _, permission := range permissions {
-			if err = initializer.permissionDAO.Save(&permission); err != nil {
+			if err = initializer.permissionDAO.Save(permission); err != nil {
 				return nil, err
 			}
 		}
@@ -102,8 +102,8 @@ func (initializer *ConfigInitializer) Initialize(includeFarm bool,
 	}
 
 	phAlgoID := initializer.newID(common.ALGORITHM_PH_KEY)
-	phAlgo := config.Algorithm{ID: phAlgoID, Name: common.ALGORITHM_PH_KEY}
-	initializer.algorithmDAO.Save(&phAlgo)
+	phAlgo := &config.AlgorithmStruct{ID: phAlgoID, Name: common.ALGORITHM_PH_KEY}
+	initializer.algorithmDAO.Save(phAlgo)
 
 	// Oxidizer can be set up with a simple condition
 	// oxidizerAlgoID := initializer.newID(common.ALGORITHM_ORP_KEY)
@@ -124,9 +124,9 @@ func (initializer *ConfigInitializer) newFarmID(farmID uint64, key string) uint6
 }
 
 func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerParams,
-	adminUser *config.User) (*config.Farm, []config.Permission, error) {
+	adminUser *config.UserStruct) (*config.FarmStruct, []*config.PermissionStruct, error) {
 
-	permissions := make([]config.Permission, 0)
+	permissions := make([]*config.PermissionStruct, 0)
 
 	farmKey := fmt.Sprintf("%d-%s", params.OrganizationID, params.FarmName)
 	farmID := initializer.idGenerator.NewStringID(farmKey)
@@ -140,7 +140,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 			// This permission record gets created below
 			continue
 		}
-		permissions = append(permissions, config.Permission{
+		permissions = append(permissions, &config.PermissionStruct{
 			UserID: userID,
 			RoleID: user.GetRoles()[0].ID,
 			FarmID: farmID})
@@ -148,16 +148,16 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	}
 
 	// Add permission for user who requested the provisioning
-	permission := config.Permission{
+	permission := config.PermissionStruct{
 		UserID: params.UserID,
 		RoleID: params.RoleID,
 		FarmID: farmID}
-	permissions = append(permissions, permission)
+	permissions = append(permissions, &permission)
 	//initializer.permissionDAO.Save(&permission)
 
 	// Create a final list of users to assign to the farm
 	adminUserID := initializer.newID(common.DEFAULT_USER)
-	farmUsers := make([]*config.User, len(users))
+	farmUsers := make([]*config.UserStruct, len(users))
 	hasAdmin := false
 	for i, user := range users {
 		farmUsers[i] = user
@@ -200,7 +200,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	serverDevice.SetID(serverDeviceID)
 	serverDevice.SetType(common.CONTROLLER_TYPE_SERVER)
 	serverDevice.SetDescription("Provides monitoring, real-time notifications, and web services")
-	serverDevice.SetSettings([]*config.DeviceSetting{
+	serverDevice.SetSettings([]*config.DeviceSettingStruct{
 		{ID: serverDeviceNameID, UserID: params.UserID, DeviceID: serverDeviceID, Key: common.CONFIG_NAME_KEY, Value: params.FarmName},
 		{ID: serverDeviceIntervalID, UserID: params.UserID, DeviceID: serverDeviceID, Key: common.CONFIG_INTERVAL_KEY, Value: "60"},
 		{ID: serverDeviceTimezoneID, UserID: params.UserID, DeviceID: serverDeviceID, Key: common.CONFIG_TIMEZONE_KEY, Value: defaultTimezone},
@@ -238,12 +238,12 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	roomDevice.SetID(roomDeviceID)
 	roomDevice.SetType(common.CONTROLLER_TYPE_ROOM)
 	roomDevice.SetDescription("Manages and monitors room climate")
-	roomDevice.SetSettings([]*config.DeviceSetting{
+	roomDevice.SetSettings([]*config.DeviceSettingStruct{
 		{ID: roomDeviceEnableID, UserID: params.UserID, DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_ENABLE_KEY, Value: "true"},
 		{ID: roomDeviceNotifyID, UserID: params.UserID, DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_NOTIFY_KEY, Value: "true"},
 		{ID: roomDeviceUriID, UserID: params.UserID, DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_URI_KEY},
 		{ID: roomDeviceVideoID, UserID: params.UserID, DeviceID: roomDeviceID, Key: common.CONFIG_ROOM_VIDEO_KEY}})
-	roomDevice.SetMetrics([]*config.Metric{
+	roomDevice.SetMetrics([]*config.MetricStruct{
 		{ID: roomDeviceMetric0ID, Key: common.METRIC_ROOM_MEMORY_KEY, Name: "Available System Memory", DataType: common.DATATYPE_INT, Unit: "bytes", Enable: true, Notify: true, AlarmLow: 500, AlarmHigh: 100000},
 		{ID: roomDeviceMetric1ID, Key: common.METRIC_ROOM_TEMPF0_KEY, Name: "Ceiling Air Temperature", DataType: common.DATATYPE_FLOAT, Unit: "°", Enable: true, Notify: true, AlarmLow: 71, AlarmHigh: 85},
 		{ID: roomDeviceMetric2ID, Key: common.METRIC_ROOM_HUMIDITY0_KEY, Name: "Ceiling Humidity", DataType: common.DATATYPE_FLOAT, Unit: "%", Enable: true, Notify: true, AlarmLow: 40, AlarmHigh: 70},
@@ -262,13 +262,13 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 		{ID: roomDeviceMetric15ID, Key: common.METRIC_ROOM_WATERLEAK0_KEY, Name: "Pod 1 Water Leak", DataType: common.DATATYPE_INT, Unit: "mV", Enable: true, Notify: false, AlarmLow: -1, AlarmHigh: 1},
 		{ID: roomDeviceMetric16ID, Key: common.METRIC_ROOM_WATERLEAK1_KEY, Name: "Pod 2 Water Leak", DataType: common.DATATYPE_INT, Unit: "mV", Enable: true, Notify: false, AlarmLow: -1, AlarmHigh: 1}})
 	ventOnHours := []int{13, 14, 15, 16, 17, 18}
-	ventSchedules := make([]*config.Schedule, len(ventOnHours))
+	ventSchedules := make([]*config.ScheduleStruct, len(ventOnHours))
 	for i, hour := range ventOnHours {
 		hr := hour
 		key := fmt.Sprintf("room-sched-%d", i)
 		id := initializer.newFarmID(farmID, key)
 		ventOn := time.Date(now.Year(), now.Month(), now.Day(), hr, 0, 0, 0, initializer.location)
-		ventSchedules[i] = &config.Schedule{ID: id, StartDate: ventOn, Frequency: common.SCHEDULE_FREQUENCY_DAILY}
+		ventSchedules[i] = &config.ScheduleStruct{ID: id, StartDate: ventOn, Frequency: common.SCHEDULE_FREQUENCY_DAILY}
 	}
 	roomChannel0ID := initializer.newFarmID(farmID, "room-chan-0")
 	roomChannel1ID := initializer.newFarmID(farmID, "room-chan-1")
@@ -281,25 +281,25 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	roomChannel2ConditionID := initializer.newFarmID(farmID, "room-chan-2-cond-1")
 	roomChannel3ConditionID := initializer.newFarmID(farmID, "room-chan-3-cond-1")
 	roomChannel5ConditionID := initializer.newFarmID(farmID, "room-chan-5-cond-1")
-	roomDevice.SetChannels([]*config.Channel{
-		{ID: roomChannel0ID, ChannelID: common.CHANNEL_ROOM_LIGHTING_ID, Name: common.CHANNEL_ROOM_LIGHTING, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 64800, AlgorithmID: 0,
-			Conditions: make([]*config.Condition, 0),
-			Schedule:   []*config.Schedule{{ID: roomChannel0ScheduleID, StartDate: sevenPM, Frequency: common.SCHEDULE_FREQUENCY_DAILY}}},
-		{ID: roomChannel1ID, ChannelID: common.CHANNEL_ROOM_AC_ID, Name: common.CHANNEL_ROOM_AC, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: roomChannel1ConditionID, MetricID: roomDeviceMetric1ID, Comparator: ">", Threshold: 74.0}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: roomChannel2ID, ChannelID: common.CHANNEL_ROOM_HEATER_ID, Name: common.CHANNEL_ROOM_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: roomChannel2ConditionID, MetricID: roomDeviceMetric1ID, Comparator: "<", Threshold: 68.0}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: roomChannel3ID, ChannelID: common.CHANNEL_ROOM_DEHUEY_ID, Name: common.CHANNEL_ROOM_DEHUEY, Enable: true, Notify: true, Debounce: 10, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: roomChannel3ConditionID, MetricID: roomDeviceMetric2ID, Comparator: ">", Threshold: 55.0}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: roomChannel4ID, ChannelID: common.CHANNEL_ROOM_VENTILATION_ID, Name: common.CHANNEL_ROOM_VENTILATION, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 900, AlgorithmID: 0,
-			Conditions: make([]*config.Condition, 0),
+	roomDevice.SetChannels([]*config.ChannelStruct{
+		{ID: roomChannel0ID, BoardID: common.CHANNEL_ROOM_LIGHTING_ID, Name: common.CHANNEL_ROOM_LIGHTING, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 64800, AlgorithmID: 0,
+			Conditions: make([]*config.ConditionStruct, 0),
+			Schedule:   []*config.ScheduleStruct{{ID: roomChannel0ScheduleID, StartDate: sevenPM, Frequency: common.SCHEDULE_FREQUENCY_DAILY}}},
+		{ID: roomChannel1ID, BoardID: common.CHANNEL_ROOM_AC_ID, Name: common.CHANNEL_ROOM_AC, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: roomChannel1ConditionID, MetricID: roomDeviceMetric1ID, Comparator: ">", Threshold: 74.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: roomChannel2ID, BoardID: common.CHANNEL_ROOM_HEATER_ID, Name: common.CHANNEL_ROOM_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: roomChannel2ConditionID, MetricID: roomDeviceMetric1ID, Comparator: "<", Threshold: 68.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: roomChannel3ID, BoardID: common.CHANNEL_ROOM_DEHUEY_ID, Name: common.CHANNEL_ROOM_DEHUEY, Enable: true, Notify: true, Debounce: 10, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: roomChannel3ConditionID, MetricID: roomDeviceMetric2ID, Comparator: ">", Threshold: 55.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: roomChannel4ID, BoardID: common.CHANNEL_ROOM_VENTILATION_ID, Name: common.CHANNEL_ROOM_VENTILATION, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 900, AlgorithmID: 0,
+			Conditions: make([]*config.ConditionStruct, 0),
 			Schedule:   ventSchedules},
-		{ID: roomChannel5ID, ChannelID: common.CHANNEL_ROOM_CO2_ID, Name: common.CHANNEL_ROOM_CO2, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: roomChannel5ConditionID, MetricID: roomDeviceMetric13ID, Comparator: "<", Threshold: 500.0}},
-			Schedule:   make([]*config.Schedule, 0)}})
+		{ID: roomChannel5ID, BoardID: common.CHANNEL_ROOM_CO2_ID, Name: common.CHANNEL_ROOM_CO2, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: roomChannel5ConditionID, MetricID: roomDeviceMetric13ID, Comparator: "<", Threshold: 500.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)}})
 
 	reservoirDevice := config.NewDevice()
 	resDeviceEnableID := initializer.newFarmID(farmID, "res-enable")
@@ -336,14 +336,14 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	reservoirDevice.SetID(reservoirDeviceID)
 	reservoirDevice.SetType(common.CONTROLLER_TYPE_RESERVOIR)
 	reservoirDevice.SetDescription("Manages and monitors reservoir water and nutrients")
-	reservoirDevice.SetSettings([]*config.DeviceSetting{
+	reservoirDevice.SetSettings([]*config.DeviceSettingStruct{
 		{ID: resDeviceEnableID, UserID: params.UserID, DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_ENABLE_KEY, Value: "true"},
 		{ID: resDeviceNotifyID, UserID: params.UserID, DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_NOTIFY_KEY, Value: "true"},
 		{ID: resDeviceUriID, UserID: params.UserID, DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_URI_KEY},
 		{ID: resDeviceGallonsID, UserID: params.UserID, DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_GALLONS_KEY, Value: common.DEFAULT_GALLONS},
 		{ID: resDeviceWaterChangeEnableID, UserID: params.UserID, DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_WATERCHANGE_ENABLE_KEY, Value: "false"},
 		{ID: resDeviceWaterChangeNotifyID, UserID: params.UserID, DeviceID: reservoirDeviceID, Key: common.CONFIG_RESERVOIR_WATERCHANGE_NOTIFY_KEY, Value: "false"}})
-	reservoirDevice.SetMetrics([]*config.Metric{
+	reservoirDevice.SetMetrics([]*config.MetricStruct{
 		{ID: resDeviceMetric0ID, Key: common.METRIC_RESERVOIR_MEMORY_KEY, Name: "Available System Memory", DataType: common.DATATYPE_INT, Unit: "bytes", Enable: true, Notify: true, AlarmLow: 500, AlarmHigh: 100000},
 		{ID: resDeviceMetric1ID, Key: common.METRIC_RESERVOIR_TEMP_KEY, Name: "Water Temperature", DataType: common.DATATYPE_FLOAT, Unit: "°", Enable: true, Notify: true, AlarmLow: 61, AlarmHigh: 67},
 		{ID: resDeviceMetric2ID, Key: common.METRIC_RESERVOIR_PH_KEY, Name: "pH", DataType: common.DATATYPE_FLOAT, Unit: "", Enable: true, Notify: true, AlarmLow: 5.4, AlarmHigh: 6.2},
@@ -369,25 +369,25 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	weeklyID := initializer.newFarmID(farmID, "res-chan-5-sched-weekly")
 	monthlyID := initializer.newFarmID(farmID, "res-chan-5-sched-monthly")
 	yearlyID := initializer.newFarmID(farmID, "res-chan-5-sched-yearly")
-	reservoirDevice.SetChannels([]*config.Channel{
-		{ID: resChannel0ID, ChannelID: common.CHANNEL_RESERVOIR_DRAIN_ID, Name: common.CHANNEL_RESERVOIR_DRAIN, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
-		{ID: resChannel1ID, ChannelID: common.CHANNEL_RESERVOIR_CHILLER_ID, Name: common.CHANNEL_RESERVOIR_CHILLER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: resChannel1ConditionID, MetricID: resDeviceMetric1ID, Comparator: ">", Threshold: 62.0}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: resChannel2ID, ChannelID: common.CHANNEL_RESERVOIR_HEATER_ID, Name: common.CHANNEL_RESERVOIR_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: resChannel2ConditionID, MetricID: resDeviceMetric1ID, Comparator: "<", Threshold: 60.0}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: resChannel3ID, ChannelID: common.CHANNEL_RESERVOIR_POWERHEAD_ID, Name: common.CHANNEL_RESERVOIR_POWERHEAD, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
-		{ID: resChannel4ID, ChannelID: common.CHANNEL_RESERVOIR_AUX_ID, Name: common.CHANNEL_RESERVOIR_AUX, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 60, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)}, // Schedule: []config.Schedule{
+	reservoirDevice.SetChannels([]*config.ChannelStruct{
+		{ID: resChannel0ID, BoardID: common.CHANNEL_RESERVOIR_DRAIN_ID, Name: common.CHANNEL_RESERVOIR_DRAIN, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)},
+		{ID: resChannel1ID, BoardID: common.CHANNEL_RESERVOIR_CHILLER_ID, Name: common.CHANNEL_RESERVOIR_CHILLER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: resChannel1ConditionID, MetricID: resDeviceMetric1ID, Comparator: ">", Threshold: 62.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: resChannel2ID, BoardID: common.CHANNEL_RESERVOIR_HEATER_ID, Name: common.CHANNEL_RESERVOIR_HEATER, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: resChannel2ConditionID, MetricID: resDeviceMetric1ID, Comparator: "<", Threshold: 60.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: resChannel3ID, BoardID: common.CHANNEL_RESERVOIR_POWERHEAD_ID, Name: common.CHANNEL_RESERVOIR_POWERHEAD, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)},
+		{ID: resChannel4ID, BoardID: common.CHANNEL_RESERVOIR_AUX_ID, Name: common.CHANNEL_RESERVOIR_AUX, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 60, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)}, // Schedule: []config.Schedule{
 		// 	{StartDate: sevenPM, EndDate: &endDate, Frequency: common.SCHEDULE_FREQUENCY_WEEKLY, Interval: 2, Count: 5, Days: &days},
 		// 	{StartDate: oneMinuteFromNow, Frequency: common.SCHEDULE_FREQUENCY_DAILY}}},
-		{ID: resTopOffID, ChannelID: common.CHANNEL_RESERVOIR_TOPOFF_ID, Name: common.CHANNEL_RESERVOIR_TOPOFF, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0,
-			Conditions: make([]*config.Condition, 0),
-			Schedule: []*config.Schedule{
+		{ID: resTopOffID, BoardID: common.CHANNEL_RESERVOIR_TOPOFF_ID, Name: common.CHANNEL_RESERVOIR_TOPOFF, Enable: true, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0,
+			Conditions: make([]*config.ConditionStruct, 0),
+			Schedule: []*config.ScheduleStruct{
 				{ID: weeklyID, StartDate: nineAM, Frequency: common.SCHEDULE_FREQUENCY_WEEKLY},
 				{ID: monthlyID, StartDate: ninePM, Frequency: common.SCHEDULE_FREQUENCY_MONTHLY},
 				{ID: yearlyID, StartDate: ninePM, Frequency: common.SCHEDULE_FREQUENCY_YEARLY}}},
-		{ID: resFaucetID, ChannelID: common.CHANNEL_RESERVOIR_FAUCET_ID, Name: common.CHANNEL_RESERVOIR_FAUCET, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)}})
+		{ID: resFaucetID, BoardID: common.CHANNEL_RESERVOIR_FAUCET_ID, Name: common.CHANNEL_RESERVOIR_FAUCET, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)}})
 
 	doserDevice := config.NewDevice()
 	doserDeviceEnableID := initializer.newFarmID(farmID, "doser-enable")
@@ -408,25 +408,25 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	doserDevice.SetID(doserDeviceID)
 	doserDevice.SetType(common.CONTROLLER_TYPE_DOSER)
 	doserDevice.SetDescription("Nutrient dosing and expansion I/O device")
-	doserDevice.SetSettings([]*config.DeviceSetting{
+	doserDevice.SetSettings([]*config.DeviceSettingStruct{
 		{ID: doserDeviceEnableID, UserID: params.UserID, DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_ENABLE_KEY, Value: "true"},
 		{ID: doserDeviceNotifyID, UserID: params.UserID, DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_NOTIFY_KEY, Value: "true"},
 		{ID: doserDeviceUriID, UserID: params.UserID, DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_URI_KEY},
 		{ID: doserDeviceGallonsID, UserID: params.UserID, DeviceID: doserDeviceID, Key: common.CONFIG_DOSER_GALLONS_KEY, Value: common.DEFAULT_GALLONS}})
-	doserDevice.SetChannels([]*config.Channel{
-		{ID: doserChannel0ID, ChannelID: common.CHANNEL_DOSER_PHDOWN_ID, Name: common.CHANNEL_DOSER_PHDOWN, Enable: true, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
-			Conditions: []*config.Condition{{ID: doserChannel0ConditionID, MetricID: resDeviceMetric2ID, Comparator: ">", Threshold: 6.1}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: doserChannel1ID, ChannelID: common.CHANNEL_DOSER_PHUP_ID, Name: common.CHANNEL_DOSER_PHUP, Enable: false, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
-			Conditions: []*config.Condition{{ID: doserChannel1ConditionID, MetricID: resDeviceMetric2ID, Comparator: "<", Threshold: 5.4}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: doserChannel2ID, ChannelID: common.CHANNEL_DOSER_OXIDIZER_ID, Name: common.CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
-			Conditions: []*config.Condition{{ID: doserChannel2ConditionID, MetricID: resDeviceMetric5ID, Comparator: "<", Threshold: 300.0}},
-			Schedule:   make([]*config.Schedule, 0)},
-		{ID: doserChannel3ID, ChannelID: common.CHANNEL_DOSER_TOPOFF_ID, Name: common.CHANNEL_DOSER_TOPOFF, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
-		{ID: doserChannel4ID, ChannelID: common.CHANNEL_DOSER_NUTE1_ID, Name: common.CHANNEL_DOSER_NUTE1, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
-		{ID: doserChannel5ID, ChannelID: common.CHANNEL_DOSER_NUTE2_ID, Name: common.CHANNEL_DOSER_NUTE2, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)},
-		{ID: doserChannel6ID, ChannelID: common.CHANNEL_DOSER_NUTE3_ID, Name: common.CHANNEL_DOSER_NUTE3, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.Condition, 0), Schedule: make([]*config.Schedule, 0)}})
+	doserDevice.SetChannels([]*config.ChannelStruct{
+		{ID: doserChannel0ID, BoardID: common.CHANNEL_DOSER_PHDOWN_ID, Name: common.CHANNEL_DOSER_PHDOWN, Enable: true, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
+			Conditions: []*config.ConditionStruct{{ID: doserChannel0ConditionID, MetricID: resDeviceMetric2ID, Comparator: ">", Threshold: 6.1}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: doserChannel1ID, BoardID: common.CHANNEL_DOSER_PHUP_ID, Name: common.CHANNEL_DOSER_PHUP, Enable: false, Notify: true, Debounce: 0, Backoff: 10, Duration: 0, AlgorithmID: 1,
+			Conditions: []*config.ConditionStruct{{ID: doserChannel1ConditionID, MetricID: resDeviceMetric2ID, Comparator: "<", Threshold: 5.4}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: doserChannel2ID, BoardID: common.CHANNEL_DOSER_OXIDIZER_ID, Name: common.CHANNEL_DOSER_OXIDIZER, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 0, AlgorithmID: 0,
+			Conditions: []*config.ConditionStruct{{ID: doserChannel2ConditionID, MetricID: resDeviceMetric5ID, Comparator: "<", Threshold: 300.0}},
+			Schedule:   make([]*config.ScheduleStruct, 0)},
+		{ID: doserChannel3ID, BoardID: common.CHANNEL_DOSER_TOPOFF_ID, Name: common.CHANNEL_DOSER_TOPOFF, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 120, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)},
+		{ID: doserChannel4ID, BoardID: common.CHANNEL_DOSER_NUTE1_ID, Name: common.CHANNEL_DOSER_NUTE1, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)},
+		{ID: doserChannel5ID, BoardID: common.CHANNEL_DOSER_NUTE2_ID, Name: common.CHANNEL_DOSER_NUTE2, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)},
+		{ID: doserChannel6ID, BoardID: common.CHANNEL_DOSER_NUTE3_ID, Name: common.CHANNEL_DOSER_NUTE3, Enable: false, Notify: true, Debounce: 0, Backoff: 0, Duration: 30, AlgorithmID: 0, Conditions: make([]*config.ConditionStruct, 0), Schedule: make([]*config.ScheduleStruct, 0)}})
 
 	// Water change workflow
 	drainStep := config.NewWorkflowStep()
@@ -486,7 +486,7 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	workflow1 := config.NewWorkflow()
 	workflow1.SetID(initializer.newFarmID(farmID, "workflow1"))
 	workflow1.SetName("Automated Water Changes")
-	workflow1.SetSteps([]*config.WorkflowStep{
+	workflow1.SetSteps([]*config.WorkflowStepStruct{
 		drainStep,
 		fillStep,
 		phDownStep,
@@ -505,9 +505,13 @@ func (initializer *ConfigInitializer) BuildConfig(params *common.ProvisionerPara
 	farm.SetStateStore(int(params.StateStoreType))
 	farm.SetDataStore(params.DataStoreType)
 	farm.SetConsistencyLevel(params.ConsistencyLevel)
-	farm.SetDevices([]*config.Device{serverDevice, roomDevice, reservoirDevice, doserDevice})
+	farm.SetDevices([]*config.DeviceStruct{
+		serverDevice,
+		roomDevice,
+		reservoirDevice,
+		doserDevice})
 	farm.SetUsers(farmUsers)
-	farm.SetWorkflows([]*config.Workflow{workflow1})
+	farm.SetWorkflows([]*config.WorkflowStruct{workflow1})
 
 	return farm, permissions, nil
 }

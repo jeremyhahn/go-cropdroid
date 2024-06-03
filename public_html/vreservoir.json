@@ -4,7 +4,7 @@
  "device_id": 1988157797,
  "metrics": {
   "do_mgL": 10,
-  "do_per": 68,
+  "do_per": 6,
   "ec": 900,
   "envHeatIndex": 8,
   "envHumidity": 2,
@@ -37,5 +37,5 @@
   0,
   0
  ],
- "timestamp": "2024-05-18T11:32:50.517122049-04:00"
+ "timestamp": "2024-05-23T21:02:59.912001973-04:00"
 }

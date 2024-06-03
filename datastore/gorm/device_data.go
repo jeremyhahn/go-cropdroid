@@ -61,9 +61,6 @@ func (gds *GormDeviceStore) Save(deviceID uint64, deviceState state.DeviceStateM
 
 	if err := gds.db.Exec(insertSQL).Error; err != nil {
 		if err.Error() == noSuchTableError || err.Error() == doesNotExistError {
-
-			gds.logger.Warningf("[GormDeviceStore.Save] noSuchTableError || doesNotExistError ERROR CAUGHT! :: err=%s", err)
-
 			if err2 := gds.createTable(tableName, deviceState); err2 != nil {
 				gds.logger.Errorf("Unable to create table %s: %s", tableName, err2)
 				return err2
@@ -76,9 +73,6 @@ func (gds *GormDeviceStore) Save(deviceID uint64, deviceState state.DeviceStateM
 			return nil
 		}
 		if err.Error() == alreadyExistsError {
-
-			gds.logger.Warningf("[GormDeviceStore.Save] ALREADY EXISTS ERROR CAUGHT! :: err=%s", err)
-
 			return nil
 		}
 		gds.logger.Errorf("[GormDeviceStore.Save] Error:%s", err.Error())
@@ -94,6 +88,7 @@ func (gds *GormDeviceStore) GetLast30Days(deviceID uint64, metric string) ([]flo
 	sinceDate := time.Now().AddDate(0, -30, 0)
 	rows, err := gds.db.Table(tableName).Select(metric).Where("timestamp >= ?", sinceDate).Limit(500).Rows()
 	if err != nil {
+		gds.logger.Error(err)
 		return nil, err
 	}
 	var metricValue float64

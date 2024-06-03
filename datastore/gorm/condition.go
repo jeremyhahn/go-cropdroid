@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -18,21 +19,26 @@ func NewConditionDAO(logger *logging.Logger, db *gorm.DB) dao.ConditionDAO {
 }
 
 // farmID, deviceID accepted to support key/value database
-func (dao *GormConditionDAO) Save(farmID, deviceID uint64, condition *config.Condition) error {
+func (dao *GormConditionDAO) Save(farmID, deviceID uint64, condition *config.ConditionStruct) error {
 	return dao.db.Save(condition).Error
 }
 
 // farmID, deviceID accepted to support key/value database
-func (dao *GormConditionDAO) Delete(farmID, deviceID uint64, condition *config.Condition) error {
+func (dao *GormConditionDAO) Delete(farmID, deviceID uint64, condition *config.ConditionStruct) error {
 	return dao.db.Delete(condition).Error
 }
 
 // farmID, deviceID, channelID accepted to support key/value database
 func (dao *GormConditionDAO) Get(farmID, deviceID, channelID, conditionID uint64,
-	CONSISTENCY_LEVEL int) (*config.Condition, error) {
+	CONSISTENCY_LEVEL int) (*config.ConditionStruct, error) {
 
-	var condition *config.Condition
+	var condition *config.ConditionStruct
 	if err := dao.db.First(condition, conditionID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return condition, nil
@@ -40,11 +46,16 @@ func (dao *GormConditionDAO) Get(farmID, deviceID, channelID, conditionID uint64
 
 // farmID, deviceID accepted to support key/value database
 func (dao *GormConditionDAO) GetByChannelID(farmID, deviceID,
-	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Condition, error) {
+	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.ConditionStruct, error) {
 
-	var entities []*config.Condition
+	var entities []*config.ConditionStruct
 	if err := dao.db.Where("channel_id = ?", channelID).
 		Find(&entities).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return entities, nil

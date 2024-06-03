@@ -9,13 +9,9 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/cluster/util"
 )
 
-// https://github.com/google/pprof
-// https://golang.org/pkg/net/http/pprof/
-// https://golang.org/pkg/runtime
-
-type System struct {
+type ClusterSystemStruct struct {
 	ClusterID               int             `json:"cluster_id"`
-	NodeID                  int             `json:"node_id"`
+	NodeID                  uint64          `json:"node_id"`
 	Mode                    string          `json:"mode"`
 	Version                 *app.AppVersion `json:"version"`
 	Farms                   int             `json:"farms"`
@@ -26,20 +22,6 @@ type System struct {
 	Runtime                 *SystemRuntime  `json:"runtime"`
 	RaftStats               *RaftStats      `json:"raft"`
 	GossipStats             *GossipStats    `json:"gossip"`
-}
-
-type SystemRuntime struct {
-	Version     string `json:"version"`
-	Goroutines  int    `json:"goroutines"`
-	Cpus        int    `json:"cpus"`
-	Cgo         int64  `json:"cgo"`
-	HeapSize    uint64 `json:"heapAlloc"`
-	Alloc       uint64 `json:"alloc"`
-	Sys         uint64 `json:"sys"`
-	Mallocs     uint64 `json:"mallocs"`
-	Frees       uint64 `json:"frees"`
-	NumGC       uint32 `json:"gc"`
-	NumForcedGC uint32 `json:"forcedgc"`
 }
 
 type RaftStats struct {

@@ -18,11 +18,11 @@ func TestOrganizationCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Organization{})
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	// orgDAO := NewOrganizationDAO(currentTest.logger,
 	// 	currentTest.gorm, currentTest.idGenerator)
@@ -38,12 +38,12 @@ func TestOrganizationGetPage(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.Organization{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.DeviceStruct{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
@@ -57,12 +57,12 @@ func TestOrganizationDelete(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.Organization{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.DeviceStruct{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
@@ -75,9 +75,9 @@ func TestOrganizationDelete(t *testing.T) {
 	farm := config.NewFarm()
 	farm.SetName(testFarmName)
 
-	orgConfig := &config.Organization{
+	orgConfig := &config.OrganizationStruct{
 		Name:  testOrgName,
-		Farms: []*config.Farm{farm}}
+		Farms: []*config.FarmStruct{farm}}
 
 	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -89,9 +89,9 @@ func TestOrganizationDelete(t *testing.T) {
 
 	farm2 := config.NewFarm()
 	farm2.SetName(testFarmName2)
-	orgConfig2 := &config.Organization{
+	orgConfig2 := &config.OrganizationStruct{
 		Name:  testOrgName2,
-		Farms: []*config.Farm{farm2}}
+		Farms: []*config.FarmStruct{farm2}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
@@ -116,21 +116,23 @@ func TestOrganizationEnchilada(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.DeviceSetting{})
-	currentTest.gorm.AutoMigrate(&config.Metric{})
-	currentTest.gorm.AutoMigrate(&config.Condition{})
-	currentTest.gorm.AutoMigrate(&config.Schedule{})
-	currentTest.gorm.AutoMigrate(&config.Channel{})
-	currentTest.gorm.AutoMigrate(&config.Algorithm{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.License{})
-	currentTest.gorm.AutoMigrate(&config.Organization{})
-	currentTest.gorm.AutoMigrate(&config.Workflow{})
-	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.DeviceStruct{})
+	currentTest.gorm.AutoMigrate(&config.DeviceSettingStruct{})
+	currentTest.gorm.AutoMigrate(&config.MetricStruct{})
+	currentTest.gorm.AutoMigrate(&config.ConditionStruct{})
+	currentTest.gorm.AutoMigrate(&config.ScheduleStruct{})
+	currentTest.gorm.AutoMigrate(&config.ChannelStruct{})
+	currentTest.gorm.AutoMigrate(&config.AlgorithmStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.ServerLicenseStruct{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationLicenseStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmLicenseStruct{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStepStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 

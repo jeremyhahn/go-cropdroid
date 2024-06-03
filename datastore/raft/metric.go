@@ -28,7 +28,7 @@ func NewRaftMetricDAO(logger *logging.Logger,
 		farmDAO: farmDAO}
 }
 
-func (dao *RaftMetricDAO) Save(farmID uint64, metric *config.Metric) error {
+func (dao *RaftMetricDAO) Save(farmID uint64, metric *config.MetricStruct) error {
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
@@ -42,18 +42,18 @@ func (dao *RaftMetricDAO) Save(farmID uint64, metric *config.Metric) error {
 		deviceID := device.ID
 		if deviceID == metric.GetDeviceID() {
 			if metric.ID == 0 || metric.GetDeviceID() == 0 {
-				idSetter.SetMetricIds(deviceID, []*config.Metric{metric})
+				idSetter.SetMetricIds(deviceID, []*config.MetricStruct{metric})
 			}
 			device.SetMetric(metric)
 			farmConfig.SetDevice(device)
 			return dao.farmDAO.Save(farmConfig)
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftMetricDAO) Get(farmID, deviceID, metricID uint64,
-	CONSISTENCY_LEVEL int) (*config.Metric, error) {
+	CONSISTENCY_LEVEL int) (*config.MetricStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -68,11 +68,11 @@ func (dao *RaftMetricDAO) Get(farmID, deviceID, metricID uint64,
 			}
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
 func (dao *RaftMetricDAO) GetByDevice(farmID, deviceID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Metric, error) {
+	CONSISTENCY_LEVEL int) ([]*config.MetricStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -80,7 +80,7 @@ func (dao *RaftMetricDAO) GetByDevice(farmID, deviceID uint64,
 	}
 	metric, err := farmConfig.GetDeviceById(deviceID)
 	if err != nil {
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	return metric.GetMetrics(), nil
 }

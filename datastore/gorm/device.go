@@ -18,17 +18,17 @@ func NewDeviceDAO(logger *logging.Logger, db *gorm.DB) dao.DeviceDAO {
 	return &GormDeviceDAO{logger: logger, db: db}
 }
 
-func (dao *GormDeviceDAO) Save(device *config.Device) error {
+func (dao *GormDeviceDAO) Save(device *config.DeviceStruct) error {
 	dao.logger.Debugf("Creating device record")
 	return dao.db.Save(device).Error
 }
 
 // FarmID is used to maintain interface compatibility with Raft
 func (dao *GormDeviceDAO) Get(farmID, deviceID uint64,
-	CONSISTENCY_LEVEL int) (*config.Device, error) {
+	CONSISTENCY_LEVEL int) (*config.DeviceStruct, error) {
 
 	dao.logger.Debugf("Getting device %d", deviceID)
-	var devices []*config.Device
+	var devices []*config.DeviceStruct
 	if err := dao.db.
 		Preload("Settings").
 		Preload("Metrics").
@@ -36,10 +36,16 @@ func (dao *GormDeviceDAO) Get(farmID, deviceID uint64,
 		Preload("Channels.Conditions").
 		Preload("Channels.Schedule").
 		First(&devices, deviceID).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	if len(devices) == 0 {
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	if err := devices[0].ParseSettings(); err != nil {
 		return nil, err

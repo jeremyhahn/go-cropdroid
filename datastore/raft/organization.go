@@ -14,7 +14,7 @@ import (
 )
 
 type RaftOrganizationDAO interface {
-	RaftDAO[*config.Organization]
+	RaftDAO[*config.OrganizationStruct]
 	dao.OrganizationDAO
 }
 
@@ -22,7 +22,7 @@ type RaftOrganization struct {
 	logger    *logging.Logger
 	raft      cluster.RaftNode
 	serverDAO dao.ServerDAO
-	GenericRaftDAO[*config.Organization]
+	GenericRaftDAO[*config.OrganizationStruct]
 	RaftOrganizationDAO
 }
 
@@ -32,7 +32,7 @@ func NewRaftOrganizationDAO(logger *logging.Logger, raftNode cluster.RaftNode,
 	return &RaftOrganization{
 		logger: logger,
 		raft:   raftNode,
-		GenericRaftDAO: GenericRaftDAO[*config.Organization]{
+		GenericRaftDAO: GenericRaftDAO[*config.OrganizationStruct]{
 			logger:    logger,
 			raft:      raftNode,
 			clusterID: clusterID,
@@ -52,32 +52,34 @@ func (organizationDAO *RaftOrganization) WaitForClusterReady() {
 	organizationDAO.GenericRaftDAO.WaitForClusterReady()
 }
 
-func (organizationDAO *RaftOrganization) Save(Organization *config.Organization) error {
+func (organizationDAO *RaftOrganization) Save(Organization *config.OrganizationStruct) error {
 	return organizationDAO.GenericRaftDAO.Save(Organization)
 }
 
-func (organizationDAO *RaftOrganization) SaveWithTimeSeriesIndex(Organization *config.Organization) error {
+func (organizationDAO *RaftOrganization) SaveWithTimeSeriesIndex(Organization *config.OrganizationStruct) error {
 	return organizationDAO.GenericRaftDAO.SaveWithTimeSeriesIndex(Organization)
 }
 
-func (organizationDAO *RaftOrganization) Update(Organization *config.Organization) error {
+func (organizationDAO *RaftOrganization) Update(Organization *config.OrganizationStruct) error {
 	return organizationDAO.GenericRaftDAO.Update(Organization)
 }
 
-func (organizationDAO *RaftOrganization) Delete(Organization *config.Organization) error {
+func (organizationDAO *RaftOrganization) Delete(Organization *config.OrganizationStruct) error {
 	return organizationDAO.GenericRaftDAO.Delete(Organization)
 }
 
-func (organizationDAO *RaftOrganization) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Organization, error) {
+func (organizationDAO *RaftOrganization) Get(id uint64, CONSISTENCY_LEVEL int) (*config.OrganizationStruct, error) {
 	return organizationDAO.GenericRaftDAO.Get(id, CONSISTENCY_LEVEL)
 }
 
-func (organizationDAO *RaftOrganization) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Organization], error) {
+func (organizationDAO *RaftOrganization) GetPage(pageQuery query.PageQuery,
+	CONSISTENCY_LEVEL int) (dao.PageResult[*config.OrganizationStruct], error) {
+
 	return organizationDAO.GenericRaftDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 }
 
 func (organizationDAO *RaftOrganization) ForEachPage(pageQuery query.PageQuery,
-	pagerProcFunc query.PagerProcFunc[*config.Organization], CONSISTENCY_LEVEL int) error {
+	pagerProcFunc query.PagerProcFunc[*config.OrganizationStruct], CONSISTENCY_LEVEL int) error {
 
 	return organizationDAO.GenericRaftDAO.ForEachPage(pageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
 }
@@ -86,7 +88,7 @@ func (organizationDAO *RaftOrganization) Count(CONSISTENCY_LEVEL int) (int64, er
 	return organizationDAO.Count(CONSISTENCY_LEVEL)
 }
 
-func (organizationDAO *RaftOrganization) GetUsers(id uint64) ([]*config.User, error) {
-	users := make([]*config.User, 0)
+func (organizationDAO *RaftOrganization) GetUsers(id uint64) ([]*config.UserStruct, error) {
+	users := make([]*config.UserStruct, 0)
 	return users, errors.New("GetUsers method not implemented")
 }

@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	logging "github.com/op/go-logging"
@@ -11,7 +12,7 @@ import (
 type GormCustomerDAO struct {
 	logger         *logging.Logger
 	db             *gorm.DB
-	GenericGormDAO dao.GenericDAO[*config.Customer]
+	GenericGormDAO dao.GenericDAO[*config.CustomerStruct]
 	dao.CustomerDAO
 }
 
@@ -19,36 +20,44 @@ func NewCustomerDAO(logger *logging.Logger, db *gorm.DB) dao.CustomerDAO {
 	return &GormCustomerDAO{
 		logger:         logger,
 		db:             db,
-		GenericGormDAO: NewGenericGormDAO[*config.Customer](logger, db)}
+		GenericGormDAO: NewGenericGormDAO[*config.CustomerStruct](logger, db)}
 }
 
-func (dao *GormCustomerDAO) GetByEmail(email string, CONSISTENCY_LEVEL int) (*config.Customer, error) {
+func (dao *GormCustomerDAO) GetByEmail(email string, CONSISTENCY_LEVEL int) (*config.CustomerStruct, error) {
 	dao.logger.Debugf("Getting customer by email: %s", email)
-	var customer *config.Customer
+	var customer *config.CustomerStruct
 	if err := dao.db.
 		Preload("Address").
 		Preload("Shipping").
 		Preload("Shipping.Address").
 		Table("customers").
 		First(&customer, "email = ?", email).Error; err != nil {
-		return customer, err
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
+		return nil, err
 	}
 	return customer, nil
 }
 
-func (dao *GormCustomerDAO) Save(customer *config.Customer) error {
+func (dao *GormCustomerDAO) Save(customer *config.CustomerStruct) error {
 	return dao.GenericGormDAO.Save(customer)
 }
 
-func (dao *GormCustomerDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Customer, error) {
+func (dao *GormCustomerDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.CustomerStruct, error) {
 	return dao.GenericGormDAO.Get(id, CONSISTENCY_LEVEL)
 }
 
-func (dao *GormCustomerDAO) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Customer], error) {
+func (dao *GormCustomerDAO) GetPage(pageQuery query.PageQuery,
+	CONSISTENCY_LEVEL int) (dao.PageResult[*config.CustomerStruct], error) {
+
 	return dao.GenericGormDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 }
 
-func (dao *GormCustomerDAO) Delete(customer *config.Customer) error {
+func (dao *GormCustomerDAO) Delete(customer *config.CustomerStruct) error {
 	return dao.GenericGormDAO.Delete(customer)
 }
 

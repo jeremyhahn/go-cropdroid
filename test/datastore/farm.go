@@ -12,7 +12,7 @@ import (
 )
 
 func TestFarmAssociations(t *testing.T, idGenerator util.IdGenerator,
-	farmDAO dao.FarmDAO, farmConfig *config.Farm) {
+	farmDAO dao.FarmDAO, farmConfig *config.FarmStruct) {
 
 	// currentTest.gorm.Create(&config.Permission{
 	// 	OrganizationID: 0,
@@ -36,7 +36,7 @@ func TestFarmAssociations(t *testing.T, idGenerator util.IdGenerator,
 }
 
 func TestFarmGetByIds(t *testing.T, farmDAO dao.FarmDAO,
-	farm1, farm2 *config.Farm) {
+	farm1, farm2 *config.FarmStruct) {
 
 	err := farmDAO.Save(farm1)
 	assert.Nil(t, err)
@@ -53,7 +53,7 @@ func TestFarmGetByIds(t *testing.T, farmDAO dao.FarmDAO,
 }
 
 func TestFarmGetPage(t *testing.T, farmDAO dao.FarmDAO,
-	farm1, farm2 *config.Farm) {
+	farm1, farm2 *config.FarmStruct) {
 
 	page1, err := farmDAO.GetPage(query.NewPageQuery(), common.CONSISTENCY_LOCAL)
 	assert.Nil(t, err)
@@ -65,7 +65,7 @@ func TestFarmGetPage(t *testing.T, farmDAO dao.FarmDAO,
 }
 
 func TestFarmGet(t *testing.T, farmDAO dao.FarmDAO,
-	farm1, farm2 *config.Farm) {
+	farm1, farm2 *config.FarmStruct) {
 
 	persitedFarm1, err := farmDAO.Get(farm1.ID, DEFAULT_CONSISTENCY_LEVEL)
 	assert.Nil(t, err)

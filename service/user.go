@@ -8,6 +8,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 var (
@@ -15,7 +16,20 @@ var (
 	ErrUserNotFound        = errors.New("user not found")
 )
 
-type DefaultUserService struct {
+type UserServicer interface {
+	CreateUser(user model.User) error
+	UpdateUser(user model.User) error // replaced with SetPermnission?
+	Delete(session Session, userID uint64) error
+	DeletePermission(session Session, userID uint64) error
+	//Get(email string) (model.User, error)
+	Get(userID uint64) (model.User, error)
+	SetPermission(session Session, permission config.Permission) error
+	// probably needs to be moved to auth service; not implemented in google_auth yet
+	Refresh(userID uint64) (model.User, []config.Organization, []config.Farm, error)
+	AuthServicer
+}
+
+type User struct {
 	app             *app.App
 	userDAO         dao.UserDAO
 	orgDAO          dao.OrganizationDAO
@@ -23,18 +37,24 @@ type DefaultUserService struct {
 	permissionDAO   dao.PermissionDAO
 	farmDAO         dao.FarmDAO
 	userMapper      mapper.UserMapper
-	authServices    map[int]AuthService
+	authServices    map[int]AuthServicer
 	serviceRegistry ServiceRegistry
-	UserService
-	AuthService
+	UserServicer
+	AuthServicer
 }
 
-func NewUserService(app *app.App, userDAO dao.UserDAO, orgDAO dao.OrganizationDAO,
-	roleDAO dao.RoleDAO, permissionDAO dao.PermissionDAO, farmDAO dao.FarmDAO,
-	userMapper mapper.UserMapper, authServices map[int]AuthService,
-	serviceRegistry ServiceRegistry) UserService {
+func NewUserService(
+	app *app.App,
+	userDAO dao.UserDAO,
+	orgDAO dao.OrganizationDAO,
+	roleDAO dao.RoleDAO,
+	permissionDAO dao.PermissionDAO,
+	farmDAO dao.FarmDAO,
+	userMapper mapper.UserMapper,
+	authServices map[int]AuthServicer,
+	serviceRegistry ServiceRegistry) UserServicer {
 
-	return &DefaultUserService{
+	return &User{
 		app:             app,
 		userDAO:         userDAO,
 		orgDAO:          orgDAO,
@@ -47,7 +67,7 @@ func NewUserService(app *app.App, userDAO dao.UserDAO, orgDAO dao.OrganizationDA
 }
 
 // Looks up the user account by user ID
-func (service *DefaultUserService) Get(userID uint64) (common.UserAccount, error) {
+func (service *User) Get(userID uint64) (model.User, error) {
 	userEntity, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
@@ -56,7 +76,7 @@ func (service *DefaultUserService) Get(userID uint64) (common.UserAccount, error
 }
 
 // Sets a new user password
-func (service *DefaultUserService) ResetPassword(userCredentials *UserCredentials) error {
+func (service *User) ResetPassword(userCredentials *UserCredentials) error {
 	if authService, ok := service.authServices[userCredentials.AuthType]; ok {
 		return authService.ResetPassword(userCredentials)
 	}
@@ -64,8 +84,8 @@ func (service *DefaultUserService) ResetPassword(userCredentials *UserCredential
 }
 
 // Register signs up a new account
-func (service *DefaultUserService) Register(userCredentials *UserCredentials,
-	baseURI string) (common.UserAccount, error) {
+func (service *User) Register(userCredentials *UserCredentials,
+	baseURI string) (model.User, error) {
 
 	if authService, ok := service.authServices[userCredentials.AuthType]; ok {
 		return authService.Register(userCredentials, baseURI)
@@ -74,7 +94,7 @@ func (service *DefaultUserService) Register(userCredentials *UserCredentials,
 }
 
 // Activates a pending registration
-func (service *DefaultUserService) Activate(registrationID uint64) (common.UserAccount, error) {
+func (service *User) Activate(registrationID uint64) (model.User, error) {
 	if authService, ok := service.authServices[common.AUTH_TYPE_LOCAL]; ok {
 		return authService.Activate(registrationID)
 	}
@@ -82,8 +102,8 @@ func (service *DefaultUserService) Activate(registrationID uint64) (common.UserA
 }
 
 // Login authenticates a user account against the AuthService
-func (service *DefaultUserService) Login(userCredentials *UserCredentials) (common.UserAccount,
-	[]*config.Organization, []*config.Farm, error) {
+func (service *User) Login(userCredentials *UserCredentials) (model.User,
+	[]config.Organization, []config.Farm, error) {
 
 	if authService, ok := service.authServices[userCredentials.AuthType]; ok {
 		user, orgs, farms, err := authService.Login(userCredentials)
@@ -96,12 +116,12 @@ func (service *DefaultUserService) Login(userCredentials *UserCredentials) (comm
 }
 
 // Reloads the users organizations, farms and permissions
-func (service *DefaultUserService) Refresh(userID uint64) (common.UserAccount,
-	[]*config.Organization, []*config.Farm, error) {
+func (service *User) Refresh(userID uint64) (model.User,
+	[]config.Organization, []config.Farm, error) {
 
 	service.app.Logger.Debugf("Refreshing user: %d", userID)
 
-	var user *config.User
+	var user *config.UserStruct
 
 	organizations, err := service.permissionDAO.GetOrganizations(userID, common.CONSISTENCY_LOCAL)
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
@@ -114,7 +134,7 @@ func (service *DefaultUserService) Refresh(userID uint64) (common.UserAccount,
 ORG_LOOP:
 	for _, org := range organizations {
 		for _, u := range org.GetUsers() {
-			if user.ID == userID {
+			if user.Identifier() == userID {
 				user = u
 				user.RedactPassword()
 				break ORG_LOOP
@@ -133,8 +153,16 @@ ORG_LOOP:
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		userAccount := service.userMapper.MapUserConfigToModel(user)
-		return userAccount, organizations, farms, nil
+		userModel := service.userMapper.MapUserConfigToModel(user)
+		orgs := make([]config.Organization, len(organizations))
+		for i, org := range organizations {
+			orgs[i] = org
+		}
+		_farms := make([]config.Farm, len(farms))
+		for i, farm := range farms {
+			_farms[i] = farm
+		}
+		return userModel, orgs, _farms, nil
 	}
 
 	if user.ID == 0 && len(organizations) == 0 {
@@ -154,50 +182,58 @@ ORG_LOOP:
 		return nil, nil, nil, ErrUserNotFound
 	}
 
-	return service.userMapper.MapUserConfigToModel(user), organizations, farms, nil
+	// Convert structs to interfaces
+	orgs := make([]config.Organization, len(organizations))
+	for i, org := range organizations {
+		orgs[i] = org
+	}
+	_farms := make([]config.Farm, len(farms))
+	for i, farm := range farms {
+		_farms[i] = farm
+	}
+	return service.userMapper.MapUserConfigToModel(user), orgs, _farms, nil
 }
 
 // CreateUser creates a new user account
-func (service *DefaultUserService) CreateUser(user common.UserAccount) error {
-	return service.userDAO.Save(&config.User{
-		Email: user.GetEmail()})
+func (service *User) CreateUser(user model.User) error {
+	return service.userDAO.Save(&config.UserStruct{Email: user.GetEmail()})
 }
 
 // UpdateUser an existing user account
-func (service *DefaultUserService) UpdateUser(user common.UserAccount) error {
+func (service *User) UpdateUser(user model.User) error {
 	userConfig := service.userMapper.MapUserModelToConfig(user)
 	return service.userDAO.Save(userConfig)
 }
 
 // Deletes an existing user account
-func (service *DefaultUserService) Delete(session Session, userID uint64) error {
+func (service *User) Delete(session Session, userID uint64) error {
 	if err := service.DeletePermission(session, userID); err != nil {
 		return err
 	}
-	return service.userDAO.Delete(&config.User{ID: userID})
+	return service.userDAO.Delete(&config.UserStruct{ID: userID})
 }
 
 // Sets the users "permission", ie., the role that grants access
 // to an organization and/or farm.
-func (service *DefaultUserService) SetPermission(session Session, permission *config.Permission) error {
+func (service *User) SetPermission(session Session, permission config.Permission) error {
 	if !session.GetUser().HasRole(common.ROLE_ADMIN) {
 		return ErrPermissionDenied
 	}
 	if permission.GetUserID() == common.DEFAULT_USER_ID_64 || permission.GetUserID() == common.DEFAULT_USER_ID_32 {
 		return ErrChangeAdminRole
 	}
-	return service.permissionDAO.Update(permission)
+	return service.permissionDAO.Update(permission.(*config.PermissionStruct))
 }
 
 // Delete a user permission from the requested farm
-func (service *DefaultUserService) DeletePermission(session Session, userID uint64) error {
+func (service *User) DeletePermission(session Session, userID uint64) error {
 	if !session.GetUser().HasRole(common.ROLE_ADMIN) {
 		return ErrPermissionDenied
 	}
 	if userID == common.DEFAULT_USER_ID_64 || userID == common.DEFAULT_USER_ID_32 {
 		return ErrDeleteAdminAccount
 	}
-	return service.permissionDAO.Delete(&config.Permission{
+	return service.permissionDAO.Delete(&config.PermissionStruct{
 		OrganizationID: session.GetRequestedOrganizationID(),
 		FarmID:         session.GetRequestedFarmID(),
 		UserID:         userID})

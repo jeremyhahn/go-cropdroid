@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -19,10 +18,8 @@ type MicroDeviceMapper struct {
 type DeviceMapper interface {
 	GetMetricMapper() MetricMapper
 	GetChannelMapper() ChannelMapper
-	MapStateToDevice(state state.DeviceStateMap,
-		configuration *config.Device) (common.Device, error)
-	MapConfigToModel(deviceEntity *config.Device,
-		configEntities []*config.DeviceSetting) (common.Device, error)
+	MapStateToDevice(state state.DeviceStateMap, configuration config.Device) (model.Device, error)
+	MapConfigToModel(deviceEntity config.Device) model.Device
 }
 
 func NewDeviceMapper(metricMapper MetricMapper, channelMapper ChannelMapper) DeviceMapper {
@@ -39,31 +36,34 @@ func (mapper *MicroDeviceMapper) GetChannelMapper() ChannelMapper {
 	return mapper.channelMapper
 }
 
-func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, device *config.Device) (common.Device, error) {
+func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, device config.Device) (model.Device, error) {
 	configuredMetrics := device.GetMetrics()
-	metrics := make([]common.Metric, len(configuredMetrics))
+	metrics := make([]model.Metric, len(configuredMetrics))
 	for i, metricConfig := range configuredMetrics {
 		if value, ok := state.GetMetrics()[metricConfig.GetKey()]; ok {
 			metric := mapper.metricMapper.MapConfigToModel(metricConfig)
 			metric.SetValue(value)
 			metrics[i] = metric
 		} else {
-			return nil, fmt.Errorf("Unable to locate configured metric in device state! (device=%s, metric=%s)", device.GetType(), metricConfig.GetKey())
+			return nil, fmt.Errorf(
+				"Unable to locate configured metric in device state! (device=%s, metric=%s)",
+				device.GetType(),
+				metricConfig.GetKey())
 		}
 	}
 	sort.SliceStable(metrics, func(i, j int) bool {
 		return metrics[i].GetName() < metrics[j].GetName()
 	})
 	configuredChannels := device.GetChannels()
-	channels := make([]common.Channel, len(configuredChannels))
+	channels := make([]model.Channel, len(configuredChannels))
 	channelState := state.GetChannels()
 	for i, channelConfig := range configuredChannels {
 		channel := mapper.channelMapper.MapConfigToModel(channelConfig)
-		channel.SetValue(channelState[channelConfig.GetChannelID()])
+		channel.SetValue(channelState[channelConfig.GetBoardID()])
 		channels[i] = channel
 	}
-	return &model.Device{
-		ID:              device.ID,
+	return &model.DeviceStruct{
+		ID:              device.Identifier(),
 		Type:            device.GetType(),
 		Description:     device.GetDescription(),
 		Enable:          device.IsEnabled(),
@@ -71,24 +71,24 @@ func (mapper *MicroDeviceMapper) MapStateToDevice(state state.DeviceStateMap, de
 		URI:             device.GetURI(),
 		HardwareVersion: device.GetHardwareVersion(),
 		FirmwareVersion: device.GetFirmwareVersion(),
-		Configs:         device.GetConfigMap(),
+		Settings:        device.GetSettingsMap(),
 		Metrics:         metrics,
 		Channels:        channels}, nil
 }
 
-func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity *config.Device,
-	settingEntities []*config.DeviceSetting) (common.Device, error) {
+func (mapper *MicroDeviceMapper) MapConfigToModel(deviceEntity config.Device) model.Device {
 
-	configs := make(map[string]string, len(settingEntities))
-	for _, entity := range settingEntities {
-		configs[entity.GetKey()] = entity.GetValue()
+	deviceEntitySettings := deviceEntity.GetSettings()
+	settings := make(map[string]string, len(deviceEntitySettings))
+	for _, entity := range deviceEntitySettings {
+		settings[entity.GetKey()] = entity.GetValue()
 	}
-	return &model.Device{
-		ID: deviceEntity.ID,
+	return &model.DeviceStruct{
+		ID: deviceEntity.Identifier(),
 		//FarmID:      deviceEntity.GetFarmID(),
 		Type:        deviceEntity.GetType(),
 		Description: deviceEntity.GetDescription(),
-		Configs:     configs,
-		Metrics:     make([]common.Metric, 0),
-		Channels:    make([]common.Channel, 0)}, nil
+		Settings:    settings,
+		Metrics:     make([]model.Metric, 0),
+		Channels:    make([]model.Channel, 0)}
 }

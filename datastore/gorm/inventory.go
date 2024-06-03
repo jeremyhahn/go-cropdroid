@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -41,6 +42,11 @@ func (dao *GormInventoryDAO) Update(entity entity.InventoryEntity) error {
 func (dao *GormInventoryDAO) Get(channel string) (entity.InventoryEntity, error) {
 	var Inventorys []entity.Inventory
 	if err := dao.db.Where("channel = ?", channel).Find(&Inventorys).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	if len(Inventorys) == 0 {

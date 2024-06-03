@@ -4,23 +4,22 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 type Workflow struct {
-	ID            uint64           `yaml:"id" json:"id"`
-	FarmID        uint64           `yaml:"farm" json:"farmId"`
-	Name          string           `yaml:"name" json:"name"`
-	LastCompleted *time.Time       `yaml:"lastCompleted" json:"lastCompleted"`
-	Conditions    []Condition      `yaml:"conditions" json:"conditions"`
-	Schedules     []model.Schedule `yaml:"schedules" json:"schedules"`
-	Steps         []WorkflowStep   `yaml:"steps" json:"steps"`
+	ID            uint64            `yaml:"id" json:"id"`
+	FarmID        uint64            `yaml:"farm" json:"farmId"`
+	Name          string            `yaml:"name" json:"name"`
+	LastCompleted *time.Time        `yaml:"lastCompleted" json:"lastCompleted"`
+	Conditions    []Condition       `yaml:"conditions" json:"conditions"`
+	Schedules     []config.Schedule `yaml:"schedules" json:"schedules"`
+	Steps         []WorkflowStep    `yaml:"steps" json:"steps"`
 }
 
 func NewWorkflow() *Workflow {
 	return &Workflow{
 		Conditions: make([]Condition, 0),
-		Schedules:  make([]model.Schedule, 0),
+		Schedules:  make([]config.Schedule, 0),
 		Steps:      make([]WorkflowStep, 0)}
 }
 

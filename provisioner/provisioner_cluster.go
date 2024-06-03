@@ -13,6 +13,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 type RaftFarmProvisioner struct {
@@ -45,7 +46,7 @@ func NewRaftFarmProvisioner(app *app.App, gossip cluster.GossipNode,
 }
 
 func (provisioner *RaftFarmProvisioner) Provision(
-	userAccount common.UserAccount, params *common.ProvisionerParams) (*config.Farm, error) {
+	userAccount model.User, params *common.ProvisionerParams) (*config.FarmStruct, error) {
 
 	userConfig := provisioner.userMapper.MapUserModelToConfig(userAccount)
 
@@ -59,7 +60,7 @@ func (provisioner *RaftFarmProvisioner) Provision(
 	if err != nil {
 		return nil, err
 	}
-	farmConfig.SetUsers([]*config.User{userConfig})
+	farmConfig.SetUsers([]*config.UserStruct{userConfig})
 
 	// Add org/farm refs to the user
 	if params.OrganizationID > 0 {
@@ -72,7 +73,7 @@ func (provisioner *RaftFarmProvisioner) Provision(
 
 	// Save permission entries to the database
 	for _, permission := range permissions {
-		if err := provisioner.permissionDAO.Save(&permission); err != nil {
+		if err := provisioner.permissionDAO.Save(permission); err != nil {
 			return nil, err
 		}
 	}
@@ -85,6 +86,6 @@ func (provisioner *RaftFarmProvisioner) Provision(
 	return farmConfig, nil
 }
 
-func (provisioner *RaftFarmProvisioner) Deprovision(userAccount common.UserAccount, farmID uint64) error {
+func (provisioner *RaftFarmProvisioner) Deprovision(userAccount model.User, farmID uint64) error {
 	return errors.New("Not implemented")
 }

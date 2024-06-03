@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/util"
@@ -19,14 +20,15 @@ type GormOrganizationDAO struct {
 
 func NewOrganizationDAO(logger *logging.Logger, db *gorm.DB,
 	idGenerator util.IdGenerator) dao.OrganizationDAO {
+
 	return &GormOrganizationDAO{
 		logger:      logger,
 		db:          db,
 		idGenerator: idGenerator}
 }
 
-func (dao *GormOrganizationDAO) Save(organization *config.Organization) error {
-	dao.logger.Debugf("Creating organization record")
+func (dao *GormOrganizationDAO) Save(organization *config.OrganizationStruct) error {
+	dao.logger.Debugf("Save GORM organization: %+v", organization)
 	if organization.ID == 0 {
 		id := dao.idGenerator.NewStringID(organization.GetName())
 		organization.SetID(id)
@@ -37,13 +39,14 @@ func (dao *GormOrganizationDAO) Save(organization *config.Organization) error {
 		Save(&organization).Error
 }
 
-func (dao *GormOrganizationDAO) Delete(organization *config.Organization) error {
-	return dao.db.Delete(organization).Error
+func (dao *GormOrganizationDAO) Delete(organization *config.OrganizationStruct) error {
+	dao.logger.Debugf("Delete GORM organization: %+v", organization)
+	return dao.db.Delete(&organization).Error
 }
 
-func (dao *GormOrganizationDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Organization, error) {
+func (dao *GormOrganizationDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.OrganizationStruct, error) {
 	dao.logger.Debugf("Fetching organization ID: %d", id)
-	var org *config.Organization
+	var org *config.OrganizationStruct
 	if err := dao.db.
 		Preload("Farms").
 		Preload("Users").
@@ -59,15 +62,23 @@ func (dao *GormOrganizationDAO) Get(id uint64, CONSISTENCY_LEVEL int) (*config.O
 		Preload("Farms.Workflows.Conditions").
 		Preload("Farms.Workflows.Schedules").
 		Preload("Farms.Workflows.Steps").
-		First(org, id).Error; err != nil {
+		First(&org, id).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return org, nil
 }
 
-func (organizationDAO *GormOrganizationDAO) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Organization], error) {
-	organizationDAO.logger.Debugf("Fetching organization page: %v+", pageQuery)
-	pageResult := dao.PageResult[*config.Organization]{
+func (organizationDAO *GormOrganizationDAO) GetPage(pageQuery query.PageQuery,
+	CONSISTENCY_LEVEL int) (dao.PageResult[*config.OrganizationStruct], error) {
+
+	organizationDAO.logger.Debugf("GetPage GORM organization: %+v", pageQuery)
+	pageResult := dao.PageResult[*config.OrganizationStruct]{
 		Page:     pageQuery.Page,
 		PageSize: pageQuery.PageSize}
 	page := pageQuery.Page
@@ -75,7 +86,7 @@ func (organizationDAO *GormOrganizationDAO) GetPage(pageQuery query.PageQuery, C
 		page = 1
 	}
 	var offset = (page - 1) * pageQuery.PageSize
-	var orgs []*config.Organization
+	var orgs []*config.OrganizationStruct
 	if err := organizationDAO.db.
 		Preload("Farms").
 		Preload("Users").
@@ -94,6 +105,12 @@ func (organizationDAO *GormOrganizationDAO) GetPage(pageQuery query.PageQuery, C
 		Offset(offset).
 		Limit(pageQuery.PageSize + 1). // peek one record to set HasMore flag
 		Find(&orgs).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			organizationDAO.logger.Warning(err)
+			return pageResult, datastore.ErrRecordNotFound
+		}
+		organizationDAO.logger.Error(err)
 		return pageResult, err
 	}
 	//orgConfigs := make([]config.Organization, len(orgs))
@@ -113,13 +130,16 @@ func (organizationDAO *GormOrganizationDAO) GetPage(pageQuery query.PageQuery, C
 }
 
 func (dao *GormOrganizationDAO) ForEachPage(pageQuery query.PageQuery,
-	pagerProcFunc query.PagerProcFunc[*config.Organization], CONSISTENCY_LEVEL int) error {
+	pagerProcFunc query.PagerProcFunc[*config.OrganizationStruct], CONSISTENCY_LEVEL int) error {
 
+	dao.logger.Debugf("ForEachPage GORM organization: %T,  %+v", pagerProcFunc, pageQuery)
 	pageResult, err := dao.GetPage(pageQuery, CONSISTENCY_LEVEL)
 	if err != nil {
+		dao.logger.Error(err)
 		return nil
 	}
 	if err = pagerProcFunc(pageResult.Entities); err != nil {
+		dao.logger.Error(err)
 		return err
 	}
 	if pageResult.HasMore {
@@ -132,22 +152,30 @@ func (dao *GormOrganizationDAO) ForEachPage(pageQuery query.PageQuery,
 	return nil
 }
 
-func (dao *GormOrganizationDAO) GetUsers(orgID uint64) ([]*config.User, error) {
-	dao.logger.Debugf("Fetching users for organization ID: %d", orgID)
-	var org config.Organization
+func (dao *GormOrganizationDAO) GetUsers(orgID uint64) ([]*config.UserStruct, error) {
+	dao.logger.Debugf("GetUsers GORM organization ID: %d", orgID)
+	var org config.OrganizationStruct
 	if err := dao.db.
 		Preload("Users").
 		Preload("Users.Roles").
 		//Preload("Farms.Users").Preload("Farms.Users.Roles").
 		First(&org, orgID).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return org.Users, nil
 }
 
 func (dao *GormOrganizationDAO) Count(CONSISTENCY_LEVEL int) (int64, error) {
+	dao.logger.Debugf("Count GORM organizations")
 	var count int64
-	if err := dao.db.Model(&config.Organization{}).Count(&count).Error; err != nil {
+	if err := dao.db.Model(&config.OrganizationStruct{}).Count(&count).Error; err != nil {
+		dao.logger.Error(err)
 		return 0, err
 	}
 	return count, nil

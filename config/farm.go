@@ -6,167 +6,226 @@ import (
 	"time"
 )
 
-type Farm struct {
-	ID             uint64      `gorm:"primaryKey" yaml:"id" json:"id"`
-	OrganizationID uint64      `yaml:"orgId" json:"orgId"`
-	Replicas       int         `yaml:"replicas" json:"replicas"`
-	Consistency    int         `gorm:"consistency" yaml:"consistency" json:"consistency"`
-	StateStore     int         `gorm:"state_store" yaml:"state_store" json:"state_store"`
-	ConfigStore    int         `gorm:"config_store" yaml:"config_store" json:"config_store"`
-	DataStore      int         `gorm:"data_store" yaml:"data_store" json:"data_store"`
-	Mode           string      `gorm:"-" yaml:"mode" json:"mode"`
-	Name           string      `gorm:"-" yaml:"name" json:"name"`
-	Interval       int         `gorm:"-" yaml:"interval" json:"interval"`
-	Smtp           *Smtp       `gorm:"-" yaml:"smtp" json:"smtp"`
-	Timezone       string      `gorm:"-" yaml:"timezone" json:"timezone"`
-	PrivateKey     string      `gorm:"private_key" yaml:"private_key" json:"private_key"`
-	PublicKey      string      `gorm:"public_key" yaml:"public_key" json:"public_key"`
-	Devices        []*Device   `yaml:"devices" json:"devices"`
-	Users          []*User     `gorm:"many2many:user_farm" yaml:"users" json:"users"`
-	Workflows      []*Workflow `gorm:"workflow" yaml:"workflows" json:"workflows"`
-	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
+type CommonFarm interface {
+	SetOrganizationID(id uint64)
+	GetOrganizationID() uint64
+	GetReplicas() int
+	SetReplicas(count int)
+	SetConsistencyLevel(level int)
+	GetConsistencyLevel() int
+	SetStateStore(storeType int)
+	GetStateStore() int
+	SetConfigStore(storeType int)
+	GetConfigStore() int
+	SetDataStore(storeType int)
+	GetDataStore() int
+	SetName(string)
+	GetName() string
+	SetMode(string)
+	GetMode() string
+	GetInterval() int
+	SetInterval(int)
+	SetSmtp(smtp *SmtpStruct)
+	GetSmtp() *SmtpStruct
+	SetTimezone(tz string)
+	GetTimezone() string
+	SetPrivateKey(key string)
+	GetPrivateKey() string
+	SetPublicKey(key string)
+	GetPublicKey() string
+	AddDevice(*DeviceStruct)
+	GetDevices() []*DeviceStruct
+	SetDevices([]*DeviceStruct)
+	SetDevice(device *DeviceStruct)
+	GetDevice(deviceType string) (*DeviceStruct, error)
+	GetDeviceById(id uint64) (*DeviceStruct, error)
+	AddUser(user *UserStruct)
+	SetUsers(users []*UserStruct)
+	GetUsers() []*UserStruct
+	RemoveUser(user *UserStruct)
+	AddWorkflow(workflow *WorkflowStruct)
+	GetWorkflows() []*WorkflowStruct
+	RemoveWorkflow(workflow *WorkflowStruct) error
+	SetWorkflows(workflows []*WorkflowStruct)
+	SetWorkflow(workflow *WorkflowStruct)
+	KeyValueEntity
 }
 
-func NewFarm() *Farm {
-	return &Farm{
+type Farm interface {
+	ParseSettings() error
+	HydrateSettings() error
+	CommonFarm
+}
+
+type FarmStruct struct {
+	ID             uint64            `gorm:"primaryKey" yaml:"id" json:"id"`
+	OrganizationID uint64            `yaml:"orgId" json:"orgId"`
+	Replicas       int               `yaml:"replicas" json:"replicas"`
+	Consistency    int               `gorm:"consistency" yaml:"consistency" json:"consistency"`
+	StateStore     int               `gorm:"state_store" yaml:"state_store" json:"state_store"`
+	ConfigStore    int               `gorm:"config_store" yaml:"config_store" json:"config_store"`
+	DataStore      int               `gorm:"data_store" yaml:"data_store" json:"data_store"`
+	Mode           string            `gorm:"-" yaml:"mode" json:"mode"`
+	Name           string            `gorm:"-" yaml:"name" json:"name"`
+	Interval       int               `gorm:"-" yaml:"interval" json:"interval"`
+	Smtp           *SmtpStruct       `gorm:"-" yaml:"smtp" json:"smtp"`
+	Timezone       string            `gorm:"-" yaml:"timezone" json:"timezone"`
+	PrivateKey     string            `gorm:"private_key" yaml:"private_key" json:"private_key"`
+	PublicKey      string            `gorm:"public_key" yaml:"public_key" json:"public_key"`
+	Devices        []*DeviceStruct   `gorm:"foreignKey:FarmID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"devices" json:"devices"`
+	Users          []*UserStruct     `gorm:"many2many:user_farm" yaml:"users" json:"users"`
+	Workflows      []*WorkflowStruct `gorm:"name:workflow;foreignKey:FarmID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"workflows" json:"workflows"`
+	Farm           `sql:"-" gorm:"-" yaml:"-" json:"-"`
+}
+
+func NewFarm() *FarmStruct {
+	return &FarmStruct{
 		//Interval: 60,
-		Devices:   make([]*Device, 0),
-		Users:     make([]*User, 0),
-		Workflows: make([]*Workflow, 0)}
+		Devices:   make([]*DeviceStruct, 0),
+		Users:     make([]*UserStruct, 0),
+		Workflows: make([]*WorkflowStruct, 0)}
 }
 
 func CreateFarm(name string, orgID uint64, interval int,
-	users []*User, devices []*Device) *Farm {
+	users []*User, devices []*DeviceStruct) *FarmStruct {
 
-	return &Farm{
+	return &FarmStruct{
 		//Interval:       60,
 		OrganizationID: orgID,
 		Devices:        devices,
-		Users:          make([]*User, 0),
-		Workflows:      make([]*Workflow, 0)}
+		Users:          make([]*UserStruct, 0),
+		Workflows:      make([]*WorkflowStruct, 0)}
 }
 
-func (farm *Farm) SetID(id uint64) {
+func (farm *FarmStruct) TableName() string {
+	return "farms"
+}
+
+func (farm *FarmStruct) SetID(id uint64) {
 	farm.ID = id
 }
 
-func (farm *Farm) Identifier() uint64 {
+func (farm *FarmStruct) Identifier() uint64 {
 	return farm.ID
 }
 
-func (farm *Farm) SetOrganizationID(id uint64) {
+func (farm *FarmStruct) SetOrganizationID(id uint64) {
 	farm.OrganizationID = id
 }
 
-func (farm *Farm) GetOrganizationID() uint64 {
+func (farm *FarmStruct) GetOrganizationID() uint64 {
 	return farm.OrganizationID
 }
 
-func (farm *Farm) SetReplicas(count int) {
+func (farm *FarmStruct) SetReplicas(count int) {
 	farm.Replicas = count
 }
 
-func (farm *Farm) GetReplicas() int {
+func (farm *FarmStruct) GetReplicas() int {
 	return farm.Replicas
 }
 
-func (farm *Farm) SetConsistencyLevel(level int) {
+func (farm *FarmStruct) SetConsistencyLevel(level int) {
 	farm.Consistency = level
 }
 
-func (farm *Farm) GetConsistencyLevel() int {
+func (farm *FarmStruct) GetConsistencyLevel() int {
 	return farm.Consistency
 }
 
-func (farm *Farm) SetStateStore(storeType int) {
+func (farm *FarmStruct) SetStateStore(storeType int) {
 	farm.StateStore = storeType
 }
 
-func (farm *Farm) GetStateStore() int {
+func (farm *FarmStruct) GetStateStore() int {
 	return farm.StateStore
 }
 
-func (farm *Farm) SetConfigStore(storeType int) {
+func (farm *FarmStruct) SetConfigStore(storeType int) {
 	farm.ConfigStore = storeType
 }
 
-func (farm *Farm) GetConfigStore() int {
+func (farm *FarmStruct) GetConfigStore() int {
 	return farm.ConfigStore
 }
 
-func (farm *Farm) SetDataStore(storeType int) {
+func (farm *FarmStruct) SetDataStore(storeType int) {
 	farm.DataStore = storeType
 }
 
-func (farm *Farm) GetDataStore() int {
+func (farm *FarmStruct) GetDataStore() int {
 	return farm.DataStore
 }
 
-func (farm *Farm) SetName(name string) {
+func (farm *FarmStruct) SetName(name string) {
 	farm.Name = name
 }
 
-func (farm *Farm) GetName() string {
+func (farm *FarmStruct) GetName() string {
 	return farm.Name
 }
 
-func (farm *Farm) GetMode() string {
+func (farm *FarmStruct) GetMode() string {
 	return farm.Mode
 }
 
-func (farm *Farm) SetMode(mode string) {
+func (farm *FarmStruct) SetMode(mode string) {
 	farm.Mode = mode
 }
 
-func (farm *Farm) GetInterval() int {
+func (farm *FarmStruct) GetInterval() int {
 	return farm.Interval
 }
 
-func (farm *Farm) SetInterval(interval int) {
+func (farm *FarmStruct) SetInterval(interval int) {
 	farm.Interval = interval
 }
 
-/*func (farm *Farm) SetTimezone(tz *time.Location) {
+/*func (farm *FarmStruct) SetTimezone(tz *time.Location) {
 	farm.Timezone = tz
 }
 
-func (farm *Farm) GetTimezone() *time.Location {
+func (farm *FarmStruct) GetTimezone() *time.Location {
 	return farm.Timezone
 }*/
 
-func (farm *Farm) SetTimezone(tz string) {
+func (farm *FarmStruct) SetTimezone(tz string) {
 	farm.Timezone = tz
 }
 
-func (farm *Farm) GetTimezone() string {
+func (farm *FarmStruct) GetTimezone() string {
 	return farm.Timezone
 }
 
-func (farm *Farm) SetPrivateKey(key string) {
+func (farm *FarmStruct) SetPrivateKey(key string) {
 	farm.PrivateKey = key
 }
 
-func (farm *Farm) GetPrivateKey() string {
+func (farm *FarmStruct) GetPrivateKey() string {
 	return farm.PrivateKey
 }
 
-func (farm *Farm) SetPublicKey(key string) {
+func (farm *FarmStruct) SetPublicKey(key string) {
 	farm.PublicKey = key
 }
 
-func (farm *Farm) GetPublicKey() string {
+func (farm *FarmStruct) GetPublicKey() string {
 	return farm.PublicKey
 }
 
-func (farm *Farm) GetSmtp() *Smtp {
+func (farm *FarmStruct) SetSmtp(smtp *SmtpStruct) {
+	farm.Smtp = smtp
+}
+
+func (farm *FarmStruct) GetSmtp() *SmtpStruct {
 	return farm.Smtp
 }
 
-func (farm *Farm) AddUser(user *User) {
+func (farm *FarmStruct) AddUser(user *UserStruct) {
 	farm.Users = append(farm.Users, user)
 }
 
-func (farm *Farm) RemoveUser(user *User) {
+func (farm *FarmStruct) RemoveUser(user *UserStruct) {
 	for i, u := range farm.Users {
 		if u.ID == user.ID {
 			farm.Users = append(farm.Users[:i], farm.Users[i+1:]...)
@@ -175,27 +234,27 @@ func (farm *Farm) RemoveUser(user *User) {
 	}
 }
 
-func (farm *Farm) SetUsers(users []*User) {
+func (farm *FarmStruct) SetUsers(users []*UserStruct) {
 	farm.Users = users
 }
 
-func (farm *Farm) GetUsers() []*User {
+func (farm *FarmStruct) GetUsers() []*UserStruct {
 	return farm.Users
 }
 
-func (farm *Farm) AddDevice(device *Device) {
+func (farm *FarmStruct) AddDevice(device *DeviceStruct) {
 	farm.Devices = append(farm.Devices, device)
 }
 
-func (farm *Farm) GetDevices() []*Device {
+func (farm *FarmStruct) GetDevices() []*DeviceStruct {
 	return farm.Devices
 }
 
-func (farm *Farm) SetDevices(devices []*Device) {
+func (farm *FarmStruct) SetDevices(devices []*DeviceStruct) {
 	farm.Devices = devices
 }
 
-func (farm *Farm) SetDevice(device *Device) {
+func (farm *FarmStruct) SetDevice(device *DeviceStruct) {
 	for i, c := range farm.Devices {
 		if c.ID == device.ID {
 			farm.Devices[i] = device
@@ -205,7 +264,7 @@ func (farm *Farm) SetDevice(device *Device) {
 	farm.Devices = append(farm.Devices, device)
 }
 
-func (farm *Farm) GetDevice(deviceType string) (*Device, error) {
+func (farm *FarmStruct) GetDevice(deviceType string) (*DeviceStruct, error) {
 	for _, device := range farm.Devices {
 		if device.GetType() == deviceType {
 			return device, nil
@@ -215,7 +274,7 @@ func (farm *Farm) GetDevice(deviceType string) (*Device, error) {
 		deviceType)
 }
 
-func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
+func (farm *FarmStruct) GetDeviceById(id uint64) (*DeviceStruct, error) {
 	for _, device := range farm.Devices {
 		if device.ID == id {
 			return device, nil
@@ -224,7 +283,7 @@ func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
 	return nil, fmt.Errorf("device not found: %d", id)
 }
 
-// func (farm *Farm) GetDeviceByType(t string) (*Device, error) {
+// func (farm *FarmStruct) GetDeviceByType(t string) (*Device, error) {
 // 	for _, device := range farm.Devices {
 // 		if device.GetType() == t {
 // 			return &device, nil
@@ -233,19 +292,19 @@ func (farm *Farm) GetDeviceById(id uint64) (*Device, error) {
 // 	return nil, ErrDeviceNotFound
 // }
 
-func (farm *Farm) SetWorkflows(workflows []*Workflow) {
+func (farm *FarmStruct) SetWorkflows(workflows []*WorkflowStruct) {
 	farm.Workflows = workflows
 }
 
-func (farm *Farm) GetWorkflows() []*Workflow {
+func (farm *FarmStruct) GetWorkflows() []*WorkflowStruct {
 	return farm.Workflows
 }
 
-func (farm *Farm) AddWorkflow(workflow *Workflow) {
+func (farm *FarmStruct) AddWorkflow(workflow *WorkflowStruct) {
 	farm.Workflows = append(farm.Workflows, workflow)
 }
 
-func (farm *Farm) SetWorkflow(workflow *Workflow) {
+func (farm *FarmStruct) SetWorkflow(workflow *WorkflowStruct) {
 	for i, w := range farm.Workflows {
 		if w.ID == workflow.ID {
 			farm.Workflows[i] = workflow
@@ -255,7 +314,7 @@ func (farm *Farm) SetWorkflow(workflow *Workflow) {
 	farm.Workflows = append(farm.Workflows, workflow)
 }
 
-func (farm *Farm) RemoveWorkflow(workflow *Workflow) error {
+func (farm *FarmStruct) RemoveWorkflow(workflow *WorkflowStruct) error {
 	for i, w := range farm.Workflows {
 		if w.ID == workflow.ID {
 			farm.Workflows = append(farm.Workflows[:i], farm.Workflows[i+1:]...)
@@ -265,7 +324,7 @@ func (farm *Farm) RemoveWorkflow(workflow *Workflow) error {
 	return ErrWorkflowNotFound
 }
 
-func (farm *Farm) ParseSettings() error {
+func (farm *FarmStruct) ParseSettings() error {
 	for i, device := range farm.GetDevices() {
 		if device.GetType() == "server" {
 			smtp := NewSmtp()
@@ -323,15 +382,15 @@ func (farm *Farm) ParseSettings() error {
 	return nil
 }
 
-// HydrateConfigs populates the device config items from the ConfigMap. This is
+// HydrateConfigs populates the device config items from the SettingsMap. This is
 // used when unmarshalling from JSON or YAML since device.Configs json:"-" and yaml:"-"
 // is set so the results are returned as key/value pairs by the API. Probably best to refactor
 // this so the API returns a dedicated view and device.Configs doesn't get ignored.
-func (farm *Farm) HydrateSettings() error {
+func (farm *FarmStruct) HydrateSettings() error {
 	for i, device := range farm.GetDevices() {
 		if device.GetType() == "server" {
 			smtp := NewSmtp()
-			for key, value := range device.GetConfigMap() {
+			for key, value := range device.GetSettingsMap() {
 				switch key {
 				case "name":
 					farm.Name = value
@@ -383,7 +442,7 @@ func (farm *Farm) HydrateSettings() error {
 }
 
 /*
-func (farm *Farm) getStringConfig(key string) (string, error) {
+func (farm *FarmStruct) getStringConfig(key string) (string, error) {
 	if farm.Configs != nil {
 		for _, config := range farm.Configs {
 			if config.GetKey() == key {
@@ -395,7 +454,7 @@ func (farm *Farm) getStringConfig(key string) (string, error) {
 	return "", errors.New("[config.Farm] Configuration undefined")
 }
 
-func (farm *Farm) getIntConfig(key string) (int, error) {
+func (farm *FarmStruct) getIntConfig(key string) (int, error) {
 	if farm.Configs != nil {
 		for _, config := range farm.Configs {
 			if config.GetKey() == key {
@@ -411,7 +470,7 @@ func (farm *Farm) getIntConfig(key string) (int, error) {
 	return 0, errors.New("[config.Farm] Configuration undefined")
 }
 
-func (farm *Farm) setConfig(key, value string) error {
+func (farm *FarmStruct) setConfig(key, value string) error {
 	for _, config := range farm.Configs {
 		if config.GetKey() == key {
 			config.SetValue(value)

@@ -1,5 +1,5 @@
-//go:build cluster && !cloud
-// +build cluster,!cloud
+//go:build cluster
+// +build cluster
 
 package cmd
 
@@ -53,15 +53,12 @@ var (
 
 func init() {
 
-	supportedDatastores = []string{"memory", "sqlite", "mysql", "postgres", "cockroach", "raft"}
-
 	// IaaS
-	clusterCmd.PersistentFlags().StringVarP(&ClusterIaasProvider, "provider", "", "kvm",
-		"Infrastructure-as-a-Service (IaaS) provider [ libvirt | terraform ]")
+	clusterCmd.PersistentFlags().StringVarP(&ClusterIaasProvider, "provider", "", "kvm", "Infrastructure-as-a-Service (IaaS) provider [ libvirt | terraform ]")
 
 	// General cluster
-	clusterCmd.PersistentFlags().Uint64VarP(&ClusterID, "cluster-id", "", 1, "Cluster unique identifier")
-	clusterCmd.PersistentFlags().IntVarP(&ClusterVirtualNodes, "vnodes", "", 1, "Number of virtual nodes on the consistent hash ring")
+	clusterCmd.PersistentFlags().Uint64VarP(&App.ClusterID, "cluster-id", "", 1, "Cluster unique identifier")
+	clusterCmd.PersistentFlags().IntVarP(&ClusterVirtualNodes, "vnodes", "", 64, "Number of virtual nodes on the consistent hash ring")
 	clusterCmd.PersistentFlags().BoolVarP(&ClusterJoin, "join", "", false, "True to join an existing cluster, false to create a new cluster")
 	clusterCmd.PersistentFlags().StringVarP(&ClusterListenAddress, "listen", "", "", "The IP address services listen for incoming requests")
 	//clusterCmd.PersistentFlags().BoolVarP(&ClusterBootstrap, "bootstrap", "", 0, "Number of nodes to wait on when bootstrapping the cluster")
@@ -92,21 +89,16 @@ func init() {
 	clusterCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "raft", "Where to store historical device data [ raft | gorm | redis ]")
 
 	// Default cluster parameters (for provisioning new accounts)
-	clusterCmd.PersistentFlags().IntVarP(&DefaultConsistencyLevel, "default-consistency-level", "", common.CONSISTENCY_LOCAL, "CONSISTENCY_LOCAL or CONSISTENCY_QUORUM")
-	clusterCmd.PersistentFlags().IntVarP(&DefaultConfigStoreType, "default-config-store", "", config.RAFT_DISK_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
-	clusterCmd.PersistentFlags().IntVarP(&DefaultStateStoreType, "default-state-store", "", config.RAFT_MEMORY_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
-	clusterCmd.PersistentFlags().IntVarP(&DefaultDataStoreType, "default-data-store", "", config.GORM_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
+	clusterCmd.PersistentFlags().IntVarP(&App.DefaultConsistencyLevel, "default-consistency-level", "", common.CONSISTENCY_LOCAL, "CONSISTENCY_LOCAL or CONSISTENCY_QUORUM")
+	clusterCmd.PersistentFlags().IntVarP(&App.DefaultConfigStoreType, "default-config-store", "", config.RAFT_DISK_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
+	clusterCmd.PersistentFlags().IntVarP(&App.DefaultStateStoreType, "default-state-store", "", config.RAFT_MEMORY_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
+	clusterCmd.PersistentFlags().IntVarP(&App.DefaultDataStoreType, "default-data-store", "", config.GORM_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
 	//clusterCmd.PersistentFlags().IntVarP(&DefaultDataStoreType, "default-data-store", "", config.RAFT_DISK_STORE, "RAFT_DISK_STORE, RAFT_MEMORY_STORE, GORM_STORE")
 
 	viper.BindPFlags(clusterCmd.PersistentFlags())
 
 	rootCmd.AddCommand(clusterCmd)
 }
-
-/*
-https://github.com/lni/dragonboat/blob/master/CHANGELOG.md
-func gprcFactoryFunc(nhc NodeHostConfig, raftio.RequestHandler, raftio.IChunkHandler) raftio.IRaftRPC {
-}*/
 
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
@@ -117,14 +109,10 @@ var clusterCmd = &cobra.Command{
 	fault-tolerant, and massively scalable cloud native architecture.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		App.Mode = Mode
+		sigChan := make(chan os.Signal, 1)
+
 		App.IdGenerator = util.NewIdGenerator(DataStoreEngine)
 		App.IdSetter = util.NewIdSetter(App.IdGenerator)
-		App.DefaultConsistencyLevel = viper.GetInt("default-consistency-level")
-		App.DefaultConfigStoreType = viper.GetInt("default-config-store")
-		App.DefaultStateStoreType = viper.GetInt("default-state-store")
-		App.DefaultDataStoreType = viper.GetInt("default-data-store")
-		App.ClusterID = ClusterID
 
 		if ClusterRaft != "" {
 			pieces := strings.Split(ClusterRaft, ",")
@@ -165,12 +153,31 @@ var clusterCmd = &cobra.Command{
 		farmDeprovisionerChan := make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE)
 		farmTickerProvisionerChan := make(chan uint64, common.BUFFERED_CHANNEL_SIZE)
 
-		params := clusterutil.NewClusterParams(App.Logger, raftOptions, NodeID,
-			ClusterIaasProvider, ClusterRegion, ClusterZone, App.DataDir, localAddress,
-			ClusterListenAddress, gossipPeers, raftPeers, ClusterJoin, ClusterGossipPort,
-			ClusterRaftPort, ClusterRaftLeaderID, ClusterVirtualNodes, ClusterMaxNodes,
-			ClusterBootstrap, DatabaseInit, App.IdGenerator, App.IdSetter, farmProvisionerChan,
-			farmDeprovisionerChan, farmTickerProvisionerChan)
+		params := clusterutil.NewClusterParams(
+			App.Logger,
+			raftOptions,
+			App.NodeID,
+			ClusterIaasProvider,
+			ClusterRegion,
+			ClusterZone,
+			App.DataDir,
+			localAddress,
+			ClusterListenAddress,
+			gossipPeers,
+			raftPeers,
+			ClusterJoin,
+			ClusterGossipPort,
+			ClusterRaftPort,
+			ClusterRaftLeaderID,
+			ClusterVirtualNodes,
+			ClusterMaxNodes,
+			ClusterBootstrap,
+			DatabaseInit,
+			App.IdGenerator,
+			App.IdSetter,
+			farmProvisionerChan,
+			farmDeprovisionerChan,
+			farmTickerProvisionerChan)
 
 		gossipNode := cluster.NewGossipNode(params, clusterutil.NewHashring(ClusterVirtualNodes))
 		gossipNode.Join()
@@ -183,20 +190,22 @@ var clusterCmd = &cobra.Command{
 			raftNode = gossipNode.GetSystemRaft()
 		}
 		App.ClusterID = raftNode.GetParams().ClusterID
-		App.NodeID = int(raftNode.GetParams().NodeID)
-
-		//App.ServerStore = cluster.NewRaftFarmConfigStore(App.Logger, App.RaftCluster)
-		//App.FarmStore = cluster.NewRaftFarmStateStore(App.Logger, App.RaftCluster)
+		App.NodeID = raftNode.GetParams().NodeID
 
 		// TODO: Check device hardware and firmware versions at startup, update devices db table
-		builder := builder.NewClusterConfigBuilder(App, params,
-			gossipNode, raftNode, DeviceDataStore, AppStateTTL, AppStateTick)
-		rsaKeyPair, serviceRegistry, restServices, _, err := builder.Build()
+		builder := builder.NewClusterConfigBuilder(
+			App,
+			params,
+			gossipNode,
+			raftNode,
+			DeviceDataStore,
+			App.StateTTL,
+			App.StateTick)
+		mapperRegistry, serviceRegistry, restServiceRegistry, _, err := builder.Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
-		App.KeyPair = rsaKeyPair
 		//App.Server = serverConfig.(*config.Server)
 		//App.DeviceIndex = deviceIndex
 		//App.ChannelIndex = channelIndex
@@ -205,23 +214,28 @@ var clusterCmd = &cobra.Command{
 			go farmService.RunCluster()
 		}
 
-		if changefeedService := serviceRegistry.GetChangefeedService(); changefeedService != nil {
-			changefeedService.Subscribe()
-		}
-
-		webserver := webservice.NewWebserver(App, gossipNode, raftNode,
-			serviceRegistry, restServices, farmTickerProvisionerChan)
+		webserver := webservice.NewClusterWebServerV1(
+			App,
+			gossipNode,
+			raftNode,
+			mapperRegistry,
+			serviceRegistry,
+			restServiceRegistry,
+			farmTickerProvisionerChan)
 		go webserver.Run()
 		go webserver.RunClusterProvisionerConsumer()
 
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, syscall.SIGINT) // syscall.SIGTERM, syscall.SIGHUP)
+		serviceRegistry.GetEventLogService(ClusterID).Create(ClusterID, common.CONTROLLER_TYPE_SERVER, "System", "Startup")
 
-		<-stop
+		signal.Notify(sigChan, syscall.SIGINT) // catch CTRL+C // syscall.SIGTERM, syscall.SIGHUP)
 
-		App.Logger.Info("Shutting down...")
+		<-App.ShutdownChan
+		close(App.ShutdownChan)
+		close(sigChan)
 
-		//webserver.Shutdown()
+		serviceRegistry.GetEventLogService(ClusterID).Create(ClusterID, common.CONTROLLER_TYPE_SERVER, "System", "Shutdown")
+
+		webserver.Shutdown()
 
 		if err := gossipNode.Shutdown(); err != nil {
 			App.Logger.Error(err)
@@ -231,6 +245,6 @@ var clusterCmd = &cobra.Command{
 			App.Logger.Fatal(err)
 		}
 
-		App.Logger.Info("Shutdown complete")
+		App.Logger.Info("Graceful shutdown complete")
 	},
 }

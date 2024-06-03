@@ -28,7 +28,7 @@ func NewRaftChannelDAO(logger *logging.Logger,
 		farmDAO: farmDAO}
 }
 
-func (dao *RaftChannelDAO) Save(farmID uint64, channel *config.Channel) error {
+func (dao *RaftChannelDAO) Save(farmID uint64, channel *config.ChannelStruct) error {
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
@@ -46,11 +46,11 @@ func (dao *RaftChannelDAO) Save(farmID uint64, channel *config.Channel) error {
 			return dao.farmDAO.Save(farmConfig)
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftChannelDAO) Get(orgID, farmID, channelID uint64,
-	CONSISTENCY_LEVEL int) (*config.Channel, error) {
+	CONSISTENCY_LEVEL int) (*config.ChannelStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -63,11 +63,11 @@ func (dao *RaftChannelDAO) Get(orgID, farmID, channelID uint64,
 			}
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
 func (dao *RaftChannelDAO) GetByDevice(orgID, farmID, channelID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Channel, error) {
+	CONSISTENCY_LEVEL int) ([]*config.ChannelStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -75,7 +75,7 @@ func (dao *RaftChannelDAO) GetByDevice(orgID, farmID, channelID uint64,
 	}
 	channel, err := farmConfig.GetDeviceById(channelID)
 	if err != nil {
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	return channel.GetChannels(), nil
 }

@@ -9,8 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDeviceCRUD(t *testing.T, deviceDAO dao.DeviceDAO,
-	farm *config.Farm) {
+func TestDeviceCRUD(t *testing.T, deviceDAO dao.DeviceDAO, farm *config.FarmStruct) {
 
 	device1, err := farm.GetDevice(DEVICE1_TYPE)
 	assert.Nil(t, err)

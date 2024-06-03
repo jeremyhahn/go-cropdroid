@@ -4,6 +4,7 @@ import (
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
 
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 )
@@ -29,7 +30,12 @@ func (genericDAO *GenericGormDAO[E]) Get(id uint64, CONSISTENCY_LEVEL int) (E, e
 	var entity = new(E)
 	if err := genericDAO.db.
 		First(entity, id).Error; err != nil {
-		genericDAO.logger.Warningf("GenericGormDAO.Get error: %s", err.Error())
+
+		if err == gorm.ErrRecordNotFound {
+			genericDAO.logger.Warning(err)
+			return *entity, datastore.ErrRecordNotFound
+		}
+		genericDAO.logger.Error(err)
 		return *entity, err
 	}
 	return *entity, nil
@@ -50,6 +56,12 @@ func (genericDAO *GenericGormDAO[E]) GetPage(pageQuery query.PageQuery, CONSISTE
 		Limit(pageSize + 1). // peek one record to set HasMore flag
 		Offset(offset).
 		Find(&entities).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			genericDAO.logger.Warning(err)
+			return pageResult, datastore.ErrRecordNotFound
+		}
+		genericDAO.logger.Error(err)
 		return pageResult, err
 	}
 	// If the peek record was returned, set the HasMore flag and remove the +1 record
@@ -66,9 +78,11 @@ func (genericDAO *GenericGormDAO[E]) ForEachPage(pageQuery query.PageQuery,
 
 	pageResult, err := genericDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 	if err != nil {
+		genericDAO.logger.Error(err)
 		return nil
 	}
 	if err = pagerProcFunc(pageResult.Entities); err != nil {
+		genericDAO.logger.Error(err)
 		return err
 	}
 	if pageResult.HasMore {
@@ -92,9 +106,11 @@ func (genericDAO *GenericGormDAO[E]) Delete(entity E) error {
 }
 
 func (genericDAO *GenericGormDAO[E]) Count(CONSISTENCY_LEVEL int) (int64, error) {
+	genericDAO.logger.Infof("Count GORM entity: %T", *new(E))
 	var count int64
 	var entity E
 	if err := genericDAO.db.Model(&entity).Count(&count).Error; err != nil {
+		genericDAO.logger.Error(err)
 		return 0, err
 	}
 	return count, nil

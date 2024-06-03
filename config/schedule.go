@@ -6,7 +6,32 @@ import (
 	"time"
 )
 
-type Schedule struct {
+type Schedule interface {
+	GetID() uint64
+	SetID(uint64)
+	SetWorkflowID(id uint64)
+	GetWorkflowID() uint64
+	GetChannelID() uint64
+	SetStartDate(time.Time)
+	GetStartDate() time.Time
+	SetEndDate(*time.Time)
+	GetEndDate() *time.Time
+	SetFrequency(int)
+	GetFrequency() int
+	SetInterval(int)
+	GetInterval() int
+	SetCount(int)
+	GetCount() int
+	SetDays(*string)
+	GetDays() *string
+	SetLastExecuted(time.Time)
+	GetLastExecuted() time.Time
+	SetExecutionCount(int)
+	GetExecutionCount() int
+	KeyValueEntity
+}
+
+type ScheduleStruct struct {
 	ID             uint64     `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
 	WorkflowID     uint64     `yaml:"workflow" json:"workflow_id"`
 	ChannelID      uint64     `yaml:"channelId" json:"channel_id"`
@@ -18,102 +43,106 @@ type Schedule struct {
 	Days           *string    `gorm:"type:varchar(50);default:NULL" yaml:"days" json:"days"`
 	LastExecuted   time.Time  `gorm:"type:timestamp" yaml:"lastExecuted" json:"lastExecuted"`
 	ExecutionCount int        `yaml:"executionCount" json:"executionCount"`
-	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
+	Schedule       `sql:"-" gorm:"-" yaml:"-" json:"-"`
 }
 
-func NewSchedule() *Schedule {
-	return &Schedule{}
+func NewSchedule() *ScheduleStruct {
+	return &ScheduleStruct{}
 }
 
-func (schedule *Schedule) Identifier() uint64 {
+func (schedule *ScheduleStruct) TableName() string {
+	return "schedules"
+}
+
+func (schedule *ScheduleStruct) Identifier() uint64 {
 	return schedule.ID
 }
 
-func (schedule *Schedule) SetID(id uint64) {
+func (schedule *ScheduleStruct) SetID(id uint64) {
 	schedule.ID = id
 }
 
-func (schedule *Schedule) SetWorkflowID(id uint64) {
+func (schedule *ScheduleStruct) SetWorkflowID(id uint64) {
 	schedule.WorkflowID = id
 }
 
-func (schedule *Schedule) GetWorkflowID() uint64 {
+func (schedule *ScheduleStruct) GetWorkflowID() uint64 {
 	return schedule.WorkflowID
 }
 
-func (schedule *Schedule) SetChannelID(id uint64) {
+func (schedule *ScheduleStruct) SetChannelID(id uint64) {
 	schedule.ChannelID = id
 }
 
-func (schedule *Schedule) GetChannelID() uint64 {
+func (schedule *ScheduleStruct) GetChannelID() uint64 {
 	return schedule.ChannelID
 }
 
-func (schedule *Schedule) SetStartDate(t time.Time) {
+func (schedule *ScheduleStruct) SetStartDate(t time.Time) {
 	schedule.StartDate = t
 }
 
-func (schedule *Schedule) GetStartDate() time.Time {
+func (schedule *ScheduleStruct) GetStartDate() time.Time {
 	return schedule.StartDate
 }
 
-func (schedule *Schedule) SetEndDate(t *time.Time) {
+func (schedule *ScheduleStruct) SetEndDate(t *time.Time) {
 	schedule.EndDate = t
 }
 
-func (schedule *Schedule) GetEndDate() *time.Time {
+func (schedule *ScheduleStruct) GetEndDate() *time.Time {
 	return schedule.EndDate
 }
 
-func (schedule *Schedule) SetFrequency(freq int) {
+func (schedule *ScheduleStruct) SetFrequency(freq int) {
 	schedule.Frequency = freq
 }
 
-func (schedule *Schedule) GetFrequency() int {
+func (schedule *ScheduleStruct) GetFrequency() int {
 	return schedule.Frequency
 }
 
-func (schedule *Schedule) SetInterval(interval int) {
+func (schedule *ScheduleStruct) SetInterval(interval int) {
 	schedule.Interval = interval
 }
 
-func (schedule *Schedule) GetInterval() int {
+func (schedule *ScheduleStruct) GetInterval() int {
 	return schedule.Interval
 }
 
-func (schedule *Schedule) SetCount(count int) {
+func (schedule *ScheduleStruct) SetCount(count int) {
 	schedule.Count = count
 }
 
-func (schedule *Schedule) GetCount() int {
+func (schedule *ScheduleStruct) GetCount() int {
 	return schedule.Count
 }
 
-func (schedule *Schedule) SetDays(days *string) {
+func (schedule *ScheduleStruct) SetDays(days *string) {
 	schedule.Days = days
 }
 
-func (schedule *Schedule) GetDays() *string {
+func (schedule *ScheduleStruct) GetDays() *string {
 	return schedule.Days
 }
 
-func (schedule *Schedule) GetLastExecuted() time.Time {
+func (schedule *ScheduleStruct) GetLastExecuted() time.Time {
 	return schedule.LastExecuted
 }
 
-func (schedule *Schedule) SetLastExecuted(dateTime time.Time) {
+func (schedule *ScheduleStruct) SetLastExecuted(dateTime time.Time) {
 	schedule.LastExecuted = dateTime
 }
 
-func (schedule *Schedule) GetExecutionCount() int {
+func (schedule *ScheduleStruct) GetExecutionCount() int {
 	return schedule.ExecutionCount
 }
 
-func (schedule *Schedule) SetExecutionCount(count int) {
+func (schedule *ScheduleStruct) SetExecutionCount(count int) {
 	schedule.ExecutionCount = count
 }
 
-func (schedule *Schedule) Hash() uint64 {
+func (schedule *ScheduleStruct) Hash() uint64 {
 	endDate := ""
 	if schedule.EndDate != nil {
 		endDate = schedule.EndDate.String()
@@ -125,7 +154,7 @@ func (schedule *Schedule) Hash() uint64 {
 	return clusterHash.Sum64()
 }
 
-// func (schedule *Schedule) String() string {
+// func (schedule *ScheduleStruct) String() string {
 // 	days := ""
 // 	if schedule.Days != nil {
 // 		days = days

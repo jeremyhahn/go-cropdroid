@@ -45,15 +45,15 @@ func NewIntegrationTest() *ServiceTest {
 	gormInitParams := createSqliteParams() //createMemoryParams(), createCockroachParams()
 	database := gormstore.NewGormDB(logger, gormInitParams)
 
-	gormdb := database.Connect(true)
+	database.Connect(true)
 	database.Create()
 
-	gormdb = database.Connect(false)
+	gormdb := database.Connect(false)
 	database.Migrate()
 
 	app := &app.App{
 		GORMInitParams: gormInitParams,
-		KeyDir:         "../keys",
+		CertDir:        "../db/certs",
 		Logger:         logger,
 		Location:       Location}
 

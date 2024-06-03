@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -18,15 +19,15 @@ func NewWorkflowStepDAO(logger *logging.Logger, db *gorm.DB) dao.WorkflowStepDAO
 }
 
 func (dao *GormWorkflowStepDAO) Save(farmID uint64,
-	workflowStep *config.WorkflowStep) error {
+	workflowStep *config.WorkflowStepStruct) error {
 
 	return dao.db.Save(workflowStep).Error
 }
 
 func (dao *GormWorkflowStepDAO) Delete(farmID uint64,
-	workflowStep *config.WorkflowStep) error {
+	workflowStep *config.WorkflowStepStruct) error {
 
-	step := &config.WorkflowStep{}
+	step := &config.WorkflowStepStruct{}
 	step.SetWorkflowID(workflowStep.GetWorkflowID())
 	// if err := dao.db.Model(step).Delete(step).Error; err != nil {
 	// 	return err
@@ -36,22 +37,33 @@ func (dao *GormWorkflowStepDAO) Delete(farmID uint64,
 }
 
 func (dao *GormWorkflowStepDAO) Get(farmID, workflowID,
-	workflowStepID uint64, CONSISTENCY_LEVEL int) (*config.WorkflowStep, error) {
+	workflowStepID uint64, CONSISTENCY_LEVEL int) (*config.WorkflowStepStruct, error) {
 
-	var step *config.WorkflowStep
+	var step *config.WorkflowStepStruct
 	if err := dao.db.First(step, workflowStepID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return step, nil
 }
 
 func (dao *GormWorkflowStepDAO) GetByWorkflowID(farmID,
-	workflowID uint64, CONSISTENCY_LEVEL int) ([]*config.WorkflowStep, error) {
+	workflowID uint64, CONSISTENCY_LEVEL int) ([]*config.WorkflowStepStruct, error) {
 
-	var steps []*config.WorkflowStep
+	var steps []*config.WorkflowStepStruct
 	if err := dao.db.
 		Where("workflow_id = ?", workflowID).
 		Find(&steps).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return steps, nil

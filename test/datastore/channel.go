@@ -10,7 +10,7 @@ import (
 )
 
 func TestChannelCRUD(t *testing.T, channelDAO dao.ChannelDAO,
-	org *config.Organization) {
+	org *config.OrganizationStruct) {
 
 	farm1 := org.GetFarms()[0]
 	device1 := farm1.GetDevices()[1]
@@ -42,7 +42,7 @@ func TestChannelCRUD(t *testing.T, channelDAO dao.ChannelDAO,
 
 func TestChannelGetByDevice(t *testing.T, farmDAO dao.FarmDAO,
 	deviceDAO dao.DeviceDAO, channelDAO dao.ChannelDAO,
-	permissionDAO dao.PermissionDAO, org *config.Organization) {
+	permissionDAO dao.PermissionDAO, org *config.OrganizationStruct) {
 
 	farm1 := org.GetFarms()[0]
 	device1 := farm1.GetDevices()[1]
@@ -51,7 +51,7 @@ func TestChannelGetByDevice(t *testing.T, farmDAO dao.FarmDAO,
 	err := farmDAO.Save(farm1)
 	assert.Nil(t, err)
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		OrganizationID: 0,
 		FarmID:         farm1.ID,
 		UserID:         farm1.GetUsers()[0].ID,

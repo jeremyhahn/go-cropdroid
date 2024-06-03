@@ -368,14 +368,14 @@ func (d *GenericDiskKV[E]) parseProposal(cmd []byte) (Proposal, config.KeyValueE
 	var proposal Proposal
 	err := json.Unmarshal(cmd, &proposal)
 	if err != nil {
-		d.logger.Errorf("[entityMachine.Update] Error: %s\n", err)
+		d.logger.Errorf("[GenericDiskKV.Update] Error: %s\n", err)
 		return proposal, nil, err
 	}
 
 	var entity E
 	err = json.Unmarshal(proposal.Data, &entity)
 	if err != nil {
-		d.logger.Errorf("[entityMachine.Update] Error: %s\n", err)
+		d.logger.Errorf("[GenericDiskKV.Update] Error: %s\n", err)
 		return proposal, nil, err
 	}
 
@@ -390,14 +390,14 @@ func (d *GenericDiskKV[E]) parseProposalWithTimeSeriesIndex(cmd []byte) (Proposa
 	var proposal Proposal
 	err := json.Unmarshal(cmd, &proposal)
 	if err != nil {
-		d.logger.Errorf("[entityMachine.Update] Error: %s\n", err)
+		d.logger.Errorf("[GenericDiskKV.Update] Error: %s\n", err)
 		return proposal, nil, err
 	}
 
 	var entity E
 	err = json.Unmarshal(proposal.Data, &entity)
 	if err != nil {
-		d.logger.Errorf("[entityMachine.Update] Error: %s\n", err)
+		d.logger.Errorf("[GenericDiskKV.Update] Error: %s\n", err)
 		return proposal, nil, err
 	}
 

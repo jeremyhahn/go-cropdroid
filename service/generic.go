@@ -1,33 +1,47 @@
 package service
 
-// import (
-// 	"github.com/jeremyhahn/go-cropdroid/common"
-// 	"github.com/jeremyhahn/go-cropdroid/config"
-// 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
-// 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm"
-// )
+import (
+	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
+	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
+)
 
-// type GenericService[D gorm.GenericDAO, E config.GenericEntity] interface {
-// 	Save(entity M) error
-// 	Get(id uint64, CONSISTENCY_LEVEL int) (E, error)
-// 	GetPage(CONSISTENCY_LEVEL, page, pageSize int) ([]E, error)
-// 	Update(model M) error
-// 	Delete(model M) error
-// }
+type GenericServicer[E any] interface {
+	Save(entity E) error
+	GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[E], error)
+}
 
-// type BaseService[D gorm.GenericDAO, E config.GenericEntity] struct {
-// 	dao dao.GenericDAO
-// 	GenericService
-// }
+type GenericService[E any] struct {
+	dao dao.GenericDAO[E]
+	GenericServicer[E]
+}
 
-// func NewGenericCrudService(dao dao.GenericDAO) GenericService {
-// 	return &DefaultGenericService{dao: dao}
-// }
+func NewGenericService[E any](dao dao.GenericDAO[E]) GenericServicer[E] {
+	return &GenericService[E]{dao: dao}
+}
 
-// func (service *DefaultGenericService) GetAll() ([]*config.Generic, error) {
-// 	entities, err := service.dao.GetAll(common.CONSISTENCY_LOCAL)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return entities, nil
-// }
+func (service *GenericService[E]) Save(entity E) error {
+	return service.dao.Save(entity)
+}
+
+func (service *GenericService[E]) Get(id uint64, CONSISTENCY_LEVEL int) (E, error) {
+	return service.dao.Get(id, CONSISTENCY_LEVEL)
+}
+
+func (service *GenericService[E]) ForEachPage(pageQuery query.PageQuery,
+	pagerProcFunc query.PagerProcFunc[E], CONSISTENCY_LEVEL int) error {
+
+	return service.dao.ForEachPage(pageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
+}
+
+func (service *GenericService[E]) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[E], error) {
+	return service.dao.GetPage(pageQuery, common.CONSISTENCY_LOCAL)
+}
+
+func (service *GenericService[E]) Delete(entity E) error {
+	return service.dao.Delete(entity)
+}
+
+func (service *GenericService[E]) Count(CONSISTENCY_LEVEL int) (int64, error) {
+	return service.dao.Count(CONSISTENCY_LEVEL)
+}

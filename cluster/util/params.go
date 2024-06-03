@@ -61,7 +61,10 @@ func NewClusterParams(logger *logging.Logger, raftOptions RaftOptions, nodeID ui
 	farmDeprovisionerChan chan config.Farm, farmTickerProvisionerChan chan uint64) *ClusterParams {
 
 	var nodeName string
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	if bootstrap > 0 {
 

@@ -19,7 +19,7 @@ func TestAlgorithmCRUD(t *testing.T) {
 
 	ClusterID = 1
 
-	genericDAO := NewGenericRaftDAO[*config.Algorithm](
+	genericDAO := NewGenericRaftDAO[*config.AlgorithmStruct](
 		IntegrationTestCluster.app.Logger,
 		IntegrationTestCluster.GetRaftNode1(),
 		ClusterID)
@@ -64,7 +64,7 @@ func TestAlgorithmCRUD(t *testing.T) {
 	assert.Nil(t, err)
 
 	deletedAlgo, err := genericDAO.Get(algorithm1.ID, common.CONSISTENCY_LOCAL)
-	assert.Equal(t, datastore.ErrNotFound, err)
+	assert.Equal(t, datastore.ErrRecordNotFound, err)
 	assert.Nil(t, deletedAlgo)
 }
 
@@ -72,7 +72,7 @@ func TestAlgorithmGetPage(t *testing.T) {
 
 	ClusterID = 2
 
-	genericDAO := NewGenericRaftDAO[*config.Algorithm](IntegrationTestCluster.app.Logger,
+	genericDAO := NewGenericRaftDAO[*config.AlgorithmStruct](IntegrationTestCluster.app.Logger,
 		IntegrationTestCluster.GetRaftNode1(), ClusterID)
 	assert.NotNil(t, genericDAO)
 
@@ -81,10 +81,10 @@ func TestAlgorithmGetPage(t *testing.T) {
 
 	//numberOfAlgorithmsToCreate := 5000
 	numberOfAlgorithmsToCreate := 100
-	entities := make([]*config.Algorithm, numberOfAlgorithmsToCreate)
+	entities := make([]*config.AlgorithmStruct, numberOfAlgorithmsToCreate)
 	for i := 0; i < numberOfAlgorithmsToCreate; i++ {
 		name := fmt.Sprintf("Test Algorithm %d", i)
-		algo := &config.Algorithm{Name: name}
+		algo := &config.AlgorithmStruct{Name: name}
 		err := genericDAO.Save(algo)
 		assert.Nil(t, err)
 		entities[i] = algo

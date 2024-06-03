@@ -10,7 +10,7 @@ import (
 )
 
 func TestDeviceSettingCRUD(t *testing.T, deviceDAO dao.DeviceDAO,
-	deviceSettingDAO dao.DeviceSettingDAO, org *config.Organization) {
+	deviceSettingDAO dao.DeviceSettingDAO, org *config.OrganizationStruct) {
 
 	newFirmwareVersion := "new-v1.2.3"
 	farm1 := org.GetFarms()[0]

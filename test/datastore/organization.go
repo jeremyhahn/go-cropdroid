@@ -19,8 +19,7 @@ func TestOrganizationCRUD(t *testing.T, orgDAO dao.OrganizationDAO) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(page1.Entities))
 
-	err = orgDAO.Save(&config.Organization{
-		Name: "Test Org"})
+	err = orgDAO.Save(&config.OrganizationStruct{Name: "Test Org"})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, orgDAO)
@@ -40,9 +39,9 @@ func TestOrganizationGetPage(t *testing.T, orgDAO dao.OrganizationDAO) {
 	farmConfig := config.NewFarm()
 	farmConfig.SetName(testFarmName)
 
-	orgConfig := &config.Organization{
+	orgConfig := &config.OrganizationStruct{
 		Name:  testOrgName,
-		Farms: []*config.Farm{farmConfig}}
+		Farms: []*config.FarmStruct{farmConfig}}
 
 	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -54,9 +53,9 @@ func TestOrganizationGetPage(t *testing.T, orgDAO dao.OrganizationDAO) {
 
 	farmConfig2 := config.NewFarm()
 	farmConfig2.SetName(testFarmName2)
-	orgConfig2 := &config.Organization{
+	orgConfig2 := &config.OrganizationStruct{
 		Name:  testOrgName2,
-		Farms: []*config.Farm{farmConfig2}}
+		Farms: []*config.FarmStruct{farmConfig2}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
@@ -78,9 +77,9 @@ func TestOrganizationDelete(t *testing.T, orgDAO dao.OrganizationDAO) {
 	farmConfig := config.NewFarm()
 	farmConfig.SetName(testFarmName)
 
-	orgConfig := &config.Organization{
+	orgConfig := &config.OrganizationStruct{
 		Name:  testOrgName,
-		Farms: []*config.Farm{farmConfig}}
+		Farms: []*config.FarmStruct{farmConfig}}
 
 	err := orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -92,9 +91,9 @@ func TestOrganizationDelete(t *testing.T, orgDAO dao.OrganizationDAO) {
 
 	farmConfig2 := config.NewFarm()
 	farmConfig2.SetName(testFarmName2)
-	orgConfig2 := &config.Organization{
+	orgConfig2 := &config.OrganizationStruct{
 		Name:  testOrgName2,
-		Farms: []*config.Farm{farmConfig2}}
+		Farms: []*config.FarmStruct{farmConfig2}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
@@ -116,7 +115,7 @@ func TestOrganizationDelete(t *testing.T, orgDAO dao.OrganizationDAO) {
 
 func TestOrganizationEnchilada(t *testing.T, orgDAO dao.OrganizationDAO,
 	roleDAO dao.RoleDAO, userDAO dao.UserDAO,
-	permissionDAO dao.PermissionDAO, org *config.Organization) {
+	permissionDAO dao.PermissionDAO, org *config.OrganizationStruct) {
 
 	err := orgDAO.Save(org)
 	assert.Nil(t, err)
@@ -195,7 +194,7 @@ func TestOrganizationEnchilada(t *testing.T, orgDAO dao.OrganizationDAO,
 	assert.Equal(t, "http://mydevice.mydomain.com", device1.GetURI())
 }
 
-func CreateTestOrganization(idGenerator util.IdGenerator) *config.Organization {
+func CreateTestOrganization(idGenerator util.IdGenerator) *config.OrganizationStruct {
 
 	org := config.NewOrganization()
 	org.SetName("Test Org")
@@ -203,14 +202,14 @@ func CreateTestOrganization(idGenerator util.IdGenerator) *config.Organization {
 	farm1 := CreateFarm1(idGenerator)
 	farm2 := CreateFarm2(idGenerator)
 
-	farms := []*config.Farm{farm1, farm2}
+	farms := []*config.FarmStruct{farm1, farm2}
 
 	org.SetFarms(farms)
 
 	return org
 }
 
-func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
+func CreateFarm1(idGenerator util.IdGenerator) *config.FarmStruct {
 
 	farmID := idGenerator.NewStringID(FARM1_NAME)
 	device1ID := idGenerator.NewStringID("farm1-device1")
@@ -225,7 +224,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	user := config.NewUser()
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	// Add a workflow
 	testWorkflow := config.NewWorkflow()
@@ -270,7 +269,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	schedule2.SetLastExecuted(time.Now())
 	schedule2.SetExecutionCount(1)
 
-	schedules := []*config.Schedule{schedule1, schedule2}
+	schedules := []*config.ScheduleStruct{schedule1, schedule2}
 
 	metric1 := config.NewMetric()
 	metric1.SetID(idGenerator.NewStringID("farm1-metric1"))
@@ -308,7 +307,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	condition2.SetComparator("<")
 	condition2.SetThreshold(10)
 
-	conditions := []*config.Condition{condition1, condition2}
+	conditions := []*config.ConditionStruct{condition1, condition2}
 
 	channel1 := config.NewChannel()
 	channel1.SetID(channel1ID)
@@ -349,9 +348,9 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	uriConfigItem.SetKey("fakedevice.uri")
 	uriConfigItem.SetValue("http://mydevice.mydomain.com")
 
-	serverDevice := &config.Device{
+	serverDevice := &config.DeviceStruct{
 		Type: SERVER_TYPE,
-		Settings: []*config.DeviceSetting{
+		Settings: []*config.DeviceSettingStruct{
 			{
 				ID:    idGenerator.NewStringID("farm1-server-name"),
 				Key:   "name",
@@ -396,10 +395,10 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	serverDevice.SetID(idGenerator.NewStringID("farm1-server"))
 	serverDevice.SetFarmID(farmID)
 
-	settings := []*config.DeviceSetting{
+	settings := []*config.DeviceSettingStruct{
 		enableConfigItem, notifyConfigItem, uriConfigItem}
-	metrics := []*config.Metric{metric1, metric2}
-	channels := []*config.Channel{channel1, channel2}
+	metrics := []*config.MetricStruct{metric1, metric2}
+	channels := []*config.ChannelStruct{channel1, channel2}
 
 	device1 := config.NewDevice()
 	device1.SetID(device1ID)
@@ -413,7 +412,7 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	device1.SetMetrics(metrics)
 	device1.SetChannels(channels)
 
-	devices := []*config.Device{serverDevice, device1}
+	devices := []*config.DeviceStruct{serverDevice, device1}
 
 	farm1 := config.NewFarm()
 	farm1.SetID(farmID)
@@ -421,13 +420,13 @@ func CreateFarm1(idGenerator util.IdGenerator) *config.Farm {
 	farm1.SetName(FARM1_NAME)
 	farm1.SetInterval(60)
 	farm1.SetDevices(devices)
-	farm1.SetUsers([]*config.User{user})
+	farm1.SetUsers([]*config.UserStruct{user})
 	farm1.SetWorkflow(testWorkflow)
 
 	return farm1
 }
 
-func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
+func CreateFarm2(idGenerator util.IdGenerator) *config.FarmStruct {
 
 	farmID := idGenerator.NewStringID(FARM2_NAME)
 	device1ID := idGenerator.NewStringID("farm2-device1")
@@ -442,7 +441,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	user := config.NewUser()
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	schedule1 := config.NewSchedule()
 	days := "MO,WE,FR"
@@ -472,7 +471,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	schedule2.SetLastExecuted(time.Now())
 	schedule2.SetExecutionCount(1)
 
-	schedules := []*config.Schedule{schedule1, schedule2}
+	schedules := []*config.ScheduleStruct{schedule1, schedule2}
 
 	metric1 := config.NewMetric()
 	metric1.SetID(idGenerator.NewStringID("farm2-metric1"))
@@ -510,7 +509,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	condition2.SetComparator("<")
 	condition2.SetThreshold(10)
 
-	conditions := []*config.Condition{condition1, condition2}
+	conditions := []*config.ConditionStruct{condition1, condition2}
 
 	channel1 := config.NewChannel()
 	channel1.SetID(channel1ID)
@@ -551,9 +550,9 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	uriConfigItem.SetKey("fakedevice.uri")
 	uriConfigItem.SetValue("http://mydevice.mydomain.com")
 
-	serverDevice := &config.Device{
+	serverDevice := &config.DeviceStruct{
 		Type: SERVER_TYPE,
-		Settings: []*config.DeviceSetting{
+		Settings: []*config.DeviceSettingStruct{
 			{
 				ID:    idGenerator.NewStringID("farm2-server-name"),
 				Key:   "name",
@@ -598,10 +597,10 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	serverDevice.SetID(idGenerator.NewStringID("farm2-server"))
 	serverDevice.SetFarmID(farmID)
 
-	settings := []*config.DeviceSetting{
+	settings := []*config.DeviceSettingStruct{
 		enableConfigItem, notifyConfigItem, uriConfigItem}
-	metrics := []*config.Metric{metric1, metric2}
-	channels := []*config.Channel{channel1, channel2}
+	metrics := []*config.MetricStruct{metric1, metric2}
+	channels := []*config.ChannelStruct{channel1, channel2}
 
 	device1 := config.NewDevice()
 	device1.SetID(idGenerator.NewStringID("farm2-device1"))
@@ -615,7 +614,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	device1.SetMetrics(metrics)
 	device1.SetChannels(channels)
 
-	devices := []*config.Device{serverDevice, device1}
+	devices := []*config.DeviceStruct{serverDevice, device1}
 
 	farm2 := config.NewFarm()
 	farm2.SetID(idGenerator.NewStringID(FARM2_NAME))
@@ -623,7 +622,7 @@ func CreateFarm2(idGenerator util.IdGenerator) *config.Farm {
 	farm2.SetName(FARM2_NAME)
 	farm2.SetInterval(60)
 	farm2.SetDevices(devices)
-	farm2.SetUsers([]*config.User{user})
+	farm2.SetUsers([]*config.UserStruct{user})
 
 	return farm2
 }

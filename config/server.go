@@ -2,9 +2,12 @@ package config
 
 type Server struct {
 	ID               uint64
-	OrganizationRefs []uint64 `yaml:"organizationRefs" json:"organizationRefs" mapstructure:"organizations"`
-	FarmRefs         []uint64 `yaml:"farmRefs" json:"farmRefs" mapstructure:"farms"`
-	KeyValueEntity   `gorm:"-" yaml:"-" json:"-"`
+	IpAddress        string
+	Hostname         string
+	License          *ServerLicenseStruct `yaml:"license" json:"license" mapstructure:"license"`
+	OrganizationRefs []uint64             `yaml:"organizationRefs" json:"organizationRefs" mapstructure:"organizations"`
+	FarmRefs         []uint64             `yaml:"farmRefs" json:"farmRefs" mapstructure:"farms"`
+	KeyValueEntity   `sql:"-" gorm:"-" yaml:"-" json:"-"`
 }
 
 func NewServer() *Server {
@@ -19,6 +22,14 @@ func (server *Server) SetID(id uint64) {
 
 func (server *Server) Identifier() uint64 {
 	return server.ID
+}
+
+func (server *Server) GetLicense() *ServerLicenseStruct {
+	return server.License
+}
+
+func (server *Server) SetLicense(license *ServerLicenseStruct) {
+	server.License = license
 }
 
 func (server *Server) SetOrganizationRefs(refs []uint64) {

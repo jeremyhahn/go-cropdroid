@@ -4,7 +4,6 @@
 package builder
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"time"
 
@@ -25,7 +24,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/util"
-	"github.com/jeremyhahn/go-cropdroid/webservice/rest"
+	"github.com/jeremyhahn/go-cropdroid/webservice/v1/rest"
 )
 
 type ClusterConfigBuilder struct {
@@ -36,7 +35,6 @@ type ClusterConfigBuilder struct {
 	datastoreRegistry dao.Registry
 	serviceRegistry   service.ClusterServiceRegistry
 	mapperRegistry    mapper.MapperRegistry
-	changefeeders     map[string]datastore.Changefeeder
 	gossipNode        cluster.GossipNode
 	raftNode          cluster.RaftNode
 }
@@ -52,8 +50,12 @@ func NewClusterConfigBuilder(app *app.App, params *clusterutil.ClusterParams,
 		raftNode:   raftNode}
 }
 
-func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServiceRegistry,
-	[]rest.RestService, chan uint64, error) {
+func (builder *ClusterConfigBuilder) Build() (
+	mapper.MapperRegistry,
+	service.ClusterServiceRegistry,
+	rest.RestServiceRegistry,
+	chan uint64,
+	error) {
 
 	builder.mapperRegistry = mapper.CreateRegistry()
 	builder.datastoreRegistry = raft.NewRaftRegistry(
@@ -85,7 +87,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	var err error
 	if builder.params.Initialize && builder.raftNode.IsLeader(builder.params.ClusterID) {
 
-		builder.app.Logger.Info("Initializing cluster database...")
+		builder.app.Logger.Info("Initializing cluster database")
 
 		provParams := &common.ProvisionerParams{
 			UserID:           0,
@@ -120,7 +122,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 
 	farmFactory := service.NewFarmFactoryCluster(
 		builder.app, builder.datastoreRegistry, builder.serviceRegistry,
-		builder.mapperRegistry.GetDeviceMapper(), builder.changefeeders,
+		builder.mapperRegistry.GetDeviceMapper(),
 		builder.params.GetFarmProvisionerChan(),
 		builder.params.GetFarmTickerProvisionerChan())
 	builder.serviceRegistry.SetFarmFactory(farmFactory)
@@ -137,7 +139,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	builder.serviceRegistry.SetFarmProvisioner(farmProvisioner)
 
 	// Load all farms that belong to an organization
-	err = orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Organization) error {
+	err = orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.OrganizationStruct) error {
 		for _, org := range entities {
 			for _, farmConfig := range org.GetFarms() {
 				builder.app.Logger.Infof("Creating organization clustered farm service. farm.ID: %d, farm.Name: %s, org.Name: %s",
@@ -170,39 +172,9 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 			select {
 			case farmConfig := <-builder.params.GetFarmProvisionerChan():
 				builder.app.Logger.Debugf("Processing new farm provisioning request: farmConfig=%+v", farmConfig)
-
-				// farmID := farmConfig.ID
-				// farmName := farmConfig.Name
-
-				// // Default farm mode to app global configuration
-				// farmConfig.SetMode(builder.app.Mode)
-
-				// stateStoreType := farmConfig.GetStateStore()
-				// configStoreType := farmConfig.GetConfigStore()
-				// dataStoreType := farmConfig.GetDataStore()
-
-				// farmStateStore := builder.createFarmStateStore(stateStoreType, farmID, farmName)
-				// farmConfigDAO := builder.createFarmConfigDAO(configStoreType, farmID)
-
-				// deviceDataStore := builder.createDeviceDataStore(dataStoreType)
-				// deviceStateStore := builder.createDeviceStateStore(stateStoreType)
-				// //deviceConfigStore := builder.createDeviceConfigDAO(configStoreType, orgID)
-
-				// eventLogDAO := raft.NewRaftEventLogDAO(builder.app.Logger,
-				// 	builder.raftNode, farmID)
-
-				// farmService, err := farmFactory.BuildClusterService(eventLogDAO, farmConfigDAO,
-				// 	&farmConfig, farmStateStore, deviceStateStore, deviceDataStore)
-				// if err != nil {
-				// 	builder.app.Logger.Errorf("Error: %s", err)
-				// }
-
-				// builder.params.GetFarmTickerProvisionerChan() <- farmConfig.ID
-				// go farmService.RunCluster()
-
-				builder.createAndRunFarmCluster(farmFactory, &farmConfig)
-				// Rebuild the webservice routes to include a new endpoint for the new farm
-				builder.params.GetFarmTickerProvisionerChan() <- farmConfig.ID
+				builder.createAndRunFarmCluster(farmFactory, farmConfig)
+				// Rebuild the webservice routes to include new REST and WebSocket endpoints
+				builder.params.GetFarmTickerProvisionerChan() <- farmConfig.Identifier()
 			}
 		}
 	}()
@@ -212,7 +184,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 		for {
 			select {
 			case farmConfig := <-builder.params.GetFarmDeprovisionerChan():
-				farmID := farmConfig.ID
+				farmID := farmConfig.Identifier()
 				builder.app.Logger.Debugf("Processing deprovisioning request for farm %d", farmID)
 				farmService := builder.serviceRegistry.GetFarmService(farmID)
 				if farmService == nil {
@@ -221,7 +193,7 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 				}
 				farmService.Stop()
 				farmDAO := builder.createFarmConfigDAO(config.RAFT_DISK_STORE)
-				if err := farmDAO.Delete(&farmConfig); err != nil {
+				if err := farmDAO.Delete(farmConfig.(*config.FarmStruct)); err != nil {
 					builder.app.Logger.Error(err)
 				}
 				builder.params.GetFarmTickerProvisionerChan() <- farmID
@@ -232,71 +204,50 @@ func (builder *ClusterConfigBuilder) Build() (app.KeyPair, service.ClusterServic
 	// Add organization service to the service registry
 	organizationService := service.NewOrganizationService(
 		builder.app.Logger, builder.app.IdGenerator,
-		builder.datastoreRegistry.GetOrganizationDAO())
+		builder.datastoreRegistry.GetOrganizationDAO(),
+		builder.mapperRegistry.GetUserMapper())
 	builder.serviceRegistry.SetOrganizationService(organizationService)
 
 	// Create the application RSA keypair
-	rsaKeyPair, err := app.CreateRsaKeyPair(builder.app.Logger, builder.app.KeyDir, rsa.PSSSaltLengthAuto)
-	if err != nil {
-		builder.app.Logger.Fatal(err)
-	}
-
-	// Create the default role
-	defaultRole, err := roleDAO.GetByName(builder.app.DefaultRole, common.CONSISTENCY_LOCAL)
-	for err != nil {
-		defaultRole, err = roleDAO.GetByName(builder.app.DefaultRole, common.CONSISTENCY_LOCAL)
-		time.Sleep(1 * time.Second)
-		builder.app.Logger.Warning("Waiting for cluster database initialization (missing default role)...")
-		//builder.app.Logger.Fatal(err)
-	}
-
-	// Create the JWT service and add it to the registry
-	jwtService := service.CreateJsonWebTokenService(builder.app,
-		builder.app.IdGenerator, defaultRole,
-		builder.mapperRegistry.GetDeviceMapper(), builder.serviceRegistry,
-		rest.NewJsonWriter(builder.app.Logger), 525960, rsaKeyPair) // 1 year jwt expiration
-	builder.serviceRegistry.SetJsonWebTokenService(jwtService)
+	// rsaKeyPair, err := app.CreateRsaKeyPair(builder.app.Logger, builder.app.CertDir, rsa.PSSSaltLengthAuto)
+	// if err != nil {
+	// 	builder.app.Logger.Fatal(err)
+	// }
 
 	// Build device and channel cache/indexes (to provide o(n) lookups when searching service registry and farm)
 	// deviceIndex := state.CreateDeviceIndex(farmFactory.GetDeviceIndexMap())
 	// channelIndex := state.CreateChannelIndex(farmFactory.GetChannelIndexMap())
 
-	// if builder.app.DataStoreCDC {
-	// 	changefeedService := service.NewChangefeedService(builder.app,
-	// 		builder.serviceRegistry, builder.changefeeders)
-	// 	builder.serviceRegistry.SetChangefeedService(changefeedService)
-	// }
+	restServiceRegistry := rest.NewRestServiceRegistry(
+		builder.app,
+		roleDAO,
+		builder.mapperRegistry,
+		builder.serviceRegistry)
 
-	// Publish the public key via webservice
-	publicKey := string(rsaKeyPair.GetPublicBytes())
-	restServices := rest.NewRestServiceRegistry(builder.app, publicKey, builder.mapperRegistry,
-		builder.serviceRegistry).GetRestServices()
+	//builder.app.KeyPair = rsaKeyPair
 
-	// Create a system startup log entry
-	systemEventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, "System", "Startup")
-
-	return rsaKeyPair, builder.serviceRegistry, restServices,
-		builder.params.GetFarmTickerProvisionerChan(), err
+	return builder.mapperRegistry,
+		builder.serviceRegistry,
+		restServiceRegistry,
+		builder.params.GetFarmTickerProvisionerChan(),
+		err
 }
 
-func (builder *ClusterConfigBuilder) createAndRunFarmCluster(farmFactory service.FarmFactoryCluster, farmConfig *config.Farm) {
+func (builder *ClusterConfigBuilder) createAndRunFarmCluster(farmFactory service.FarmFactoryCluster, farmConfig config.Farm) {
 
-	farmID := farmConfig.ID
-	farmName := farmConfig.Name
+	farmID := farmConfig.Identifier()
+	farmName := farmConfig.GetName()
 
 	stateStoreType := farmConfig.GetStateStore()
 	configStoreType := farmConfig.GetConfigStore()
 	dataStoreType := farmConfig.GetDataStore()
 
 	farmChannels := &service.FarmChannels{
-		FarmConfigChan:       make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE),
-		FarmConfigChangeChan: make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE),
-		FarmStateChan:        make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
-		FarmStateChangeChan:  make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
-		FarmErrorChan:        make(chan common.FarmError, common.BUFFERED_CHANNEL_SIZE),
-		FarmNotifyChan:       make(chan common.FarmNotification, common.BUFFERED_CHANNEL_SIZE),
-		//MetricChangedChan:     make(chan common.MetricValueChanged, common.BUFFERED_CHANNEL_SIZE),
-		//SwitchChangedChan:     make(chan common.SwitchValueChanged, common.BUFFERED_CHANNEL_SIZE),
+		FarmConfigChan:        make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE),
+		FarmConfigChangeChan:  make(chan config.Farm, common.BUFFERED_CHANNEL_SIZE),
+		FarmStateChangeChan:   make(chan state.FarmStateMap, common.BUFFERED_CHANNEL_SIZE),
+		FarmErrorChan:         make(chan common.FarmError, common.BUFFERED_CHANNEL_SIZE),
+		FarmNotifyChan:        make(chan common.FarmNotification, common.BUFFERED_CHANNEL_SIZE),
 		DeviceStateChangeChan: make(chan common.DeviceStateChange, common.BUFFERED_CHANNEL_SIZE),
 		DeviceStateDeltaChan:  make(chan map[string]state.DeviceStateDeltaMap, common.BUFFERED_CHANNEL_SIZE)}
 
@@ -328,8 +279,8 @@ func (builder *ClusterConfigBuilder) createAndRunFarmCluster(farmFactory service
 }
 
 func (builder *ClusterConfigBuilder) createFarmStateStore(storeType int,
-	farmID uint64, farmStateChangeChan chan state.FarmStateMap) state.FarmStorer {
-	var farmStateStore state.FarmStorer
+	farmID uint64, farmStateChangeChan chan state.FarmStateMap) state.FarmStateStorer {
+	var farmStateStore state.FarmStateStorer
 	switch storeType {
 	case state.MEMORY_STORE:
 		farmStateStore = builder.newMemoryFarmStateStore()
@@ -360,8 +311,8 @@ func (builder *ClusterConfigBuilder) createFarmConfigDAO(storeType int) dao.Farm
 	return farmDAO
 }
 
-func (builder *ClusterConfigBuilder) createDeviceStateStore(storeType int) state.DeviceStorer {
-	var deviceStateStore state.DeviceStorer
+func (builder *ClusterConfigBuilder) createDeviceStateStore(storeType int) state.DeviceStateStorer {
+	var deviceStateStore state.DeviceStateStorer
 	switch storeType {
 	case state.MEMORY_STORE:
 		deviceStateStore = builder.newMemoryDeviceStateStore()
@@ -390,13 +341,13 @@ func (builder *ClusterConfigBuilder) createDeviceDataStore(storeType int) datast
 }
 
 // Creates a new MemoryFarmStore instance
-func (builder *ClusterConfigBuilder) newMemoryFarmStateStore() state.FarmStorer {
+func (builder *ClusterConfigBuilder) newMemoryFarmStateStore() state.FarmStateStorer {
 	return state.NewMemoryFarmStore(builder.app.Logger, 1,
 		builder.appStateTTL, time.Duration(builder.appStateTick))
 }
 
 // Creates a new MemoryDeviceStore instance
-func (builder *ClusterConfigBuilder) newMemoryDeviceStateStore() state.DeviceStorer {
+func (builder *ClusterConfigBuilder) newMemoryDeviceStateStore() state.DeviceStateStorer {
 	return state.NewMemoryDeviceStore(builder.app.Logger, 1,
 		builder.appStateTTL, time.Duration(builder.appStateTick))
 }

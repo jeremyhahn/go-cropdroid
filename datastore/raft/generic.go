@@ -113,7 +113,7 @@ func (genericDAO *GenericRaftDAO[E]) Get(id uint64, CONSISTENCY_LEVEL int) (E, e
 	if result != nil {
 		return result.(E), nil
 	}
-	return emptyResponsse, datastore.ErrNotFound
+	return emptyResponsse, datastore.ErrRecordNotFound
 }
 
 // Retrieves a paginated set of records from the database

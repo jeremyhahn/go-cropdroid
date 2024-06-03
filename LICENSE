@@ -1,7 +1,6 @@
-CropDroid: Automated Farming & Cultivation
-Copyright (C) 2019 Automate The Things, LLC
-License: Proprietary
+## License
 
-Considering:
-https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
-https://creativecommons.org/licenses/
+This work is dual-licensed under a commercial and AGPL 3.0 (or any later version).
+You can choose between one of them if you use this work.
+
+`SPDX-License-Identifier: AGPL-3.0 OR commercial`

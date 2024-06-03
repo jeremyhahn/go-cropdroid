@@ -1,68 +1,85 @@
 package config
 
-type Registration struct {
-	ID             uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	Email          string `yaml:"email" json:"email"`
-	Password       string `yaml:"password" json:"password"`
-	OrgID          uint64 `yaml:"org_id" json:"org_id"`
-	OrgName        string `yaml:"org_name" json:"org_name"`
-	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
+type Registration interface {
+	GetEmail() string
+	SetEmail(email string)
+	GetPassword() string
+	SetPassowrd(password string)
+	RedactPassword()
+	SetOrganizationID(id uint64)
+	GetOrganizationID() uint64
+	SetOrganizationName(name string)
+	GetOrganizationName() string
+	KeyValueEntity
 }
 
-func NewRegistration() *Registration {
-	return &Registration{}
+type RegistrationStruct struct {
+	ID           uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	Email        string `yaml:"email" json:"email"`
+	Password     string `yaml:"password" json:"password"`
+	OrgID        uint64 `yaml:"org_id" json:"org_id"`
+	OrgName      string `yaml:"org_name" json:"org_name"`
+	Registration `sql:"-" gorm:"-" yaml:"-" json:"-"`
 }
 
-func CreateRegistration(id uint64) *Registration {
-	return &Registration{ID: id}
+func NewRegistration() *RegistrationStruct {
+	return &RegistrationStruct{}
+}
+
+func CreateRegistration(id uint64) *RegistrationStruct {
+	return &RegistrationStruct{ID: id}
+}
+
+func (r *RegistrationStruct) TableName() string {
+	return "registrations"
 }
 
 // Identifier gets the unique ID
-func (r *Registration) Identifier() uint64 {
+func (r *RegistrationStruct) Identifier() uint64 {
 	return r.ID
 }
 
-func (r *Registration) SetID(id uint64) {
+func (r *RegistrationStruct) SetID(id uint64) {
 	r.ID = id
 }
 
 // Sets the registration email address
-func (r *Registration) SetEmail(email string) {
+func (r *RegistrationStruct) SetEmail(email string) {
 	r.Email = email
 }
 
 // Gets the registration email address
-func (r *Registration) GetEmail() string {
+func (r *RegistrationStruct) GetEmail() string {
 	return r.Email
 }
 
 // Set the registration password
-func (r *Registration) SetPassword(pw string) {
+func (r *RegistrationStruct) SetPassword(pw string) {
 	r.Password = pw
 }
 
 // Gets the registration password
-func (r *Registration) GetPassword() string {
+func (r *RegistrationStruct) GetPassword() string {
 	return r.Password
 }
 
 // Redacts / obfuscates the password to keep it secure whie in transit or memory
-func (r *Registration) RedactPassword() {
+func (r *RegistrationStruct) RedactPassword() {
 	r.Password = "***"
 }
 
-func (r *Registration) SetOrganizationID(id uint64) {
+func (r *RegistrationStruct) SetOrganizationID(id uint64) {
 	r.OrgID = id
 }
 
-func (r *Registration) GetOrganizationID() uint64 {
+func (r *RegistrationStruct) GetOrganizationID() uint64 {
 	return r.OrgID
 }
 
-func (r *Registration) SetOrganizationName(name string) {
+func (r *RegistrationStruct) SetOrganizationName(name string) {
 	r.OrgName = name
 }
 
-func (r *Registration) GetOrganizationName() string {
+func (r *RegistrationStruct) GetOrganizationName() string {
 	return r.OrgName
 }

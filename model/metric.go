@@ -3,31 +3,41 @@ package model
 import (
 	"time"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
-type Metric struct {
-	ID            uint64     `yaml:"id" json:"id"`
-	DeviceID      uint64     `yaml:"deviceID" json:"deviceId"`
-	DataType      int        `yaml:"datatype" json:"datatype"`
-	Name          string     `yaml:"name" json:"name"`
-	Key           string     `yaml:"key" json:"key"`
-	Enable        bool       `yaml:"enable" json:"enable"`
-	Notify        bool       `yaml:"notify" json:"notify"`
-	Unit          string     `yaml:"unit" json:"unit"`
-	AlarmLow      float64    `yaml:"alarmLow" json:"alarmLow"`
-	AlarmHigh     float64    `yaml:"alarmHigh" json:"alarmHigh"`
-	Value         float64    `json:"value"`
-	Timestamp     *time.Time `json:"-"`
-	common.Metric `json:"-"`
+type Metric interface {
+	SetValue(value float64)
+	GetValue() float64
+	config.Metric
 }
 
-func NewMetric() common.Metric {
-	return &Metric{}
+// The Metric model is a fully populated Metric that contains
+// the config, value, and the timestamp the value was last updated.
+type MetricStruct struct {
+	ID        uint64     `yaml:"id" json:"id"`
+	DeviceID  uint64     `yaml:"deviceID" json:"deviceId"`
+	DataType  int        `yaml:"datatype" json:"datatype"`
+	Name      string     `yaml:"name" json:"name"`
+	Key       string     `yaml:"key" json:"key"`
+	Enable    bool       `yaml:"enable" json:"enable"`
+	Notify    bool       `yaml:"notify" json:"notify"`
+	Unit      string     `yaml:"unit" json:"unit"`
+	AlarmLow  float64    `yaml:"alarmLow" json:"alarmLow"`
+	AlarmHigh float64    `yaml:"alarmHigh" json:"alarmHigh"`
+	Value     float64    `yaml:"value" json:"value"`
+	Timestamp *time.Time `yaml:"timestamp" json:"timestamp"`
+	Metric    `json:"-"`
 }
 
-func CreateMetric(id uint64, name string, enable bool, notify bool, value float64) common.Metric {
-	return &Metric{
+func NewMetric() Metric {
+	return &MetricStruct{}
+}
+
+func CreateMetric(id uint64, name string, enable bool,
+	notify bool, value float64) Metric {
+
+	return &MetricStruct{
 		ID:     id,
 		Name:   name,
 		Enable: enable,
@@ -35,98 +45,98 @@ func CreateMetric(id uint64, name string, enable bool, notify bool, value float6
 		Value:  value}
 }
 
-func (metric *Metric) SetID(id uint64) {
+func (metric *MetricStruct) SetID(id uint64) {
 	metric.ID = id
 }
 
-func (metric *Metric) GetID() uint64 {
+func (metric *MetricStruct) Identifier() uint64 {
 	return metric.ID
 }
 
-func (metric *Metric) SetDeviceID(id uint64) {
+func (metric *MetricStruct) SetDeviceID(id uint64) {
 	metric.DeviceID = id
 }
 
-func (metric *Metric) GetDeviceID() uint64 {
+func (metric *MetricStruct) GetDeviceID() uint64 {
 	return metric.DeviceID
 }
 
-func (metric *Metric) SetDataType(datatype int) {
+func (metric *MetricStruct) SetDataType(datatype int) {
 	metric.DataType = datatype
 }
 
-func (metric *Metric) GetDataType() int {
+func (metric *MetricStruct) GetDataType() int {
 	return metric.DataType
 }
 
-func (metric *Metric) SetName(name string) {
+func (metric *MetricStruct) SetName(name string) {
 	metric.Name = name
 }
 
-func (metric *Metric) GetName() string {
+func (metric *MetricStruct) GetName() string {
 	return metric.Name
 }
 
-func (metric *Metric) SetEnable(enabled bool) {
+func (metric *MetricStruct) SetEnable(enabled bool) {
 	metric.Enable = enabled
 }
 
-func (metric *Metric) IsEnabled() bool {
+func (metric *MetricStruct) IsEnabled() bool {
 	return metric.Enable
 }
 
-func (metric *Metric) SetNotify(notify bool) {
+func (metric *MetricStruct) SetNotify(notify bool) {
 	metric.Notify = notify
 }
 
-func (metric *Metric) IsNotify() bool {
+func (metric *MetricStruct) IsNotify() bool {
 	return metric.Notify
 }
 
-func (metric *Metric) SetKey(key string) {
+func (metric *MetricStruct) SetKey(key string) {
 	metric.Key = key
 }
 
-func (metric *Metric) GetKey() string {
+func (metric *MetricStruct) GetKey() string {
 	return metric.Key
 }
 
-func (metric *Metric) SetUnit(unit string) {
+func (metric *MetricStruct) SetUnit(unit string) {
 	metric.Unit = unit
 }
 
-func (metric *Metric) GetUnit() string {
+func (metric *MetricStruct) GetUnit() string {
 	return metric.Unit
 }
 
-func (metric *Metric) SetAlarmLow(alarm float64) {
+func (metric *MetricStruct) SetAlarmLow(alarm float64) {
 	metric.AlarmLow = alarm
 }
 
-func (metric *Metric) GetAlarmLow() float64 {
+func (metric *MetricStruct) GetAlarmLow() float64 {
 	return metric.AlarmLow
 }
 
-func (metric *Metric) SetAlarmHigh(alarm float64) {
+func (metric *MetricStruct) SetAlarmHigh(alarm float64) {
 	metric.AlarmHigh = alarm
 }
 
-func (metric *Metric) GetAlarmHigh() float64 {
+func (metric *MetricStruct) GetAlarmHigh() float64 {
 	return metric.AlarmHigh
 }
 
-func (metric *Metric) SetValue(value float64) {
+func (metric *MetricStruct) SetValue(value float64) {
 	metric.Value = value
 }
 
-func (metric *Metric) GetValue() float64 {
+func (metric *MetricStruct) GetValue() float64 {
 	return metric.Value
 }
 
-func (metric *Metric) SetTimestamp(timestamp *time.Time) {
+func (metric *MetricStruct) SetTimestamp(timestamp *time.Time) {
 	metric.Timestamp = timestamp
 }
 
-func (metric *Metric) GetTimestamp() *time.Time {
+func (metric *MetricStruct) GetTimestamp() *time.Time {
 	return metric.Timestamp
 }

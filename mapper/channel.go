@@ -1,28 +1,28 @@
 package mapper
 
 import (
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 type ChannelMapper interface {
-	MapConfigToModel(config *config.Channel) common.Channel
-	MapModelToConfig(model common.Channel) *config.Channel
+	MapConfigToModel(channel config.Channel) model.Channel
+	MapModelToConfig(model model.Channel) config.Channel
 }
 
-type DefaultChannelMapper struct {
+type ChannelMapperStruct struct {
+	ChannelMapper
 }
 
 func NewChannelMapper() ChannelMapper {
-	return &DefaultChannelMapper{}
+	return &ChannelMapperStruct{}
 }
 
-func (mapper *DefaultChannelMapper) MapConfigToModel(channel *config.Channel) common.Channel {
-	return &model.Channel{
-		ID:          channel.ID,
+func (mapper *ChannelMapperStruct) MapConfigToModel(channel config.Channel) model.Channel {
+	return &model.ChannelStruct{
+		ID:          channel.Identifier(),
 		DeviceID:    channel.GetDeviceID(),
-		ChannelID:   channel.GetChannelID(),
+		BoardID:     channel.GetBoardID(),
 		Name:        channel.GetName(),
 		Enable:      channel.IsEnabled(),
 		Notify:      channel.IsNotify(),
@@ -34,11 +34,11 @@ func (mapper *DefaultChannelMapper) MapConfigToModel(channel *config.Channel) co
 		Schedule:    make([]config.Schedule, 0)}
 }
 
-func (mapper *DefaultChannelMapper) MapModelToConfig(model common.Channel) *config.Channel {
-	return &config.Channel{
-		ID:          model.GetID(),
+func (mapper *ChannelMapperStruct) MapModelToConfig(model model.Channel) config.Channel {
+	return &config.ChannelStruct{
+		ID:          model.Identifier(),
 		DeviceID:    model.GetDeviceID(),
-		ChannelID:   model.GetChannelID(),
+		BoardID:     model.GetBoardID(),
 		Name:        model.GetName(),
 		Enable:      model.IsEnabled(),
 		Notify:      model.IsNotify(),
@@ -46,6 +46,6 @@ func (mapper *DefaultChannelMapper) MapModelToConfig(model common.Channel) *conf
 		Debounce:    model.GetDebounce(),
 		Backoff:     model.GetBackoff(),
 		AlgorithmID: model.GetAlgorithmID(),
-		Conditions:  make([]*config.Condition, 0),
-		Schedule:    make([]*config.Schedule, 0)}
+		Conditions:  make([]*config.ConditionStruct, 0),
+		Schedule:    make([]*config.ScheduleStruct, 0)}
 }

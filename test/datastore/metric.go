@@ -10,7 +10,7 @@ import (
 )
 
 func TestMetricCRUD(t *testing.T, metricDAO dao.MetricDAO,
-	org *config.Organization) {
+	org *config.OrganizationStruct) {
 
 	farm1 := org.GetFarms()[0]
 	device1 := farm1.GetDevices()[1]
@@ -32,7 +32,7 @@ func TestMetricCRUD(t *testing.T, metricDAO dao.MetricDAO,
 
 func TestMetricGetByDevice(t *testing.T, farmDAO dao.FarmDAO,
 	deviceDAO dao.DeviceDAO, metricDAO dao.MetricDAO,
-	permissionDAO dao.PermissionDAO, org *config.Organization) {
+	permissionDAO dao.PermissionDAO, org *config.OrganizationStruct) {
 
 	farm1 := org.GetFarms()[0]
 	device1 := farm1.GetDevices()[1]
@@ -41,7 +41,7 @@ func TestMetricGetByDevice(t *testing.T, farmDAO dao.FarmDAO,
 	err := farmDAO.Save(farm1)
 	assert.Nil(t, err)
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		OrganizationID: 0,
 		FarmID:         farm1.ID,
 		UserID:         farm1.GetUsers()[0].ID,

@@ -51,7 +51,7 @@ func (farm *DefaultFarmService) WatchDeviceStateChangeCluster() {
 					farm.app.Logger.Errorf("Error getting device service: %s", err)
 					continue
 				}
-				deviceConfig, err := deviceService.GetConfig()
+				deviceConfig, err := deviceService.Config()
 				if err != nil {
 					farm.app.Logger.Errorf("Error getting device config: %s", err)
 					continue

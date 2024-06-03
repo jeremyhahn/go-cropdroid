@@ -1,0 +1,58 @@
+domain: localhost
+debug: true
+interval: 60
+timezone: "America/New_York"
+mode: virtual
+default-role: admin
+default-permission: all
+enable-registrations: true
+
+state-tick: 60
+state-ttl: 0
+
+datastore: sqlite
+database-init: true
+
+data-dir: db
+cert-dir: ../../../../db/certs
+
+certificate-authority:
+  identity:
+    key-size: 4096
+     # CA cert expiration (years)
+    valid: 10
+    subject:
+      cn: localhost
+      organization: ACME Corproation
+      country: US
+      province: Hialeah
+      locality: Homestead
+      address: 123 Virtual Street
+      postal-code: 12345
+    sans:
+      dns: 
+        - localhost.localdomain
+        - dev.cropdroid.com
+      ips:
+        - 127.0.0.1
+      email:
+        - root@localhost
+        - root@localhost.localdomain
+
+web-port: 8080
+web-tls-port: 8443
+# 1 year JWT
+jwt-exipration: 525960
+
+argon2:
+  memory: 1
+  iterations: 1
+  parallelism: 1
+  saltLen: 16
+  keyLen: 32
+
+stripe:
+  key:
+    secret: 
+    publishable: 
+    webhook: 

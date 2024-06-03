@@ -21,7 +21,7 @@ func createTestOrganizationDAO(t *testing.T) dao.OrganizationDAO {
 		ClusterID)
 	assert.NotNil(t, serverDAO)
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)
@@ -53,31 +53,8 @@ func TestOrganizationDelete(t *testing.T) {
 	dstest.TestOrganizationDelete(t, orgDAO)
 }
 
-// func TestOrganizationEnchilada(t *testing.T) {
-
-// 	orgDAO := createTestOrganizationDAO(t)
-
-// 	farmDAO := NewRaftFarmConfigDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), serverDAO, userDAO)
-// 	assert.NotNil(t, farmDAO)
-
-// 	permissionDAO := NewRaftPermissionDAO(Cluster.app.Logger,
-// 		orgDAO, farmDAO, userDAO)
-
-// 	roleDAO := NewRaftRoleDAO(Cluster.app.Logger,
-// 		Cluster.GetRaftNode1(), RoleClusterID)
-// 	assert.NotNil(t, roleDAO)
-
-// 	org := createRaftTestOrganization(t, Cluster,
-// 		ClusterID, serverDAO, userDAO, farmDAO)
-
-// 		dstest.TestOrganizationEnchilada(t, orgDAO, roleDAO,
-// 			userDAO, permissionDAO, org)
-// 	}
-// }
-
 func createRaftTestOrganization(t *testing.T, cluster *LocalCluster,
-	clusterID uint64) (*config.Organization, RaftOrganizationDAO, RaftFarmConfigDAO, RaftFarmConfigDAO) {
+	clusterID uint64) (*config.OrganizationStruct, RaftOrganizationDAO, RaftFarmConfigDAO, RaftFarmConfigDAO) {
 
 	raftNode1 := IntegrationTestCluster.GetRaftNode1()
 	assert.NotNil(t, raftNode1)
@@ -92,7 +69,7 @@ func createRaftTestOrganization(t *testing.T, cluster *LocalCluster,
 	assert.NotNil(t, orgDAO)
 	orgDAO.StartLocalCluster(IntegrationTestCluster, false)
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)
@@ -159,3 +136,26 @@ func createRaftTestOrganization(t *testing.T, cluster *LocalCluster,
 
 	return org, orgDAO, farm1DAO, farm2DAO
 }
+
+// func TestOrganizationEnchilada(t *testing.T) {
+
+// 	orgDAO := createTestOrganizationDAO(t)
+
+// 	farmDAO := NewRaftFarmConfigDAO(Cluster.app.Logger,
+// 		Cluster.GetRaftNode1(), serverDAO, userDAO)
+// 	assert.NotNil(t, farmDAO)
+
+// 	permissionDAO := NewRaftPermissionDAO(Cluster.app.Logger,
+// 		orgDAO, farmDAO, userDAO)
+
+// 	roleDAO := NewRaftRoleDAO(Cluster.app.Logger,
+// 		Cluster.GetRaftNode1(), RoleClusterID)
+// 	assert.NotNil(t, roleDAO)
+
+// 	org := createRaftTestOrganization(t, Cluster,
+// 		ClusterID, serverDAO, userDAO, farmDAO)
+
+// 		dstest.TestOrganizationEnchilada(t, orgDAO, roleDAO,
+// 			userDAO, permissionDAO, org)
+// 	}
+// }

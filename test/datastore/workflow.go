@@ -10,7 +10,7 @@ import (
 )
 
 func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
-	org *config.Organization) {
+	org *config.OrganizationStruct) {
 
 	farm := org.GetFarms()[0]
 	farmID := farm.ID
@@ -57,7 +57,7 @@ func TestWorkflowCRUD(t *testing.T, workflowDAO dao.WorkflowDAO,
 	waterChangeWorkflow := config.NewWorkflow()
 	waterChangeWorkflow.SetFarmID(farmID)
 	waterChangeWorkflow.SetName("Automated Water Changes")
-	waterChangeWorkflow.SetSteps([]*config.WorkflowStep{
+	waterChangeWorkflow.SetSteps([]*config.WorkflowStepStruct{
 		drainStep,
 		fillStep,
 		phDownStep,

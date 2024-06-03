@@ -40,7 +40,7 @@ func (store *ChannelIndexMap) Get(id uint64) (config.Channel, bool) {
 	if item, ok := store.GenericStateStore.Get(id); ok {
 		return item.(config.Channel), true
 	}
-	return config.Channel{}, false
+	return &config.ChannelStruct{}, false
 }
 
 func (store *ChannelIndexMap) GetAll() []config.Channel {

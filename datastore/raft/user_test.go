@@ -18,14 +18,14 @@ func TestUserCRUD(t *testing.T) {
 	consistencyLevel := common.CONSISTENCY_LOCAL
 	testUserName := "root@localhost"
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)
 	assert.NotNil(t, userDAO)
 	userDAO.StartLocalCluster(IntegrationTestCluster, true)
 
-	user := &config.User{
+	user := &config.UserStruct{
 		ID:    raftNode1.GetParams().IdGenerator.NewStringID(testUserName),
 		Email: testUserName}
 	err := userDAO.Save(user)
@@ -40,5 +40,5 @@ func TestUserCRUD(t *testing.T) {
 
 	persistedUser2, err := userDAO.Get(user.ID, consistencyLevel)
 	assert.Nil(t, persistedUser2)
-	assert.Equal(t, err, datastore.ErrNotFound)
+	assert.Equal(t, err, datastore.ErrRecordNotFound)
 }

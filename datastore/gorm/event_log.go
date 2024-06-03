@@ -35,9 +35,10 @@ func (eventLogDAO *GormEventLogDAO) GetPage(pageQuery query.PageQuery, CONSISTEN
 	} else {
 		sortOrder = "desc"
 	}
+	offset := (pageQuery.Page - 1) * pageQuery.PageSize
 	var logs []*entity.EventLog
 	if err := eventLogDAO.db.Limit(pageQuery.PageSize).
-		Offset(pageQuery.Page).
+		Offset(offset).
 		Where("farm_id = ?", eventLogDAO.farmID).
 		Order(fmt.Sprintf("timestamp %s", sortOrder)).
 		Limit(pageQuery.PageSize + 1). // peek one record to set HasMore flag

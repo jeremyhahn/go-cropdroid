@@ -19,7 +19,7 @@ func TestUserRoleRelationship(t *testing.T) {
 	consistencyLevel := common.CONSISTENCY_LOCAL
 	raftNode1 := IntegrationTestCluster.GetRaftNode1()
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)
@@ -34,7 +34,7 @@ func TestUserRoleRelationship(t *testing.T) {
 	user := config.NewUser()
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	err := userDAO.Save(user)
 	assert.Nil(t, err)
@@ -56,7 +56,7 @@ func TestPermissions(t *testing.T) {
 
 	org, orgDAO, _, _ := createRaftTestOrganization(t, IntegrationTestCluster, ClusterID)
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)
@@ -78,7 +78,7 @@ func TestPermissions(t *testing.T) {
 	user := config.NewUser()
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
 
@@ -88,7 +88,7 @@ func TestPermissions(t *testing.T) {
 	farm.SetName(farmName)
 	farm.SetMode("test")
 	farm.SetInterval(60)
-	farm.SetUsers([]*config.User{user})
+	farm.SetUsers([]*config.UserStruct{user})
 
 	// Create the new farm cluster so it can be saved
 	farmDAO := NewRaftFarmConfigDAO(
@@ -107,7 +107,7 @@ func TestPermissions(t *testing.T) {
 		farmDAO,
 		userDAO)
 
-	permission := &config.Permission{
+	permission := &config.PermissionStruct{
 		OrganizationID: 0,
 		FarmID:         farm.ID,
 		UserID:         user.ID,
@@ -136,7 +136,7 @@ func TestGetOrganizations(t *testing.T) {
 
 	_, orgDAO, _, _ := createRaftTestOrganization(t, IntegrationTestCluster, ClusterID)
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)
@@ -161,7 +161,7 @@ func TestGetOrganizations(t *testing.T) {
 	user.SetID(idGenerator.NewStringID(userEmail))
 	user.SetEmail(userEmail)
 	user.SetPassword("$ecret")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
@@ -187,10 +187,10 @@ func TestGetOrganizations(t *testing.T) {
 		farmDAO,
 		userDAO)
 
-	orgConfig := &config.Organization{
+	orgConfig := &config.OrganizationStruct{
 		ID:    idGenerator.NewStringID(testOrgName),
 		Name:  testOrgName,
-		Farms: []*config.Farm{farmConfig}}
+		Farms: []*config.FarmStruct{farmConfig}}
 
 	err = orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -207,10 +207,10 @@ func TestGetOrganizations(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Org 2
-	orgConfig2 := &config.Organization{
+	orgConfig2 := &config.OrganizationStruct{
 		ID:    idGenerator.NewStringID(testOrgName2),
 		Name:  testOrgName2,
-		Farms: []*config.Farm{farmConfig2}}
+		Farms: []*config.FarmStruct{farmConfig2}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
@@ -222,13 +222,13 @@ func TestGetOrganizations(t *testing.T) {
 	assert.Equal(t, 2, len(page1.Entities[0].GetFarms()))
 	assert.Equal(t, 1, len(page1.Entities[1].GetFarms()))
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		OrganizationID: orgConfig.ID,
 		FarmID:         farmConfig.ID,
 		UserID:         user.ID,
 		RoleID:         role.ID})
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		OrganizationID: orgConfig2.ID,
 		FarmID:         farmConfig2.ID,
 		UserID:         user.ID,

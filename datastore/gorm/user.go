@@ -1,8 +1,8 @@
 package gorm
 
 import (
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -18,25 +18,30 @@ func NewUserDAO(logger *logging.Logger, db *gorm.DB) dao.UserDAO {
 	return &GormUserDAO{logger: logger, db: db}
 }
 
-func CreateUserDAO(db *gorm.DB, user common.UserAccount) dao.UserDAO {
-	return &GormUserDAO{
-		logger: &logging.Logger{},
-		db:     db}
-}
+// func CreateUserDAO(db *gorm.DB, user common.UserAccount) dao.UserDAO {
+// 	return &GormUserDAO{
+// 		logger: &logging.Logger{},
+// 		db:     db}
+// }
 
-func (dao *GormUserDAO) Get(userID uint64, CONSISTENCY_LEVEL int) (*config.User, error) {
-	var user config.User
+func (dao *GormUserDAO) Get(userID uint64, CONSISTENCY_LEVEL int) (*config.UserStruct, error) {
+	var user config.UserStruct
 	if err := dao.db.
 		Preload("Roles").
 		First(&user, userID).Error; err != nil {
-		dao.logger.Errorf("[UserDAO.Get] %s", err.Error())
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return &user, nil
 }
 
 // Saves or updates a user account.
-func (dao *GormUserDAO) Save(user *config.User) error {
+func (dao *GormUserDAO) Save(user *config.UserStruct) error {
 	if err := dao.db.Save(user).Error; err != nil {
 		dao.logger.Errorf("[UserDAO.Save] Error:%s", err.Error())
 		return err
@@ -45,7 +50,7 @@ func (dao *GormUserDAO) Save(user *config.User) error {
 }
 
 // Deletes a user from the database
-func (dao *GormUserDAO) Delete(user *config.User) error {
+func (dao *GormUserDAO) Delete(user *config.UserStruct) error {
 	dao.logger.Errorf("[UserDAO.Delete] user: %+v", user)
 	return dao.db.Delete(user).Error
 }

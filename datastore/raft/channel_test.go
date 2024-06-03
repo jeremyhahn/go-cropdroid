@@ -47,7 +47,7 @@ func TestChannelGetByDevice(t *testing.T) {
 		farmDAO)
 	assert.NotNil(t, deviceDAO)
 
-	userDAO := NewGenericRaftDAO[*config.User](
+	userDAO := NewGenericRaftDAO[*config.UserStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		UserClusterID)

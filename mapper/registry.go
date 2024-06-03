@@ -5,7 +5,7 @@ type MapperRegistry interface {
 	GetMetricMapper() MetricMapper
 	GetChannelMapper() ChannelMapper
 	GetConditionMapper() ConditionMapper
-	GetScheduleMapper() ScheduleMapper
+	// GetScheduleMapper() ScheduleMapper
 	GetUserMapper() UserMapper
 	GetWorkflowMapper() WorkflowMapper
 }
@@ -15,9 +15,9 @@ type MemoryMapperRegistry struct {
 	metricMapper    MetricMapper
 	channelMapper   ChannelMapper
 	conditionMapper ConditionMapper
-	scheduleMapper  ScheduleMapper
-	userMapper      UserMapper
-	workflowMapper  WorkflowMapper
+	// scheduleMapper  ScheduleMapper
+	userMapper     UserMapper
+	workflowMapper WorkflowMapper
 	MapperRegistry
 }
 
@@ -25,7 +25,7 @@ func CreateRegistry() MapperRegistry {
 	metricMapper := NewMetricMapper()
 	channelMapper := NewChannelMapper()
 	conditionMapper := NewConditionMapper()
-	scheduleMapper := NewScheduleMapper()
+	// scheduleMapper := NewScheduleMapper()
 	userMapper := NewUserMapper()
 	workflowMapper := NewWorkflowMapper()
 	deviceMapper := NewDeviceMapper(metricMapper, channelMapper)
@@ -34,9 +34,9 @@ func CreateRegistry() MapperRegistry {
 		metricMapper:    metricMapper,
 		channelMapper:   channelMapper,
 		conditionMapper: conditionMapper,
-		scheduleMapper:  scheduleMapper,
-		userMapper:      userMapper,
-		workflowMapper:  workflowMapper}
+		// scheduleMapper:  scheduleMapper,
+		userMapper:     userMapper,
+		workflowMapper: workflowMapper}
 }
 
 func (registry *MemoryMapperRegistry) GetDeviceMapper() DeviceMapper {
@@ -55,9 +55,9 @@ func (registry *MemoryMapperRegistry) GetConditionMapper() ConditionMapper {
 	return registry.conditionMapper
 }
 
-func (registry *MemoryMapperRegistry) GetScheduleMapper() ScheduleMapper {
-	return registry.scheduleMapper
-}
+// func (registry *MemoryMapperRegistry) GetScheduleMapper() ScheduleMapper {
+// 	return registry.scheduleMapper
+// }
 
 func (registry *MemoryMapperRegistry) GetUserMapper() UserMapper {
 	return registry.userMapper

@@ -30,10 +30,10 @@ func NewRaftDeviceConfigDAO(logger *logging.Logger,
 		farmDAO: farmDAO}
 }
 
-func (dao *RaftDeviceConfigDAODAO) Save(device *config.Device) error {
+func (dao *RaftDeviceConfigDAODAO) Save(device *config.DeviceStruct) error {
 	dao.logger.Debugf("Save Raft entity *state.DeviceState: %d", device.ID)
 	idSetter := dao.raft.GetParams().IdSetter
-	idSetter.SetDeviceIds(device.GetFarmID(), []*config.Device{device})
+	idSetter.SetDeviceIds(device.GetFarmID(), []*config.DeviceStruct{device})
 	farmConfig, err := dao.farmDAO.Get(device.GetFarmID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		dao.logger.Debugf("Save error looking up farm: %d. error: %s", farmConfig.ID, err)
@@ -44,7 +44,7 @@ func (dao *RaftDeviceConfigDAODAO) Save(device *config.Device) error {
 	return dao.farmDAO.Save(farmConfig)
 }
 
-func (dao *RaftDeviceConfigDAODAO) Get(farmID, deviceID uint64, CONSISTENCY_LEVEL int) (*config.Device, error) {
+func (dao *RaftDeviceConfigDAODAO) Get(farmID, deviceID uint64, CONSISTENCY_LEVEL int) (*config.DeviceStruct, error) {
 	dao.logger.Debugf("Get Raft entity *state.DeviceState for farmID: %d, deviceID: %d", farmID, deviceID)
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -54,7 +54,7 @@ func (dao *RaftDeviceConfigDAODAO) Get(farmID, deviceID uint64, CONSISTENCY_LEVE
 	device, err := farmConfig.GetDeviceById(deviceID)
 	if err != nil {
 		dao.logger.Debugf("Get error looking up deviceID: %d. error: ", device.ID, err)
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	if err := device.ParseSettings(); err != nil {
 		dao.logger.Debugf("Get error parsing settings for deviceID: %d. error: %s", device.ID, err)

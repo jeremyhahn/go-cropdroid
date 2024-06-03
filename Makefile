@@ -19,6 +19,10 @@ GIT_TAG                 = $(shell git describe --tags)
 GIT_HASH                = $(shell git rev-parse HEAD) #$(shell git rev-parse --short HEAD)
 BUILD_DATE              = $(shell date '+%Y-%m-%d_%H:%M:%S')
 
+IMAGE_NAME             ?= baremetal
+
+HOSTNAME               ?= $(shell hostname -I | cut -d ' ' -f1)
+
 ifeq ($(CROPDROID_VERSION),)
  	CROPDROID_VERSION = $(shell git branch --show-current)
 endif
@@ -39,20 +43,26 @@ endif
 default: build-standalone
 
 swagger:
-	$(GOBIN)/swag init \
-		--dir webservice/,webservice/rest \
-		--generalInfo webserver_cluster.go
-		--output public_html/swagger/
+	swag init \
+		--dir webservice,webservice/v1/router,webservice/v1/response,service,model,viewmodel,shoppingcart,app,common,config,datastore/dao \
+		--generalInfo webserver_v1.go \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		--output public_html/swagger
 
 certs:
 	mkdir -p keys/
 	openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -keyout keys/key.pem -out keys/cert.pem \
-          -subj "/C=CO/ST=Medellin/L=Poblado/O=Automate The Things, LLC/CN=localhost"
+          -subj "/C=US/ST=Florida/L=West Palm Beach/O=Automate The Things, LLC/CN=localhost"
+	openssl x509 -outform der -in keys/cert.pem  -out keys/cert.crt
 	openssl genrsa -out keys/rsa.key 2048
 	openssl rsa -in keys/rsa.key -pubout -out keys/rsa.pub
+	sudo cp keys/cert.pem /usr/local/share/ca-certificates/$(APP).pem
+	sudo update-ca-certificates
 
 benchmark-api:
-	gobench -u http://localhost:8091/status -k=true -c 500 -t 20
+	gobench -u http://$(HOSTNAME):8091/status -k=true -c 500 -t 20
 
 get-deps:
 	go get
@@ -167,6 +177,8 @@ unittest:
 	cd mapper && $(GOBIN)/go test -v
 	cd provisioner && $(GOBIN)/go test -v
 	cd test && $(GOBIN)/go test -v
+	cd test/webservice/v1/router && $(GOBIN)/go test -v
+	cd pki/ca && $(GOBIN)/go test -v
 
 integrationtest:
 	cd datastore/gorm && $(GOBIN)/go test -v -tags integration

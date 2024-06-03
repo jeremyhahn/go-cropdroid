@@ -45,7 +45,7 @@ func (registrationDAO *RaftRegistrationDAO) StartCluster() {
 }
 
 func (registrationDAO *RaftRegistrationDAO) Get(registrationID uint64,
-	CONSISTENCY_LEVEL int) (*config.Registration, error) {
+	CONSISTENCY_LEVEL int) (*config.RegistrationStruct, error) {
 
 	var result interface{}
 	var err error
@@ -63,12 +63,12 @@ func (registrationDAO *RaftRegistrationDAO) Get(registrationID uint64,
 		}
 	}
 	if result != nil {
-		return result.(*config.Registration), nil
+		return result.(*config.RegistrationStruct), nil
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (registrationDAO *RaftRegistrationDAO) Save(registration *config.Registration) error {
+func (registrationDAO *RaftRegistrationDAO) Save(registration *config.RegistrationStruct) error {
 
 	if registration.ID == 0 {
 		id := registrationDAO.raft.GetParams().IdGenerator.NewStringID(registration.GetEmail())
@@ -95,7 +95,7 @@ func (registrationDAO *RaftRegistrationDAO) Save(registration *config.Registrati
 	return nil
 }
 
-func (registrationDAO *RaftRegistrationDAO) Delete(registration *config.Registration) error {
+func (registrationDAO *RaftRegistrationDAO) Delete(registration *config.RegistrationStruct) error {
 	registrationDAO.logger.Debugf(fmt.Sprintf("Deleting registration record: %+v", registration))
 	perm, err := json.Marshal(registration)
 	if err != nil {

@@ -3,10 +3,20 @@ package model
 import (
 	"fmt"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 )
 
-type Device struct {
+type Device interface {
+	GetMetric(key string) (Metric, error)
+	GetMetrics() []Metric
+	SetMetrics(metrics []Metric)
+	GetChannels() []Channel
+	GetChannel(id int) (Channel, error)
+	SetChannels(channels []Channel)
+	config.CommonDevice
+}
+
+type DeviceStruct struct {
 	ID              uint64 `yaml:"id" json:"id"`
 	OrgID           int    `yaml:"orgId" json:"orgId"`
 	Type            string `yaml:"type" json:"type"`
@@ -17,85 +27,85 @@ type Device struct {
 	HardwareVersion string `yaml:"hwVersion" json:"hwVersion"`
 	FirmwareVersion string `yaml:"fwVersion" json:"fwVersion"`
 	//Configs         map[string]string `yaml:"configs" json:"configs"`
-	Configs       map[string]string `yaml:"configMap" json:"configMap"`
-	Metrics       []common.Metric   `yaml:"metrics" json:"metrics"`
-	Channels      []common.Channel  `yaml:"channels" json:"channels"`
-	common.Device `yaml:"-" json:"-"`
+	Settings map[string]string `yaml:"configMap" json:"configMap"`
+	Metrics  []Metric          `yaml:"metrics" json:"metrics"`
+	Channels []Channel         `yaml:"channels" json:"channels"`
+	Device   `yaml:"-" json:"-"`
 }
 
-func (device *Device) GetID() uint64 {
+func (device *DeviceStruct) Identifier() uint64 {
 	return device.ID
 }
 
-func (device *Device) SetID(id uint64) {
+func (device *DeviceStruct) SetID(id uint64) {
 	device.ID = id
 }
 
-func (device *Device) GetOrgID() int {
+func (device *DeviceStruct) GetOrgID() int {
 	return device.OrgID
 }
 
-func (device *Device) SetOrgID(id int) {
+func (device *DeviceStruct) SetOrgID(id int) {
 	device.OrgID = id
 }
 
-func (device *Device) GetType() string {
+func (device *DeviceStruct) GetType() string {
 	return device.Type
 }
 
-func (device *Device) SetType(deviceType string) {
+func (device *DeviceStruct) SetType(deviceType string) {
 	device.Type = deviceType
 }
 
-func (device *Device) GetDescription() string {
+func (device *DeviceStruct) GetDescription() string {
 	return device.Description
 }
 
-func (device *Device) SetDescription(description string) {
+func (device *DeviceStruct) SetDescription(description string) {
 	device.Description = description
 }
 
-func (device *Device) IsEnabled() bool {
+func (device *DeviceStruct) IsEnabled() bool {
 	return device.Enable
 }
 
-func (device *Device) SetEnabled(enabled bool) {
+func (device *DeviceStruct) SetEnabled(enabled bool) {
 	device.Enable = enabled
 }
 
-func (device *Device) IsNotify() bool {
+func (device *DeviceStruct) IsNotify() bool {
 	return device.Notify
 }
 
-func (device *Device) SetNotify(notify bool) {
+func (device *DeviceStruct) SetNotify(notify bool) {
 	device.Notify = notify
 }
 
-func (device *Device) GetURI() string {
+func (device *DeviceStruct) GetURI() string {
 	return device.URI
 }
 
-func (device *Device) SetURI(uri string) {
+func (device *DeviceStruct) SetURI(uri string) {
 	device.URI = uri
 }
 
-func (device *Device) GetHardwareVersion() string {
+func (device *DeviceStruct) GetHardwareVersion() string {
 	return device.HardwareVersion
 }
 
-func (device *Device) SetHardwareVersion(version string) {
+func (device *DeviceStruct) SetHardwareVersion(version string) {
 	device.HardwareVersion = version
 }
 
-func (device *Device) GetFirmwareVersion() string {
+func (device *DeviceStruct) GetFirmwareVersion() string {
 	return device.FirmwareVersion
 }
 
-func (device *Device) SetFirmwareVersion(version string) {
+func (device *DeviceStruct) SetFirmwareVersion(version string) {
 	device.FirmwareVersion = version
 }
 
-func (device *Device) GetMetric(key string) (common.Metric, error) {
+func (device *DeviceStruct) GetMetric(key string) (Metric, error) {
 	for _, metric := range device.Metrics {
 		if metric.GetKey() == key {
 			return metric, nil
@@ -104,33 +114,37 @@ func (device *Device) GetMetric(key string) (common.Metric, error) {
 	return nil, fmt.Errorf("Metric key not found: %s", key)
 }
 
-func (device *Device) GetMetrics() []common.Metric {
+func (device *DeviceStruct) GetMetrics() []Metric {
 	return device.Metrics
 }
 
-func (device *Device) SetMetrics(metrics []common.Metric) {
+func (device *DeviceStruct) SetMetrics(metrics []Metric) {
 	device.Metrics = metrics
 }
 
-func (device *Device) GetChannels() []common.Channel {
+func (device *DeviceStruct) GetChannels() []Channel {
 	return device.Channels
 }
 
-func (device *Device) GetChannel(id int) (common.Channel, error) {
+func (device *DeviceStruct) GetChannel(id int) (Channel, error) {
 	if id < 0 || id > len(device.Channels) {
 		return nil, fmt.Errorf("Channel ID not found: %d", id)
 	}
 	return device.Channels[id], nil
 }
 
-func (device *Device) SetChannels(channels []common.Channel) {
+func (device *DeviceStruct) SetChannels(channels []Channel) {
 	device.Channels = channels
 }
 
-func (device *Device) GetConfigs() map[string]string {
-	return device.Configs
+func (device *DeviceStruct) GetSettings() map[string]string {
+	return device.Settings
 }
 
-func (device *Device) SetConfigs(configs map[string]string) {
-	device.Configs = configs
+func (device *DeviceStruct) SetSettings(configs map[string]string) {
+	device.Settings = configs
+}
+
+func (device *DeviceStruct) GetSettingsMap() map[string]string {
+	return device.Settings
 }

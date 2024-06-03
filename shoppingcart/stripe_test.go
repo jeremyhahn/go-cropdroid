@@ -92,9 +92,10 @@ func TestGetOrCreateCustomerWithEphemeralKey(t *testing.T) {
 	customerDAO := createCustomerDAO()
 	service := NewStripeService(CurrentTest.app, customerDAO)
 	customer := createTestCustomer()
-	customerWithEphemeralKeyResponse, err := service.GetOrCreateCustomerWithEphemeralKey(&model.User{
-		ID:    customer.ID,
-		Email: customer.Email})
+	customerWithEphemeralKeyResponse, err := service.GetOrCreateCustomerWithEphemeralKey(
+		&model.UserStruct{
+			ID:    customer.ID,
+			Email: customer.Email})
 	assert.Nil(t, err)
 	assert.Equal(t, customerWithEphemeralKeyResponse.Customer.Name, "SetupIntent")
 	assert.NotEmpty(t, customerWithEphemeralKeyResponse.Customer.ProcessorID)
@@ -258,7 +259,7 @@ func TestCreateInvoice(t *testing.T) {
 	lineItems[1].Quantity = 2
 
 	// Create a new invoice for the customer
-	userAccount := &model.User{
+	userAccount := &model.UserStruct{
 		ID:    customerConfig.ID,
 		Email: customerConfig.Email}
 	createInvoiceRequest := CreateInvoiceRequest{
@@ -516,8 +517,8 @@ func createCustomerDAO() dao.CustomerDAO {
 	return gorm.NewCustomerDAO(CurrentTest.logger, CurrentTest.gorm)
 }
 
-func createTestCustomer() *config.Customer {
-	address := &config.Address{
+func createTestCustomer() *config.CustomerStruct {
+	address := &config.AddressStruct{
 		Line1:      "123 test street",
 		Line2:      "Apt 1",
 		City:       "TestCity",
@@ -525,10 +526,10 @@ func createTestCustomer() *config.Customer {
 		PostalCode: "12345",
 		Country:    "TestCountry"}
 
-	shipping := &config.ShippingAddress{
+	shipping := &config.ShippingAddressStruct{
 		Name:  "Test Receiver",
 		Phone: "9876543210",
-		Address: &config.Address{
+		Address: &config.AddressStruct{
 			Line1:      "456 receiver ave",
 			Line2:      "Apt 2",
 			City:       "ShipCity",
@@ -536,7 +537,7 @@ func createTestCustomer() *config.Customer {
 			PostalCode: "54321",
 			Country:    "ShipCountry"}}
 
-	return &config.Customer{
+	return &config.CustomerStruct{
 		ID:          1,
 		Description: "Integration test user",
 		Name:        "test",

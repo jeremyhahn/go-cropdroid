@@ -13,53 +13,64 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/state"
 )
 
-// "Global" device service used to manage all devices used by the platform
+// Device factory / service used to manage all devices across all farms
 type DeviceFactory interface {
-	BuildServices(deviceConfigs []*config.Device, datastore datastore.DeviceDataStore,
-		mode string) ([]DeviceService, error)
-	BuildService(datastore datastore.DeviceDataStore,
-		deviceConfig *config.Device, mode string) (DeviceService, error)
-	GetAll(session Session) ([]*config.Device, error)
-	GetDevices(session Session) ([]common.Device, error)
+	BuildServices(
+		deviceConfigs []*config.DeviceStruct,
+		datastore datastore.DeviceDataStore,
+		mode string) ([]DeviceServicer, error)
+	BuildService(
+		datastore datastore.DeviceDataStore,
+		deviceConfig *config.DeviceStruct,
+		mode string) (DeviceServicer, error)
 }
 
 type DefaultDeviceFactory struct {
-	app             *app.App
-	farmID          uint64
-	farmName        string
-	deviceDAO       dao.DeviceDAO
-	eventLogDAO     dao.EventLogDAO
-	stateStore      state.DeviceStorer
-	consistency     int
-	deviceMapper    mapper.DeviceMapper
-	serviceRegistry ServiceRegistry
-	farmChannels    *FarmChannels
+	app               *app.App
+	farmID            uint64
+	farmName          string
+	datastoreRegistry dao.Registry
+	eventLogDAO       dao.EventLogDAO
+	stateStore        state.DeviceStateStorer
+	consistency       int
+	deviceMapper      mapper.DeviceMapper
+	serviceRegistry   ServiceRegistry
+	farmChannels      *FarmChannels
 	DeviceFactory
 }
 
-func NewDeviceFactory(app *app.App, farmID uint64, farmName string,
-	deviceDAO dao.DeviceDAO, eventLogDAO dao.EventLogDAO, configStoreType int,
-	consistency int, stateStore state.DeviceStorer, deviceMapper mapper.DeviceMapper,
-	serviceRegistry ServiceRegistry, farmChannels *FarmChannels) DeviceFactory {
+func NewDeviceFactory(
+	app *app.App,
+	farmID uint64,
+	farmName string,
+	datastoreRegistry dao.Registry,
+	eventLogDAO dao.EventLogDAO,
+	configStoreType, consistency int,
+	stateStore state.DeviceStateStorer,
+	deviceMapper mapper.DeviceMapper,
+	serviceRegistry ServiceRegistry,
+	farmChannels *FarmChannels) DeviceFactory {
 
 	return &DefaultDeviceFactory{
-		app:             app,
-		farmID:          farmID,
-		farmName:        farmName,
-		deviceDAO:       deviceDAO,
-		eventLogDAO:     eventLogDAO,
-		stateStore:      stateStore,
-		consistency:     consistency,
-		deviceMapper:    deviceMapper,
-		serviceRegistry: serviceRegistry,
-		farmChannels:    farmChannels}
+		app:               app,
+		farmID:            farmID,
+		farmName:          farmName,
+		datastoreRegistry: datastoreRegistry,
+		eventLogDAO:       eventLogDAO,
+		stateStore:        stateStore,
+		consistency:       consistency,
+		deviceMapper:      deviceMapper,
+		serviceRegistry:   serviceRegistry,
+		farmChannels:      farmChannels}
 }
 
 // Builds all device services for a given farm
-func (factory *DefaultDeviceFactory) BuildServices(deviceConfigs []*config.Device,
-	datastore datastore.DeviceDataStore, mode string) ([]DeviceService, error) {
+func (factory *DefaultDeviceFactory) BuildServices(
+	deviceConfigs []*config.DeviceStruct,
+	datastore datastore.DeviceDataStore,
+	mode string) ([]DeviceServicer, error) {
 
-	services := make([]DeviceService, 0, len(deviceConfigs))
+	services := make([]DeviceServicer, 0, len(deviceConfigs))
 	for _, deviceConfig := range deviceConfigs {
 		if deviceConfig.GetType() == common.CONTROLLER_TYPE_SERVER {
 			continue
@@ -75,8 +86,10 @@ func (factory *DefaultDeviceFactory) BuildServices(deviceConfigs []*config.Devic
 }
 
 // Builds a new device service
-func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceDataStore,
-	deviceConfig *config.Device, mode string) (DeviceService, error) {
+func (factory *DefaultDeviceFactory) BuildService(
+	datastore datastore.DeviceDataStore,
+	deviceConfig *config.DeviceStruct,
+	mode string) (DeviceServicer, error) {
 
 	var _device device.IOSwitcher
 	deviceID := deviceConfig.ID
@@ -96,7 +109,7 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 	}
 
 	service, err := NewDeviceService(factory.app, factory.farmID, deviceID,
-		factory.farmName, factory.stateStore, factory.deviceDAO,
+		factory.farmName, factory.stateStore, factory.datastoreRegistry.NewDeviceDAO(),
 		factory.eventLogDAO, datastore, factory.deviceMapper, _device,
 		factory.farmChannels, factory.consistency)
 
@@ -106,33 +119,4 @@ func (factory *DefaultDeviceFactory) BuildService(datastore datastore.DeviceData
 	}
 
 	return service, nil
-}
-
-// TODO: Should the following 2 methods be refactored into the device service?
-
-// Returns all device configs for a given farm session
-func (factory *DefaultDeviceFactory) GetAll(session Session) ([]*config.Device, error) {
-	return session.GetFarmService().GetConfig().GetDevices(), nil
-}
-
-// Returns all common.device objects for a given farm session
-func (factory *DefaultDeviceFactory) GetDevices(session Session) ([]common.Device, error) {
-	var devices []common.Device
-	farmService := session.GetFarmService()
-	deviceConfigs := farmService.GetConfig().GetDevices()
-	for _, deviceConfig := range deviceConfigs {
-		if deviceConfig.GetType() == common.CONTROLLER_TYPE_SERVER {
-			continue
-		}
-		deviceState, err := factory.stateStore.Get(deviceConfig.ID)
-		if err != nil {
-			return nil, err
-		}
-		device, err := factory.deviceMapper.MapStateToDevice(deviceState, deviceConfig)
-		if err != nil {
-			return nil, err
-		}
-		devices = append(devices, device)
-	}
-	return devices, nil
 }

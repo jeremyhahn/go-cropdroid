@@ -14,30 +14,30 @@ func TestCustomer_CRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Address{})
-	currentTest.gorm.AutoMigrate(&config.ShippingAddress{})
-	currentTest.gorm.AutoMigrate(&config.Customer{})
+	currentTest.gorm.AutoMigrate(&config.AddressStruct{})
+	currentTest.gorm.AutoMigrate(&config.ShippingAddressStruct{})
+	currentTest.gorm.AutoMigrate(&config.CustomerStruct{})
 
-	customerDAO := NewGenericGormDAO[*config.Customer](currentTest.logger, currentTest.gorm)
-	customer1 := config.Customer{
+	customerDAO := NewGenericGormDAO[*config.CustomerStruct](currentTest.logger, currentTest.gorm)
+	customer1 := &config.CustomerStruct{
 		ProcessorID: "123",
 		Name:        "admin",
 		Email:       "customer1@test.com"}
-	err := customerDAO.Save(&customer1)
+	err := customerDAO.Save(customer1)
 	assert.Nil(t, err)
 
-	customer2 := config.Customer{
+	customer2 := &config.CustomerStruct{
 		ProcessorID: "456",
 		Name:        "analyst",
 		Email:       "customer2@test.com"}
-	err = customerDAO.Save(&customer2)
+	err = customerDAO.Save(customer2)
 	assert.Nil(t, err)
 
-	customer3 := config.Customer{
+	customer3 := &config.CustomerStruct{
 		ProcessorID: "789",
 		Name:        "cultivator",
 		Email:       "customer3@test.com"}
-	err = customerDAO.Save(&customer3)
+	err = customerDAO.Save(customer3)
 	assert.Nil(t, err)
 
 	// customerByProcessorID, err := customerDAO.GetByProcessorID("456", common.CONSISTENCY_LOCAL)
@@ -58,9 +58,9 @@ func TestCustomer_CustomerDoesntExist_ReturnsNull(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Address{})
-	currentTest.gorm.AutoMigrate(&config.ShippingAddress{})
-	currentTest.gorm.AutoMigrate(&config.Customer{})
+	currentTest.gorm.AutoMigrate(&config.AddressStruct{})
+	currentTest.gorm.AutoMigrate(&config.ShippingAddressStruct{})
+	currentTest.gorm.AutoMigrate(&config.CustomerStruct{})
 
 	customerDAO := NewCustomerDAO(currentTest.logger, currentTest.gorm)
 

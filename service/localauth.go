@@ -9,6 +9,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
@@ -37,14 +38,20 @@ type LocalAuthService struct {
 	userDAO       dao.UserDAO
 	roleDAO       dao.RoleDAO
 	mapper        mapper.UserMapper
-	AuthService
+	AuthServicer
 }
 
 // Performs authentication, registration and activation services using
 // "local" datastore data access objects.
-func NewLocalAuthService(app *app.App, permissionDAO dao.PermissionDAO,
-	regDAO dao.RegistrationDAO, orgDAO dao.OrganizationDAO, farmDAO dao.FarmDAO,
-	userDAO dao.UserDAO, roleDAO dao.RoleDAO, userMapper mapper.UserMapper) AuthService {
+func NewLocalAuthService(
+	app *app.App,
+	permissionDAO dao.PermissionDAO,
+	regDAO dao.RegistrationDAO,
+	orgDAO dao.OrganizationDAO,
+	farmDAO dao.FarmDAO,
+	userDAO dao.UserDAO,
+	roleDAO dao.RoleDAO,
+	userMapper mapper.UserMapper) AuthServicer {
 
 	return &LocalAuthService{
 		app:           app,
@@ -59,7 +66,7 @@ func NewLocalAuthService(app *app.App, permissionDAO dao.PermissionDAO,
 }
 
 // Looks up the specified user from the data store by email address
-// func (service *LocalAuthService) Get(orgID uint64, email string) (common.UserAccount, error) {
+// func (service *LocalAuthService) Get(orgID uint64, email string) (model.User, error) {
 // 	userID := service.idGenerator.NewID(email)
 // 	userEntity, err := service.userDAO.Get(orgID, userID)
 // 	if err != nil && err != ErrRecordNotFound {
@@ -90,8 +97,8 @@ func (service *LocalAuthService) ResetPassword(userCredentials *UserCredentials)
 // Login takes a set of credentials and returns a list of organizations with the farms
 // the user has permission to access, minimally populated. No device or workflow data
 // will be contained with the farm(s).
-func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common.UserAccount,
-	[]*config.Organization, []*config.Farm, error) {
+func (service *LocalAuthService) Login(userCredentials *UserCredentials) (model.User,
+	[]config.Organization, []config.Farm, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %s", userCredentials.Email)
 
@@ -124,12 +131,22 @@ func (service *LocalAuthService) Login(userCredentials *UserCredentials) (common
 		return nil, nil, nil, err
 	}
 
-	return service.mapper.MapUserConfigToModel(userEntity), organizations, farms, nil
+	// Convert from Structs to interface types
+	orgs := make([]config.Organization, len(organizations))
+	for i, org := range organizations {
+		orgs[i] = org
+	}
+	_farms := make([]config.Farm, len(farms))
+	for i, farm := range farms {
+		_farms[i] = farm
+	}
+
+	return service.mapper.MapUserConfigToModel(userEntity), orgs, _farms, nil
 }
 
 // Registers a new user and sends an email with an activation button in HTML format.
 func (service *LocalAuthService) Register(userCredentials *UserCredentials,
-	baseURI string) (common.UserAccount, error) {
+	baseURI string) (model.User, error) {
 
 	if !service.app.EnableRegistrations {
 		return nil, ErrRegistrationDisabled
@@ -142,7 +159,6 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 
 	userID := service.idGenerator.NewStringID(userCredentials.Email)
 	persistedUser, err := service.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
-
 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 		service.app.Logger.Errorf("%s", err.Error())
 		return nil, fmt.Errorf("Unexpected error: %s", err.Error())
@@ -166,11 +182,12 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 		// }
 		userCredentials.OrgID = service.idGenerator.NewStringID(userCredentials.OrgName)
 		persistedOrg, err := service.orgDAO.Get(userCredentials.OrgID, common.CONSISTENCY_LOCAL)
-		if err != nil && err.Error() != ErrRecordNotFound.Error() {
+		if err == datastore.ErrRecordNotFound {
 			service.app.Logger.Errorf("%s", err.Error())
 			return nil, fmt.Errorf("Unexpected error: %s", err.Error())
 		}
 		if err != nil {
+			service.app.Logger.Error(err)
 			return nil, err
 		}
 		if persistedOrg.ID != 0 {
@@ -180,6 +197,7 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 	}
 
 	if err := service.regDAO.Save(registration); err != nil {
+		service.app.Logger.Error(err)
 		return nil, err
 	}
 
@@ -200,6 +218,9 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 	}
 	mailer.SendHtml(tmpl, subject, templateData)
 
+	service.app.Logger.Debugf("Sent activation email with activation endpoint: %s, unsubscribe endpoint: %s",
+		activationURL, unsubscribeURL)
+
 	return nil, err
 }
 
@@ -207,24 +228,26 @@ func (service *LocalAuthService) Register(userCredentials *UserCredentials,
 // role assignment and deleting the registration record. If FARM_ACCESS_ALL
 // has been configured, the user will be given permission to access all farms
 // otherwise the user will need to be explicitly added to farm(s).
-func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAccount, error) {
+func (service *LocalAuthService) Activate(registrationID uint64) (model.User, error) {
 
 	registration, err := service.regDAO.Get(registrationID, common.CONSISTENCY_LOCAL)
 	if err != nil {
+		service.app.Logger.Error(err)
 		return nil, err
 	}
 
-	userConfig := &config.User{
+	userConfig := &config.UserStruct{
 		ID:       service.idGenerator.NewStringID(registration.GetEmail()),
 		Email:    registration.GetEmail(),
 		Password: registration.GetPassword()}
 
 	defaultRole, err := service.roleDAO.GetByName(service.app.DefaultRole, common.CONSISTENCY_LOCAL)
 	if err != nil {
+		service.app.Logger.Error(err)
 		return nil, err
 	}
 
-	userAccount := &model.User{
+	userAccount := &model.UserStruct{
 		ID:       userConfig.ID,
 		Email:    registration.GetEmail(),
 		Password: registration.GetPassword()}
@@ -232,13 +255,13 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	orgName := registration.GetOrganizationName()
 	if orgName != "" {
 
-		org := &config.Organization{
+		org := &config.OrganizationStruct{
 			ID:   service.idGenerator.NewStringID(orgName),
 			Name: orgName}
 		service.orgDAO.Save(org)
 
 		if service.app.DefaultPermission == common.FARM_ACCESS_ALL {
-			err := service.orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Organization) error {
+			err := service.orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.OrganizationStruct) error {
 				orgIds := make([]uint64, len(entities), len(entities))
 				for i, org := range entities {
 					for _, farmConfig := range org.GetFarms() {
@@ -261,7 +284,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	} else {
 		if service.app.DefaultPermission == common.FARM_ACCESS_ALL {
 
-			err := service.orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Organization) error {
+			err := service.orgDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.OrganizationStruct) error {
 				orgIds := make([]uint64, 0, len(entities))
 				for i, org := range entities {
 					for _, farmConfig := range org.GetFarms() {
@@ -281,7 +304,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 				service.app.Logger.Error(err)
 			}
 
-			err = service.farmDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.Farm) error {
+			err = service.farmDAO.ForEachPage(query.NewPageQuery(), func(entities []*config.FarmStruct) error {
 				farmIDs := make([]uint64, 0, len(entities))
 				for i, farmConfig := range entities {
 					permission := config.NewPermission()
@@ -295,7 +318,7 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 				}
 				userConfig.SetFarmRefs(farmIDs)
 				if len(entities) == 0 {
-					userConfig.SetRoles([]*config.Role{defaultRole})
+					userConfig.SetRoles([]*config.RoleStruct{defaultRole})
 				}
 				return nil
 			}, common.CONSISTENCY_LOCAL)
@@ -306,10 +329,12 @@ func (service *LocalAuthService) Activate(registrationID uint64) (common.UserAcc
 	}
 
 	if err = service.userDAO.Save(userConfig); err != nil {
+		service.app.Logger.Error(err)
 		return nil, err
 	}
 
 	if err = service.regDAO.Delete(registration); err != nil {
+		service.app.Logger.Error(err)
 		return userAccount, err
 	}
 

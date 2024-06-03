@@ -14,7 +14,7 @@ func TestConditionCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Condition{})
+	currentTest.gorm.AutoMigrate(&config.ConditionStruct{})
 
 	conditionDAO := NewConditionDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, conditionDAO)

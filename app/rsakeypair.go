@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"hash"
-	"io/ioutil"
+	"os"
 
 	"github.com/jeremyhahn/go-cropdroid/util"
 	logging "github.com/op/go-logging"
@@ -24,11 +24,12 @@ type KeyPair interface {
 	GetPublicBytes() []byte
 	Encrypt(message string, compress bool) (string, error)
 	Decrypt(base64CipherText string, decompress bool) (string, error)
-	Sign(message []byte, saltLen int) (crypto.Hash, []byte, []byte, error)
+	Sign(message []byte) (crypto.Hash, []byte, []byte, error)
 	Verify(messageSHA crypto.Hash, hashed []byte, signature []byte) (bool, error)
 }
 
 type RsaKeyPair struct {
+	Name         string
 	Directory    string
 	PrivateKey   *rsa.PrivateKey
 	PrivateBytes []byte
@@ -40,13 +41,13 @@ type RsaKeyPair struct {
 	KeyPair
 }
 
-func NewRsaKeyPair(logger *logging.Logger, keydir string) (KeyPair, error) {
-	return CreateRsaKeyPair(logger, keydir, rsa.PSSSaltLengthAuto)
+func NewRsaKeyPair(logger *logging.Logger, keydir, cn string) (KeyPair, error) {
+	return CreateRsaKeyPair(logger, keydir, cn, rsa.PSSSaltLengthAuto)
 }
 
-func CreateRsaKeyPair(logger *logging.Logger, directory string, saltLen int) (KeyPair, error) {
+func CreateRsaKeyPair(logger *logging.Logger, directory, cn string, saltLen int) (KeyPair, error) {
 	logger.Debugf("Loading key files from %s", directory)
-	privateKeyBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", directory, "rsa.key"))
+	privateKeyBytes, err := os.ReadFile(fmt.Sprintf("%s/%s.key", directory, cn))
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -56,7 +57,7 @@ func CreateRsaKeyPair(logger *logging.Logger, directory string, saltLen int) (Ke
 		logger.Error(err)
 		return nil, err
 	}
-	publicKeyBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", directory, "rsa.pub"))
+	publicKeyBytes, err := os.ReadFile(fmt.Sprintf("%s/%s.crt", directory, cn))
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -67,17 +68,18 @@ func CreateRsaKeyPair(logger *logging.Logger, directory string, saltLen int) (Ke
 		return nil, err
 	}
 	return &RsaKeyPair{
+		Name:         "rsa",
 		Directory:    directory,
 		PrivateKey:   privateKey,
 		PrivateBytes: privateKeyBytes,
 		PublicKey:    publicKey,
 		PublicBytes:  publicKeyBytes,
-		PSSOptions: &rsa.PSSOptions{
-			SaltLength: saltLen},
-		SHA256: sha256.New()}, nil
+		PSSOptions:   &rsa.PSSOptions{SaltLength: saltLen},
+		SHA256:       sha256.New()}, nil
 }
 
-func CreateUserDefinedRsaKeyPair(logger *logging.Logger, privKey, pubKey string, saltLen int) (KeyPair, error) {
+// Only used by unit tests
+func CreateRsaKeyPairWithOptions(logger *logging.Logger, privKey, pubKey string, saltLen int) (KeyPair, error) {
 	logger.Debug("Loading key files from string")
 	privateKeyBytes := []byte(privKey)
 	publicKeyBytes := []byte(pubKey)
@@ -96,9 +98,8 @@ func CreateUserDefinedRsaKeyPair(logger *logging.Logger, privKey, pubKey string,
 		PrivateBytes: privateKeyBytes,
 		PublicKey:    publicKey,
 		PublicBytes:  publicKeyBytes,
-		PSSOptions: &rsa.PSSOptions{
-			SaltLength: saltLen},
-		SHA256: sha256.New()}, nil
+		PSSOptions:   &rsa.PSSOptions{SaltLength: saltLen},
+		SHA256:       sha256.New()}, nil
 }
 
 func (keypair *RsaKeyPair) GetDirectory() string {
@@ -157,7 +158,7 @@ func (keypair *RsaKeyPair) Decrypt(base64CipherText string, decompress bool) (st
 	return string(plaintext), nil
 }
 
-func (keypair *RsaKeyPair) Sign(message []byte, saltLen int) (crypto.Hash, []byte, []byte, error) {
+func (keypair *RsaKeyPair) Sign(message []byte) (crypto.Hash, []byte, []byte, error) {
 	messageSHA := crypto.SHA256
 	pssh := messageSHA.New()
 	pssh.Write(message)

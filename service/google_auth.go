@@ -24,12 +24,16 @@ type GoogleAuthService struct {
 	roleDAO       dao.RoleDAO
 	farmDAO       dao.FarmDAO
 	mapper        mapper.UserMapper
-	AuthService
+	AuthServicer
 }
 
-func NewGoogleAuthService(app *app.App, permissionDAO dao.PermissionDAO,
-	userDAO dao.UserDAO, roleDAO dao.RoleDAO, farmDAO dao.FarmDAO,
-	userMapper mapper.UserMapper) AuthService {
+func NewGoogleAuthService(
+	app *app.App,
+	permissionDAO dao.PermissionDAO,
+	userDAO dao.UserDAO,
+	roleDAO dao.RoleDAO,
+	farmDAO dao.FarmDAO,
+	userMapper mapper.UserMapper) AuthServicer {
 
 	return &GoogleAuthService{
 		app:           app,
@@ -41,7 +45,7 @@ func NewGoogleAuthService(app *app.App, permissionDAO dao.PermissionDAO,
 		mapper:        userMapper}
 }
 
-// func (service *GoogleAuthService) Get(userID uint64) (common.UserAccount, error) {
+// func (service *GoogleAuthService) Get(userID uint64) (model.User, error) {
 // 	userEntity, err := service.userDAO.Get(userID)
 // 	if err != nil && err.Error() != ErrRecordNotFound.Error() {
 // 		return nil, ErrInvalidCredentials
@@ -56,8 +60,8 @@ func (service *GoogleAuthService) ResetPassword(userCredentials *UserCredentials
 	return ErrResetPasswordUnsupported
 }
 
-func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (common.UserAccount,
-	[]*config.Organization, []*config.Farm, error) {
+func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (model.User,
+	[]config.Organization, []config.Farm, error) {
 
 	service.app.Logger.Debugf("Authenticating user: %+v", userCredentials)
 
@@ -94,8 +98,8 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		userAccount.SetRoles([]common.Role{
-			&model.Role{
+		userAccount.SetRoles([]model.Role{
+			&model.RoleStruct{
 				ID:   roleConfig.ID,
 				Name: roleConfig.GetName()}})
 
@@ -131,8 +135,8 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 		// */
 
 		//newOrg := &config.Organization{ID: 0, Farms: []config.Farm{*farmConfig.(*config.Farm)}}
-		newOrg := &config.Organization{ID: 0}
-		return userAccount, []*config.Organization{newOrg}, nil, nil
+		newOrg := &config.OrganizationStruct{ID: 0}
+		return userAccount, []config.Organization{newOrg}, nil, nil
 	}
 
 	/*
@@ -170,11 +174,21 @@ func (service *GoogleAuthService) Login(userCredentials *UserCredentials) (commo
 	}
 
 	userEntity.SetPassword(idToken)
-	return service.mapper.MapUserConfigToModel(userEntity), organizations, farms, nil
+
+	// Convert from Structs to interface types
+	orgs := make([]config.Organization, len(organizations))
+	for i, org := range organizations {
+		orgs[i] = org
+	}
+	_farms := make([]config.Farm, len(farms))
+	for i, farm := range farms {
+		_farms[i] = farm
+	}
+	return service.mapper.MapUserConfigToModel(userEntity), orgs, _farms, nil
 }
 
 func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
-	baseURI string) (common.UserAccount, error) {
+	baseURI string) (model.User, error) {
 
 	if !service.app.EnableRegistrations {
 		return nil, ErrRegistrationDisabled
@@ -207,18 +221,18 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 		return nil, err
 	}
 
-	userConfig := &config.User{
+	userConfig := &config.UserStruct{
 		ID:       service.idGenerator.NewStringID(email),
 		Email:    email,
 		Password: string(encrypted),
-		Roles:    []*config.Role{defaultRole}}
+		Roles:    []*config.RoleStruct{defaultRole}}
 
 	err = service.userDAO.Save(userConfig) // creates userConfig.id
 	if err != nil {
 		return nil, err
 	}
 
-	userAccount := &model.User{
+	userAccount := &model.UserStruct{
 		ID:       userConfig.ID,
 		Email:    email,
 		Password: token}
@@ -226,7 +240,7 @@ func (service *GoogleAuthService) Register(userCredentials *UserCredentials,
 	return userAccount, err
 }
 
-func (service *GoogleAuthService) Activate(registrationID uint64) (common.UserAccount, error) {
+func (service *GoogleAuthService) Activate(registrationID uint64) (model.User, error) {
 	// Google already verified the email address, no need
 	// to perform registration/activation process
 	err := errors.New("GoogleAuthService.Activate not implemented")

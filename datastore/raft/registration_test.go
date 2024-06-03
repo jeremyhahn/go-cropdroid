@@ -20,19 +20,19 @@ func TestRegistrationCRUD(t *testing.T) {
 	testRegistrationName := "root@localhost"
 	testRegistrationName2 := "root2@localhost"
 
-	registrationDAO := NewGenericRaftDAO[*config.Registration](
+	registrationDAO := NewGenericRaftDAO[*config.RegistrationStruct](
 		IntegrationTestCluster.app.Logger,
 		raftNode1,
 		RegistrationClusterID)
 	assert.NotNil(t, registrationDAO)
 	registrationDAO.StartLocalCluster(IntegrationTestCluster, true)
 
-	registration := &config.Registration{
+	registration := &config.RegistrationStruct{
 		Email: testRegistrationName}
 	err := registrationDAO.Save(registration)
 	assert.Nil(t, err)
 
-	registration2 := &config.Registration{
+	registration2 := &config.RegistrationStruct{
 		Email: testRegistrationName2}
 	err = registrationDAO.Save(registration2)
 	assert.Nil(t, err)
@@ -64,7 +64,7 @@ func TestRegistrationCRUD(t *testing.T) {
 	assert.Nil(t, err)
 
 	deletedAlgo, err := registrationDAO.Get(registration.ID, common.CONSISTENCY_LOCAL)
-	assert.Equal(t, datastore.ErrNotFound, err)
+	assert.Equal(t, datastore.ErrRecordNotFound, err)
 	assert.Nil(t, deletedAlgo)
 }
 
@@ -72,17 +72,17 @@ func TestRegistrationGetPage(t *testing.T) {
 
 	ClusterID = 2
 
-	registrationDAO := NewGenericRaftDAO[*config.Registration](IntegrationTestCluster.app.Logger,
+	registrationDAO := NewGenericRaftDAO[*config.RegistrationStruct](IntegrationTestCluster.app.Logger,
 		IntegrationTestCluster.GetRaftNode1(), ClusterID)
 	assert.NotNil(t, registrationDAO)
 	registrationDAO.StartLocalCluster(IntegrationTestCluster, true)
 
 	//numberOfRegistrationsToCreate := 5000
 	numberOfRegistrationsToCreate := 100
-	entities := make([]*config.Registration, numberOfRegistrationsToCreate)
+	entities := make([]*config.RegistrationStruct, numberOfRegistrationsToCreate)
 	for i := 0; i < numberOfRegistrationsToCreate; i++ {
 		email := fmt.Sprintf("user%d@example.com", i)
-		algo := &config.Registration{Email: email}
+		algo := &config.RegistrationStruct{Email: email}
 		err := registrationDAO.Save(algo)
 		assert.Nil(t, err)
 		entities[i] = algo

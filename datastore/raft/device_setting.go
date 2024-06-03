@@ -32,7 +32,7 @@ func NewRaftDeviceSettingDAO(logger *logging.Logger,
 }
 
 func (dao *RaftDeviceSettingDAO) Save(farmID uint64,
-	setting *config.DeviceSetting) error {
+	setting *config.DeviceSettingStruct) error {
 
 	if setting.ID == 0 {
 		key := fmt.Sprintf("%d-%d-%s", farmID, setting.GetDeviceID(),
@@ -46,24 +46,24 @@ func (dao *RaftDeviceSettingDAO) Save(farmID uint64,
 	device, err := dao.deviceDAO.Get(farmID,
 		setting.GetDeviceID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
-		return datastore.ErrNotFound
+		return datastore.ErrRecordNotFound
 	}
 	device.SetSetting(setting)
 	return dao.deviceDAO.Save(device)
 }
 
 func (dao *RaftDeviceSettingDAO) Get(farmID, deviceID uint64,
-	name string, CONSISTENCY_LEVEL int) (*config.DeviceSetting, error) {
+	name string, CONSISTENCY_LEVEL int) (*config.DeviceSettingStruct, error) {
 
 	device, err := dao.deviceDAO.Get(farmID, deviceID,
 		common.CONSISTENCY_LOCAL)
 	if err != nil {
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	for _, setting := range device.GetSettings() {
 		if setting.GetKey() == name {
 			return setting, nil
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }

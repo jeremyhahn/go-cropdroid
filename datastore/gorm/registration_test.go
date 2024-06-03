@@ -13,7 +13,7 @@ func TestRegistrationCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Registration{})
+	currentTest.gorm.AutoMigrate(&config.RegistrationStruct{})
 
 	consistencyLevel := common.CONSISTENCY_LOCAL
 	testRegistrationName := "root@localhost"
@@ -21,7 +21,7 @@ func TestRegistrationCRUD(t *testing.T) {
 	registrationDAO := NewRegistrationDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, registrationDAO)
 
-	registration := &config.Registration{
+	registration := &config.RegistrationStruct{
 		ID:    currentTest.idGenerator.NewStringID(testRegistrationName),
 		Email: testRegistrationName}
 	err := registrationDAO.Save(registration)

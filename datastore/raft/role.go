@@ -12,14 +12,14 @@ import (
 )
 
 type RaftRoleDAO interface {
-	RaftDAO[*config.Role]
+	RaftDAO[*config.RoleStruct]
 	dao.RoleDAO
 }
 
 type RaftRole struct {
 	logger *logging.Logger
 	raft   cluster.RaftNode
-	GenericRaftDAO[*config.Role]
+	GenericRaftDAO[*config.RoleStruct]
 }
 
 func NewRaftRoleDAO(logger *logging.Logger, raftNode cluster.RaftNode,
@@ -28,7 +28,7 @@ func NewRaftRoleDAO(logger *logging.Logger, raftNode cluster.RaftNode,
 	return &RaftRole{
 		logger: logger,
 		raft:   raftNode,
-		GenericRaftDAO: GenericRaftDAO[*config.Role]{
+		GenericRaftDAO: GenericRaftDAO[*config.RoleStruct]{
 			logger:    logger,
 			raft:      raftNode,
 			clusterID: clusterID}}
@@ -46,37 +46,37 @@ func (roleDAO *RaftRole) WaitForClusterReady() {
 	roleDAO.GenericRaftDAO.WaitForClusterReady()
 }
 
-func (roleDAO *RaftRole) Save(Role *config.Role) error {
+func (roleDAO *RaftRole) Save(Role *config.RoleStruct) error {
 	return roleDAO.GenericRaftDAO.Save(Role)
 }
 
-func (roleDAO *RaftRole) SaveWithTimeSeriesIndex(Role *config.Role) error {
+func (roleDAO *RaftRole) SaveWithTimeSeriesIndex(Role *config.RoleStruct) error {
 	return roleDAO.GenericRaftDAO.SaveWithTimeSeriesIndex(Role)
 }
 
-func (roleDAO *RaftRole) Update(Role *config.Role) error {
+func (roleDAO *RaftRole) Update(Role *config.RoleStruct) error {
 	return roleDAO.GenericRaftDAO.Update(Role)
 }
 
-func (roleDAO *RaftRole) Delete(Role *config.Role) error {
+func (roleDAO *RaftRole) Delete(Role *config.RoleStruct) error {
 	return roleDAO.GenericRaftDAO.Delete(Role)
 }
 
-func (roleDAO *RaftRole) Get(id uint64, CONSISTENCY_LEVEL int) (*config.Role, error) {
+func (roleDAO *RaftRole) Get(id uint64, CONSISTENCY_LEVEL int) (*config.RoleStruct, error) {
 	return roleDAO.GenericRaftDAO.Get(id, CONSISTENCY_LEVEL)
 }
 
-func (roleDAO *RaftRole) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Role], error) {
+func (roleDAO *RaftRole) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.RoleStruct], error) {
 	return roleDAO.GenericRaftDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 }
 
 func (roleDAO *RaftRole) ForEachPage(pageQuery query.PageQuery,
-	pagerProcFunc query.PagerProcFunc[*config.Role], CONSISTENCY_LEVEL int) error {
+	pagerProcFunc query.PagerProcFunc[*config.RoleStruct], CONSISTENCY_LEVEL int) error {
 
 	return roleDAO.GenericRaftDAO.ForEachPage(pageQuery, pagerProcFunc, CONSISTENCY_LEVEL)
 }
 
-func (roleDAO *RaftRole) GetByName(roleName string, CONSISTENCY_LEVEL int) (*config.Role, error) {
+func (roleDAO *RaftRole) GetByName(roleName string, CONSISTENCY_LEVEL int) (*config.RoleStruct, error) {
 	roleID := roleDAO.raft.GetParams().IdGenerator.NewStringID(roleName)
 	return roleDAO.Get(roleID, CONSISTENCY_LEVEL)
 }

@@ -14,10 +14,10 @@ import (
 
 type ChannelAlgorithmHandler struct {
 	logger       *logging.Logger
-	service      DeviceService
-	device       *config.Device
-	channel      *config.Channel
-	metric       *config.Metric
+	service      DeviceServicer
+	device       config.Device
+	channel      config.Channel
+	metric       config.Metric
 	value        float64
 	threshold    float64
 	backoffTable map[uint64]time.Time
@@ -25,9 +25,14 @@ type ChannelAlgorithmHandler struct {
 	AlgorithmHandler
 }
 
-func NewChannelAlgorithmHandler(logger *logging.Logger, idGenerator util.IdGenerator,
-	service DeviceService, device *config.Device, channel *config.Channel,
-	metric *config.Metric, value, threshold float64,
+func NewChannelAlgorithmHandler(
+	logger *logging.Logger,
+	idGenerator util.IdGenerator,
+	service DeviceServicer,
+	device config.Device,
+	channel config.Channel,
+	metric config.Metric,
+	value, threshold float64,
 	backoffTable map[uint64]time.Time) AlgorithmHandler {
 
 	return &ChannelAlgorithmHandler{
@@ -69,12 +74,12 @@ func (h *ChannelAlgorithmHandler) Handle() (bool, error) {
 		}
 		h.logger.Debugf("Autodosing using pH algorithm: diff=%.2f, dose=%d", diff, dose)
 		message := fmt.Sprintf("%s: %.2f, auto-dosing %s for %d seconds", h.metric.GetName(), h.value, h.channel.GetName(), dose)
-		_, err := h.service.TimerSwitch(h.channel.GetChannelID(), dose, message)
+		_, err := h.service.TimerSwitch(h.channel.GetBoardID(), dose, message)
 		if err != nil {
 			return false, err
 		}
 		if h.channel.GetBackoff() > 0 {
-			h.backoffTable[h.channel.ID] = time.Now()
+			h.backoffTable[h.channel.Identifier()] = time.Now()
 		}
 		return true, nil
 	}

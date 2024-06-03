@@ -31,7 +31,7 @@ func NewRaftScheduleDAO(logger *logging.Logger,
 }
 
 func (dao *RaftScheduleDAO) Save(farmID, deviceID uint64,
-	schedule *config.Schedule) error {
+	schedule *config.ScheduleStruct) error {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -53,11 +53,11 @@ func (dao *RaftScheduleDAO) Save(farmID, deviceID uint64,
 			}
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftScheduleDAO) Get(farmID, deviceID, channelID,
-	scheduleID uint64, CONSISTENCY_LEVEL int) (*config.Schedule, error) {
+	scheduleID uint64, CONSISTENCY_LEVEL int) (*config.ScheduleStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -76,16 +76,16 @@ func (dao *RaftScheduleDAO) Get(farmID, deviceID, channelID,
 			}
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (dao *RaftScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.Schedule) error {
+func (dao *RaftScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.ScheduleStruct) error {
 	dao.logger.Debugf(fmt.Sprintf("Deleting schedule record: %+v", schedule))
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	newScheduleList := make([]*config.Schedule, 0)
+	newScheduleList := make([]*config.ScheduleStruct, 0)
 	for _, device := range farmConfig.GetDevices() {
 		if device.ID == deviceID {
 			for _, channel := range device.GetChannels() {
@@ -109,11 +109,11 @@ func (dao *RaftScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.Sch
 			}
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftScheduleDAO) GetByChannelID(farmID, deviceID,
-	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Schedule, error) {
+	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.ScheduleStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -121,12 +121,12 @@ func (dao *RaftScheduleDAO) GetByChannelID(farmID, deviceID,
 	}
 	device, err := farmConfig.GetDeviceById(deviceID)
 	if err != nil {
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	for _, channel := range device.GetChannels() {
 		if channel.ID == channelID {
 			return channel.GetSchedule(), nil
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }

@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -18,7 +19,7 @@ func NewChannelDAO(logger *logging.Logger, db *gorm.DB) dao.ChannelDAO {
 }
 
 // FarmID is accepted to support key/value database compatibility.
-func (channelDAO *GormChannelDAO) Save(farmID uint64, channel *config.Channel) error {
+func (channelDAO *GormChannelDAO) Save(farmID uint64, channel *config.ChannelStruct) error {
 	channelDAO.logger.Debugf("Saving channel record")
 	//return channelDAO.db.Save(channel.(*entity.Channel)).Error
 	return channelDAO.db.Save(channel).Error
@@ -27,9 +28,9 @@ func (channelDAO *GormChannelDAO) Save(farmID uint64, channel *config.Channel) e
 // Looks up a device by its ID. Organization and Farm ID are accepted
 // to support key/value database compatibility.
 func (channelDAO *GormChannelDAO) GetByDevice(orgID, farmID,
-	deviceID uint64, CONSISTENCY_LEVEL int) ([]*config.Channel, error) {
+	deviceID uint64, CONSISTENCY_LEVEL int) ([]*config.ChannelStruct, error) {
 
-	var channels []*config.Channel
+	var channels []*config.ChannelStruct
 	if err := channelDAO.db.Table("channels").
 		Select("channels.*").
 		Joins("JOIN devices on channels.device_id = devices.id").
@@ -37,6 +38,12 @@ func (channelDAO *GormChannelDAO) GetByDevice(orgID, farmID,
 		Joins("JOIN permissions on farms.id = permissions.farm_id").
 		Where("channels.device_id = ? and permissions.farm_id = ?", deviceID, farmID).
 		Find(&channels).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			channelDAO.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		channelDAO.logger.Error(err)
 		return nil, err
 	}
 	return channels, nil
@@ -45,11 +52,16 @@ func (channelDAO *GormChannelDAO) GetByDevice(orgID, farmID,
 // The orgID and farmID are accepted to support
 // key/value database compatibility.
 func (channelDAO *GormChannelDAO) Get(orgID, farmID,
-	channelID uint64, CONSISTENCY_LEVEL int) (*config.Channel, error) {
+	channelID uint64, CONSISTENCY_LEVEL int) (*config.ChannelStruct, error) {
 
 	channelDAO.logger.Debugf("Getting channel id %d", channelID)
-	var entity config.Channel
+	var entity config.ChannelStruct
 	if err := channelDAO.db.First(&entity, channelID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			channelDAO.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		channelDAO.logger.Error(err)
 		return nil, err
 	}
 	return &entity, nil

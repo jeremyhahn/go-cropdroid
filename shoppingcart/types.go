@@ -8,12 +8,12 @@ type CreateInvoiceRequest struct {
 }
 
 type PaymentIntentResponse struct {
-	Customer       *config.Customer `json:"customer"`
-	InvoiceID      string           `json:"invoiceId"`
-	PaymentIntent  string           `json:"paymentIntent"`
-	ClientSecret   string           `json:"clientSecret"`
-	EphemeralKey   string           `json:"ephemeralKey"`
-	PublishableKey string           `json:"publishableKey"`
+	Customer       *config.CustomerStruct `json:"customer"`
+	InvoiceID      string                 `json:"invoiceId"`
+	PaymentIntent  string                 `json:"paymentIntent"`
+	ClientSecret   string                 `json:"clientSecret"`
+	EphemeralKey   string                 `json:"ephemeralKey"`
+	PublishableKey string                 `json:"publishableKey"`
 }
 
 type CreatePaymentIntentRequest struct {
@@ -28,15 +28,15 @@ type SetupIntentRequest struct {
 }
 
 type SetupIntentResponse struct {
-	Customer       config.Customer `json:"customer"`
-	EphemeralKey   string          `json:"ephemeral_key"`
-	ClientSecret   string          `json:"client_secret"`
-	PublishableKey string          `json:"publishable_key"`
+	Customer       config.CustomerStruct `json:"customer"`
+	EphemeralKey   string                `json:"ephemeral_key"`
+	ClientSecret   string                `json:"client_secret"`
+	PublishableKey string                `json:"publishable_key"`
 }
 
 type CustomerEphemeralKeyResponse struct {
-	Customer     config.Customer `json:"customer"`
-	EphemeralKey string          `json:"ephemeral_key"`
+	Customer     config.CustomerStruct `json:"customer"`
+	EphemeralKey string                `json:"ephemeral_key"`
 }
 
 type AttachPaymentMethodRequest struct {
@@ -81,8 +81,8 @@ type Subscription struct {
 	PriceID         string     `json:"price_id"`
 	LatestInvoiceID string     `json:"latest_invoice"`
 	//DefaultPaymentMethodID string           `json:"default_payment_method"`
-	PaymentIntentID string           `json:"payment_intent"`
-	Customer        *config.Customer `json:"customer"`
+	PaymentIntentID string                 `json:"payment_intent"`
+	Customer        *config.CustomerStruct `json:"customer"`
 }
 
 type TaxRate struct {

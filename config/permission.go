@@ -1,56 +1,68 @@
 package config
 
-type Permission struct {
-	OrganizationID uint64 `gorm:"primaryKey" yaml:"orgId" json:"orgId"`
-	FarmID         uint64 `gorm:"primaryKey" yaml:"farmId" json:"farmId"`
-	UserID         uint64 `gorm:"primaryKey" yaml:"userId" json:"userId"`
-	RoleID         uint64 `gorm:"primaryKey" yaml:"roleId" json:"roleId"`
-	// OrganizationID uint64 `yaml:"orgId" json:"orgId"`
-	// FarmID         uint64 `gorm:"many2many:permission_farm" yaml:"farmId" json:"farmId"`
-	// UserID         uint64 `yaml:"userId" json:"userId"`
-	// RoleID         uint64 `gorm:"many2many:permission_role" yaml:"roleId" json:"roleId"`
+type Permission interface {
+	GetOrgID() uint64
+	SetOrgID(id uint64)
+	GetFarmID() uint64
+	SetFarmID(id uint64)
+	GetUserID() uint64
+	SetUserID(id uint64)
+	GetRoleID() uint64
+	SetRoleID(id uint64)
 }
 
-func NewPermission() *Permission {
-	return &Permission{}
+type PermissionStruct struct {
+	OrganizationID uint64 `gorm:"primaryKey;autoIncrement=false" yaml:"orgId" json:"orgId"`
+	FarmID         uint64 `gorm:"primaryKey;autoIncrement=false" yaml:"farmId" json:"farmId"`
+	UserID         uint64 `gorm:"primaryKey;autoIncrement=false" yaml:"userId" json:"userId"`
+	RoleID         uint64 `gorm:"primaryKey;autoIncrement=false" yaml:"roleId" json:"roleId"`
+	Permission     `sql:"-" gorm:"-"`
 }
 
-func CreatePermission(orgID, farmID, userID, roleID uint64) *Permission {
-	return &Permission{
+func NewPermission() *PermissionStruct {
+	return &PermissionStruct{}
+}
+
+func CreatePermissionStruct(orgID, farmID, userID, roleID uint64) *PermissionStruct {
+	return &PermissionStruct{
 		OrganizationID: orgID,
 		FarmID:         farmID,
 		UserID:         userID,
 		RoleID:         roleID}
 }
 
-func (perms *Permission) GetOrgID() uint64 {
+func (perms *PermissionStruct) TableName() string {
+	return "permissions"
+}
+
+func (perms *PermissionStruct) GetOrgID() uint64 {
 	return perms.OrganizationID
 }
 
-func (perms *Permission) SetOrgID(id uint64) {
+func (perms *PermissionStruct) SetOrgID(id uint64) {
 	perms.OrganizationID = id
 }
 
-func (perms *Permission) GetFarmID() uint64 {
+func (perms *PermissionStruct) GetFarmID() uint64 {
 	return perms.FarmID
 }
 
-func (perms *Permission) SetFarmID(id uint64) {
+func (perms *PermissionStruct) SetFarmID(id uint64) {
 	perms.FarmID = id
 }
 
-func (perms *Permission) GetUserID() uint64 {
+func (perms *PermissionStruct) GetUserID() uint64 {
 	return perms.UserID
 }
 
-func (perms *Permission) SetUserID(id uint64) {
+func (perms *PermissionStruct) SetUserID(id uint64) {
 	perms.UserID = id
 }
 
-func (perms *Permission) GetRoleID() uint64 {
+func (perms *PermissionStruct) GetRoleID() uint64 {
 	return perms.RoleID
 }
 
-func (perms *Permission) SetRoleID(id uint64) {
+func (perms *PermissionStruct) SetRoleID(id uint64) {
 	perms.RoleID = id
 }

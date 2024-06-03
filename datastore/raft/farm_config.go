@@ -47,7 +47,7 @@ func (farmDAO *RaftFarmConfig) StartClusterNode(farmID uint64, waitForClusterRea
 	params := farmDAO.raft.GetParams()
 	nodeID := params.GetNodeID()
 	farmDAO.logger.Debugf("StartClusterNode *config.Farm raft cluster %d on node %d", farmID, nodeID)
-	sm := statemachine.NewGenericOnDiskStateMachine[*config.Farm](farmDAO.logger,
+	sm := statemachine.NewGenericOnDiskStateMachine[*config.FarmStruct](farmDAO.logger,
 		params.IdGenerator, params.DataDir, farmID, nodeID)
 	err := farmDAO.raft.CreateOnDiskCluster(farmID, params.Join, sm.CreateOnDiskStateMachine)
 	if err != nil {
@@ -78,7 +78,7 @@ func (farmDAO *RaftFarmConfig) StartLocalCluster(localCluster *LocalCluster, far
 	return nil
 }
 
-func (farmDAO *RaftFarmConfig) Save(farmConfig *config.Farm) error {
+func (farmDAO *RaftFarmConfig) Save(farmConfig *config.FarmStruct) error {
 
 	idSetter := farmDAO.raft.GetParams().IdSetter
 	idSetter.SetIds(farmConfig)
@@ -142,7 +142,7 @@ func (farmDAO *RaftFarmConfig) Save(farmConfig *config.Farm) error {
 	return nil
 }
 
-func (farmDAO *RaftFarmConfig) Delete(farm *config.Farm) error {
+func (farmDAO *RaftFarmConfig) Delete(farm *config.FarmStruct) error {
 	farmDAO.logger.Debugf(fmt.Sprintf("Delete Raft entity *config.Farm: %d", farm.ID))
 	perm, err := json.Marshal(farm)
 	if err != nil {
@@ -174,7 +174,7 @@ func (farmDAO *RaftFarmConfig) Delete(farm *config.Farm) error {
 	return nil
 }
 
-func (farmDAO *RaftFarmConfig) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.Farm, error) {
+func (farmDAO *RaftFarmConfig) Get(farmID uint64, CONSISTENCY_LEVEL int) (*config.FarmStruct, error) {
 	var result interface{}
 	var err error
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
@@ -191,16 +191,16 @@ func (farmDAO *RaftFarmConfig) Get(farmID uint64, CONSISTENCY_LEVEL int) (*confi
 		}
 	}
 	if result != nil {
-		farmConfig := result.(*config.Farm)
+		farmConfig := result.(*config.FarmStruct)
 		farmConfig.ParseSettings()
 		return farmConfig, nil
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (farmDAO *RaftFarmConfig) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
+func (farmDAO *RaftFarmConfig) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int) ([]*config.FarmStruct, error) {
 	farmDAO.logger.Debugf("GetByIds FarmConfig Raft entity: %+v", farmIds)
-	farms := make([]*config.Farm, 0)
+	farms := make([]*config.FarmStruct, 0)
 	for _, farmID := range farmIds {
 		farm, err := farmDAO.Get(farmID, CONSISTENCY_LEVEL)
 		if err != nil {
@@ -212,7 +212,7 @@ func (farmDAO *RaftFarmConfig) GetByIds(farmIds []uint64, CONSISTENCY_LEVEL int)
 	return farms, nil
 }
 
-func (farmDAO *RaftFarmConfig) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
+func (farmDAO *RaftFarmConfig) GetByUserID(userID uint64, CONSISTENCY_LEVEL int) ([]*config.FarmStruct, error) {
 	farmDAO.logger.Debugf("GetByUserID FarmConfig Raft query, userID: %d", userID)
 
 	user, err := farmDAO.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
@@ -221,7 +221,7 @@ func (farmDAO *RaftFarmConfig) GetByUserID(userID uint64, CONSISTENCY_LEVEL int)
 	}
 
 	farmIDs := user.GetFarmRefs()
-	farms := make([]*config.Farm, len(farmIDs))
+	farms := make([]*config.FarmStruct, len(farmIDs))
 
 	for i, farmID := range farmIDs {
 		var result interface{}
@@ -241,11 +241,11 @@ func (farmDAO *RaftFarmConfig) GetByUserID(userID uint64, CONSISTENCY_LEVEL int)
 			}
 		}
 		switch v := result.(type) {
-		case *config.Farm:
+		case *config.FarmStruct:
 			farms[i] = v
 		default:
 			farmDAO.logger.Errorf("GetByIds FarmConfig unexpected query type: %T", v)
-			return []*config.Farm{}, nil
+			return []*config.FarmStruct{}, nil
 		}
 	}
 	return farms, nil

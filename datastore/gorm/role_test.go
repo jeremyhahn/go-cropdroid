@@ -14,28 +14,28 @@ func TestRole_GetByUserAndOrgID_SingleRole(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   1,
 		Name: "admin"})
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   2,
 		Name: "cultivator"})
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   3,
 		Name: "analyst"})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
-	userDAO.Save(&config.User{
+	userDAO.Save(&config.UserStruct{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "foo"})
 
-	currentTest.gorm.Create(&config.Permission{
+	currentTest.gorm.Create(&config.PermissionStruct{
 		UserID:         1,
 		RoleID:         1,
 		OrganizationID: 0})
@@ -44,8 +44,8 @@ func TestRole_GetByUserAndOrgID_SingleRole(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(page1.Entities))
 	assert.Equal(t, "admin", page1.Entities[0].GetName())
-	assert.Equal(t, "analyst", page1.Entities[1].GetName())
-	assert.Equal(t, "cultivator", page1.Entities[2].GetName())
+	assert.Equal(t, "cultivator", page1.Entities[1].GetName())
+	assert.Equal(t, "analyst", page1.Entities[2].GetName())
 }
 
 func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
@@ -53,32 +53,32 @@ func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   1,
 		Name: "admin"})
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   2,
 		Name: "cultivator"})
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   3,
 		Name: "analyst"})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
-	userDAO.Save(&config.User{
+	userDAO.Save(&config.UserStruct{
 		ID:       1,
 		Email:    "root@localhost",
 		Password: "foo"})
 
-	currentTest.gorm.Create(&config.Permission{
+	currentTest.gorm.Create(&config.PermissionStruct{
 		UserID:         1,
 		RoleID:         1,
 		OrganizationID: 0})
-	currentTest.gorm.Create(&config.Permission{
+	currentTest.gorm.Create(&config.PermissionStruct{
 		UserID:         1,
 		RoleID:         3,
 		OrganizationID: 0})
@@ -87,8 +87,8 @@ func TestRole_GetByUserAndOrgID_MultiRole(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(page1.Entities))
 	assert.Equal(t, "admin", page1.Entities[0].GetName())
-	assert.Equal(t, "analyst", page1.Entities[1].GetName())
-	assert.Equal(t, "cultivator", page1.Entities[2].GetName())
+	assert.Equal(t, "cultivator", page1.Entities[1].GetName())
+	assert.Equal(t, "analyst", page1.Entities[2].GetName())
 }
 
 func TestRole_GetAll(t *testing.T) {
@@ -96,16 +96,16 @@ func TestRole_GetAll(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   1,
 		Name: "admin"})
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   2,
 		Name: "cultivator"})
-	roleDAO.Save(&config.Role{
+	roleDAO.Save(&config.RoleStruct{
 		ID:   3,
 		Name: "analyst"})
 
@@ -113,6 +113,6 @@ func TestRole_GetAll(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(page1.Entities))
 	assert.Equal(t, "admin", page1.Entities[0].GetName())
-	assert.Equal(t, "analyst", page1.Entities[1].GetName())
-	assert.Equal(t, "cultivator", page1.Entities[2].GetName())
+	assert.Equal(t, "cultivator", page1.Entities[1].GetName())
+	assert.Equal(t, "analyst", page1.Entities[2].GetName())
 }

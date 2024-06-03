@@ -1,82 +1,119 @@
 package config
 
-type Channel struct {
-	ID             uint64       `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
-	DeviceID       uint64       `yaml:"device" json:"device_id"`
-	ChannelID      int          `yaml:"channel" json:"channel_id"`
-	Name           string       `yaml:"name" json:"name"`
-	Enable         bool         `yaml:"enable" json:"enable"`
-	Notify         bool         `yaml:"notify" json:"notify"`
-	Conditions     []*Condition `yaml:"conditions" json:"conditions"`
-	Schedule       []*Schedule  `yaml:"schedule" json:"schedule"`
-	Duration       int          `yaml:"duration" json:"duration"`
-	Debounce       int          `yaml:"debounce" json:"debounce"`
-	Backoff        int          `yaml:"backoff" json:"backoff"`
-	AlgorithmID    uint64       `yaml:"algorithm" json:"algorithm_id"`
-	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
+type CommonChannel interface {
+	GetDeviceID() uint64
+	SetDeviceID(uint64)
+	GetBoardID() int
+	SetBoardID(int)
+	GetName() string
+	SetName(name string)
+	IsEnabled() bool
+	SetEnable(bool)
+	IsNotify() bool
+	SetNotify(bool)
+	GetDuration() int
+	SetDuration(int)
+	GetDebounce() int
+	SetDebounce(int)
+	GetBackoff() int
+	SetBackoff(int)
+	GetAlgorithmID() uint64
+	SetAlgorithmID(uint64)
+	KeyValueEntity
 }
 
-func NewChannel() *Channel {
-	return &Channel{
-		Conditions: make([]*Condition, 0),
-		Schedule:   make([]*Schedule, 0)}
+type Channel interface {
+	AddCondition(condition *ConditionStruct)
+	GetConditions() []*ConditionStruct
+	SetConditions(conditions []*ConditionStruct)
+	SetCondition(condition *ConditionStruct)
+	GetSchedule() []*ScheduleStruct
+	SetSchedule(schedule []*ScheduleStruct)
+	SetScheduleItem(schedule *ScheduleStruct)
+	CommonChannel
 }
 
-func (channel *Channel) SetID(id uint64) {
+type ChannelStruct struct {
+	ID          uint64             `gorm:"primary_key;AUTO_INCREMENT" yaml:"id" json:"id"`
+	DeviceID    uint64             `yaml:"device" json:"device_id"`
+	BoardID     int                `yaml:"board" json:"board_id"`
+	Name        string             `yaml:"name" json:"name"`
+	Enable      bool               `yaml:"enable" json:"enable"`
+	Notify      bool               `yaml:"notify" json:"notify"`
+	Conditions  []*ConditionStruct `gorm:"foreignKey:ChannelID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"conditions" json:"conditions"`
+	Schedule    []*ScheduleStruct  `gorm:"foreignKey:ChannelID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" yaml:"schedule" json:"schedule"`
+	Duration    int                `yaml:"duration" json:"duration"`
+	Debounce    int                `yaml:"debounce" json:"debounce"`
+	Backoff     int                `yaml:"backoff" json:"backoff"`
+	AlgorithmID uint64             `yaml:"algorithm" json:"algorithm_id"`
+	Channel     `sql:"-" gorm:"-" yaml:"-" json:"-"`
+}
+
+func NewChannel() *ChannelStruct {
+	return &ChannelStruct{
+		Conditions: make([]*ConditionStruct, 0),
+		Schedule:   make([]*ScheduleStruct, 0)}
+}
+
+func (channel *ChannelStruct) TableName() string {
+	return "channels"
+}
+
+func (channel *ChannelStruct) SetID(id uint64) {
 	channel.ID = id
 }
 
-func (channel *Channel) Identifier() uint64 {
+func (channel *ChannelStruct) Identifier() uint64 {
 	return channel.ID
 }
 
-func (channel *Channel) GetDeviceID() uint64 {
+func (channel *ChannelStruct) GetDeviceID() uint64 {
 	return channel.DeviceID
 }
 
-func (channel *Channel) SetDeviceID(id uint64) {
+func (channel *ChannelStruct) SetDeviceID(id uint64) {
 	channel.DeviceID = id
 }
 
-// Sets the board / channel id using the ID printed on the PCB
-func (channel *Channel) SetChannelID(id int) {
-	channel.ChannelID = id
+// Sets the PCB channel ID
+func (channel *ChannelStruct) SetBoardID(id int) {
+	channel.BoardID = id
 }
 
-// Sets the board / channel id using the ID printed on the PCB
-func (channel *Channel) GetChannelID() int {
-	return channel.ChannelID
+// Gets the PCB channel ID
+func (channel *ChannelStruct) GetBoardID() int {
+	return channel.BoardID
 }
 
-func (channel *Channel) SetName(name string) {
+func (channel *ChannelStruct) SetName(name string) {
 	channel.Name = name
 }
 
-func (channel *Channel) GetName() string {
+func (channel *ChannelStruct) GetName() string {
 	return channel.Name
 }
 
-func (channel *Channel) SetEnable(enable bool) {
+func (channel *ChannelStruct) SetEnable(enable bool) {
 	channel.Enable = enable
 }
 
-func (channel *Channel) IsEnabled() bool {
+func (channel *ChannelStruct) IsEnabled() bool {
 	return channel.Enable
 }
 
-func (channel *Channel) SetNotify(notify bool) {
+func (channel *ChannelStruct) SetNotify(notify bool) {
 	channel.Notify = notify
 }
 
-func (channel *Channel) IsNotify() bool {
+func (channel *ChannelStruct) IsNotify() bool {
 	return channel.Notify
 }
 
-func (channel *Channel) SetConditions(conditions []*Condition) {
+func (channel *ChannelStruct) SetConditions(conditions []*ConditionStruct) {
 	channel.Conditions = conditions
 }
 
-func (channel *Channel) SetCondition(condition *Condition) {
+func (channel *ChannelStruct) SetCondition(condition *ConditionStruct) {
 	for i, c := range channel.Conditions {
 		if c.ID == condition.ID {
 			channel.Conditions[i] = condition
@@ -86,19 +123,19 @@ func (channel *Channel) SetCondition(condition *Condition) {
 	channel.Conditions = append(channel.Conditions, condition)
 }
 
-func (channel *Channel) AddCondition(condition *Condition) {
+func (channel *ChannelStruct) AddCondition(condition *ConditionStruct) {
 	channel.Conditions = append(channel.Conditions, condition)
 }
 
-func (channel *Channel) GetConditions() []*Condition {
+func (channel *ChannelStruct) GetConditions() []*ConditionStruct {
 	return channel.Conditions
 }
 
-func (channel *Channel) SetSchedule(schedule []*Schedule) {
+func (channel *ChannelStruct) SetSchedule(schedule []*ScheduleStruct) {
 	channel.Schedule = schedule
 }
 
-func (channel *Channel) SetScheduleItem(schedule *Schedule) {
+func (channel *ChannelStruct) SetScheduleItem(schedule *ScheduleStruct) {
 	for i, s := range channel.Schedule {
 		if s.ID == schedule.ID {
 			channel.Schedule[i] = schedule
@@ -113,38 +150,38 @@ func (channel *Channel) DeleteSchedule(schedule []Schedule, pos int) []Schedule 
 	append(schedule[:pos], schedule[pos+1:]...)
 }*/
 
-func (channel *Channel) GetSchedule() []*Schedule {
+func (channel *ChannelStruct) GetSchedule() []*ScheduleStruct {
 	return channel.Schedule
 }
 
-func (channel *Channel) SetDuration(duration int) {
+func (channel *ChannelStruct) SetDuration(duration int) {
 	channel.Duration = duration
 }
 
-func (channel *Channel) GetDuration() int {
+func (channel *ChannelStruct) GetDuration() int {
 	return channel.Duration
 }
 
-func (channel *Channel) SetDebounce(debounce int) {
+func (channel *ChannelStruct) SetDebounce(debounce int) {
 	channel.Debounce = debounce
 }
 
-func (channel *Channel) GetDebounce() int {
+func (channel *ChannelStruct) GetDebounce() int {
 	return channel.Debounce
 }
 
-func (channel *Channel) SetBackoff(backoff int) {
+func (channel *ChannelStruct) SetBackoff(backoff int) {
 	channel.Backoff = backoff
 }
 
-func (channel *Channel) GetBackoff() int {
+func (channel *ChannelStruct) GetBackoff() int {
 	return channel.Backoff
 }
 
-func (channel *Channel) SetAlgorithmID(id uint64) {
+func (channel *ChannelStruct) SetAlgorithmID(id uint64) {
 	channel.AlgorithmID = id
 }
 
-func (channel *Channel) GetAlgorithmID() uint64 {
+func (channel *ChannelStruct) GetAlgorithmID() uint64 {
 	return channel.AlgorithmID
 }

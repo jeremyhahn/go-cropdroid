@@ -10,7 +10,7 @@ import (
 )
 
 func TestWorkflowStepCRUD(t *testing.T, workflowStepDAO dao.WorkflowStepDAO,
-	org *config.Organization) {
+	org *config.OrganizationStruct) {
 
 	farm := org.GetFarms()[0]
 	farmID := farm.ID

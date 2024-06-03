@@ -30,7 +30,7 @@ func NewRaftWorkflowStepDAO(logger *logging.Logger,
 		farmDAO: farmDAO}
 }
 
-func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.WorkflowStep) error {
+func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.WorkflowStepStruct) error {
 	idSetter := dao.raft.GetParams().IdSetter
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -39,16 +39,16 @@ func (dao *RaftWorkflowStepDAO) Save(farmID uint64, workflowStep *config.Workflo
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.ID == workflowStep.GetWorkflowID() {
 			workflow.SetStep(workflowStep)
-			idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
+			idSetter.SetWorkflowIds(farmID, []*config.WorkflowStruct{workflow})
 			farmConfig.SetWorkflow(workflow)
 			return dao.farmDAO.Save(farmConfig)
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftWorkflowStepDAO) Get(farmID, workflowID, workflowStepID uint64,
-	CONSISTENCY_LEVEL int) (*config.WorkflowStep, error) {
+	CONSISTENCY_LEVEL int) (*config.WorkflowStepStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -61,16 +61,16 @@ func (dao *RaftWorkflowStepDAO) Get(farmID, workflowID, workflowStepID uint64,
 			}
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (dao *RaftWorkflowStepDAO) Delete(farmID uint64, workflowStep *config.WorkflowStep) error {
+func (dao *RaftWorkflowStepDAO) Delete(farmID uint64, workflowStep *config.WorkflowStepStruct) error {
 	dao.logger.Debugf(fmt.Sprintf("Deleting workflowStep record: %+v", workflowStep))
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	newWorkflowStepList := make([]*config.WorkflowStep, 0)
+	newWorkflowStepList := make([]*config.WorkflowStepStruct, 0)
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.ID == workflowStep.GetWorkflowID() {
 			for _, step := range workflow.GetSteps() {
@@ -84,11 +84,11 @@ func (dao *RaftWorkflowStepDAO) Delete(farmID uint64, workflowStep *config.Workf
 			return dao.farmDAO.Save(farmConfig)
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftWorkflowStepDAO) GetByWorkflowID(farmID, workflowID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.WorkflowStep, error) {
+	CONSISTENCY_LEVEL int) ([]*config.WorkflowStepStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, CONSISTENCY_LEVEL)
 	if err != nil {
@@ -99,5 +99,5 @@ func (dao *RaftWorkflowStepDAO) GetByWorkflowID(farmID, workflowID uint64,
 			return workflow.GetSteps(), nil
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }

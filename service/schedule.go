@@ -1,6 +1,3 @@
-//go:build !cluster
-// +build !cluster
-
 package service
 
 import (
@@ -11,7 +8,6 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
-	"github.com/jeremyhahn/go-cropdroid/mapper"
 )
 
 const (
@@ -25,48 +21,43 @@ const (
 
 type ScheduleService interface {
 	GetNow() *time.Time
-	GetSchedule(session Session, channelID uint64) ([]*config.Schedule, error)
+	GetSchedule(session Session, channelID uint64) ([]config.Schedule, error)
 	//GetSchedules(user common.UserAccount, deviceID int) ([]config.Schedule, error)
-	Create(session Session, schedule *config.Schedule) (*config.Schedule, error)
-	Update(session Session, schedule *config.Schedule) error
-	Delete(session Session, schedule *config.Schedule) error
-	IsScheduled(schedule *config.Schedule, duration int) bool
+	Create(session Session, schedule config.Schedule) (config.Schedule, error)
+	Update(session Session, schedule config.Schedule) error
+	Delete(session Session, schedule config.Schedule) error
+	IsScheduled(schedule config.Schedule, duration int) bool
 }
 
 type DefaultScheduleService struct {
-	app           *app.App
-	dao           dao.ScheduleDAO
-	mapper        mapper.ScheduleMapper
-	now           *time.Time
-	configService ConfigService
+	app *app.App
+	dao dao.ScheduleDAO
+	now *time.Time
 	ScheduleService
 }
 
 // NewScheduleService creates a new default ScheduleService instance using the current time as "now"
-func NewScheduleService(app *app.App, scheduleDAO dao.ScheduleDAO,
-	scheduleMapper mapper.ScheduleMapper,
-	configService ConfigService) ScheduleService {
+func NewScheduleService(
+	app *app.App,
+	scheduleDAO dao.ScheduleDAO) ScheduleService {
 
 	return &DefaultScheduleService{
-		app:           app,
-		dao:           scheduleDAO,
-		mapper:        scheduleMapper,
-		now:           nil,
-		configService: configService}
+		app: app,
+		dao: scheduleDAO,
+		now: nil}
 }
 
 // CreateScheduleService creates a new ScheduleService instance using the specified time as "now"
-func CreateScheduleService(app *app.App, scheduleDAO dao.ScheduleDAO,
-	scheduleMapper mapper.ScheduleMapper, now time.Time,
-	configService ConfigService) (ScheduleService, error) {
+func CreateScheduleService(
+	app *app.App,
+	scheduleDAO dao.ScheduleDAO,
+	now time.Time) (ScheduleService, error) {
 
 	app.Logger.Debugf("Setting current time to %s", now)
 	return &DefaultScheduleService{
-		app:           app,
-		dao:           scheduleDAO,
-		mapper:        scheduleMapper,
-		now:           &now,
-		configService: configService}, nil
+		app: app,
+		dao: scheduleDAO,
+		now: &now}, nil
 }
 
 // GetNow returns the current time used for calculations within the ScheduleService
@@ -83,23 +74,21 @@ func (service *DefaultScheduleService) GetNow() *time.Time {
 
 // GetSchedule retrieves a specific schedule entry from the database
 func (service *DefaultScheduleService) GetSchedule(session Session,
-	channelID uint64) ([]*config.Schedule, error) {
+	channelID uint64) ([]config.Schedule, error) {
+
 	farmID := session.GetRequestedFarmID()
 	deviceID := uint64(0)
-	consistencyLeveL := session.GetFarmService().GetConsistencyLevel()
-	entities, err := service.dao.GetByChannelID(farmID, deviceID,
-		channelID, consistencyLeveL)
+	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
+	entities, err := service.dao.GetByChannelID(farmID, deviceID, channelID, consistencyLevel)
 	if err != nil {
 		return nil, err
 	}
-	schedules := make([]*config.Schedule, len(entities))
-	copy(schedules, entities)
-	// for i, entity := range entities {
-	// 	//schedules[i] = service.mapper.MapEntityToModel(&entity)
-	// 	schedules[i] = entity
-	// }
+	schedules := make([]config.Schedule, len(entities))
+	for i, entity := range entities {
+		//schedules[i] = service.mapper.MapEntityToModel(&entity)
+		schedules[i] = entity
+	}
 	return schedules, nil
-	//return entities, nil
 }
 
 /*
@@ -118,7 +107,7 @@ func (service *DefaultScheduleService) GetSchedules(user common.UserAccount, dev
 */
 
 // Create a new schedule entry
-func (service *DefaultScheduleService) Create(session Session, schedule *config.Schedule) (*config.Schedule, error) {
+func (service *DefaultScheduleService) Create(session Session, schedule config.Schedule) (config.Schedule, error) {
 	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
 	//entity := service.mapper.MapModelToEntity(schedule)
 	// if err := service.dao.Create(schedule); err != nil {
@@ -129,7 +118,7 @@ func (service *DefaultScheduleService) Create(session Session, schedule *config.
 	for _, device := range farmConfig.GetDevices() {
 		for _, channel := range device.GetChannels() {
 			if channel.ID == schedule.GetChannelID() {
-				channel.SetScheduleItem(schedule)
+				channel.SetScheduleItem(schedule.(*config.ScheduleStruct))
 				device.SetChannel(channel)
 				return schedule, farmService.SetDeviceConfig(device)
 			}
@@ -139,7 +128,7 @@ func (service *DefaultScheduleService) Create(session Session, schedule *config.
 }
 
 // Update an existing schedule entry in the database
-func (service *DefaultScheduleService) Update(session Session, schedule *config.Schedule) error {
+func (service *DefaultScheduleService) Update(session Session, schedule config.Schedule) error {
 	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
 	// if err := service.dao.Save(schedule); err != nil {
 	// 	return err
@@ -150,7 +139,7 @@ func (service *DefaultScheduleService) Update(session Session, schedule *config.
 		for _, channel := range device.GetChannels() {
 			for _, _schedule := range channel.GetSchedule() {
 				if channel.ID == _schedule.GetChannelID() {
-					channel.SetScheduleItem(schedule)
+					channel.SetScheduleItem(schedule.(*config.ScheduleStruct))
 					device.SetChannel(channel)
 					return farmService.SetDeviceConfig(device)
 				}
@@ -161,11 +150,11 @@ func (service *DefaultScheduleService) Update(session Session, schedule *config.
 }
 
 // Delete a schedule entry from the database
-func (service *DefaultScheduleService) Delete(session Session, schedule *config.Schedule) error {
+func (service *DefaultScheduleService) Delete(session Session, schedule config.Schedule) error {
 	// v0.0.3a: farmService.SetDeviceConfig doesnt delete the schedule :(
 	farmID := session.GetRequestedFarmID()
 	deviceID := uint64(0)
-	if err := service.dao.Delete(farmID, deviceID, schedule); err != nil {
+	if err := service.dao.Delete(farmID, deviceID, schedule.(*config.ScheduleStruct)); err != nil {
 		return err
 	}
 	farmService := session.GetFarmService()
@@ -175,7 +164,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule *config.
 			// Android client only sends the schedule id on delete
 			//if channel.GetChannelID() == schedule.GetChannelID() {
 			for i, _schedule := range channel.GetSchedule() {
-				if _schedule.ID == schedule.ID {
+				if _schedule.ID == schedule.Identifier() {
 					channel.Schedule = append(channel.Schedule[:i], channel.Schedule[i+1:]...)
 					device.SetChannel(channel)
 					return farmService.SetDeviceConfig(device)
@@ -188,7 +177,7 @@ func (service *DefaultScheduleService) Delete(session Session, schedule *config.
 }
 
 // IsScheduled takes a Schedule and number of seconds that specify the duration of time the switch should be on
-func (service *DefaultScheduleService) IsScheduled(schedule *config.Schedule, duration int) bool {
+func (service *DefaultScheduleService) IsScheduled(schedule config.Schedule, duration int) bool {
 	service.app.Logger.Debugf("schedule=%+v", schedule)
 	startDate := schedule.GetStartDate()
 	now := time.Now().In(service.app.Location)

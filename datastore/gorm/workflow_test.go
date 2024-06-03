@@ -15,8 +15,8 @@ func TestWorkflowCRUD(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Workflow{})
-	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStepStruct{})
 
 	workflowDAO := NewWorkflowDAO(currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, workflowDAO)

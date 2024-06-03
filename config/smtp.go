@@ -1,62 +1,78 @@
 package config
 
-type Smtp struct {
+type Smtp interface {
+	SetEnable(bool)
+	IstEnabled() bool
+	GetHost() string
+	SetHost(host string)
+	GetPort() int
+	SetPort(port int)
+	GetUsername() string
+	SetUsername(username string)
+	GetPassword() string
+	SetPassword(password string)
+	GetRecipient() string
+	SetRecipient(recipient string)
+}
+
+type SmtpStruct struct {
 	Enable    bool   `yaml:"enable" json:"enable"`
 	Host      string `yaml:"host" json:"host"`
 	Port      int    `yaml:"port" json:"port"`
 	Username  string `yaml:"username" json:"username"`
 	Password  string `yaml:"password" json:"password"`
 	Recipient string `yaml:"recipient" json:"recipient"`
+	Smtp
 }
 
-func NewSmtp() *Smtp {
-	return &Smtp{}
+func NewSmtp() *SmtpStruct {
+	return &SmtpStruct{}
 }
 
-func (smtp *Smtp) SetEnable(enabled bool) {
+func (smtp *SmtpStruct) SetEnable(enabled bool) {
 	smtp.Enable = enabled
 }
 
-func (smtp *Smtp) IsEnabled() bool {
+func (smtp *SmtpStruct) IsEnabled() bool {
 	return smtp.Enable
 }
 
-func (smtp *Smtp) SetHost(host string) {
+func (smtp *SmtpStruct) SetHost(host string) {
 	smtp.Host = host
 }
 
-func (smtp *Smtp) GetHost() string {
+func (smtp *SmtpStruct) GetHost() string {
 	return smtp.Host
 }
 
-func (smtp *Smtp) SetPort(port int) {
+func (smtp *SmtpStruct) SetPort(port int) {
 	smtp.Port = port
 }
 
-func (smtp *Smtp) GetPort() int {
+func (smtp *SmtpStruct) GetPort() int {
 	return smtp.Port
 }
 
-func (smtp *Smtp) SetUsername(username string) {
+func (smtp *SmtpStruct) SetUsername(username string) {
 	smtp.Username = username
 }
 
-func (smtp *Smtp) GetUsername() string {
+func (smtp *SmtpStruct) GetUsername() string {
 	return smtp.Username
 }
 
-func (smtp *Smtp) SetPassword(password string) {
+func (smtp *SmtpStruct) SetPassword(password string) {
 	smtp.Password = password
 }
 
-func (smtp *Smtp) GetPassword() string {
+func (smtp *SmtpStruct) GetPassword() string {
 	return smtp.Password
 }
 
-func (smtp *Smtp) SetRecipient(recipient string) {
+func (smtp *SmtpStruct) SetRecipient(recipient string) {
 	smtp.Recipient = recipient
 }
 
-func (smtp *Smtp) GetRecipient() string {
+func (smtp *SmtpStruct) GetRecipient() string {
 	return smtp.Recipient
 }

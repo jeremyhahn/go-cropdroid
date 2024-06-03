@@ -1,10 +1,8 @@
 package gorm
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -21,21 +19,27 @@ func NewDeviceSettingDAO(logger *logging.Logger, db *gorm.DB) dao.DeviceSettingD
 }
 
 // FarmID used for compatibility with Raft
-func (configDAO *GormDeviceSettingDAO) Save(farmID uint64, config *config.DeviceSetting) error {
+func (configDAO *GormDeviceSettingDAO) Save(farmID uint64, config *config.DeviceSettingStruct) error {
 	configDAO.logger.Debugf("Saving config record")
 	return configDAO.db.Save(config).Error
 }
 
 // FarmID and CONSISTENCY_LEVEL used for compatibility with Raft
-func (configDAO *GormDeviceSettingDAO) Get(farmID, deviceID uint64, name string, CONSISTENCY_LEVEL int) (*config.DeviceSetting, error) {
+func (configDAO *GormDeviceSettingDAO) Get(farmID, deviceID uint64, name string, CONSISTENCY_LEVEL int) (*config.DeviceSettingStruct, error) {
 	configDAO.logger.Debugf("Getting config record '%s'", name)
-	var settings []config.DeviceSetting
+	var settings []config.DeviceSettingStruct
 	if err := configDAO.db.Where("device_id = ? AND key = ?",
 		deviceID, name).Find(&settings).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			configDAO.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		configDAO.logger.Error(err)
 		return nil, err
 	}
 	if len(settings) == 0 {
-		return nil, errors.New(fmt.Sprintf("Config '%s' not found in database for device_id=%d", name, deviceID))
+		return nil, datastore.ErrRecordNotFound
 	}
 	return &settings[0], nil
 }

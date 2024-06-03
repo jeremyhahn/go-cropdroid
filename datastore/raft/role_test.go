@@ -28,7 +28,7 @@ func TestRoleCRUD(t *testing.T) {
 	assert.NotNil(t, roleDAO)
 	roleDAO.StartLocalCluster(IntegrationTestCluster, true)
 
-	role := &config.Role{
+	role := &config.RoleStruct{
 		ID:   idGenerator.NewStringID(testRoleName),
 		Name: testRoleName}
 	err := roleDAO.Save(role)
@@ -43,5 +43,5 @@ func TestRoleCRUD(t *testing.T) {
 
 	persistedRole2, err := roleDAO.GetByName(role.GetName(), consistencyLevel)
 	assert.Nil(t, persistedRole2)
-	assert.Equal(t, err, datastore.ErrNotFound)
+	assert.Equal(t, err, datastore.ErrRecordNotFound)
 }

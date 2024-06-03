@@ -40,7 +40,7 @@ func (store *DeviceIndexMap) Get(id uint64) (config.Device, bool) {
 	if item, ok := store.BigGenericStateStore.Get(id); ok {
 		return item.(config.Device), true
 	}
-	return config.Device{}, false
+	return &config.DeviceStruct{}, false
 }
 
 func (store *DeviceIndexMap) GetAll() []config.Device {

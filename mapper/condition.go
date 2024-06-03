@@ -9,20 +9,20 @@ import (
 )
 
 type ConditionMapper interface {
-	MapConfigToView(entity *config.Condition, deviceType string,
-		metric *config.Metric, channelID uint64) *viewmodel.Condition
-	MapViewToConfig(viewModel viewmodel.Condition) *config.Condition
+	MapConfigToView(entity *config.ConditionStruct, deviceType string,
+		metric *config.MetricStruct, channelID uint64) *viewmodel.Condition
+	MapViewToConfig(viewModel viewmodel.Condition) *config.ConditionStruct
 }
 
-type DefaultConditionMapper struct {
+type ConditionMapperStruct struct {
 }
 
 func NewConditionMapper() ConditionMapper {
-	return &DefaultConditionMapper{}
+	return &ConditionMapperStruct{}
 }
 
-func (mapper *DefaultConditionMapper) MapConfigToView(entity *config.Condition, deviceType string,
-	metric *config.Metric, channelID uint64) *viewmodel.Condition {
+func (mapper *ConditionMapperStruct) MapConfigToView(entity *config.ConditionStruct, deviceType string,
+	metric *config.MetricStruct, channelID uint64) *viewmodel.Condition {
 
 	text := fmt.Sprintf("%s %s %s %.2f",
 		strings.Title(deviceType),
@@ -42,8 +42,8 @@ func (mapper *DefaultConditionMapper) MapConfigToView(entity *config.Condition, 
 		Text:       text}
 }
 
-func (mapper *DefaultConditionMapper) MapViewToConfig(viewModel viewmodel.Condition) *config.Condition {
-	return &config.Condition{
+func (mapper *ConditionMapperStruct) MapViewToConfig(viewModel viewmodel.Condition) *config.ConditionStruct {
+	return &config.ConditionStruct{
 		ID:         viewModel.ID,
 		WorkflowID: viewModel.GetWorkflowID(),
 		MetricID:   viewModel.GetMetricID(),
@@ -52,20 +52,18 @@ func (mapper *DefaultConditionMapper) MapViewToConfig(viewModel viewmodel.Condit
 		Threshold:  viewModel.GetThreshold()}
 }
 
-/*
-func (mapper *DefaultConditionMapper) comparatorToText(comparator string) string {
-	switch comparator {
-	case ">":
-		return "is greater than"
-	case ">=":
-		return "is greater than or equal to"
-	case "<":
-		return "is less than"
-	case "<=":
-		return "is less than or equal to"
-	case "=":
-		return "is equal to"
-	}
-	return ""
-}
-*/
+// func (mapper *ConditionMapperStruct) comparatorToText(comparator string) string {
+// 	switch comparator {
+// 	case ">":
+// 		return "is greater than"
+// 	case ">=":
+// 		return "is greater than or equal to"
+// 	case "<":
+// 		return "is less than"
+// 	case "<=":
+// 		return "is less than or equal to"
+// 	case "=":
+// 		return "is equal to"
+// 	}
+// 	return ""
+// }

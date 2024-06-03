@@ -26,13 +26,13 @@ type DeviceStore struct {
 	devices      map[uint64]deviceStoreItem
 	mutex        *sync.RWMutex
 	gcTickerStop bool
-	DeviceStorer
+	DeviceStateStorer
 }
 
 // Creates a new memory based state store for devices. This store holds
 // a single DeviceStateMap that represents the current state of a single device.
 func NewMemoryDeviceStore(logger *logging.Logger, len, ttl int,
-	gcTicker time.Duration) DeviceStorer {
+	gcTicker time.Duration) DeviceStateStorer {
 
 	deviceStoreMutex.Lock()
 	defer deviceStoreMutex.Unlock()

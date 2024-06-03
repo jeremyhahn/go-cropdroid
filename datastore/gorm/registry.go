@@ -34,28 +34,27 @@ type GormDaoRegistry struct {
 
 func NewGormRegistry(logger *logging.Logger, gormDB GormDB) dao.Registry {
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
-	db := gormDB.CloneConnection()
 	return &GormDaoRegistry{
 		logger:          logger,
 		gormDB:          gormDB,
 		idGenerator:     idGenerator,
-		permissionDAO:   NewPermissionDAO(logger, db),
-		registrationDAO: NewRegistrationDAO(logger, db),
-		orgDAO:          NewOrganizationDAO(logger, db, idGenerator),
-		farmDAO:         NewFarmDAO(logger, db, idGenerator),
-		//deviceDAO:       NewDeviceDAO(logger, db, gormDB),
-		deviceConfigDAO: NewDeviceSettingDAO(logger, db),
-		metricDAO:       NewMetricDAO(logger, db),
-		channelDAO:      NewChannelDAO(logger, db),
-		scheduleDAO:     NewScheduleDAO(logger, db),
-		conditionDAO:    NewConditionDAO(logger, db),
-		algorithmDAO:    NewGenericGormDAO[*config.Algorithm](logger, db),
-		eventLogDAO:     NewEventLogDAO(logger, db, 0),
-		userDAO:         NewUserDAO(logger, db),
-		roleDAO:         NewRoleDAO(logger, db),
-		customerDAO:     NewCustomerDAO(logger, db),
-		workflowDAO:     NewWorkflowDAO(logger, db),
-		workflowStepDAO: NewWorkflowStepDAO(logger, db)}
+		permissionDAO:   NewPermissionDAO(logger, gormDB.CloneConnection()),
+		registrationDAO: NewRegistrationDAO(logger, gormDB.CloneConnection()),
+		orgDAO:          NewOrganizationDAO(logger, gormDB.CloneConnection(), idGenerator),
+		farmDAO:         NewFarmDAO(logger, gormDB.CloneConnection(), idGenerator),
+		deviceDAO:       NewDeviceDAO(logger, gormDB.CloneConnection()),
+		deviceConfigDAO: NewDeviceSettingDAO(logger, gormDB.CloneConnection()),
+		metricDAO:       NewMetricDAO(logger, gormDB.CloneConnection()),
+		channelDAO:      NewChannelDAO(logger, gormDB.CloneConnection()),
+		scheduleDAO:     NewScheduleDAO(logger, gormDB.CloneConnection()),
+		conditionDAO:    NewConditionDAO(logger, gormDB.CloneConnection()),
+		algorithmDAO:    NewGenericGormDAO[*config.AlgorithmStruct](logger, gormDB.CloneConnection()),
+		eventLogDAO:     NewEventLogDAO(logger, gormDB.CloneConnection(), 0),
+		userDAO:         NewUserDAO(logger, gormDB.CloneConnection()),
+		roleDAO:         NewRoleDAO(logger, gormDB.CloneConnection()),
+		customerDAO:     NewCustomerDAO(logger, gormDB.CloneConnection()),
+		workflowDAO:     NewWorkflowDAO(logger, gormDB.CloneConnection()),
+		workflowStepDAO: NewWorkflowStepDAO(logger, gormDB.CloneConnection())}
 }
 
 func (registry *GormDaoRegistry) GetOrganizationDAO() dao.OrganizationDAO {
@@ -87,8 +86,7 @@ func (registry *GormDaoRegistry) GetDeviceDAO() dao.DeviceDAO {
 
 // Retuns a DeviceDAO with a new connection to the database
 func (registry *GormDaoRegistry) NewDeviceDAO() dao.DeviceDAO {
-	db := registry.gormDB.CloneConnection()
-	return NewDeviceDAO(registry.logger, db)
+	return NewDeviceDAO(registry.logger, registry.gormDB.CloneConnection())
 }
 
 func (registry *GormDaoRegistry) SetDeviceDAO(dao dao.DeviceDAO) {

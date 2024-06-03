@@ -3,12 +3,13 @@ package provisioner
 import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 type FarmProvisioner interface {
 	//BuildConfig(adminUser common.UserAccount) (config.FarmConfig, error)
-	Provision(user common.UserAccount, params *common.ProvisionerParams) (*config.Farm, error)
-	Deprovision(user common.UserAccount, farmID uint64) error
+	Provision(user model.User, params *common.ProvisionerParams) (*config.FarmStruct, error)
+	Deprovision(user model.User, farmID uint64) error
 }
 
 // const (

@@ -58,7 +58,7 @@ func TestGenericRaftCRUD(t *testing.T) {
 	assert.Nil(t, err)
 
 	deletedAlgo, err := genericDAO.Get(testEntity1.ID, common.CONSISTENCY_LOCAL)
-	assert.Equal(t, datastore.ErrNotFound, err)
+	assert.Equal(t, datastore.ErrRecordNotFound, err)
 	assert.Nil(t, deletedAlgo)
 }
 
@@ -175,7 +175,7 @@ func TestGenericRaftCRUDWithTimeSeriesIndex(t *testing.T) {
 	assert.Nil(t, err)
 
 	deletedAlgo, err := genericDAO.Get(testEntity1.ID, common.CONSISTENCY_LOCAL)
-	assert.Equal(t, datastore.ErrNotFound, err)
+	assert.Equal(t, datastore.ErrRecordNotFound, err)
 	assert.Nil(t, deletedAlgo)
 }
 

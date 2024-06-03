@@ -32,14 +32,14 @@ func NewRaftPermissionDAO(logger *logging.Logger, organizationDAO dao.Organizati
 
 // Returns all of the organizations for the specified user
 func (permissionDAO *RaftPermissionDAO) GetOrganizations(userID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Organization, error) {
+	CONSISTENCY_LEVEL int) ([]*config.OrganizationStruct, error) {
 
 	user, err := permissionDAO.userDAO.Get(userID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return nil, err
 	}
 	orgIDs := user.GetOrganizationRefs()
-	orgs := make([]*config.Organization, len(orgIDs))
+	orgs := make([]*config.OrganizationStruct, len(orgIDs))
 	for i, orgID := range orgIDs {
 		org, err := permissionDAO.organizationDAO.Get(orgID, CONSISTENCY_LEVEL)
 		if err != nil {
@@ -52,7 +52,7 @@ func (permissionDAO *RaftPermissionDAO) GetOrganizations(userID uint64,
 
 // Returns all users belonging to the specified organization id
 func (permissionDAO *RaftPermissionDAO) GetUsers(orgID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.User, error) {
+	CONSISTENCY_LEVEL int) ([]*config.UserStruct, error) {
 
 	org, err := permissionDAO.organizationDAO.Get(orgID, CONSISTENCY_LEVEL)
 	if err != nil {
@@ -62,7 +62,7 @@ func (permissionDAO *RaftPermissionDAO) GetUsers(orgID uint64,
 }
 
 func (permissionDAO *RaftPermissionDAO) GetFarms(orgID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Farm, error) {
+	CONSISTENCY_LEVEL int) ([]*config.FarmStruct, error) {
 
 	org, err := permissionDAO.organizationDAO.Get(orgID, CONSISTENCY_LEVEL)
 	if err != nil {
@@ -71,7 +71,7 @@ func (permissionDAO *RaftPermissionDAO) GetFarms(orgID uint64,
 	return org.GetFarms(), nil
 }
 
-func (permissionDAO *RaftPermissionDAO) Save(permission *config.Permission) error {
+func (permissionDAO *RaftPermissionDAO) Save(permission *config.PermissionStruct) error {
 	permissionDAO.logger.Debugf("Saving permission: %+v", permission)
 
 	// perm, err := json.Marshal(*permission.(*config.Permission))
@@ -164,7 +164,7 @@ func (permissionDAO *RaftPermissionDAO) Save(permission *config.Permission) erro
 	return nil
 }
 
-func (permissionDAO *RaftPermissionDAO) Update(permission *config.Permission) error {
+func (permissionDAO *RaftPermissionDAO) Update(permission *config.PermissionStruct) error {
 	permissionDAO.logger.Debugf(fmt.Sprintf("Updating permission record: %+v", permission))
 	// perm, err := json.Marshal(*permission.(*config.Permission))
 	// if err != nil {
@@ -184,7 +184,7 @@ func (permissionDAO *RaftPermissionDAO) Update(permission *config.Permission) er
 	return permissionDAO.Save(permission)
 }
 
-func (permissionDAO *RaftPermissionDAO) Delete(permission *config.Permission) error {
+func (permissionDAO *RaftPermissionDAO) Delete(permission *config.PermissionStruct) error {
 	permissionDAO.logger.Debugf(fmt.Sprintf("Deleting permission record: %+v", permission))
 	// perm, err := json.Marshal(*permission.(*config.Permission))
 	// if err != nil {

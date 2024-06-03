@@ -1,5 +1,1121 @@
-basePath: /
-host: www.cropdroid.com
+basePath: /api/v1
+definitions:
+  app.App:
+    properties:
+      argon2:
+        $ref: '#/definitions/util.PasswordHasherParams'
+      cluster_id:
+        type: integer
+      config_dir:
+        type: string
+      data_dir:
+        type: string
+      database_init:
+        type: boolean
+      datastore:
+        type: string
+      debug:
+        type: boolean
+      default_config_store:
+        type: integer
+      default_consistency_level:
+        type: integer
+      default_data_store:
+        type: integer
+      default_permission:
+        type: string
+      default_role:
+        type: string
+      default_state_store:
+        type: integer
+      enable_default_farm:
+        type: boolean
+      enable_registrations:
+        type: boolean
+      home-dir:
+        type: string
+      interval:
+        type: integer
+      key_dir:
+        type: string
+      license:
+        type: string
+      log_dir:
+        type: string
+      log_file:
+        type: string
+      mode:
+        type: string
+      node_id:
+        type: integer
+      redirect_http_https:
+        type: boolean
+      smtp:
+        $ref: '#/definitions/config.Smtp'
+      state_tick:
+        type: integer
+      state_ttl:
+        type: integer
+      stripe:
+        $ref: '#/definitions/config.Stripe'
+      timezone:
+        type: string
+      web_port:
+        type: integer
+      web_tls_port:
+        type: integer
+      www_user:
+        type: string
+    type: object
+  config.Address:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      id:
+        type: integer
+      line1:
+        type: string
+      line2:
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+    type: object
+  config.Channel:
+    properties:
+      algorithm_id:
+        type: integer
+      backoff:
+        type: integer
+      channel_id:
+        type: integer
+      conditions:
+        items:
+          $ref: '#/definitions/config.Condition'
+        type: array
+      debounce:
+        type: integer
+      device_id:
+        type: integer
+      duration:
+        type: integer
+      enable:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+      notify:
+        type: boolean
+      schedule:
+        items:
+          $ref: '#/definitions/config.Schedule'
+        type: array
+    type: object
+  config.Condition:
+    properties:
+      channel_id:
+        type: integer
+      comparator:
+        type: string
+      id:
+        type: integer
+      metric_id:
+        type: integer
+      threshold:
+        type: number
+      workflow_id:
+        type: integer
+    type: object
+  config.Customer:
+    properties:
+      address:
+        $ref: '#/definitions/config.Address'
+      address_id:
+        type: integer
+      description:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      payment_method_id:
+        type: string
+      payment_method_last4:
+        type: string
+      phone:
+        type: string
+      processor_id:
+        description: A reference to the customer id created and stored by the credit
+          card processor
+        type: string
+      shipping:
+        $ref: '#/definitions/config.ShippingAddress'
+      shipping_id:
+        type: integer
+    type: object
+  config.Device:
+    properties:
+      channels:
+        items:
+          $ref: '#/definitions/config.Channel'
+        type: array
+      configMap:
+        additionalProperties:
+          type: string
+        type: object
+      description:
+        type: string
+      enable:
+        type: boolean
+      farmId:
+        type: integer
+      fwVersion:
+        type: string
+      hwVersion:
+        type: string
+      id:
+        type: integer
+      interval:
+        type: integer
+      metrics:
+        items:
+          $ref: '#/definitions/config.Metric'
+        type: array
+      notify:
+        type: boolean
+      settings:
+        description: Configs         []DeviceConfigItem `yaml:"-" json:"-"`
+        items:
+          $ref: '#/definitions/config.DeviceSetting'
+        type: array
+      type:
+        type: string
+      uri:
+        type: string
+    type: object
+  config.DeviceSetting:
+    properties:
+      device_id:
+        type: integer
+      id:
+        type: integer
+      key:
+        type: string
+      user_id:
+        type: integer
+      value:
+        type: string
+    type: object
+  config.Farm:
+    properties:
+      config_store:
+        type: integer
+      consistency:
+        type: integer
+      data_store:
+        type: integer
+      devices:
+        items:
+          $ref: '#/definitions/config.Device'
+        type: array
+      id:
+        type: integer
+      interval:
+        type: integer
+      mode:
+        type: string
+      name:
+        type: string
+      orgId:
+        type: integer
+      private_key:
+        type: string
+      public_key:
+        type: string
+      replicas:
+        type: integer
+      smtp:
+        $ref: '#/definitions/config.Smtp'
+      state_store:
+        type: integer
+      timezone:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/config.User'
+        type: array
+      workflows:
+        items:
+          $ref: '#/definitions/config.Workflow'
+        type: array
+    type: object
+  config.License:
+    properties:
+      deviceQuota:
+        type: integer
+      farmQuota:
+        type: integer
+      organizationId:
+        type: integer
+      userQuota:
+        type: integer
+    type: object
+  config.Metric:
+    properties:
+      alarmHigh:
+        type: number
+      alarmLow:
+        type: number
+      datatype:
+        type: integer
+      device_id:
+        type: integer
+      enable:
+        type: boolean
+      id:
+        type: integer
+      key:
+        type: string
+      name:
+        type: string
+      notify:
+        type: boolean
+      unit:
+        type: string
+    type: object
+  config.Organization:
+    properties:
+      farms:
+        description: |-
+          Disabling gorm:"many2many:permissions on Farm so a permission
+          record doesn't get saved to the database without a role or user id
+          Farms []Farm `gorm:"many2many:permissions" yaml:"farms" json:"farms"`
+        items:
+          $ref: '#/definitions/config.Farm'
+        type: array
+      id:
+        type: integer
+      license:
+        allOf:
+        - $ref: '#/definitions/config.License'
+        description: Users              []User   `yaml:"users" json:"users"`
+      name:
+        type: string
+      users:
+        description: Devices        []Device `yaml:"devices" json:"devices"`
+        items:
+          $ref: '#/definitions/config.User'
+        type: array
+    type: object
+  config.Role:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  config.Schedule:
+    properties:
+      channel_id:
+        type: integer
+      count:
+        type: integer
+      days:
+        type: string
+      endDate:
+        type: string
+      executionCount:
+        type: integer
+      frequency:
+        type: integer
+      id:
+        type: integer
+      interval:
+        type: integer
+      lastExecuted:
+        type: string
+      startDate:
+        type: string
+      workflow_id:
+        type: integer
+    type: object
+  config.ShippingAddress:
+    properties:
+      address:
+        $ref: '#/definitions/config.Address'
+      address_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  config.Smtp:
+    properties:
+      enable:
+        type: boolean
+      host:
+        type: string
+      password:
+        type: string
+      port:
+        type: integer
+      recipient:
+        type: string
+      username:
+        type: string
+    type: object
+  config.Stripe:
+    properties:
+      key:
+        $ref: '#/definitions/config.StripeKey'
+      tax:
+        $ref: '#/definitions/config.StripeTax'
+    type: object
+  config.StripeKey:
+    properties:
+      publishable:
+        type: string
+      secret:
+        type: string
+      webhook:
+        type: string
+    type: object
+  config.StripeTax:
+    properties:
+      dynamic:
+        items:
+          type: string
+        type: array
+      fixed:
+        items:
+          type: string
+        type: array
+    type: object
+  config.User:
+    properties:
+      email:
+        type: string
+      farmRefs:
+        items:
+          type: integer
+        type: array
+      id:
+        type: integer
+      organizationRefs:
+        items:
+          type: integer
+        type: array
+      password:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/config.Role'
+        type: array
+    type: object
+  config.Workflow:
+    properties:
+      conditions:
+        items:
+          $ref: '#/definitions/config.Condition'
+        type: array
+      farm_id:
+        type: integer
+      id:
+        type: integer
+      lastCompleted:
+        type: string
+      name:
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/config.Schedule'
+        type: array
+      steps:
+        items:
+          $ref: '#/definitions/config.WorkflowStep'
+        type: array
+    type: object
+  config.WorkflowStep:
+    properties:
+      channel_id:
+        type: integer
+      device_id:
+        type: integer
+      duration:
+        description: AlgorithmID        int    `yaml:"algorithm" json:"algorithm_id"`
+        type: integer
+      id:
+        type: integer
+      sort_order:
+        type: integer
+      state:
+        type: integer
+      wait:
+        type: integer
+      webhook:
+        type: string
+      workflow_id:
+        description: Name string `gorm:"name" yaml:"name" json:"name"`
+        type: integer
+    type: object
+  model.User:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      password:
+        type: string
+      roles:
+        items: {}
+        type: array
+    type: object
+  response.WebServiceResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+      payload: {}
+      success:
+        type: boolean
+    type: object
+  rest.RegistrationResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  service.UserCredentials:
+    properties:
+      authType:
+        type: integer
+      email:
+        type: string
+      orgId:
+        type: integer
+      orgName:
+        type: string
+      password:
+        type: string
+    type: object
+  shoppingcart.AttachPaymentMethodRequest:
+    properties:
+      payment_method_id:
+        type: string
+      processor_id:
+        type: string
+    type: object
+  shoppingcart.CreateInvoiceRequest:
+    properties:
+      description:
+        type: string
+      products:
+        items:
+          $ref: '#/definitions/shoppingcart.Product'
+        type: array
+    type: object
+  shoppingcart.CreatePaymentIntentRequest:
+    properties:
+      amount:
+        type: string
+      currencyCode:
+        type: string
+      customerId:
+        type: string
+    type: object
+  shoppingcart.Product:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      price:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  shoppingcart.SetDefaultPaymentMethodRequest:
+    properties:
+      customer_id:
+        type: integer
+      payment_method_id:
+        type: string
+      processor_id:
+        type: string
+    type: object
+  shoppingcart.SetupIntentRequest:
+    properties:
+      client_secret:
+        type: string
+    type: object
+  stripe.Event:
+    properties:
+      account:
+        description: The connected account that originates the event.
+        type: string
+      api_version:
+        description: The Stripe API version used to render `data`. This property is
+          populated only for events on or after October 31, 2014.
+        type: string
+      created:
+        description: Time at which the object was created. Measured in seconds since
+          the Unix epoch.
+        type: integer
+      data:
+        $ref: '#/definitions/stripe.EventData'
+      id:
+        description: Unique identifier for the object.
+        type: string
+      livemode:
+        description: Has the value `true` if the object exists in live mode or the
+          value `false` if the object exists in test mode.
+        type: boolean
+      object:
+        description: String representing the object's type. Objects of the same type
+          share the same value.
+        type: string
+      pending_webhooks:
+        description: Number of webhooks that haven't been successfully delivered (for
+          example, to return a 20x response) to the URLs you specify.
+        type: integer
+      request:
+        allOf:
+        - $ref: '#/definitions/stripe.EventRequest'
+        description: Information on the API request that triggers the event.
+      type:
+        allOf:
+        - $ref: '#/definitions/stripe.EventType'
+        description: Description of the event (for example, `invoice.created` or `charge.refunded`).
+    type: object
+  stripe.EventData:
+    properties:
+      object:
+        items:
+          type: integer
+        type: array
+      previous_attributes:
+        additionalProperties: true
+        description: Object containing the names of the updated attributes and their
+          values prior to the event (only included in events of type `*.updated`).
+          If an array attribute has any updated elements, this object contains the
+          entire array. In Stripe API versions 2017-04-06 or earlier, an updated array
+          attribute in this object includes only the updated array elements.
+        type: object
+    type: object
+  stripe.EventRequest:
+    properties:
+      id:
+        description: |-
+          ID is the request ID of the request that created an event, if the event
+          was created by a request.
+          ID of the API request that caused the event. If null, the event was automatic (e.g., Stripe's automatic subscription handling). Request logs are available in the [dashboard](https://dashboard.stripe.com/logs), but currently not in the API.
+        type: string
+      idempotency_key:
+        description: |-
+          IdempotencyKey is the idempotency key of the request that created an
+          event, if the event was created by a request and if an idempotency key
+          was specified for that request.
+          The idempotency key transmitted during the request, if any. *Note: This property is populated only for events on or after May 23, 2017*.
+        type: string
+    type: object
+  stripe.EventType:
+    enum:
+    - account.application.authorized
+    - account.application.deauthorized
+    - account.external_account.created
+    - account.external_account.deleted
+    - account.external_account.updated
+    - account.updated
+    - application_fee.created
+    - application_fee.refund.updated
+    - application_fee.refunded
+    - balance.available
+    - billing_portal.configuration.created
+    - billing_portal.configuration.updated
+    - billing_portal.session.created
+    - capability.updated
+    - cash_balance.funds_available
+    - charge.captured
+    - charge.dispute.closed
+    - charge.dispute.created
+    - charge.dispute.funds_reinstated
+    - charge.dispute.funds_withdrawn
+    - charge.dispute.updated
+    - charge.expired
+    - charge.failed
+    - charge.pending
+    - charge.refund.updated
+    - charge.refunded
+    - charge.succeeded
+    - charge.updated
+    - checkout.session.async_payment_failed
+    - checkout.session.async_payment_succeeded
+    - checkout.session.completed
+    - checkout.session.expired
+    - climate.order.canceled
+    - climate.order.created
+    - climate.order.delayed
+    - climate.order.delivered
+    - climate.order.product_substituted
+    - climate.product.created
+    - climate.product.pricing_updated
+    - coupon.created
+    - coupon.deleted
+    - coupon.updated
+    - credit_note.created
+    - credit_note.updated
+    - credit_note.voided
+    - customer.created
+    - customer.deleted
+    - customer.discount.created
+    - customer.discount.deleted
+    - customer.discount.updated
+    - customer.source.created
+    - customer.source.deleted
+    - customer.source.expiring
+    - customer.source.updated
+    - customer.subscription.created
+    - customer.subscription.deleted
+    - customer.subscription.paused
+    - customer.subscription.pending_update_applied
+    - customer.subscription.pending_update_expired
+    - customer.subscription.resumed
+    - customer.subscription.trial_will_end
+    - customer.subscription.updated
+    - customer.tax_id.created
+    - customer.tax_id.deleted
+    - customer.tax_id.updated
+    - customer.updated
+    - customer_cash_balance_transaction.created
+    - entitlements.active_entitlement_summary.updated
+    - file.created
+    - financial_connections.account.created
+    - financial_connections.account.deactivated
+    - financial_connections.account.disconnected
+    - financial_connections.account.reactivated
+    - financial_connections.account.refreshed_balance
+    - financial_connections.account.refreshed_ownership
+    - financial_connections.account.refreshed_transactions
+    - identity.verification_session.canceled
+    - identity.verification_session.created
+    - identity.verification_session.processing
+    - identity.verification_session.redacted
+    - identity.verification_session.requires_input
+    - identity.verification_session.verified
+    - invoice.created
+    - invoice.deleted
+    - invoice.finalization_failed
+    - invoice.finalized
+    - invoice.marked_uncollectible
+    - invoice.paid
+    - invoice.payment_action_required
+    - invoice.payment_failed
+    - invoice.payment_succeeded
+    - invoice.sent
+    - invoice.upcoming
+    - invoice.updated
+    - invoice.voided
+    - invoiceitem.created
+    - invoiceitem.deleted
+    - issuing_authorization.created
+    - issuing_authorization.request
+    - issuing_authorization.updated
+    - issuing_card.created
+    - issuing_card.updated
+    - issuing_cardholder.created
+    - issuing_cardholder.updated
+    - issuing_dispute.closed
+    - issuing_dispute.created
+    - issuing_dispute.funds_reinstated
+    - issuing_dispute.submitted
+    - issuing_dispute.updated
+    - issuing_token.created
+    - issuing_token.updated
+    - issuing_transaction.created
+    - issuing_transaction.updated
+    - mandate.updated
+    - payment_intent.amount_capturable_updated
+    - payment_intent.canceled
+    - payment_intent.created
+    - payment_intent.partially_funded
+    - payment_intent.payment_failed
+    - payment_intent.processing
+    - payment_intent.requires_action
+    - payment_intent.succeeded
+    - payment_link.created
+    - payment_link.updated
+    - payment_method.attached
+    - payment_method.automatically_updated
+    - payment_method.detached
+    - payment_method.updated
+    - payout.canceled
+    - payout.created
+    - payout.failed
+    - payout.paid
+    - payout.reconciliation_completed
+    - payout.updated
+    - person.created
+    - person.deleted
+    - person.updated
+    - plan.created
+    - plan.deleted
+    - plan.updated
+    - price.created
+    - price.deleted
+    - price.updated
+    - product.created
+    - product.deleted
+    - product.updated
+    - promotion_code.created
+    - promotion_code.updated
+    - quote.accepted
+    - quote.canceled
+    - quote.created
+    - quote.finalized
+    - radar.early_fraud_warning.created
+    - radar.early_fraud_warning.updated
+    - refund.created
+    - refund.updated
+    - reporting.report_run.failed
+    - reporting.report_run.succeeded
+    - reporting.report_type.updated
+    - review.closed
+    - review.opened
+    - setup_intent.canceled
+    - setup_intent.created
+    - setup_intent.requires_action
+    - setup_intent.setup_failed
+    - setup_intent.succeeded
+    - sigma.scheduled_query_run.created
+    - source.canceled
+    - source.chargeable
+    - source.failed
+    - source.mandate_notification
+    - source.refund_attributes_required
+    - source.transaction.created
+    - source.transaction.updated
+    - subscription_schedule.aborted
+    - subscription_schedule.canceled
+    - subscription_schedule.completed
+    - subscription_schedule.created
+    - subscription_schedule.expiring
+    - subscription_schedule.released
+    - subscription_schedule.updated
+    - tax.settings.updated
+    - tax_rate.created
+    - tax_rate.updated
+    - terminal.reader.action_failed
+    - terminal.reader.action_succeeded
+    - test_helpers.test_clock.advancing
+    - test_helpers.test_clock.created
+    - test_helpers.test_clock.deleted
+    - test_helpers.test_clock.internal_failure
+    - test_helpers.test_clock.ready
+    - topup.canceled
+    - topup.created
+    - topup.failed
+    - topup.reversed
+    - topup.succeeded
+    - transfer.created
+    - transfer.reversed
+    - transfer.updated
+    - treasury.credit_reversal.created
+    - treasury.credit_reversal.posted
+    - treasury.debit_reversal.completed
+    - treasury.debit_reversal.created
+    - treasury.debit_reversal.initial_credit_granted
+    - treasury.financial_account.closed
+    - treasury.financial_account.created
+    - treasury.financial_account.features_status_updated
+    - treasury.inbound_transfer.canceled
+    - treasury.inbound_transfer.created
+    - treasury.inbound_transfer.failed
+    - treasury.inbound_transfer.succeeded
+    - treasury.outbound_payment.canceled
+    - treasury.outbound_payment.created
+    - treasury.outbound_payment.expected_arrival_date_updated
+    - treasury.outbound_payment.failed
+    - treasury.outbound_payment.posted
+    - treasury.outbound_payment.returned
+    - treasury.outbound_transfer.canceled
+    - treasury.outbound_transfer.created
+    - treasury.outbound_transfer.expected_arrival_date_updated
+    - treasury.outbound_transfer.failed
+    - treasury.outbound_transfer.posted
+    - treasury.outbound_transfer.returned
+    - treasury.received_credit.created
+    - treasury.received_credit.failed
+    - treasury.received_credit.succeeded
+    - treasury.received_debit.created
+    type: string
+    x-enum-varnames:
+    - EventTypeAccountApplicationAuthorized
+    - EventTypeAccountApplicationDeauthorized
+    - EventTypeAccountExternalAccountCreated
+    - EventTypeAccountExternalAccountDeleted
+    - EventTypeAccountExternalAccountUpdated
+    - EventTypeAccountUpdated
+    - EventTypeApplicationFeeCreated
+    - EventTypeApplicationFeeRefundUpdated
+    - EventTypeApplicationFeeRefunded
+    - EventTypeBalanceAvailable
+    - EventTypeBillingPortalConfigurationCreated
+    - EventTypeBillingPortalConfigurationUpdated
+    - EventTypeBillingPortalSessionCreated
+    - EventTypeCapabilityUpdated
+    - EventTypeCashBalanceFundsAvailable
+    - EventTypeChargeCaptured
+    - EventTypeChargeDisputeClosed
+    - EventTypeChargeDisputeCreated
+    - EventTypeChargeDisputeFundsReinstated
+    - EventTypeChargeDisputeFundsWithdrawn
+    - EventTypeChargeDisputeUpdated
+    - EventTypeChargeExpired
+    - EventTypeChargeFailed
+    - EventTypeChargePending
+    - EventTypeChargeRefundUpdated
+    - EventTypeChargeRefunded
+    - EventTypeChargeSucceeded
+    - EventTypeChargeUpdated
+    - EventTypeCheckoutSessionAsyncPaymentFailed
+    - EventTypeCheckoutSessionAsyncPaymentSucceeded
+    - EventTypeCheckoutSessionCompleted
+    - EventTypeCheckoutSessionExpired
+    - EventTypeClimateOrderCanceled
+    - EventTypeClimateOrderCreated
+    - EventTypeClimateOrderDelayed
+    - EventTypeClimateOrderDelivered
+    - EventTypeClimateOrderProductSubstituted
+    - EventTypeClimateProductCreated
+    - EventTypeClimateProductPricingUpdated
+    - EventTypeCouponCreated
+    - EventTypeCouponDeleted
+    - EventTypeCouponUpdated
+    - EventTypeCreditNoteCreated
+    - EventTypeCreditNoteUpdated
+    - EventTypeCreditNoteVoided
+    - EventTypeCustomerCreated
+    - EventTypeCustomerDeleted
+    - EventTypeCustomerDiscountCreated
+    - EventTypeCustomerDiscountDeleted
+    - EventTypeCustomerDiscountUpdated
+    - EventTypeCustomerSourceCreated
+    - EventTypeCustomerSourceDeleted
+    - EventTypeCustomerSourceExpiring
+    - EventTypeCustomerSourceUpdated
+    - EventTypeCustomerSubscriptionCreated
+    - EventTypeCustomerSubscriptionDeleted
+    - EventTypeCustomerSubscriptionPaused
+    - EventTypeCustomerSubscriptionPendingUpdateApplied
+    - EventTypeCustomerSubscriptionPendingUpdateExpired
+    - EventTypeCustomerSubscriptionResumed
+    - EventTypeCustomerSubscriptionTrialWillEnd
+    - EventTypeCustomerSubscriptionUpdated
+    - EventTypeCustomerTaxIDCreated
+    - EventTypeCustomerTaxIDDeleted
+    - EventTypeCustomerTaxIDUpdated
+    - EventTypeCustomerUpdated
+    - EventTypeCustomerCashBalanceTransactionCreated
+    - EventTypeEntitlementsActiveEntitlementSummaryUpdated
+    - EventTypeFileCreated
+    - EventTypeFinancialConnectionsAccountCreated
+    - EventTypeFinancialConnectionsAccountDeactivated
+    - EventTypeFinancialConnectionsAccountDisconnected
+    - EventTypeFinancialConnectionsAccountReactivated
+    - EventTypeFinancialConnectionsAccountRefreshedBalance
+    - EventTypeFinancialConnectionsAccountRefreshedOwnership
+    - EventTypeFinancialConnectionsAccountRefreshedTransactions
+    - EventTypeIdentityVerificationSessionCanceled
+    - EventTypeIdentityVerificationSessionCreated
+    - EventTypeIdentityVerificationSessionProcessing
+    - EventTypeIdentityVerificationSessionRedacted
+    - EventTypeIdentityVerificationSessionRequiresInput
+    - EventTypeIdentityVerificationSessionVerified
+    - EventTypeInvoiceCreated
+    - EventTypeInvoiceDeleted
+    - EventTypeInvoiceFinalizationFailed
+    - EventTypeInvoiceFinalized
+    - EventTypeInvoiceMarkedUncollectible
+    - EventTypeInvoicePaid
+    - EventTypeInvoicePaymentActionRequired
+    - EventTypeInvoicePaymentFailed
+    - EventTypeInvoicePaymentSucceeded
+    - EventTypeInvoiceSent
+    - EventTypeInvoiceUpcoming
+    - EventTypeInvoiceUpdated
+    - EventTypeInvoiceVoided
+    - EventTypeInvoiceItemCreated
+    - EventTypeInvoiceItemDeleted
+    - EventTypeIssuingAuthorizationCreated
+    - EventTypeIssuingAuthorizationRequest
+    - EventTypeIssuingAuthorizationUpdated
+    - EventTypeIssuingCardCreated
+    - EventTypeIssuingCardUpdated
+    - EventTypeIssuingCardholderCreated
+    - EventTypeIssuingCardholderUpdated
+    - EventTypeIssuingDisputeClosed
+    - EventTypeIssuingDisputeCreated
+    - EventTypeIssuingDisputeFundsReinstated
+    - EventTypeIssuingDisputeSubmitted
+    - EventTypeIssuingDisputeUpdated
+    - EventTypeIssuingTokenCreated
+    - EventTypeIssuingTokenUpdated
+    - EventTypeIssuingTransactionCreated
+    - EventTypeIssuingTransactionUpdated
+    - EventTypeMandateUpdated
+    - EventTypePaymentIntentAmountCapturableUpdated
+    - EventTypePaymentIntentCanceled
+    - EventTypePaymentIntentCreated
+    - EventTypePaymentIntentPartiallyFunded
+    - EventTypePaymentIntentPaymentFailed
+    - EventTypePaymentIntentProcessing
+    - EventTypePaymentIntentRequiresAction
+    - EventTypePaymentIntentSucceeded
+    - EventTypePaymentLinkCreated
+    - EventTypePaymentLinkUpdated
+    - EventTypePaymentMethodAttached
+    - EventTypePaymentMethodAutomaticallyUpdated
+    - EventTypePaymentMethodDetached
+    - EventTypePaymentMethodUpdated
+    - EventTypePayoutCanceled
+    - EventTypePayoutCreated
+    - EventTypePayoutFailed
+    - EventTypePayoutPaid
+    - EventTypePayoutReconciliationCompleted
+    - EventTypePayoutUpdated
+    - EventTypePersonCreated
+    - EventTypePersonDeleted
+    - EventTypePersonUpdated
+    - EventTypePlanCreated
+    - EventTypePlanDeleted
+    - EventTypePlanUpdated
+    - EventTypePriceCreated
+    - EventTypePriceDeleted
+    - EventTypePriceUpdated
+    - EventTypeProductCreated
+    - EventTypeProductDeleted
+    - EventTypeProductUpdated
+    - EventTypePromotionCodeCreated
+    - EventTypePromotionCodeUpdated
+    - EventTypeQuoteAccepted
+    - EventTypeQuoteCanceled
+    - EventTypeQuoteCreated
+    - EventTypeQuoteFinalized
+    - EventTypeRadarEarlyFraudWarningCreated
+    - EventTypeRadarEarlyFraudWarningUpdated
+    - EventTypeRefundCreated
+    - EventTypeRefundUpdated
+    - EventTypeReportingReportRunFailed
+    - EventTypeReportingReportRunSucceeded
+    - EventTypeReportingReportTypeUpdated
+    - EventTypeReviewClosed
+    - EventTypeReviewOpened
+    - EventTypeSetupIntentCanceled
+    - EventTypeSetupIntentCreated
+    - EventTypeSetupIntentRequiresAction
+    - EventTypeSetupIntentSetupFailed
+    - EventTypeSetupIntentSucceeded
+    - EventTypeSigmaScheduledQueryRunCreated
+    - EventTypeSourceCanceled
+    - EventTypeSourceChargeable
+    - EventTypeSourceFailed
+    - EventTypeSourceMandateNotification
+    - EventTypeSourceRefundAttributesRequired
+    - EventTypeSourceTransactionCreated
+    - EventTypeSourceTransactionUpdated
+    - EventTypeSubscriptionScheduleAborted
+    - EventTypeSubscriptionScheduleCanceled
+    - EventTypeSubscriptionScheduleCompleted
+    - EventTypeSubscriptionScheduleCreated
+    - EventTypeSubscriptionScheduleExpiring
+    - EventTypeSubscriptionScheduleReleased
+    - EventTypeSubscriptionScheduleUpdated
+    - EventTypeTaxSettingsUpdated
+    - EventTypeTaxRateCreated
+    - EventTypeTaxRateUpdated
+    - EventTypeTerminalReaderActionFailed
+    - EventTypeTerminalReaderActionSucceeded
+    - EventTypeTestHelpersTestClockAdvancing
+    - EventTypeTestHelpersTestClockCreated
+    - EventTypeTestHelpersTestClockDeleted
+    - EventTypeTestHelpersTestClockInternalFailure
+    - EventTypeTestHelpersTestClockReady
+    - EventTypeTopupCanceled
+    - EventTypeTopupCreated
+    - EventTypeTopupFailed
+    - EventTypeTopupReversed
+    - EventTypeTopupSucceeded
+    - EventTypeTransferCreated
+    - EventTypeTransferReversed
+    - EventTypeTransferUpdated
+    - EventTypeTreasuryCreditReversalCreated
+    - EventTypeTreasuryCreditReversalPosted
+    - EventTypeTreasuryDebitReversalCompleted
+    - EventTypeTreasuryDebitReversalCreated
+    - EventTypeTreasuryDebitReversalInitialCreditGranted
+    - EventTypeTreasuryFinancialAccountClosed
+    - EventTypeTreasuryFinancialAccountCreated
+    - EventTypeTreasuryFinancialAccountFeaturesStatusUpdated
+    - EventTypeTreasuryInboundTransferCanceled
+    - EventTypeTreasuryInboundTransferCreated
+    - EventTypeTreasuryInboundTransferFailed
+    - EventTypeTreasuryInboundTransferSucceeded
+    - EventTypeTreasuryOutboundPaymentCanceled
+    - EventTypeTreasuryOutboundPaymentCreated
+    - EventTypeTreasuryOutboundPaymentExpectedArrivalDateUpdated
+    - EventTypeTreasuryOutboundPaymentFailed
+    - EventTypeTreasuryOutboundPaymentPosted
+    - EventTypeTreasuryOutboundPaymentReturned
+    - EventTypeTreasuryOutboundTransferCanceled
+    - EventTypeTreasuryOutboundTransferCreated
+    - EventTypeTreasuryOutboundTransferExpectedArrivalDateUpdated
+    - EventTypeTreasuryOutboundTransferFailed
+    - EventTypeTreasuryOutboundTransferPosted
+    - EventTypeTreasuryOutboundTransferReturned
+    - EventTypeTreasuryReceivedCreditCreated
+    - EventTypeTreasuryReceivedCreditFailed
+    - EventTypeTreasuryReceivedCreditSucceeded
+    - EventTypeTreasuryReceivedDebitCreated
+  util.PasswordHasherParams:
+    properties:
+      iterations:
+        type: integer
+      keyLen:
+        type: integer
+      memory:
+        type: integer
+      parallelism:
+        type: integer
+      saltLen:
+        type: integer
+    type: object
+  viewmodel.JsonWebToken:
+    properties:
+      error:
+        type: string
+      token:
+        type: string
+    type: object
+host: localhost:8443
 info:
   contact:
     email: support@cropdroid.com
@@ -7,20 +1123,2187 @@ info:
     url: https://www.cropdroid.com/support
   description: This is the RESTful web servce for CropDroid.
   license:
-    name: GNU AFFERO GENERAL PUBLIC LICENSE
-    url: https://www.gnu.org/licenses/agpl-3.0.txt
+    name: Commercial
+    url: https://www.cropdroid.com/licenses/commercial.txt
   termsOfService: https://www.cropdroid.com/terms/
   title: CropDroid REST API
   version: v0.0.3
 paths:
-  /api/v1/shoppingcart:
+  /algorithms/{page}:
     get:
-      description: Returns a list of products from the merchange provider / credit
-        card processor
+      consumes:
+      - application/json
+      description: Returns a page of algorithm entries
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: page
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
-      summary: GetProducts
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List algorithms
+      tags:
+      - Algorithms
+  /config:
+    get:
+      description: Returns the server configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.App'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: System configuration
+      tags:
+      - System
+  /endpoints:
+    get:
+      description: Returns a list of REST API endpoints
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: REST API Endpoints
+      tags:
+      - System
+  /eventlog/{page}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a page of event log entries
+      parameters:
+      - description: string valid
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List events
+      tags:
+      - Event Log
+  /events/{page}:
+    get:
+      description: Returns a page of system event log entries
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: System Event Log
+      tags:
+      - System
+  /farm/{farmID}/schedule:
+    post:
+      description: Creates a new channel schedule
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: config.Schedule struct
+        in: body
+        name: Schedule
+        required: true
+        schema:
+          $ref: '#/definitions/config.Schedule'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create channel schedule
+      tags:
+      - Farms
+    put:
+      description: Updates a new channel schedule
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: config.Schedule struct
+        in: body
+        name: Schedule
+        required: true
+        schema:
+          $ref: '#/definitions/config.Schedule'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Update channel schedule
+      tags:
+      - Farms
+  /farm/{farmID}/schedule/{id}:
+    delete:
+      description: Deletes a channel schedule
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Delete channel schedule
+      tags:
+      - Farms
+  /farm/{farmID}/schedule/channel/{channelID}:
+    get:
+      description: Returns the requested channel schedule
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: channelID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get channel schedule
+      tags:
+      - Farms
+  /farms:
+    get:
+      description: Returns a paginated list of farm entites
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Farm'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List farms
+      tags:
+      - Farms
+  /farms/{farmID}/channel/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Updates a farm channel
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Update channel
+      tags:
+      - Channels
+  /farms/{farmID}/channels/{page}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a page of channel entries
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List channels
+      tags:
+      - Channels
+  /farms/{farmID}/conditions:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing channel condition
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Delete channel condition
+      tags:
+      - Conditions
+    post:
+      consumes:
+      - application/json
+      description: Creates a new channel condition
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: config.Condition struct
+        in: body
+        name: condition
+        required: true
+        schema:
+          $ref: '#/definitions/config.Condition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create channel condition
+      tags:
+      - Conditions
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing channel condition
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: config.Condition struct
+        in: body
+        name: condition
+        required: true
+        schema:
+          $ref: '#/definitions/config.Condition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Update channel condition
+      tags:
+      - Conditions
+  /farms/{farmID}/conditions/{page}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a page of condition entries
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List conditions
+      tags:
+      - Conditions
+  /farms/{farmID}/config:
+    get:
+      description: Returns the complete farm configuration.
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: farmID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Farm'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get farm configuration
+      tags:
+      - Farms
+  /farms/{farmID}/config/{deviceID}/{key}:
+    get:
+      description: Sets a farm device configuration
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: farmID
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: deviceID
+        required: true
+        type: string
+      - description: string valid
+        in: query
+        maxLength: 255
+        minLength: 1
+        name: key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Set device configuration
+      tags:
+      - Farms
+  /farms/{farmID}/devices/{deviceType}:
+    get:
+      consumes:
+      - application/json
+      description: Returns the current device state
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: deviceType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get current device state
+      tags:
+      - Devices
+  /farms/{farmID}/devices/{deviceType}/history/{metric}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a historical data set for the requested metric
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: deviceType
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: metric
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get metric history
+      tags:
+      - Devices
+  /farms/{farmID}/devices/{deviceType}/metrics/{key}/{value}:
+    get:
+      consumes:
+      - application/json
+      description: Sets the value of a metric
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: deviceType
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: key
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: value
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Sets metric value
+      tags:
+      - Devices
+  /farms/{farmID}/devices/{deviceType}/switch/{channel}/{position}:
+    get:
+      consumes:
+      - application/json
+      description: Switch a farm channel on / off
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: deviceType
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        name: channel
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: position
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Switch channel on / off
+      tags:
+      - Devices
+  /farms/{farmID}/devices/{deviceType}/timerSwitch/{channel}/{duration}:
+    get:
+      consumes:
+      - application/json
+      description: Switches the specified channel on for the specified number of seconds
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: deviceType
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        name: channel
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: duration
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Switch channel for precise number of seconds
+      tags:
+      - Devices
+  /farms/{farmID}/devices/{deviceType}/view:
+    get:
+      consumes:
+      - application/json
+      description: Returns a user-interface view of the device
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        maxLength: 255
+        minLength: 1
+        name: deviceType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Returns a UI view of the device
+      tags:
+      - Devices
+  /farms/{farmID}/devices/{page}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a page of devices that belong to the farm
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get farm devices
+      tags:
+      - Devices
+  /farms/{farmID}/events/{page}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a page of event log entries for the requested farm
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: page
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List event log
+      tags:
+      - Farms
+  /farms/{farmID}/notification/{type}/{message}/{priority}:
+    get:
+      description: Sends a push notification to all clients connected to the farm
+        websocket
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: Message type
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: Message text
+        in: path
+        name: message
+        required: true
+        type: string
+      - description: Message priority
+        in: path
+        name: priority
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Sends a push notification
+      tags:
+      - Farms
+  /farms/{farmID}/notifications:
+    get:
+      description: Stream real-time farm push notifications via websocket
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: user model
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Stream real-time farm push notifications via websocket
+      tags:
+      - Farms
+  /farms/{farmID}/pubkey:
+    get:
+      description: Returns the unique public key for the farm.
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: farmID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Returns the farm public key
+      tags:
+      - Farms
+  /farms/{farmID}/users:
+    get:
+      description: Returns all users who have are members and able to access the farm.
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Farm'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List farm user membership
+      tags:
+      - Farms
+  /farms/{farmID}/users/{userID}:
+    delete:
+      description: Deletes the users permission to access the farm
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: farmID
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Farm'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Disassociate a user
+      tags:
+      - Farms
+    get:
+      description: Returns the complete farm state
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: farmID
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Farm'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get the farm state
+      tags:
+      - Farms
+    post:
+      description: Updates a users password
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: farmID
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: userID
+        required: true
+        type: string
+      - description: UserCredentials struct
+        in: body
+        name: UserCredentials
+        required: true
+        schema:
+          $ref: '#/definitions/service.UserCredentials'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Reset user password
+      tags:
+      - Farms
+  /farms/{farmID}/workflows:
+    get:
+      description: Returns a list of workflows
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List workflows
+      tags:
+      - Workflows
+    post:
+      description: Creates a new workflow
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create workflow
+      tags:
+      - Workflows
+  /farms/{farmID}/workflows/{id}:
+    delete:
+      description: Deletes an existing workflow
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Delete workflow
+      tags:
+      - Workflows
+    get:
+      description: Returns the requested workflow
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get workflow
+      tags:
+      - Workflows
+    put:
+      description: Updates an existing workflow
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Update workflow
+      tags:
+      - Workflows
+  /farms/{farmID}/workflows/{id}/run:
+    get:
+      description: Runs a workflow
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Run workflow
+      tags:
+      - Workflows
+  /farms/{farmID}/workflows/{workflowID}/steps:
+    delete:
+      description: Delete an existing workflow step
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: workflowID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: stepID
+        required: true
+        type: integer
+      - description: config.WorkflowStep struct
+        in: body
+        name: WorkflowStep
+        required: true
+        schema:
+          $ref: '#/definitions/config.WorkflowStep'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Delete workflow step
+      tags:
+      - Workflows
+    get:
+      description: Returns all of the steps (with current state) associated with a
+        workflow.
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: workflowID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List workflow steps
+      tags:
+      - Workflows
+    post:
+      description: Creates a new workflow step
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: workflowID
+        required: true
+        type: integer
+      - description: config.WorkflowStep struct
+        in: body
+        name: WorkflowStep
+        required: true
+        schema:
+          $ref: '#/definitions/config.WorkflowStep'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create workflow step
+      tags:
+      - Workflows
+  /farms/{farmID}/workflows/{workflowID}/steps/{stepID}:
+    get:
+      description: Returns the specified workflow step
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: workflowID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: stepID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get workflow step
+      tags:
+      - Workflows
+    put:
+      description: Updates an existing workflow step
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: workflowID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: stepID
+        required: true
+        type: integer
+      - description: config.WorkflowStep struct
+        in: body
+        name: WorkflowStep
+        required: true
+        schema:
+          $ref: '#/definitions/config.WorkflowStep'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Update workflow step
+      tags:
+      - Workflows
+  /farms/{farmID}/workflows/view:
+    get:
+      description: Returns a list of workflows to be consumed by a UI
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List workflows for UI view
+      tags:
+      - Workflows
+  /farmticker/{farmID}:
+    get:
+      description: Create a websocket and start receiving real-time farm updates
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      - description: user model
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Stream real-time farm configuration and state updates via websocket
+      tags:
+      - Farms
+  /google/login:
+    post:
+      description: Authenticates the user using the Google Auth API
+      parameters:
+      - description: UserCredentials struct
+        in: body
+        name: UserCredentials
+        required: true
+        schema:
+          $ref: '#/definitions/service.UserCredentials'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Google Authentication
+      tags:
+      - Authentication
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and returns a new JWT
+      parameters:
+      - description: UserCredentials struct
+        in: body
+        name: UserCredentials
+        required: true
+        schema:
+          $ref: '#/definitions/service.UserCredentials'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+      summary: Authenticate and obtain JWT
+      tags:
+      - Authentication
+  /login/refresh:
+    get:
+      consumes:
+      - application/json
+      description: Returns a new JWT token with a new, extended expiration date
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/viewmodel.JsonWebToken'
+      security:
+      - JWT: []
+      summary: Refresh JWT
+      tags:
+      - Authentication
+  /metrics:
+    put:
+      description: Returns a page of metric entries
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List metrics
+      tags:
+      - Metric
+  /metrics/{id}:
+    get:
+      description: Returns all metrics for the specified device ID
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get metrics for device
+      tags:
+      - Metric
+  /organizations:
+    delete:
+      description: Deletes the organization referenced in the user JWT (current logged
+        in organization)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Delete an organization
+      tags:
+      - Organization
+    post:
+      description: Creates a new organization
+      parameters:
+      - description: config.Organization struct
+        in: body
+        name: Organization
+        required: true
+        schema:
+          $ref: '#/definitions/config.Organization'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create an organization
+      tags:
+      - Organization
+  /organizations/{organizationID}/users:
+    get:
+      description: Returns all users in the organization
+      parameters:
+      - description: string valid
+        in: path
+        name: organizationID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List all users in the organization
+      tags:
+      - Organization
+  /organizations/{page}:
+    get:
+      description: Returns a page of organization entries
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List organizations
+      tags:
+      - Organization
+  /provisioner/deprovision/{farmID}:
+    post:
+      description: Deletes the farm and all associated data, running services, and
+        API endpoints
+      parameters:
+      - description: string valid
+        in: path
+        name: farmID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Derovision existing farm
+      tags:
+      - Provisioner
+  /provisioner/provision/{orgId}/{farmName}:
+    post:
+      description: Creates a new farm using system configured defaults
+      parameters:
+      - default: "0"
+        description: string default
+        in: path
+        name: orgId
+        required: true
+        type: string
+      - description: string valid
+        in: path
+        name: farmName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Provision new farm
+      tags:
+      - Provisioner
+  /pubkey:
+    get:
+      description: Returns the server public RSA key
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Retrieve RSA pubilc key
+      tags:
+      - System
+  /raft/transfer/{clusterID}/{nodeID}:
+    get:
+      description: Transfer raft leader to another node
+      parameters:
+      - description: string valid
+        in: path
+        name: clusterID
+        required: true
+        type: integer
+      - description: string valid
+        in: path
+        name: nodeID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Request leader transfer
+      tags:
+      - Raft
+  /register:
+    post:
+      description: Creates a new user registration and sends an activation email
+      parameters:
+      - description: UserCredentials struct
+        in: body
+        name: UserCredentials
+        required: true
+        schema:
+          $ref: '#/definitions/service.UserCredentials'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.RegistrationResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      summary: New user registration
+      tags:
+      - Registration
+  /register/activate/{token}:
+    get:
+      description: Creates a new user and deletes the pending registration
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rest.RegistrationResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      summary: Activte pending registration
+      tags:
+      - Registration
+  /roles:
+    get:
+      description: Returns a page of role entries
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: List roles
+      tags:
+      - Role
+  /shoppingcart/attach-and-set-default-payment-method:
+    post:
+      description: Attaches the specified payment method and sets it as the customers
+        default
+      parameters:
+      - description: shoppingcart.SetDefaultPaymentMethodRequest struct
+        in: body
+        name: SetDefaultPaymentMethodRequest
+        required: true
+        schema:
+          $ref: '#/definitions/shoppingcart.SetDefaultPaymentMethodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Attach and set default payment method
+      tags:
+      - Stripe
+  /shoppingcart/attach-payment-method:
+    post:
+      description: Attaches a payment method to the customer
+      parameters:
+      - description: shoppingcart.AttachPaymentMethodRequest struct
+        in: body
+        name: AttachPaymentMethodRequest
+        required: true
+        schema:
+          $ref: '#/definitions/shoppingcart.AttachPaymentMethodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Attach new payment method
+      tags:
+      - Stripe
+  /shoppingcart/customers:
+    post:
+      description: Creates a new Stripe and local customer
+      parameters:
+      - description: config.Customer struct
+        in: body
+        name: Customer
+        required: true
+        schema:
+          $ref: '#/definitions/config.Customer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create customer
+      tags:
+      - Stripe
+    put:
+      description: Updates an existing Stripe and local customer
+      parameters:
+      - description: config.Customer struct
+        in: body
+        name: Customer
+        required: true
+        schema:
+          $ref: '#/definitions/config.Customer'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Update customer
+      tags:
+      - Stripe
+  /shoppingcart/customers/{id}:
+    get:
+      description: Returns a Customer with the unique Stripe assigned cust_* ID
+      parameters:
+      - description: string valid
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get customer
+      tags:
+      - Stripe
+  /shoppingcart/default-payment-method:
+    post:
+      description: Sets an attached payment method as the default
+      parameters:
+      - description: shoppingcart.SetDefaultPaymentMethodRequest struct
+        in: body
+        name: SetDefaultPaymentMethodRequest
+        required: true
+        schema:
+          $ref: '#/definitions/shoppingcart.SetDefaultPaymentMethodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Set default payment method
+      tags:
+      - Stripe
+  /shoppingcart/ephemeral-key/{customerID}:
+    get:
+      description: Returns the stripe customer ephemeral key for the customer/user
+        session
+      parameters:
+      - description: string valid
+        in: path
+        name: customerID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get stripe customer ephemeral key
+      tags:
+      - Stripe
+  /shoppingcart/invoice:
+    post:
+      description: Creates a new customer invoice
+      parameters:
+      - description: shoppingcart.CreateInvoiceRequest struct
+        in: body
+        name: CreateInvoiceRequest
+        required: true
+        schema:
+          $ref: '#/definitions/shoppingcart.CreateInvoiceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create invoice
+      tags:
+      - Stripe
+  /shoppingcart/payment-intent:
+    post:
+      description: Creates a new payment-intent for the user in the JWT request
+      parameters:
+      - description: shoppingcart.CreatePaymentIntentRequest struct
+        in: body
+        name: CreatePaymentIntentRequest
+        required: true
+        schema:
+          $ref: '#/definitions/shoppingcart.CreatePaymentIntentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create new payment-intent
+      tags:
+      - Stripe
+  /shoppingcart/payment-methods/{processorID}:
+    get:
+      description: Returns the customers default payment method
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: processorID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get customer default payment method
+      tags:
+      - Stripe
+  /shoppingcart/products:
+    get:
+      description: Returns all products configured in Stripe
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get product list
+      tags:
+      - Stripe
+  /shoppingcart/publishable-key:
+    get:
+      description: Returns the Stripe API publishable key that corresponds with the
+        configured Stripe account
+      parameters:
+      - description: string valid
+        in: path
+        maxLength: 20
+        minLength: 1
+        name: page
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get stripe publishable key
+      tags:
+      - Stripe
+  /shoppingcart/setup-intent:
+    post:
+      description: Creates a new setup-intent
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Create setup-intent
+      tags:
+      - Stripe
+  /shoppingcart/setup-intent/secret:
+    post:
+      description: Retrieves an existing setup-intent using a POST request to protect
+        the client secret
+      parameters:
+      - description: shoppingcart.SetupIntentRequest struct
+        in: body
+        name: SetupIntentRequest
+        required: true
+        schema:
+          $ref: '#/definitions/shoppingcart.SetupIntentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Retrieve a setup-intent
+      tags:
+      - Stripe
+  /shoppingcart/tax-rate:
+    get:
+      description: Returns the configured tax rates. When a tax rate is not configured,
+        Stripe Automatic Tax is used instead.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      security:
+      - JWT: []
+      summary: Get tax rate
+      tags:
+      - Stripe
+  /shoppingcart/webhook:
+    post:
+      description: Handles public webhook callbacks from Stripe
+      parameters:
+      - description: stripe.Event struct
+        in: body
+        name: Event
+        required: true
+        schema:
+          $ref: '#/definitions/stripe.Event'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.WebServiceResponse'
+      summary: WebHook Handler
+      tags:
+      - Stripe
+  /status:
+    get:
+      description: Returns current system status metrics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      security:
+      - JWT: []
+      summary: System Status
+      tags:
+      - System
+securityDefinitions:
+  JWT:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

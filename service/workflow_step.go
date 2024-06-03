@@ -7,11 +7,11 @@ import (
 )
 
 type WorkflowStepService interface {
-	GetStep(session Session, workflowID, stepID uint64) (*config.WorkflowStep, error)
-	GetSteps(session Session, workflowID uint64) ([]*config.WorkflowStep, error)
-	Create(session Session, step *config.WorkflowStep) (*config.WorkflowStep, error)
-	Update(session Session, step *config.WorkflowStep) error
-	Delete(session Session, step *config.WorkflowStep) error
+	GetStep(session Session, workflowID, stepID uint64) (config.WorkflowStep, error)
+	GetSteps(session Session, workflowID uint64) ([]config.WorkflowStep, error)
+	Create(session Session, step config.WorkflowStep) (config.WorkflowStep, error)
+	Update(session Session, step config.WorkflowStep) error
+	Delete(session Session, step config.WorkflowStep) error
 }
 
 type DefaultWorkflowStepService struct {
@@ -21,14 +21,17 @@ type DefaultWorkflowStepService struct {
 }
 
 // NewWorkflowService creates a new default WorkflowService instance
-func NewWorkflowStepService(app *app.App, dao dao.WorkflowStepDAO) WorkflowStepService {
+func NewWorkflowStepService(
+	app *app.App,
+	dao dao.WorkflowStepDAO) WorkflowStepService {
+
 	return &DefaultWorkflowStepService{
 		app: app,
 		dao: dao}
 }
 
 // GetWorkflow retrieves a specific workflow entry from the current FarmConfig
-func (service *DefaultWorkflowStepService) GetStep(session Session, workflowID, stepID uint64) (*config.WorkflowStep, error) {
+func (service *DefaultWorkflowStepService) GetStep(session Session, workflowID, stepID uint64) (config.WorkflowStep, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
@@ -45,10 +48,15 @@ func (service *DefaultWorkflowStepService) GetStep(session Session, workflowID, 
 }
 
 // GetWorkflows retrieves a list of workflow entries from the current FarmConfig
-func (service *DefaultWorkflowStepService) GetSteps(session Session, workflowID uint64) ([]*config.WorkflowStep, error) {
+func (service *DefaultWorkflowStepService) GetSteps(session Session, workflowID uint64) ([]config.WorkflowStep, error) {
 	for _, workflow := range session.GetFarmService().GetConfig().GetWorkflows() {
 		if workflow.ID == workflowID {
-			return workflow.GetSteps(), nil
+			steps := workflow.GetSteps()
+			_steps := make([]config.WorkflowStep, len(steps))
+			for i, step := range steps {
+				_steps[i] = step
+			}
+			return _steps, nil
 		}
 	}
 	return nil, ErrWorkflowNotFound
@@ -56,12 +64,12 @@ func (service *DefaultWorkflowStepService) GetSteps(session Session, workflowID 
 
 // Create a new workflow entry in the FarmConfig and datastore and publish
 // the new FarmConfig to connected clients.
-func (service *DefaultWorkflowStepService) Create(session Session, step *config.WorkflowStep) (*config.WorkflowStep, error) {
+func (service *DefaultWorkflowStepService) Create(session Session, step config.WorkflowStep) (config.WorkflowStep, error) {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.ID == step.GetWorkflowID() {
-			workflow.AddStep(step)
+			workflow.AddStep(step.(*config.WorkflowStepStruct))
 			farmConfig.SetWorkflow(workflow)
 			return step, farmService.SetConfig(farmConfig)
 		}
@@ -71,12 +79,12 @@ func (service *DefaultWorkflowStepService) Create(session Session, step *config.
 
 // Update an existing workflow entry in the FarmConfig and datastore and publish
 // the new FarmConfig to connected clients.
-func (service *DefaultWorkflowStepService) Update(session Session, step *config.WorkflowStep) error {
+func (service *DefaultWorkflowStepService) Update(session Session, step config.WorkflowStep) error {
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.ID == step.GetWorkflowID() {
-			workflow.SetStep(step)
+			workflow.SetStep(step.(*config.WorkflowStepStruct))
 			return farmService.SetConfig(farmConfig)
 		}
 	}
@@ -85,17 +93,17 @@ func (service *DefaultWorkflowStepService) Update(session Session, step *config.
 
 // Delete a workflow entry from the FarmConfig and datastore and publish
 // the new FarmConfig to connected clients.
-func (service *DefaultWorkflowStepService) Delete(session Session, step *config.WorkflowStep) error {
+func (service *DefaultWorkflowStepService) Delete(session Session, step config.WorkflowStep) error {
 	// farmService.SetConfig doesnt delete the workflow :(
 	farmID := session.GetRequestedFarmID()
-	if err := service.dao.Delete(farmID, step); err != nil {
+	if err := service.dao.Delete(farmID, step.(*config.WorkflowStepStruct)); err != nil {
 		return err
 	}
 	farmService := session.GetFarmService()
 	farmConfig := farmService.GetConfig()
 	for _, workflow := range farmConfig.GetWorkflows() {
 		if workflow.ID == step.GetWorkflowID() {
-			workflow.RemoveStep(step)
+			workflow.RemoveStep(step.(*config.WorkflowStepStruct))
 			farmConfig.SetWorkflow(workflow)
 			return farmService.SetConfig(farmConfig)
 		}

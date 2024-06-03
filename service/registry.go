@@ -12,33 +12,80 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/shoppingcart"
 )
 
+type ServiceRegistry interface {
+	SetAlgorithmService(AlgorithmServicer)
+	GetAlgorithmService() AlgorithmServicer
+	SetAuthService(AuthServicer)
+	GetAuthService() AuthServicer
+	SetChannelService(ChannelServicer)
+	GetChannelService() ChannelServicer
+	SetConditionService(ConditionServicer)
+	GetConditionService() ConditionServicer
+	SetDeviceFactory(DeviceFactory)
+	GetDeviceFactory() DeviceFactory
+	SetDeviceServices(farmID uint64, deviceServices []DeviceServicer)
+	GetDeviceServices(farmID uint64) ([]DeviceServicer, error)
+	GetDeviceService(farmID uint64, deviceType string) (DeviceServicer, error)
+	GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceServicer, error)
+	SetDeviceService(farmID uint64, deviceService DeviceServicer)
+	AddEventLogService(eventLogService EventLogServicer) error
+	SetEventLogService(eventLogServices map[uint64]EventLogServicer)
+	GetEventLogServices() map[uint64]EventLogServicer
+	GetEventLogService(farmID uint64) EventLogServicer
+	RemoveEventLogService(farmID uint64)
+	SetFarmFactory(FarmFactory FarmFactory)
+	GetFarmFactory() FarmFactory
+	AddFarmService(farmService FarmServicer) error
+	SetFarmServices(map[uint64]FarmServicer)
+	GetFarmServices() map[uint64]FarmServicer
+	GetFarmService(uint64) FarmServicer
+	RemoveFarmService(farmID uint64)
+	SetFarmProvisioner(farmProvisioner provisioner.FarmProvisioner)
+	GetFarmProvisioner() provisioner.FarmProvisioner
+	SetGoogleAuthService(googleAuthService AuthServicer)
+	GetGoogleAuthService() AuthServicer
+	SetMetricService(MetricService)
+	GetMetricService() MetricService
+	SetNotificationService(NotificationServicer)
+	GetNotificationService() NotificationServicer
+	SetScheduleService(ScheduleService)
+	GetScheduleService() ScheduleService
+	SetShoppingCartService(shoppingcart.ShoppingCartService)
+	GetShoppingCartService() shoppingcart.ShoppingCartService
+	SetOrganizationService(organizationService OrganizationService)
+	GetOrganizationService() OrganizationService
+	SetRoleService(roleService RoleServicer)
+	GetRoleService() RoleServicer
+	SetUserService(UserServicer)
+	GetUserService() UserServicer
+	SetWorkflowService(WorkflowService)
+	GetWorkflowService() WorkflowService
+	SetWorkflowStepService(WorkflowStepService)
+	GetWorkflowStepService() WorkflowStepService
+}
+
 type DefaultServiceRegistry struct {
 	app                   *app.App
-	datastoreRegistry     dao.Registry
-	mapperRegistry        mapper.MapperRegistry
-	algorithmService      AlgorithmService
-	authService           AuthService
-	changefeedService     ChangefeedService
-	channelService        ChannelService
-	configService         ConfigService
-	conditionService      ConditionService
+	algorithmService      AlgorithmServicer
+	authService           AuthServicer
+	channelService        ChannelServicer
+	conditionService      ConditionServicer
 	deviceFactory         DeviceFactory
-	deviceServices        map[uint64][]DeviceService
+	deviceServices        map[uint64][]DeviceServicer
 	deviceServicesMutex   *sync.RWMutex
-	eventLogServices      map[uint64]EventLogService
+	eventLogServices      map[uint64]EventLogServicer
 	eventLogServicesMutex *sync.RWMutex
 	farmFactory           FarmFactory
-	farmServices          map[uint64]FarmService
+	farmServices          map[uint64]FarmServicer
 	farmServicesMutex     *sync.RWMutex
 	farmProvisioner       provisioner.FarmProvisioner
-	googleAuthService     AuthService
-	jwtService            JsonWebTokenService
+	googleAuthService     AuthServicer
 	metricService         MetricService
-	notificationService   NotificationService
+	notificationService   NotificationServicer
 	organizationService   OrganizationService
-	roleService           RoleService
+	roleService           RoleServicer
 	scheduleService       ScheduleService
-	userService           UserService
+	userService           UserServicer
 	workflowService       WorkflowService
 	workflowStepService   WorkflowStepService
 	shoppingCartService   shoppingcart.ShoppingCartService
@@ -56,11 +103,11 @@ func NewServiceRegistry(app *app.App) ServiceRegistry {
 	return &DefaultServiceRegistry{
 		app:                   app,
 		farmServicesMutex:     &sync.RWMutex{},
-		farmServices:          make(map[uint64]FarmService, 0),
+		farmServices:          make(map[uint64]FarmServicer, 0),
 		deviceServicesMutex:   &sync.RWMutex{},
-		deviceServices:        make(map[uint64][]DeviceService, 0),
+		deviceServices:        make(map[uint64][]DeviceServicer, 0),
 		eventLogServicesMutex: &sync.RWMutex{},
-		eventLogServices:      make(map[uint64]EventLogService, 0)}
+		eventLogServices:      make(map[uint64]EventLogServicer, 0)}
 }
 
 func CreateServiceRegistry(_app *app.App, daos dao.Registry,
@@ -70,7 +117,7 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	channelService := NewChannelService(daos.GetChannelDAO(), mappers.GetChannelMapper())
 
 	metricService := NewMetricService(daos.GetMetricDAO(), mappers.GetMetricMapper())
-	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO(), mappers.GetScheduleMapper(), nil)
+	scheduleService := NewScheduleService(_app, daos.GetScheduleDAO())
 
 	conditionService := NewConditionService(_app.Logger, daos.GetConditionDAO(), mappers.GetConditionMapper())
 	workflowService := NewWorkflowService(_app, daos.GetWorkflowDAO(), mappers.GetWorkflowMapper())
@@ -80,7 +127,7 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 
 	roleService := NewRoleService(_app.Logger, daos.GetRoleDAO())
 
-	authServices := make(map[int]AuthService, 2)
+	authServices := make(map[int]AuthServicer, 2)
 	authService := NewLocalAuthService(_app, daos.GetPermissionDAO(),
 		daos.GetRegistrationDAO(), daos.GetOrganizationDAO(),
 		daos.GetFarmDAO(), daos.GetUserDAO(), daos.GetRoleDAO(),
@@ -101,11 +148,11 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 		channelService:        channelService,
 		conditionService:      conditionService,
 		farmServicesMutex:     &sync.RWMutex{},
-		farmServices:          make(map[uint64]FarmService, 0),
+		farmServices:          make(map[uint64]FarmServicer, 0),
 		deviceServicesMutex:   &sync.RWMutex{},
-		deviceServices:        make(map[uint64][]DeviceService, 0),
+		deviceServices:        make(map[uint64][]DeviceServicer, 0),
 		eventLogServicesMutex: &sync.RWMutex{},
-		eventLogServices:      make(map[uint64]EventLogService, 0),
+		eventLogServices:      make(map[uint64]EventLogServicer, 0),
 		metricService:         metricService,
 		notificationService:   notificationService,
 		scheduleService:       scheduleService,
@@ -121,52 +168,36 @@ func CreateServiceRegistry(_app *app.App, daos dao.Registry,
 	return registry
 }
 
-func (registry *DefaultServiceRegistry) SetAlgorithmService(algoService AlgorithmService) {
+func (registry *DefaultServiceRegistry) SetAlgorithmService(algoService AlgorithmServicer) {
 	registry.algorithmService = algoService
 }
 
-func (registry *DefaultServiceRegistry) GetAlgorithmService() AlgorithmService {
+func (registry *DefaultServiceRegistry) GetAlgorithmService() AlgorithmServicer {
 	return registry.algorithmService
 }
 
-func (registry *DefaultServiceRegistry) SetAuthService(authService AuthService) {
+func (registry *DefaultServiceRegistry) SetAuthService(authService AuthServicer) {
 	registry.authService = authService
 }
 
-func (registry *DefaultServiceRegistry) GetAuthService() AuthService {
+func (registry *DefaultServiceRegistry) GetAuthService() AuthServicer {
 	return registry.authService
 }
 
-func (registry *DefaultServiceRegistry) SetChangefeedService(changefeedService ChangefeedService) {
-	registry.changefeedService = changefeedService
-}
-
-func (registry *DefaultServiceRegistry) GetChangefeedService() ChangefeedService {
-	return registry.changefeedService
-}
-
-func (registry *DefaultServiceRegistry) SetChannelService(channelService ChannelService) {
+func (registry *DefaultServiceRegistry) SetChannelService(channelService ChannelServicer) {
 	registry.channelService = channelService
 }
 
-func (registry *DefaultServiceRegistry) GetChannelService() ChannelService {
+func (registry *DefaultServiceRegistry) GetChannelService() ChannelServicer {
 	return registry.channelService
 }
 
-func (registry *DefaultServiceRegistry) SetConditionService(conditionService ConditionService) {
+func (registry *DefaultServiceRegistry) SetConditionService(conditionService ConditionServicer) {
 	registry.conditionService = conditionService
 }
 
-func (registry *DefaultServiceRegistry) GetConditionService() ConditionService {
+func (registry *DefaultServiceRegistry) GetConditionService() ConditionServicer {
 	return registry.conditionService
-}
-
-func (registry *DefaultServiceRegistry) SetConfigService(configService ConfigService) {
-	registry.configService = configService
-}
-
-func (registry *DefaultServiceRegistry) GetConfigService() ConfigService {
-	return registry.configService
 }
 
 func (registry *DefaultServiceRegistry) SetDeviceFactory(deviceFactory DeviceFactory) {
@@ -177,13 +208,13 @@ func (registry *DefaultServiceRegistry) GetDeviceFactory() DeviceFactory {
 	return registry.deviceFactory
 }
 
-func (registry *DefaultServiceRegistry) SetDeviceServices(farmID uint64, deviceServices []DeviceService) {
+func (registry *DefaultServiceRegistry) SetDeviceServices(farmID uint64, deviceServices []DeviceServicer) {
 	registry.deviceServicesMutex.Lock()
 	defer registry.deviceServicesMutex.Unlock()
 	registry.deviceServices[farmID] = deviceServices
 }
 
-func (registry *DefaultServiceRegistry) GetDeviceServices(farmID uint64) ([]DeviceService, error) {
+func (registry *DefaultServiceRegistry) GetDeviceServices(farmID uint64) ([]DeviceServicer, error) {
 	registry.deviceServicesMutex.Lock()
 	defer registry.deviceServicesMutex.Unlock()
 	if services, ok := registry.deviceServices[farmID]; ok {
@@ -193,13 +224,27 @@ func (registry *DefaultServiceRegistry) GetDeviceServices(farmID uint64) ([]Devi
 }
 
 func (registry *DefaultServiceRegistry) GetDeviceService(farmID uint64,
-	deviceType string) (DeviceService, error) {
+	deviceType string) (DeviceServicer, error) {
 
 	registry.deviceServicesMutex.Lock()
 	defer registry.deviceServicesMutex.Unlock()
 	if services, ok := registry.deviceServices[farmID]; ok {
+		for _, deviceService := range services {
+			if deviceService.DeviceType() == deviceType {
+				return deviceService, nil
+			}
+		}
+		return nil, ErrDeviceNotFound
+	}
+	return nil, ErrFarmNotFound
+}
+
+func (registry *DefaultServiceRegistry) GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceServicer, error) {
+	registry.deviceServicesMutex.Lock()
+	defer registry.deviceServicesMutex.Unlock()
+	if services, ok := registry.deviceServices[farmID]; ok {
 		for _, service := range services {
-			if service.GetDeviceType() == deviceType {
+			if service.ID() == deviceID {
 				return service, nil
 			}
 		}
@@ -208,21 +253,13 @@ func (registry *DefaultServiceRegistry) GetDeviceService(farmID uint64,
 	return nil, ErrFarmNotFound
 }
 
-func (registry *DefaultServiceRegistry) GetDeviceServiceByID(farmID uint64, deviceID uint64) (DeviceService, error) {
+func (registry *DefaultServiceRegistry) SetDeviceService(farmID uint64, deviceService DeviceServicer) {
 	registry.deviceServicesMutex.Lock()
 	defer registry.deviceServicesMutex.Unlock()
-	if services, ok := registry.deviceServices[farmID]; ok {
-		for _, service := range services {
-			if service.GetID() == deviceID {
-				return service, nil
-			}
-		}
-		return nil, ErrDeviceNotFound
-	}
-	return nil, ErrFarmNotFound
+	registry.deviceServices[farmID] = append(registry.deviceServices[farmID], deviceService)
 }
 
-func (registry *DefaultServiceRegistry) AddEventLogService(eventLogService EventLogService) error {
+func (registry *DefaultServiceRegistry) AddEventLogService(eventLogService EventLogServicer) error {
 	registry.eventLogServicesMutex.Lock()
 	defer registry.eventLogServicesMutex.Unlock()
 	if _, ok := registry.eventLogServices[eventLogService.GetFarmID()]; ok {
@@ -232,23 +269,22 @@ func (registry *DefaultServiceRegistry) AddEventLogService(eventLogService Event
 	return nil
 }
 
-func (registry *DefaultServiceRegistry) SetEventLogService(eventLogServices map[uint64]EventLogService) {
+func (registry *DefaultServiceRegistry) SetEventLogService(eventLogServices map[uint64]EventLogServicer) {
 	registry.eventLogServicesMutex.Lock()
 	defer registry.eventLogServicesMutex.Unlock()
 	registry.eventLogServices = eventLogServices
 }
 
-func (registry *DefaultServiceRegistry) GetEventLogServices() map[uint64]EventLogService {
+func (registry *DefaultServiceRegistry) GetEventLogServices() map[uint64]EventLogServicer {
 	registry.eventLogServicesMutex.RLock()
 	defer registry.eventLogServicesMutex.RUnlock()
 	return registry.eventLogServices
 }
 
-func (registry *DefaultServiceRegistry) GetEventLogService(farmID uint64) EventLogService {
+func (registry *DefaultServiceRegistry) GetEventLogService(farmID uint64) EventLogServicer {
 	registry.eventLogServicesMutex.RLock()
 	defer registry.eventLogServicesMutex.RUnlock()
-	service, _ := registry.eventLogServices[farmID]
-	return service
+	return registry.eventLogServices[farmID]
 }
 
 func (registry *DefaultServiceRegistry) RemoveEventLogService(farmID uint64) {
@@ -265,7 +301,7 @@ func (registry *DefaultServiceRegistry) GetFarmFactory() FarmFactory {
 	return registry.farmFactory
 }
 
-func (registry *DefaultServiceRegistry) AddFarmService(farmService FarmService) error {
+func (registry *DefaultServiceRegistry) AddFarmService(farmService FarmServicer) error {
 	registry.farmServicesMutex.Lock()
 	defer registry.farmServicesMutex.Unlock()
 	if _, ok := registry.farmServices[farmService.GetFarmID()]; ok {
@@ -275,23 +311,22 @@ func (registry *DefaultServiceRegistry) AddFarmService(farmService FarmService) 
 	return nil
 }
 
-func (registry *DefaultServiceRegistry) SetFarmServices(farmServices map[uint64]FarmService) {
+func (registry *DefaultServiceRegistry) SetFarmServices(farmServices map[uint64]FarmServicer) {
 	registry.farmServicesMutex.Lock()
 	defer registry.farmServicesMutex.Unlock()
 	registry.farmServices = farmServices
 }
 
-func (registry *DefaultServiceRegistry) GetFarmServices() map[uint64]FarmService {
+func (registry *DefaultServiceRegistry) GetFarmServices() map[uint64]FarmServicer {
 	registry.farmServicesMutex.RLock()
 	defer registry.farmServicesMutex.RUnlock()
 	return registry.farmServices
 }
 
-func (registry *DefaultServiceRegistry) GetFarmService(farmID uint64) FarmService {
+func (registry *DefaultServiceRegistry) GetFarmService(farmID uint64) FarmServicer {
 	registry.farmServicesMutex.RLock()
 	defer registry.farmServicesMutex.RUnlock()
-	service, _ := registry.farmServices[farmID]
-	return service
+	return registry.farmServices[farmID]
 }
 
 func (registry *DefaultServiceRegistry) RemoveFarmService(farmID uint64) {
@@ -308,20 +343,12 @@ func (registry *DefaultServiceRegistry) GetFarmProvisioner() provisioner.FarmPro
 	return registry.farmProvisioner
 }
 
-func (registry *DefaultServiceRegistry) SetGoogleAuthService(googleAuthService AuthService) {
+func (registry *DefaultServiceRegistry) SetGoogleAuthService(googleAuthService AuthServicer) {
 	registry.googleAuthService = googleAuthService
 }
 
-func (registry *DefaultServiceRegistry) GetGoogleAuthService() AuthService {
+func (registry *DefaultServiceRegistry) GetGoogleAuthService() AuthServicer {
 	return registry.googleAuthService
-}
-
-func (registry *DefaultServiceRegistry) SetJsonWebTokenService(jwtService JsonWebTokenService) {
-	registry.jwtService = jwtService
-}
-
-func (registry *DefaultServiceRegistry) GetJsonWebTokenService() JsonWebTokenService {
-	return registry.jwtService
 }
 
 func (registry *DefaultServiceRegistry) SetMetricService(metricService MetricService) {
@@ -332,11 +359,11 @@ func (registry *DefaultServiceRegistry) GetMetricService() MetricService {
 	return registry.metricService
 }
 
-func (registry *DefaultServiceRegistry) SetNotificationService(notificationService NotificationService) {
+func (registry *DefaultServiceRegistry) SetNotificationService(notificationService NotificationServicer) {
 	registry.notificationService = notificationService
 }
 
-func (registry *DefaultServiceRegistry) GetNotificationService() NotificationService {
+func (registry *DefaultServiceRegistry) GetNotificationService() NotificationServicer {
 	return registry.notificationService
 }
 
@@ -348,11 +375,11 @@ func (registry *DefaultServiceRegistry) GetScheduleService() ScheduleService {
 	return registry.scheduleService
 }
 
-func (registry *DefaultServiceRegistry) SetUserService(userService UserService) {
+func (registry *DefaultServiceRegistry) SetUserService(userService UserServicer) {
 	registry.userService = userService
 }
 
-func (registry *DefaultServiceRegistry) GetUserService() UserService {
+func (registry *DefaultServiceRegistry) GetUserService() UserServicer {
 	return registry.userService
 }
 
@@ -364,11 +391,11 @@ func (registry *DefaultServiceRegistry) GetOrganizationService() OrganizationSer
 	return registry.organizationService
 }
 
-func (registry *DefaultServiceRegistry) SetRoleService(roleService RoleService) {
+func (registry *DefaultServiceRegistry) SetRoleService(roleService RoleServicer) {
 	registry.roleService = roleService
 }
 
-func (registry *DefaultServiceRegistry) GetRoleService() RoleService {
+func (registry *DefaultServiceRegistry) GetRoleService() RoleServicer {
 	return registry.roleService
 }
 

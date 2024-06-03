@@ -1,15 +1,15 @@
 package service
 
 import (
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 type MetricService interface {
-	Get(session Session, deviceID, metricID uint64) (common.Metric, error)
-	GetAll(session Session, deviceID uint64) ([]common.Metric, error)
-	Update(session Session, metric common.Metric) error
+	Get(session Session, deviceID, metricID uint64) (model.Metric, error)
+	GetAll(session Session, deviceID uint64) ([]model.Metric, error)
+	Update(session Session, metric model.Metric) error
 }
 
 type DefaultMetricService struct {
@@ -18,14 +18,16 @@ type DefaultMetricService struct {
 	MetricService
 }
 
-func NewMetricService(dao dao.MetricDAO, mapper mapper.MetricMapper) MetricService {
+func NewMetricService(
+	dao dao.MetricDAO,
+	mapper mapper.MetricMapper) MetricService {
+
 	return &DefaultMetricService{
 		dao:    dao,
 		mapper: mapper}
 }
 
-func (service *DefaultMetricService) Get(session Session, deviceID,
-	metricID uint64) (common.Metric, error) {
+func (service *DefaultMetricService) Get(session Session, deviceID, metricID uint64) (model.Metric, error) {
 	farmID := session.GetRequestedFarmID()
 	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
 	entity, err := service.dao.Get(farmID, deviceID, metricID, consistencyLevel)
@@ -35,14 +37,14 @@ func (service *DefaultMetricService) Get(session Session, deviceID,
 	return service.mapper.MapConfigToModel(entity), nil
 }
 
-func (service *DefaultMetricService) GetAll(session Session, deviceID uint64) ([]common.Metric, error) {
+func (service *DefaultMetricService) GetAll(session Session, deviceID uint64) ([]model.Metric, error) {
 	farmID := session.GetRequestedFarmID()
 	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
 	entities, err := service.dao.GetByDevice(farmID, deviceID, consistencyLevel)
 	if err != nil {
 		return nil, err
 	}
-	metricViews := make([]common.Metric, len(entities))
+	metricViews := make([]model.Metric, len(entities))
 	for i, entity := range entities {
 		model := service.mapper.MapConfigToModel(entity)
 		metricViews[i] = model
@@ -50,7 +52,7 @@ func (service *DefaultMetricService) GetAll(session Session, deviceID uint64) ([
 	return metricViews, nil
 }
 
-func (service *DefaultMetricService) Update(session Session, metric common.Metric) error {
+func (service *DefaultMetricService) Update(session Session, metric model.Metric) error {
 	farmID := session.GetRequestedFarmID()
 	consistencyLevel := session.GetFarmService().GetConsistencyLevel()
 	entity := service.mapper.MapModelToConfig(metric)

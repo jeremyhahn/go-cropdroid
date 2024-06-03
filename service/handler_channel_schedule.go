@@ -12,19 +12,23 @@ import (
 
 type ChannelScheduleHandler struct {
 	logger          *logging.Logger
-	deviceConfig    *config.Device
-	channelConfig   *config.Channel
+	deviceConfig    config.Device
+	channelConfig   config.Channel
 	farmState       state.FarmStateMap
-	farmService     FarmService
-	deviceService   DeviceService
+	farmService     FarmServicer
+	deviceService   DeviceServicer
 	scheduleService ScheduleService
 	ScheduleHandler
 }
 
-func NewChannelScheduleHandler(logger *logging.Logger, deviceConfig *config.Device,
-	channelConfig *config.Channel, farmState state.FarmStateMap,
-	deviceService DeviceService, scheduleService ScheduleService,
-	farmService FarmService) ScheduleHandler {
+func NewChannelScheduleHandler(
+	logger *logging.Logger,
+	deviceConfig config.Device,
+	channelConfig config.Channel,
+	farmState state.FarmStateMap,
+	deviceService DeviceServicer,
+	scheduleService ScheduleService,
+	farmService FarmServicer) ScheduleHandler {
 
 	return &ChannelScheduleHandler{
 		logger:          logger,
@@ -40,7 +44,7 @@ func (h *ChannelScheduleHandler) Handle() error {
 
 	//eventType := "Scheduled Channel"
 
-	var activeSchedule *config.Schedule
+	var activeSchedule *config.ScheduleStruct
 
 	if !h.channelConfig.IsEnabled() {
 		return nil
@@ -51,7 +55,7 @@ func (h *ChannelScheduleHandler) Handle() error {
 		return err
 	}
 
-	position := deviceState.GetChannels()[h.channelConfig.GetChannelID()]
+	position := deviceState.GetChannels()[h.channelConfig.GetBoardID()]
 	h.logger.Debugf("%s switch position: %d", h.channelConfig.GetName(), position)
 
 	for _, schedule := range h.channelConfig.GetSchedule() {
@@ -77,7 +81,7 @@ func (h *ChannelScheduleHandler) Handle() error {
 		if position == common.SWITCH_OFF {
 
 			message := fmt.Sprintf("Switching ON scheduled %s.", h.channelConfig.GetName())
-			_, err := h.deviceService.Switch(h.channelConfig.GetChannelID(), common.SWITCH_ON, message)
+			_, err := h.deviceService.Switch(h.channelConfig.GetBoardID(), common.SWITCH_ON, message)
 			if err != nil {
 				return err
 			}
@@ -96,7 +100,7 @@ func (h *ChannelScheduleHandler) Handle() error {
 		h.logger.Debugf("%s scheduled OFF condition met. Current position: %d", h.channelConfig.GetName(), position)
 		if position == common.SWITCH_ON {
 			message := fmt.Sprintf("Switching OFF scheduled %s.", h.channelConfig.GetName())
-			_, err := h.deviceService.Switch(h.channelConfig.GetChannelID(), common.SWITCH_OFF, message)
+			_, err := h.deviceService.Switch(h.channelConfig.GetBoardID(), common.SWITCH_OFF, message)
 			if err != nil {
 				return err
 			}

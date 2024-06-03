@@ -95,8 +95,7 @@ var configCmd = &cobra.Command{
 
 				App.InitLogFile(os.Getuid(), os.Getgid())
 
-				_, _, _, _, err := builder.NewGormConfigBuilder(App, DeviceDataStore,
-					AppStateTTL, AppStateTick, DatabaseInit).Build()
+				_, _, _, _, err := builder.NewGormConfigBuilder(App).Build()
 				if err != nil {
 					App.Logger.Fatal(err)
 				}

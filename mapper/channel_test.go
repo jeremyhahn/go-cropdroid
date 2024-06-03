@@ -3,7 +3,6 @@ package mapper
 import (
 	"testing"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
@@ -11,10 +10,10 @@ import (
 
 func TestChannelMapperMapConfigToModel(t *testing.T) {
 	mapper := NewChannelMapper()
-	entity := &config.Channel{
+	entity := &config.ChannelStruct{
 		ID:          1,
 		DeviceID:    2,
-		ChannelID:   3,
+		BoardID:     3,
 		Name:        "Test Channel",
 		Enable:      true,
 		Notify:      true,
@@ -23,9 +22,9 @@ func TestChannelMapperMapConfigToModel(t *testing.T) {
 		Backoff:     3,
 		AlgorithmID: 4}
 	model := mapper.MapConfigToModel(entity)
-	assert.Equal(t, model.GetID(), entity.ID)
+	assert.Equal(t, model.Identifier(), entity.ID)
 	assert.Equal(t, model.GetDeviceID(), entity.GetDeviceID())
-	assert.Equal(t, model.GetChannelID(), entity.GetChannelID())
+	assert.Equal(t, model.GetBoardID(), entity.GetBoardID())
 	assert.Equal(t, model.GetName(), entity.GetName())
 	assert.Equal(t, model.IsEnabled(), entity.IsEnabled())
 	assert.Equal(t, model.IsNotify(), entity.IsNotify())
@@ -39,7 +38,7 @@ func TestChannelMapperMapModelToConfig(t *testing.T) {
 
 	mapper := NewChannelMapper()
 
-	var channel common.Channel = &model.Channel{}
+	var channel model.Channel = &model.ChannelStruct{}
 	channel.SetID(1)
 	channel.SetDeviceID(2)
 	channel.SetName("Test Channel")
@@ -53,9 +52,9 @@ func TestChannelMapperMapModelToConfig(t *testing.T) {
 	entity := mapper.MapModelToConfig(channel)
 	assert.ObjectsAreEqual(channel, entity)
 
-	assert.Equal(t, channel.GetID(), entity.ID)
+	assert.Equal(t, channel.Identifier(), entity.Identifier())
 	assert.Equal(t, channel.GetDeviceID(), entity.GetDeviceID())
-	assert.Equal(t, channel.GetChannelID(), entity.GetChannelID())
+	assert.Equal(t, channel.GetBoardID(), entity.GetBoardID())
 	assert.Equal(t, channel.GetName(), entity.GetName())
 	assert.Equal(t, channel.IsEnabled(), entity.IsEnabled())
 	assert.Equal(t, channel.IsNotify(), entity.IsNotify())

@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -19,14 +20,14 @@ func NewWorkflowDAO(logger *logging.Logger, db *gorm.DB) dao.WorkflowDAO {
 	return &GormWorkflowDAO{logger: logger, db: db}
 }
 
-func (dao *GormWorkflowDAO) Save(workflow *config.Workflow) error {
+func (dao *GormWorkflowDAO) Save(workflow *config.WorkflowStruct) error {
 	return dao.db.Save(workflow).Error
 }
 
-func (dao *GormWorkflowDAO) Delete(workflow *config.Workflow) error {
+func (dao *GormWorkflowDAO) Delete(workflow *config.WorkflowStruct) error {
 	if err := dao.db.
 		Where("workflow_id = ?", workflow.ID).
-		Delete(&config.WorkflowStep{}).
+		Delete(&config.WorkflowStepStruct{}).
 		Error; err != nil {
 		return err
 	}
@@ -34,9 +35,14 @@ func (dao *GormWorkflowDAO) Delete(workflow *config.Workflow) error {
 }
 
 func (dao *GormWorkflowDAO) Get(farmID, workflowID uint64,
-	CONSISTENCY_LEVEL int) (*config.Workflow, error) {
-	var workflow *config.Workflow
+	CONSISTENCY_LEVEL int) (*config.WorkflowStruct, error) {
+	var workflow *config.WorkflowStruct
 	if err := dao.db.First(workflow, workflowID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	workflowSteps := workflow.GetSteps()
@@ -47,12 +53,18 @@ func (dao *GormWorkflowDAO) Get(farmID, workflowID uint64,
 }
 
 func (dao *GormWorkflowDAO) GetByFarmID(farmID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Workflow, error) {
-	var workflows []*config.Workflow
+	CONSISTENCY_LEVEL int) ([]*config.WorkflowStruct, error) {
+	var workflows []*config.WorkflowStruct
 	if err := dao.db.
 		Preload("Steps").
 		Where("farm_id = ?", farmID).
 		Find(&workflows).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	// TODO: Replace with order by workflow_steps.sort_order

@@ -1,25 +1,33 @@
 package model
 
-import "github.com/jeremyhahn/go-cropdroid/common"
+import "github.com/jeremyhahn/go-cropdroid/config"
 
-type Role struct {
-	ID          uint64 `json:"id"`
-	Name        string `json:"name"`
-	common.Role `json:"-"`
+type Role interface {
+	config.Role
 }
 
-func NewRole() common.Role {
-	return &Role{}
+type RoleStruct struct {
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
+	Role `json:"-"`
 }
 
-func (role *Role) GetID() uint64 {
+func NewRole() Role {
+	return &RoleStruct{}
+}
+
+func (role *RoleStruct) Identifier() uint64 {
 	return role.ID
 }
 
-func (role *Role) GetName() string {
+func (role *RoleStruct) SetID(id uint64) {
+	role.ID = id
+}
+
+func (role *RoleStruct) GetName() string {
 	return role.Name
 }
 
-func (role *Role) SetName(name string) {
+func (role *RoleStruct) SetName(name string) {
 	role.Name = name
 }

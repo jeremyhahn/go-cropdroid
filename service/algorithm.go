@@ -7,19 +7,21 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 )
 
-type AlgorithmService interface {
-	GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Algorithm], error)
+type AlgorithmServicer interface {
+	Page(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.AlgorithmStruct], error)
 }
 
-type DefaultAlgorithmService struct {
+type AlgorithmService struct {
 	dao dao.AlgorithmDAO
-	AlgorithmService
+	AlgorithmServicer
 }
 
-func NewAlgorithmService(dao dao.AlgorithmDAO) AlgorithmService {
-	return &DefaultAlgorithmService{dao: dao}
+func NewAlgorithmService(dao dao.AlgorithmDAO) AlgorithmServicer {
+	return &AlgorithmService{dao: dao}
 }
 
-func (service *DefaultAlgorithmService) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Algorithm], error) {
+func (service *AlgorithmService) Page(pageQuery query.PageQuery,
+	CONSISTENCY_LEVEL int) (dao.PageResult[*config.AlgorithmStruct], error) {
+
 	return service.dao.GetPage(pageQuery, common.CONSISTENCY_LOCAL)
 }

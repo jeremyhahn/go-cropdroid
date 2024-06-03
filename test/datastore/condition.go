@@ -11,7 +11,7 @@ import (
 )
 
 func TestConditionCRUD(t *testing.T, conditionDAO dao.ConditionDAO,
-	org *config.Organization) {
+	org *config.OrganizationStruct) {
 
 	farm1 := org.GetFarms()[0]
 	device1 := farm1.GetDevices()[1]

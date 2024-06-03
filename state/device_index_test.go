@@ -9,7 +9,7 @@ import (
 
 func TestDeviceIndex(t *testing.T) {
 
-	deviceConfig := config.Device{
+	deviceConfig := &config.DeviceStruct{
 		ID:          1,
 		FarmID:      uint64(1),
 		Type:        "Test",
@@ -25,14 +25,14 @@ func TestDeviceIndex(t *testing.T) {
 	device, ok := store.Get(1)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, device, deviceConfig)
-	assert.Equal(t, 1, device.ID)
-	assert.Equal(t, 1, device.GetFarmID())
+	assert.Equal(t, uint64(1), device.Identifier())
+	assert.Equal(t, uint64(1), device.GetFarmID())
 	assert.Equal(t, "Test", device.GetType())
 }
 
 func BenchmarkDeviceIndex(b *testing.B) {
 
-	deviceConfig := config.Device{
+	deviceConfig := &config.DeviceStruct{
 		ID:          1,
 		FarmID:      1,
 		Type:        "Test",

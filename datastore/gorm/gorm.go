@@ -7,9 +7,9 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/gorm/entity"
+	"github.com/jeremyhahn/go-cropdroid/util"
 
 	"gorm.io/driver/sqlite"
-	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -67,11 +67,20 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 	//database.logger.Debug(fmt.Sprintf("Datastore: %s", database.params.Engine))
 	database.isServerConnection = serverConnection
 	switch database.params.Engine {
-	case "memory":
+	case "sqlite-memory":
 		database.isInMemoryDatabase = true
 		database.db = database.newSQLite(fmt.Sprintf("file:%s?mode=memory&cache=shared", database.params.DBName))
 	case "sqlite":
 		sqlite := fmt.Sprintf("%s/%s.db", database.params.DataDir, database.params.DBName)
+		exists, err := util.FileExists(sqlite)
+		if err != nil {
+			database.logger.Error(err)
+			return nil
+		}
+		if !exists {
+			os.MkdirAll(database.params.DataDir, 0755)
+			os.Create(sqlite)
+		}
 		database.db = database.newSQLite(sqlite)
 	// case "cockroach":
 	// 	database.db = database.newCockroachDB()
@@ -89,9 +98,9 @@ func (database *GormDatabase) Connect(serverConnection bool) *gorm.DB {
 // Uses the connection parameters and credentials from the current
 // database session to establish a new connection.
 func (database *GormDatabase) CloneConnection() *gorm.DB {
-	if database.isInMemoryDatabase {
-		return database.db
-	}
+	// if database.isInMemoryDatabase {
+	// 	return database.db
+	// }
 	return database.Connect(database.isServerConnection)
 }
 
@@ -112,32 +121,34 @@ func (database *GormDatabase) Create() error {
 // Migrate will import / alter the current schema to match entities defined in config package
 func (database *GormDatabase) Migrate() error {
 
-	database.db.AutoMigrate(&config.Algorithm{})
-	database.db.AutoMigrate(&config.Channel{})
-	database.db.AutoMigrate(&config.Condition{})
-	database.db.AutoMigrate(&config.DeviceSetting{})
-	database.db.AutoMigrate(&config.Device{})
-	database.db.AutoMigrate(&config.Farm{})
-	database.db.AutoMigrate(&config.License{})
-	database.db.AutoMigrate(&config.Metric{})
-	database.db.AutoMigrate(&config.Organization{})
-	database.db.AutoMigrate(&config.Permission{})
-	database.db.AutoMigrate(&config.Registration{})
-	database.db.AutoMigrate(&config.Role{})
-	database.db.AutoMigrate(&config.Schedule{})
+	database.db.AutoMigrate(config.AlgorithmStruct{})
+	database.db.AutoMigrate(config.ChannelStruct{})
+	database.db.AutoMigrate(config.ConditionStruct{})
+	database.db.AutoMigrate(config.DeviceSettingStruct{})
+	database.db.AutoMigrate(config.DeviceStruct{})
+	database.db.AutoMigrate(config.FarmStruct{})
+	database.db.AutoMigrate(config.ServerLicenseStruct{})
+	database.db.AutoMigrate(config.OrganizationLicenseStruct{})
+	database.db.AutoMigrate(config.FarmLicenseStruct{})
+	database.db.AutoMigrate(config.MetricStruct{})
+	database.db.AutoMigrate(config.OrganizationStruct{})
+	database.db.AutoMigrate(config.PermissionStruct{})
+	database.db.AutoMigrate(config.RegistrationStruct{})
+	database.db.AutoMigrate(config.RoleStruct{})
+	database.db.AutoMigrate(config.ScheduleStruct{})
 	//database.db.AutoMigrate(&config.Server{})
-	database.db.AutoMigrate(&config.User{})
-	database.db.AutoMigrate(&config.WorkflowStep{})
-	database.db.AutoMigrate(&config.Workflow{})
+	database.db.AutoMigrate(config.UserStruct{})
+	database.db.AutoMigrate(config.WorkflowStepStruct{})
+	database.db.AutoMigrate(config.WorkflowStruct{})
 	// Entities
-	database.db.AutoMigrate(&entity.EventLog{})
-	database.db.AutoMigrate(&entity.InventoryType{})
-	database.db.AutoMigrate(&entity.Inventory{})
+	database.db.AutoMigrate(entity.EventLog{})
+	database.db.AutoMigrate(entity.InventoryType{})
+	database.db.AutoMigrate(entity.Inventory{})
 
 	// Billing & Shopping Cart
-	database.db.AutoMigrate(&config.Customer{})
-	database.db.AutoMigrate(&config.Address{})
-	database.db.AutoMigrate(&config.ShippingAddress{})
+	database.db.AutoMigrate(config.CustomerStruct{})
+	database.db.AutoMigrate(config.AddressStruct{})
+	database.db.AutoMigrate(config.ShippingAddressStruct{})
 
 	return nil
 }

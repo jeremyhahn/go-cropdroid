@@ -17,7 +17,7 @@ var (
 )
 
 // Used by farm state storage implementations
-type FarmStorer interface {
+type FarmStateStorer interface {
 	Len() int
 	Put(farmID uint64, v FarmStateMap) error
 	Get(farmID uint64) (FarmStateMap, error)
@@ -26,7 +26,7 @@ type FarmStorer interface {
 }
 
 // Used by device state storage implementations
-type DeviceStorer interface {
+type DeviceStateStorer interface {
 	Len() int
 	Put(deviceID uint64, v DeviceStateMap) error
 	Get(deviceID uint64) (DeviceStateMap, error)

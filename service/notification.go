@@ -4,28 +4,38 @@ import (
 	"errors"
 
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/model"
 	logging "github.com/op/go-logging"
 )
 
-type NotificationServiceImpl struct {
-	logger        *logging.Logger
-	notifications chan common.Notification
-	mailer        common.Mailer
-	NotificationService
+type NotificationServicer interface {
+	Enqueue(notification model.Notification) error
+	Dequeue() <-chan model.Notification
+	QueueSize() int
 }
 
-func NewNotificationService(logger *logging.Logger, mailer common.Mailer) NotificationService {
-	return &NotificationServiceImpl{
+type NotificationService struct {
+	logger        *logging.Logger
+	notifications chan model.Notification
+	mailer        common.Mailer
+	NotificationServicer
+}
+
+func NewNotificationService(
+	logger *logging.Logger,
+	mailer common.Mailer) NotificationServicer {
+
+	return &NotificationService{
 		logger:        logger,
-		notifications: make(chan common.Notification, common.BUFFERED_CHANNEL_SIZE),
+		notifications: make(chan model.Notification, common.BUFFERED_CHANNEL_SIZE),
 		mailer:        mailer}
 }
 
-func (ns *NotificationServiceImpl) QueueSize() int {
+func (ns *NotificationService) QueueSize() int {
 	return len(ns.notifications)
 }
 
-func (ns *NotificationServiceImpl) Enqueue(notification common.Notification) error {
+func (ns *NotificationService) Enqueue(notification model.Notification) error {
 	if ns.mailer != nil {
 		ns.mailer.Send(notification.GetType(), notification.GetMessage())
 	}
@@ -46,6 +56,6 @@ func (ns *NotificationServiceImpl) Enqueue(notification common.Notification) err
 	return nil
 }
 
-func (ns *NotificationServiceImpl) Dequeue() <-chan common.Notification {
+func (ns *NotificationService) Dequeue() <-chan model.Notification {
 	return ns.notifications
 }

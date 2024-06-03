@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -19,27 +20,32 @@ func NewMetricDAO(logger *logging.Logger, db *gorm.DB) dao.MetricDAO {
 	return &GormMetricDAO{logger: logger, db: db}
 }
 
-func (metricDAO *GormMetricDAO) Save(farmID uint64, metric *config.Metric) error {
+func (metricDAO *GormMetricDAO) Save(farmID uint64, metric *config.MetricStruct) error {
 	metricDAO.logger.Debugf(fmt.Sprintf("Saving metric record: %+v", metric))
 	return metricDAO.db.Save(metric).Error
 }
 
 func (metricDAO *GormMetricDAO) Get(farmID, deviceID,
-	metricID uint64, CONSISTENCY_LEVEL int) (*config.Metric, error) {
+	metricID uint64, CONSISTENCY_LEVEL int) (*config.MetricStruct, error) {
 
 	metricDAO.logger.Debugf("Getting metric id %d", metricID)
-	var entity config.Metric
+	var entity config.MetricStruct
 	if err := metricDAO.db.First(&entity, metricID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			metricDAO.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		metricDAO.logger.Error(err)
 		return nil, err
 	}
 	return &entity, nil
 }
 
 func (metricDAO *GormMetricDAO) GetByDevice(farmID, deviceID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Metric, error) {
+	CONSISTENCY_LEVEL int) ([]*config.MetricStruct, error) {
 
 	metricDAO.logger.Debugf("Getting metric record for farm %d", farmID)
-	var metrics []*config.Metric
+	var metrics []*config.MetricStruct
 	// if err := metricDAO.db.Table("metrics").
 	// 	Select("metrics.*").
 	// 	Joins("JOIN devices on metrics.device_id = devices.id").
@@ -55,6 +61,12 @@ func (metricDAO *GormMetricDAO) GetByDevice(farmID, deviceID uint64,
 		Joins("JOIN farms on farms.id = devices.farm_id").
 		Where("devices.id = ? and farms.id = ?", deviceID, farmID).
 		Find(&metrics).Error; err != nil {
+
+		if err == gorm.ErrRecordNotFound {
+			metricDAO.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		metricDAO.logger.Error(err)
 		return nil, err
 	}
 	return metrics, nil

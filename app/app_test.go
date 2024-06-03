@@ -8,7 +8,7 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-func NewUnitTestContext() *App {
+func NewUnitTest() *App {
 
 	logger := logging.MustGetLogger(common.APPNAME)
 	stdout := logging.NewLogBackend(os.Stdout, "", 0)

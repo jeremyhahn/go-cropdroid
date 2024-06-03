@@ -31,20 +31,20 @@ func NewRaftWorkflowDAO(logger *logging.Logger,
 		farmDAO: farmDAO}
 }
 
-func (dao *RaftWorkflowDAO) Save(workflow *config.Workflow) error {
+func (dao *RaftWorkflowDAO) Save(workflow *config.WorkflowStruct) error {
 	idSetter := dao.raft.GetParams().IdSetter
 	farmID := workflow.GetFarmID()
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	idSetter.SetWorkflowIds(farmID, []*config.Workflow{workflow})
+	idSetter.SetWorkflowIds(farmID, []*config.WorkflowStruct{workflow})
 	farmConfig.SetWorkflow(workflow)
 	return dao.farmDAO.Save(farmConfig)
 }
 
 func (dao *RaftWorkflowDAO) Get(farmID, workflowID uint64,
-	CONSISTENCY_LEVEL int) (*config.Workflow, error) {
+	CONSISTENCY_LEVEL int) (*config.WorkflowStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -55,16 +55,16 @@ func (dao *RaftWorkflowDAO) Get(farmID, workflowID uint64,
 			return workflow, nil
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (dao *RaftWorkflowDAO) Delete(workflow *config.Workflow) error {
+func (dao *RaftWorkflowDAO) Delete(workflow *config.WorkflowStruct) error {
 	dao.logger.Debugf(fmt.Sprintf("Deleting workflow record: %+v", workflow))
 	farmConfig, err := dao.farmDAO.Get(workflow.GetFarmID(), common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	newWorkflowList := make([]*config.Workflow, 0)
+	newWorkflowList := make([]*config.WorkflowStruct, 0)
 	for _, wflow := range farmConfig.GetWorkflows() {
 		if wflow.ID == workflow.ID {
 			continue
@@ -76,7 +76,7 @@ func (dao *RaftWorkflowDAO) Delete(workflow *config.Workflow) error {
 }
 
 func (dao *RaftWorkflowDAO) GetByFarmID(farmID uint64,
-	CONSISTENCY_LEVEL int) ([]*config.Workflow, error) {
+	CONSISTENCY_LEVEL int) ([]*config.WorkflowStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, CONSISTENCY_LEVEL)
 	if err != nil {

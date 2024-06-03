@@ -22,28 +22,29 @@ type FarmFactoryCluster interface {
 	BuildClusterService(
 		eventLogDAO dao.EventLogDAO,
 		farmDAO dao.FarmDAO,
-		farmConfig *config.Farm,
-		farmStateStore state.FarmStorer,
-		deviceStateStore state.DeviceStorer,
+		farmConfig config.Farm,
+		farmStateStore state.FarmStateStorer,
+		deviceStateStore state.DeviceStateStorer,
 		deviceDataStore datastore.DeviceDataStore,
-		farmChannels *FarmChannels) (FarmService, error)
+		farmChannels *FarmChannels) (FarmServicer, error)
 	FarmFactory
 }
 
-func NewFarmFactoryCluster(app *app.App, datastoreRegistry dao.Registry,
-	serviceRegistry ServiceRegistry, deviceMapper mapper.DeviceMapper,
-	changefeeders map[string]datastore.Changefeeder,
+func NewFarmFactoryCluster(
+	app *app.App,
+	datastoreRegistry dao.Registry,
+	serviceRegistry ServiceRegistry,
+	deviceMapper mapper.DeviceMapper,
 	farmProvisionerChan chan config.Farm,
 	farmTickerProvisionerChan chan uint64) FarmFactoryCluster {
 
 	return &ClusteredFarmFactory{
 		DefaultFarmFactory{
-			app:              app,
-			farmDAO:          datastoreRegistry.GetFarmDAO(),
-			deviceDAO:        datastoreRegistry.GetDeviceDAO(),
-			deviceSettingDAO: datastoreRegistry.GetDeviceSettingDAO(),
-			deviceMapper:     deviceMapper,
-			changefeeders:    changefeeders,
+			app:               app,
+			farmDAO:           datastoreRegistry.GetFarmDAO(),
+			datastoreRegistry: datastoreRegistry,
+			deviceSettingDAO:  datastoreRegistry.GetDeviceSettingDAO(),
+			deviceMapper:      deviceMapper,
 			// deviceIndexMap:            make(map[uint64]config.DeviceConfig, 0),
 			// channelIndexMap:           make(map[int]config.ChannelConfig, 0),
 			// datastoreRegistry:         datastoreRegistry,
@@ -55,16 +56,16 @@ func NewFarmFactoryCluster(app *app.App, datastoreRegistry dao.Registry,
 func (cff *ClusteredFarmFactory) BuildClusterService(
 	farmEventLogDAO dao.EventLogDAO,
 	farmDAO dao.FarmDAO,
-	farmConfig *config.Farm,
-	farmStateStore state.FarmStorer,
-	deviceStateStore state.DeviceStorer,
+	farmConfig config.Farm,
+	farmStateStore state.FarmStateStorer,
+	deviceStateStore state.DeviceStateStorer,
 	deviceDataStore datastore.DeviceDataStore,
-	farmChannels *FarmChannels) (FarmService, error) {
+	farmChannels *FarmChannels) (FarmServicer, error) {
 
 	clusterServiceRegisty := cff.serviceRegistry.(ClusterServiceRegistry)
 	raftCluster := clusterServiceRegisty.GetRaftNode()
 
-	farmID := farmConfig.ID
+	farmID := farmConfig.Identifier()
 	cff.app.Logger.Debugf("BuildClusterService creating clustered farm services for farmID=%d", farmID)
 
 	// Create EventLog cluster for this farm

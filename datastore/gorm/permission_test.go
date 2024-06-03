@@ -16,9 +16,9 @@ func TestUserRoleRelationship(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 	email := "root@localhost"
@@ -35,7 +35,7 @@ func TestUserRoleRelationship(t *testing.T) {
 	user.SetID(userID)
 	user.SetEmail(email)
 	user.SetPassword("$ecret")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	err := userDAO.Save(user)
@@ -56,17 +56,17 @@ func TestPermissions(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.Organization{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.Channel{})
-	currentTest.gorm.AutoMigrate(&config.Condition{})
-	currentTest.gorm.AutoMigrate(&config.Schedule{})
-	currentTest.gorm.AutoMigrate(&config.Workflow{})
-	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.DeviceStruct{})
+	currentTest.gorm.AutoMigrate(&config.ChannelStruct{})
+	currentTest.gorm.AutoMigrate(&config.ConditionStruct{})
+	currentTest.gorm.AutoMigrate(&config.ScheduleStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStepStruct{})
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 	roleDAO := NewRoleDAO(currentTest.logger, currentTest.gorm)
@@ -97,7 +97,7 @@ func TestPermissions(t *testing.T) {
 	err = farmDAO.Save(farm)
 	assert.Nil(t, err)
 
-	permission := &config.Permission{
+	permission := &config.PermissionStruct{
 		OrganizationID: 0,
 		FarmID:         farm.ID,
 		UserID:         user.ID,
@@ -122,17 +122,17 @@ func TestGetOrganizations(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.Organization{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.Device{})
-	currentTest.gorm.AutoMigrate(&config.Channel{})
-	currentTest.gorm.AutoMigrate(&config.Condition{})
-	currentTest.gorm.AutoMigrate(&config.Schedule{})
-	currentTest.gorm.AutoMigrate(&config.Workflow{})
-	currentTest.gorm.AutoMigrate(&config.WorkflowStep{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.DeviceStruct{})
+	currentTest.gorm.AutoMigrate(&config.ChannelStruct{})
+	currentTest.gorm.AutoMigrate(&config.ConditionStruct{})
+	currentTest.gorm.AutoMigrate(&config.ScheduleStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStruct{})
+	currentTest.gorm.AutoMigrate(&config.WorkflowStepStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
@@ -169,9 +169,9 @@ func TestGetOrganizations(t *testing.T) {
 	farmConfig := config.NewFarm()
 	farmConfig.SetName(testFarmName)
 
-	orgConfig := &config.Organization{
+	orgConfig := &config.OrganizationStruct{
 		Name:  testOrgName,
-		Farms: []*config.Farm{farmConfig}}
+		Farms: []*config.FarmStruct{farmConfig}}
 
 	err = orgDAO.Save(orgConfig)
 	assert.Nil(t, err)
@@ -183,9 +183,9 @@ func TestGetOrganizations(t *testing.T) {
 
 	farmConfig2 := config.NewFarm()
 	farmConfig2.SetName(testFarmName2)
-	orgConfig2 := &config.Organization{
+	orgConfig2 := &config.OrganizationStruct{
 		Name:  testOrgName2,
-		Farms: []*config.Farm{farmConfig2}}
+		Farms: []*config.FarmStruct{farmConfig2}}
 
 	err = orgDAO.Save(orgConfig2)
 	assert.Nil(t, err)
@@ -197,13 +197,13 @@ func TestGetOrganizations(t *testing.T) {
 	assert.Equal(t, 1, len(page1.Entities[0].GetFarms()))
 	assert.Equal(t, 1, len(page1.Entities[1].GetFarms()))
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		OrganizationID: orgConfig.ID,
 		FarmID:         0,
 		UserID:         user.ID,
 		RoleID:         role.ID})
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		OrganizationID: orgConfig2.ID,
 		FarmID:         0,
 		UserID:         user.ID,

@@ -28,7 +28,7 @@ func TestCustomerCRUD(t *testing.T) {
 	assert.NotNil(t, customerDAO)
 	customerDAO.StartLocalCluster(IntegrationTestCluster, true)
 
-	customer := config.Customer{
+	customer := config.CustomerStruct{
 		ID:    idGenerator.NewCustomerID(testCustomerEmail),
 		Name:  testCustomerName,
 		Email: testCustomerEmail}
@@ -43,6 +43,6 @@ func TestCustomerCRUD(t *testing.T) {
 	assert.Nil(t, err)
 
 	persistedCustomer2, err := customerDAO.GetByEmail(customer.Email, consistencyLevel)
-	assert.Equal(t, datastore.ErrNotFound, err)
+	assert.Equal(t, datastore.ErrRecordNotFound, err)
 	assert.Nil(t, persistedCustomer2)
 }

@@ -10,7 +10,7 @@ import (
 func TestUserMapper(t *testing.T) {
 	mapper := NewUserMapper()
 
-	user := &model.User{
+	user := &model.UserStruct{
 		ID:       1,
 		Email:    "test@localhost",
 		Password: "$ecret"}
@@ -23,7 +23,7 @@ func TestUserMapper(t *testing.T) {
 	assert.Equal(t, user.GetPassword(), entity.GetPassword())
 
 	model := mapper.MapUserConfigToModel(entity)
-	assert.Equal(t, entity.ID, model.GetID())
+	assert.Equal(t, entity.ID, model.Identifier())
 	assert.Equal(t, entity.GetEmail(), model.GetEmail())
 	assert.Equal(t, entity.GetPassword(), model.GetPassword())
 }

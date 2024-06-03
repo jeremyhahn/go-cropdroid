@@ -17,7 +17,7 @@ import (
 type RaftDeviceStateStorer interface {
 	CreateClusterNode(deviceID uint64, deviceType string,
 		deviceStateChangeChan chan common.DeviceStateChange) error
-	state.DeviceStorer
+	state.DeviceStateStorer
 	//datastore.DeviceDataStore
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
+	"github.com/jeremyhahn/go-cropdroid/model"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
 )
@@ -42,7 +43,8 @@ func NewGormFarmProvisioner(logger *logging.Logger, db *gorm.DB,
 		initializer:           initializer}
 }
 
-func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount, params *common.ProvisionerParams) (*config.Farm, error) {
+func (provisioner *GormFarmProvisioner) Provision(userAccount model.User,
+	params *common.ProvisionerParams) (*config.FarmStruct, error) {
 
 	userMappser := mapper.NewUserMapper()
 	user := userMappser.MapUserModelToConfig(userAccount)
@@ -55,7 +57,7 @@ func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount
 
 	if provisioner.farmProvisionerChan != nil {
 		select {
-		case provisioner.farmProvisionerChan <- *farmConfig:
+		case provisioner.farmProvisionerChan <- farmConfig:
 		default:
 			provisioner.logger.Debugf("[FarmProvisioner.Provision] Waiting for provisioning request to complete. user=%s", userAccount.GetEmail())
 		}
@@ -68,7 +70,7 @@ func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount
 
 	// Save permission entries
 	for _, permission := range permissions {
-		if err = provisioner.permissionDAO.Save(&permission); err != nil {
+		if err = provisioner.permissionDAO.Save(permission); err != nil {
 			return nil, err
 		}
 	}
@@ -77,12 +79,12 @@ func (provisioner *GormFarmProvisioner) Provision(userAccount common.UserAccount
 }
 
 func (provisioner *GormFarmProvisioner) Deprovision(
-	userAccount common.UserAccount, farmID uint64) error {
+	userAccount model.User, farmID uint64) error {
 
 	farmConfig, err := provisioner.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	provisioner.farmDeprovisionerChan <- *farmConfig
+	provisioner.farmDeprovisionerChan <- farmConfig
 	return nil
 }

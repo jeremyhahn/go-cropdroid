@@ -2,8 +2,6 @@ package common
 
 import (
 	"errors"
-	"net/http"
-	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/state"
@@ -18,47 +16,48 @@ var (
 	ErrClusterNotFound = errors.New("cluster not found")
 )
 
-type UserAccount interface {
-	GetID() uint64
-	SetID(id uint64)
-	GetEmail() string
-	SetEmail(string)
-	GetPassword() string
-	SetPassword(string)
-	GetRoles() []Role
-	SetRoles([]Role)
-	AddRole(Role)
-	HasRole(name string) bool
-	SetOrganizationRefs(ids []uint64)
-	GetOrganizationRefs() []uint64
-	SetFarmRefs(ids []uint64)
-	GetFarmRefs() []uint64
-}
+// type UserAccount interface {
+// 	GetID() uint64
+// 	SetID(id uint64)
+// 	GetEmail() string
+// 	SetEmail(string)
+// 	GetPassword() string
+// 	SetPassword(string)
+// 	GetRoles() []Role
+// 	SetRoles([]Role)
+// 	AddRole(Role)
+// 	HasRole(name string) bool
+// 	SetOrganizationRefs(ids []uint64)
+// 	GetOrganizationRefs() []uint64
+// 	SetFarmRefs(ids []uint64)
+// 	GetFarmRefs() []uint64
+// }
 
-type Role interface {
-	GetID() uint64
-	SetID(uint64)
-	GetName() string
-	SetName(name string)
-}
+// type Role interface {
+// 	GetID() uint64
+// 	SetID(uint64)
+// 	GetName() string
+// 	SetName(name string)
+// }
 
-type HttpWriter interface {
-	Write(w http.ResponseWriter, status int, response interface{})
-	Success200(w http.ResponseWriter, response interface{})
-	Error200(w http.ResponseWriter, err error)
-	Error400(w http.ResponseWriter, err error)
-	Error500(w http.ResponseWriter, err error)
-}
+// type HttpWriter interface {
+// 	Write(w http.ResponseWriter, status int, response interface{})
+// 	Success200(w http.ResponseWriter, response interface{})
+// 	Success404(w http.ResponseWriter, payload interface{}, err error)
+// 	Error200(w http.ResponseWriter, err error)
+// 	Error400(w http.ResponseWriter, err error)
+// 	Error500(w http.ResponseWriter, err error)
+// }
 
-type Notification interface {
-	GetDevice() string
-	GetPriority() int
-	GetType() string
-	GetTitle() string
-	GetMessage() string
-	GetTimestamp() string
-	GetTimestampAsObject() time.Time
-}
+// type Notification interface {
+// 	GetDevice() string
+// 	GetPriority() int
+// 	GetType() string
+// 	GetTitle() string
+// 	GetMessage() string
+// 	GetTimestamp() string
+// 	GetTimestampAsObject() time.Time
+// }
 
 type Mailer interface {
 	SetRecipient(recipient string)
@@ -86,30 +85,24 @@ type Mailer interface {
 // 	//RegisterObserver(observer DeviceObserver)
 // }
 
-type DeviceView interface {
-	GetMetrics() []Metric
-	GetChannels() []Channel
-	GetTimestamp() time.Time
-}
-
-type CommonDevice interface {
-	GetID() uint64
-	SetID(uint64)
-	GetOrgID() int
-	SetOrgID(int)
-	GetType() string
-	SetType(string)
-	GetInterval() int
-	SetInterval(int)
-	GetDescription() string
-	SetDescription(string)
-	GetHardwareVersion() string
-	SetHardwareVersion(string)
-	GetFirmwareVersion() string
-	SetFirmwareVersion(string)
-	GetConfigs() map[string]string
-	SetConfigs(map[string]string)
-}
+// type CommonDevice interface {
+// 	GetID() uint64
+// 	SetID(uint64)
+// 	GetOrgID() int
+// 	SetOrgID(int)
+// 	GetType() string
+// 	SetType(string)
+// 	GetInterval() int
+// 	SetInterval(int)
+// 	GetDescription() string
+// 	SetDescription(string)
+// 	GetHardwareVersion() string
+// 	SetHardwareVersion(string)
+// 	GetFirmwareVersion() string
+// 	SetFirmwareVersion(string)
+// 	GetConfigs() map[string]string
+// 	SetConfigs(map[string]string)
+// }
 
 type Server interface {
 	SetID(id int)
@@ -129,103 +122,28 @@ type Server interface {
 }
 
 type Organization interface {
-	GetID() int
+	ID() int
 	SetID(int)
-	GetName() string
+	Name() string
 	SetName(string)
+	Farms() []Farm
 	SetFarms(farms []Farm)
-	GetFarms() []Farm
 	GetFarm(id int) (Farm, error)
 }
 
 type Farm interface {
-	GetID() int
+	ID() int
 	SetID(int)
-	GetOrgID() int
+	OrgID() int
 	SetOrgID(int)
-	GetInterval() int
+	Interval() int
 	SetInterval(int)
-	GetMode() string
+	Mode() string
 	SetMode(string)
-	GetName() string
+	Name() string
 	SetName(string)
-	GetDevices() []Device
-	SetDevices([]Device)
-}
-
-type Device interface {
-	CommonDevice
-	IsEnabled() bool
-	SetEnabled(enabled bool)
-	IsNotify() bool
-	SetNotify(notify bool)
-	GetURI() string
-	SetURI(uri string)
-	GetMetric(key string) (Metric, error)
-	GetMetrics() []Metric
-	SetMetrics([]Metric)
-	GetChannel(id int) (Channel, error)
-	GetChannels() []Channel
-	SetChannels([]Channel)
-}
-
-type Metric interface {
-	//config.MetricConfig
-	GetID() uint64
-	SetID(uint64)
-	GetDeviceID() uint64
-	SetDeviceID(uint64)
-	GetDataType() int
-	SetDataType(int)
-	GetKey() string
-	SetKey(string)
-	GetName() string
-	SetName(string)
-	IsEnabled() bool
-	SetEnable(bool)
-	IsNotify() bool
-	SetNotify(bool)
-	GetUnit() string
-	SetUnit(string)
-	GetAlarmLow() float64
-	SetAlarmLow(float64)
-	GetAlarmHigh() float64
-	SetAlarmHigh(float64)
-	SetValue(value float64)
-	GetValue() float64
-}
-
-type Channel interface {
-	GetID() uint64
-	SetID(uint64)
-	GetDeviceID() uint64
-	SetDeviceID(uint64)
-	GetChannelID() int
-	SetChannelID(int)
-	GetName() string
-	SetName(name string)
-	IsEnabled() bool
-	SetEnable(bool)
-	IsNotify() bool
-	SetNotify(bool)
-	AddCondition(condition config.Condition)
-	GetConditions() []config.Condition
-	SetConditions(conditions []config.Condition)
-	SetCondition(condition config.Condition)
-	GetSchedule() []config.Schedule
-	SetSchedule(schedule []config.Schedule)
-	SetScheduleItem(schedule config.Schedule)
-	GetDuration() int
-	SetDuration(int)
-	GetDebounce() int
-	SetDebounce(int)
-	GetBackoff() int
-	SetBackoff(int)
-	GetAlgorithmID() uint64
-	SetAlgorithmID(uint64)
-	SetValue(value int)
-	GetValue() int
-	//config.ChannelConfig
+	Devices() []config.Device
+	SetDevices([]config.Device)
 }
 
 type InAppPurchase interface {

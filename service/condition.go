@@ -1,43 +1,158 @@
-//go:build !cluster
-// +build !cluster
-
 package service
 
 import (
 	"fmt"
 
 	"github.com/jeremyhahn/go-cropdroid/config"
-	"github.com/jeremyhahn/go-cropdroid/config/store"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/viewmodel"
 	logging "github.com/op/go-logging"
 )
 
-type ConditionService interface {
-	GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error)
-	GetConditions(session Session, deviceID uint64) ([]*config.Condition, error)
-	Create(session Session, condition *config.Condition) (*config.Condition, error)
-	Update(session Session, condition *config.Condition) error
-	Delete(session Session, condition *config.Condition) error
-	IsTrue(condition *config.Condition, value float64) (bool, error)
+type ConditionServicer interface {
+	ListView(session Session, channelID uint64) ([]*viewmodel.Condition, error)
+	Create(session Session, condition config.Condition) (config.Condition, error)
+	Update(session Session, condition config.Condition) error
+	Delete(session Session, condition config.Condition) error
+	IsTrue(condition config.Condition, value float64) (bool, error)
 }
 
 type DefaultConditionService struct {
 	logger *logging.Logger
 	dao    dao.ConditionDAO
 	mapper mapper.ConditionMapper
-	store  store.DeviceStorer
-	ConditionService
+	ConditionServicer
 }
 
 // NewConditionService creates a new default ConditionService instance using the current time for calculations
-func NewConditionService(logger *logging.Logger, conditionDAO dao.ConditionDAO,
-	conditionMapper mapper.ConditionMapper) ConditionService {
+func NewConditionService(
+	logger *logging.Logger,
+	conditionDAO dao.ConditionDAO,
+	conditionMapper mapper.ConditionMapper) ConditionServicer {
+
 	return &DefaultConditionService{
 		logger: logger,
 		dao:    conditionDAO,
 		mapper: conditionMapper}
+}
+
+// Returns a list of conditions for the specified channel formatted for human consumption
+func (service *DefaultConditionService) ListView(session Session, channelID uint64) ([]*viewmodel.Condition, error) {
+	farmService := session.GetFarmService()
+	farmConfig := farmService.GetConfig()
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
+			if channel.ID == channelID {
+				channelConditions := channel.GetConditions()
+				viewConditions := make([]*viewmodel.Condition, 0, len(channelConditions))
+				for _, condition := range channelConditions {
+					// Look up the metric for this condition
+					for _, metric := range device.GetMetrics() {
+						if metric.ID == condition.GetMetricID() {
+							viewConditions = append(
+								viewConditions,
+								service.mapper.MapConfigToView(condition, device.GetType(), metric, channelID))
+							break
+						}
+					}
+				}
+				return viewConditions, nil
+			}
+		}
+	}
+	return nil, ErrChannelNotFound
+}
+
+// Create a new condition
+func (service *DefaultConditionService) Create(session Session, condition config.Condition) (config.Condition, error) {
+	service.logger.Debugf("Creating condition config: %+v", condition)
+	farmService := session.GetFarmService()
+	farmConfig := farmService.GetConfig()
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
+			if channel.ID == condition.GetChannelID() {
+				channel.AddCondition(condition.(*config.ConditionStruct))
+				device.SetChannel(channel)
+				return condition, farmService.SetDeviceConfig(device)
+			}
+		}
+	}
+	return nil, ErrConditionNotFound
+}
+
+// Update an existing condition
+func (service *DefaultConditionService) Update(session Session, condition config.Condition) error {
+	service.logger.Debugf("Updating condition config: %+v", condition)
+	farmService := session.GetFarmService()
+	farmConfig := farmService.GetConfig()
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
+			if channel.ID == condition.GetChannelID() {
+				channel.SetCondition(condition.(*config.ConditionStruct))
+				device.SetChannel(channel)
+				return farmService.SetDeviceConfig(device)
+			}
+		}
+	}
+	return ErrConditionNotFound
+}
+
+// Delete a condition
+func (service *DefaultConditionService) Delete(session Session, condition config.Condition) error {
+	farmID := session.GetRequestedFarmID()
+	service.logger.Debugf("Deleting condition config: %+v", condition)
+	if err := service.dao.Delete(farmID, condition.GetChannelID(), condition.(*config.ConditionStruct)); err != nil {
+		return err
+	}
+	farmService := session.GetFarmService()
+	farmConfig := farmService.GetConfig()
+	for _, device := range farmConfig.GetDevices() {
+		for _, channel := range device.GetChannels() {
+			for i, _condition := range channel.GetConditions() {
+				if _condition.ID == condition.Identifier() {
+					channel.Conditions = append(channel.Conditions[:i], channel.Conditions[i+1:]...)
+					device.SetChannel(channel)
+					return farmService.SetDeviceConfig(device)
+				}
+			}
+		}
+	}
+	return ErrConditionNotFound
+}
+
+// Evaluates the specified value against the condition and returns true if the value meets the condition
+// criteria, otherwise false.
+func (service *DefaultConditionService) IsTrue(condition config.Condition, value float64) (bool, error) {
+	service.logger.Debugf("condition=%+v, value=%.2f", condition, value)
+	switch condition.GetComparator() {
+	case ">":
+		if value > condition.GetThreshold() {
+			return true, nil
+		}
+		return false, nil
+	case "<":
+		if value < condition.GetThreshold() {
+			return true, nil
+		}
+		return false, nil
+	case ">=":
+		if value >= condition.GetThreshold() {
+			return true, nil
+		}
+		return false, nil
+	case "<=":
+		if value <= condition.GetThreshold() {
+			return true, nil
+		}
+		return false, nil
+	case "=":
+		if value == condition.GetThreshold() {
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, fmt.Errorf("unsupported comparison operator: %s", condition.GetComparator())
 }
 
 // GetConditions retrieves a list of condition entries from the database
@@ -72,32 +187,6 @@ func NewConditionService(logger *logging.Logger, conditionDAO dao.ConditionDAO,
 //		}
 //		return conditions, nil
 //	}
-func (service *DefaultConditionService) GetListView(session Session, channelID uint64) ([]*viewmodel.Condition, error) {
-	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, device := range farmConfig.GetDevices() {
-		for _, channel := range device.GetChannels() {
-			if channel.ID == channelID {
-				channelConditions := channel.GetConditions()
-				viewConditions := make([]*viewmodel.Condition, 0, len(channelConditions))
-				for _, condition := range channelConditions {
-					// Look up the metric for this condition
-					for _, metric := range device.GetMetrics() {
-						if metric.ID == condition.GetMetricID() {
-							viewConditions = append(viewConditions,
-								service.mapper.MapConfigToView(
-									condition, device.GetType(), metric, channelID))
-							break
-						}
-					}
-
-				}
-				return viewConditions, nil
-			}
-		}
-	}
-	return nil, ErrChannelNotFound
-}
 
 /*
 // GetCondition retrieves a specific condition entry from the database
@@ -131,107 +220,3 @@ func (service *DefaultConditionService) GetCondition(channelID int) ([]config.Co
 // 	}
 // 	return conditions, nil
 // }
-
-// Create a new condition entry
-func (service *DefaultConditionService) Create(session Session, condition *config.Condition) (*config.Condition, error) {
-	service.logger.Debugf("Creating condition config: %+v", condition)
-	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
-	// entity := service.mapper.MapModelToEntity(condition)
-	// if err := service.dao.Create(entity); err != nil {
-	// 	return nil, err
-	// }
-	// condition.SetID(entity.GetID())
-	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, device := range farmConfig.GetDevices() {
-		for _, channel := range device.GetChannels() {
-			if channel.ID == condition.GetChannelID() {
-				channel.AddCondition(condition)
-				device.SetChannel(channel)
-				return condition, farmService.SetDeviceConfig(device)
-			}
-		}
-	}
-	return nil, ErrConditionNotFound
-}
-
-// Update an existing condition entry in the database
-func (service *DefaultConditionService) Update(session Session, condition *config.Condition) error {
-	service.logger.Debugf("Updating condition config: %+v", condition)
-	// v0.0.3a: farmService.SetDeviceConfig updates the entity now
-	// entity := service.mapper.MapModelToEntity(condition)
-	// if err := service.dao.Save(entity); err != nil {
-	// 	return err
-	// }
-	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, device := range farmConfig.GetDevices() {
-		for _, channel := range device.GetChannels() {
-			if channel.ID == condition.GetChannelID() {
-				channel.SetCondition(condition)
-				device.SetChannel(channel)
-				return farmService.SetDeviceConfig(device)
-			}
-		}
-	}
-	return ErrConditionNotFound
-}
-
-// Delete a condition entry from the database
-func (service *DefaultConditionService) Delete(session Session, condition *config.Condition) error {
-	farmID := session.GetRequestedFarmID()
-	service.logger.Debugf("Deleting condition config: %+v", condition)
-	// v0.0.3a: farmService.SetDeviceConfig doesnt delete the condition :(
-	if err := service.dao.Delete(farmID, condition.GetChannelID(), condition); err != nil {
-		return err
-	}
-	farmService := session.GetFarmService()
-	farmConfig := farmService.GetConfig()
-	for _, device := range farmConfig.GetDevices() {
-		for _, channel := range device.GetChannels() {
-			for i, _condition := range channel.GetConditions() {
-				if _condition.ID == condition.ID {
-					// c := *channel.(*config.Channel)
-					// c.Conditions = append(c.Conditions[:i], c.Conditions[i+1:]...)
-					//device.SetChannel(&c)
-					channel.Conditions = append(channel.Conditions[:i], channel.Conditions[i+1:]...)
-					device.SetChannel(channel)
-					return farmService.SetDeviceConfig(device)
-				}
-			}
-		}
-	}
-	return ErrConditionNotFound
-}
-
-func (service *DefaultConditionService) IsTrue(condition *config.Condition, value float64) (bool, error) {
-	service.logger.Debugf("condition=%+v, value=%.2f", condition, value)
-	switch condition.GetComparator() {
-	case ">":
-		if value > condition.GetThreshold() {
-			return true, nil
-		}
-		return false, nil
-	case "<":
-		if value < condition.GetThreshold() {
-			return true, nil
-		}
-		return false, nil
-	case ">=":
-		if value >= condition.GetThreshold() {
-			return true, nil
-		}
-		return false, nil
-	case "<=":
-		if value <= condition.GetThreshold() {
-			return true, nil
-		}
-		return false, nil
-	case "=":
-		if value == condition.GetThreshold() {
-			return true, nil
-		}
-		return false, nil
-	}
-	return false, fmt.Errorf("unsupported comparison operator: %s", condition.GetComparator())
-}

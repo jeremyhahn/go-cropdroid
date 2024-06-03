@@ -16,7 +16,7 @@ import (
 type RaftFarmStateStorer interface {
 	ClusterID() uint64
 	RaftCluster
-	state.FarmStorer
+	state.FarmStateStorer
 }
 
 type RaftFarmStateStore struct {

@@ -392,7 +392,7 @@ func (cluster *Gossip) handleEvent(e serf.UserEvent) {
 			return
 		}
 
-		cluster.params.FarmProvisionerChan <- *farmConfig
+		cluster.params.FarmProvisionerChan <- farmConfig
 
 		// cluster.raft.WaitForClusterReady(provisionRequest.ConfigClusterID)
 		// cluster.raft.WaitForClusterReady(provisionRequest.StateClusterID)

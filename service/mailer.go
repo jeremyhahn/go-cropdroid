@@ -27,12 +27,12 @@ func NewMailer(app *app.App) common.Mailer {
 	return CreateMailer(app, app.Smtp)
 }
 
-func CreateMailer(app *app.App, smtpConfig *config.Smtp) common.Mailer {
+func CreateMailer(app *app.App, smtpConfig *config.SmtpStruct) common.Mailer {
 	if smtpConfig == nil {
 		if app.Smtp != nil {
 			smtpConfig = app.Smtp
 		} else {
-			smtpConfig = &config.Smtp{Enable: false}
+			smtpConfig = &config.SmtpStruct{Enable: false}
 		}
 	}
 	return &GMailer{

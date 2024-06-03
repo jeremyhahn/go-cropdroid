@@ -18,15 +18,15 @@ func TestGenericSaveAndSerializeToAndFromJson(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Algorithm{})
+	currentTest.gorm.AutoMigrate(&config.AlgorithmStruct{})
 
-	algorithmDAO := NewGenericGormDAO[*config.Algorithm](currentTest.logger, currentTest.gorm)
+	algorithmDAO := NewGenericGormDAO[*config.AlgorithmStruct](currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, algorithmDAO)
 
-	algorithm1 := config.Algorithm{
+	algorithm1 := config.AlgorithmStruct{
 		Name: "Test Algorithm 1"}
 
-	algorithm2 := config.Algorithm{
+	algorithm2 := config.AlgorithmStruct{
 		Name: "Test Algorithm 2"}
 
 	err := algorithmDAO.Save(&algorithm1)
@@ -49,7 +49,7 @@ func TestGenericSaveAndSerializeToAndFromJson(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, jsonAlgorithmConfigs)
 
-	var unmarshalledAlgorithms []*config.Algorithm
+	var unmarshalledAlgorithms []*config.AlgorithmStruct
 	err = json.Unmarshal(jsonAlgorithmConfigs, &unmarshalledAlgorithms)
 	assert.Nil(t, err)
 	assert.Equal(t, len(pageResult.Entities), len(unmarshalledAlgorithms))
@@ -64,12 +64,12 @@ func TestGenericUpdateAndDelete(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Algorithm{})
+	currentTest.gorm.AutoMigrate(&config.AlgorithmStruct{})
 
-	algorithmDAO := NewGenericGormDAO[*config.Algorithm](currentTest.logger, currentTest.gorm)
+	algorithmDAO := NewGenericGormDAO[*config.AlgorithmStruct](currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, algorithmDAO)
 
-	algorithm1 := config.Algorithm{
+	algorithm1 := config.AlgorithmStruct{
 		Name: "Test Algorithm 1"}
 
 	err := algorithmDAO.Save(&algorithm1)
@@ -102,15 +102,15 @@ func TestGenericGetPage(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Algorithm{})
+	currentTest.gorm.AutoMigrate(&config.AlgorithmStruct{})
 
-	algorithmDAO := NewGenericGormDAO[*config.Algorithm](currentTest.logger, currentTest.gorm)
+	algorithmDAO := NewGenericGormDAO[*config.AlgorithmStruct](currentTest.logger, currentTest.gorm)
 	assert.NotNil(t, algorithmDAO)
 
 	numberOfAlgorithmsToCreate := 40
-	algorithms := make([]config.Algorithm, numberOfAlgorithmsToCreate)
+	algorithms := make([]config.AlgorithmStruct, numberOfAlgorithmsToCreate)
 	for i := 0; i < numberOfAlgorithmsToCreate; i++ {
-		algo := config.Algorithm{
+		algo := config.AlgorithmStruct{
 			ID:   uint64(i),
 			Name: fmt.Sprintf("Test Algorithm %d", i)}
 		err := algorithmDAO.Save(&algo)

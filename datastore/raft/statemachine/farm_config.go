@@ -19,7 +19,7 @@ type FarmConfigOnDiskStateMachine interface {
 }
 
 type FarmConfigDiskKV struct {
-	GenericDiskKV        GenericDiskKV[*config.Farm]
+	GenericDiskKV        GenericDiskKV[*config.FarmStruct]
 	farmConfigChangeChan chan config.Farm
 	FarmConfigOnDiskStateMachine
 }
@@ -28,10 +28,10 @@ func NewFarmConfigOnDiskStateMachine(logger *logging.Logger, idGenerator util.Id
 	dbPath string, clusterID, nodeID uint64, farmConfigChangeChan chan config.Farm) FarmConfigOnDiskStateMachine {
 
 	return &FarmConfigDiskKV{
-		GenericDiskKV: GenericDiskKV[*config.Farm]{
+		GenericDiskKV: GenericDiskKV[*config.FarmStruct]{
 			logger:      logger,
 			idGenerator: idGenerator,
-			diskKV: DiskKV[*config.Farm]{
+			diskKV: DiskKV[*config.FarmStruct]{
 				idGenerator: idGenerator,
 				dbPath:      dbPath,
 				clusterID:   clusterID,

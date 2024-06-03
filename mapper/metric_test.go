@@ -3,7 +3,6 @@ package mapper
 import (
 	"testing"
 
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ func TestMetricMapperMapConfigToModel(t *testing.T) {
 
 	mapper := NewMetricMapper()
 
-	var metricConfig *config.Metric = &config.Metric{}
+	var metricConfig *config.MetricStruct = &config.MetricStruct{}
 	metricConfig.SetID(1)
 	metricConfig.SetDeviceID(2)
 	metricConfig.SetName("Test Metric")
@@ -52,7 +51,7 @@ func TestMetricMapperMapModelToConfig(t *testing.T) {
 
 	mapper := NewMetricMapper()
 
-	var metric common.Metric = &model.Metric{}
+	var metric model.Metric = &model.MetricStruct{}
 	metric.SetID(1)
 	metric.SetDeviceID(2)
 	metric.SetName("Test Metric")
@@ -66,7 +65,7 @@ func TestMetricMapperMapModelToConfig(t *testing.T) {
 	config := mapper.MapModelToConfig(metric)
 	assert.ObjectsAreEqual(metric, config)
 
-	assert.Equal(t, metric.GetID(), config.ID)
+	assert.Equal(t, metric.Identifier(), config.ID)
 	assert.Equal(t, metric.GetDeviceID(), config.GetDeviceID())
 	assert.Equal(t, metric.GetName(), config.GetName())
 	assert.Equal(t, metric.GetKey(), config.GetKey())

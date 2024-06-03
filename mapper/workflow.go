@@ -6,8 +6,8 @@ import (
 )
 
 type WorkflowMapper interface {
-	MapConfigToView(config *config.Workflow) *viewmodel.Workflow
-	MapViewToConfig(*viewmodel.Workflow) *config.Workflow
+	MapConfigToView(config *config.WorkflowStruct) *viewmodel.Workflow
+	MapViewToConfig(*viewmodel.Workflow) *config.WorkflowStruct
 }
 
 type DefaultWorkflowMapper struct {
@@ -17,7 +17,7 @@ func NewWorkflowMapper() WorkflowMapper {
 	return &DefaultWorkflowMapper{}
 }
 
-func (mapper *DefaultWorkflowMapper) MapConfigToView(config *config.Workflow) *viewmodel.Workflow {
+func (mapper *DefaultWorkflowMapper) MapConfigToView(config *config.WorkflowStruct) *viewmodel.Workflow {
 	steps := make([]viewmodel.WorkflowStep, len(config.GetSteps()))
 	for i, step := range config.GetSteps() {
 		steps[i] = viewmodel.WorkflowStep{
@@ -38,10 +38,10 @@ func (mapper *DefaultWorkflowMapper) MapConfigToView(config *config.Workflow) *v
 		Steps:         steps}
 }
 
-func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflow) *config.Workflow {
-	steps := make([]*config.WorkflowStep, len(workflow.GetSteps()))
+func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflow) *config.WorkflowStruct {
+	steps := make([]*config.WorkflowStepStruct, len(workflow.GetSteps()))
 	for i, step := range workflow.GetSteps() {
-		steps[i] = &config.WorkflowStep{
+		steps[i] = &config.WorkflowStepStruct{
 			ID:         step.ID,
 			WorkflowID: step.GetWorkflowID(),
 			DeviceID:   step.GetDeviceID(),
@@ -51,7 +51,7 @@ func (mapper *DefaultWorkflowMapper) MapViewToConfig(workflow *viewmodel.Workflo
 			Wait:       step.GetWait(),
 			State:      step.GetState()}
 	}
-	return &config.Workflow{
+	return &config.WorkflowStruct{
 		ID:            workflow.ID,
 		FarmID:        workflow.GetFarmID(),
 		Name:          workflow.GetName(),

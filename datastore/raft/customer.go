@@ -18,14 +18,14 @@ import (
 )
 
 type RaftCustomerDAO interface {
-	RaftDAO[*config.Customer]
+	RaftDAO[*config.CustomerStruct]
 	dao.CustomerDAO
 }
 
 type RaftCustomer struct {
 	logger *logging.Logger
 	raft   cluster.RaftNode
-	GenericRaftDAO[*config.Customer]
+	GenericRaftDAO[*config.CustomerStruct]
 	RaftCustomerDAO
 }
 
@@ -35,7 +35,7 @@ func NewRaftCustomerDAO(logger *logging.Logger, raftNode cluster.RaftNode,
 	return &RaftCustomer{
 		logger: logger,
 		raft:   raftNode,
-		GenericRaftDAO: GenericRaftDAO[*config.Customer]{
+		GenericRaftDAO: GenericRaftDAO[*config.CustomerStruct]{
 			logger:    logger,
 			raft:      raftNode,
 			clusterID: clusterID,
@@ -45,7 +45,7 @@ func NewRaftCustomerDAO(logger *logging.Logger, raftNode cluster.RaftNode,
 func (customerDAO *RaftCustomer) StartCluster() {
 	params := customerDAO.raft.GetParams()
 	clusterID := params.RaftOptions.CustomerClusterID
-	sm := statemachine.NewGenericOnDiskStateMachine[*config.Customer](customerDAO.logger,
+	sm := statemachine.NewGenericOnDiskStateMachine[*config.CustomerStruct](customerDAO.logger,
 		params.IdGenerator, params.DataDir, clusterID, params.NodeID)
 	err := customerDAO.raft.CreateOnDiskCluster(clusterID, params.Join, sm.CreateOnDiskStateMachine)
 	if err != nil {
@@ -66,20 +66,20 @@ func (customerDAO *RaftCustomer) WaitForClusterReady() {
 	customerDAO.GenericRaftDAO.WaitForClusterReady()
 }
 
-func (customerDAO *RaftCustomer) SaveWithTimeSeriesIndex(CustomerConfig *config.Customer) error {
+func (customerDAO *RaftCustomer) SaveWithTimeSeriesIndex(CustomerConfig *config.CustomerStruct) error {
 	return customerDAO.GenericRaftDAO.SaveWithTimeSeriesIndex(CustomerConfig)
 }
 
-func (customerDAO *RaftCustomer) Update(CustomerConfig *config.Customer) error {
+func (customerDAO *RaftCustomer) Update(CustomerConfig *config.CustomerStruct) error {
 	return customerDAO.GenericRaftDAO.Update(CustomerConfig)
 }
 
-func (customerDAO *RaftCustomer) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.Customer], error) {
+func (customerDAO *RaftCustomer) GetPage(pageQuery query.PageQuery, CONSISTENCY_LEVEL int) (dao.PageResult[*config.CustomerStruct], error) {
 	return customerDAO.GenericRaftDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 }
 
 func (customerDAO *RaftCustomer) ForEachPage(pageQuery query.PageQuery,
-	pagerProcFunc query.PagerProcFunc[*config.Customer], CONSISTENCY_LEVEL int) error {
+	pagerProcFunc query.PagerProcFunc[*config.CustomerStruct], CONSISTENCY_LEVEL int) error {
 
 	pageResult, err := customerDAO.GetPage(pageQuery, CONSISTENCY_LEVEL)
 	if err != nil {
@@ -102,7 +102,7 @@ func (customerDAO *RaftCustomer) Count(CONSISTENCY_LEVEL int) (int64, error) {
 	return customerDAO.Count(CONSISTENCY_LEVEL)
 }
 
-func (customerDAO *RaftCustomer) Get(customerID uint64, CONSISTENCY_LEVEL int) (*config.Customer, error) {
+func (customerDAO *RaftCustomer) Get(customerID uint64, CONSISTENCY_LEVEL int) (*config.CustomerStruct, error) {
 	var result interface{}
 	var err error
 	if CONSISTENCY_LEVEL == common.CONSISTENCY_LOCAL {
@@ -121,17 +121,17 @@ func (customerDAO *RaftCustomer) Get(customerID uint64, CONSISTENCY_LEVEL int) (
 		}
 	}
 	if result != nil {
-		return result.(*config.Customer), nil
+		return result.(*config.CustomerStruct), nil
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (customerDAO *RaftCustomer) GetByEmail(customerEmail string, CONSISTENCY_LEVEL int) (*config.Customer, error) {
+func (customerDAO *RaftCustomer) GetByEmail(customerEmail string, CONSISTENCY_LEVEL int) (*config.CustomerStruct, error) {
 	customerID := customerDAO.raft.GetParams().IdGenerator.NewStringID(customerEmail)
 	return customerDAO.Get(customerID, CONSISTENCY_LEVEL)
 }
 
-func (customerDAO *RaftCustomer) Save(customer *config.Customer) error {
+func (customerDAO *RaftCustomer) Save(customer *config.CustomerStruct) error {
 
 	if customer.ID == 0 {
 		idSetter := customerDAO.raft.GetParams().IdSetter
@@ -158,7 +158,7 @@ func (customerDAO *RaftCustomer) Save(customer *config.Customer) error {
 	return nil
 }
 
-func (customerDAO *RaftCustomer) Delete(customer *config.Customer) error {
+func (customerDAO *RaftCustomer) Delete(customer *config.CustomerStruct) error {
 	customerDAO.logger.Debugf(fmt.Sprintf("Deleting customer record: %+v", customer))
 	perm, err := json.Marshal(customer)
 	if err != nil {

@@ -46,7 +46,7 @@ func TestProvisioner(t *testing.T) {
 	user.SetID(userID)
 	user.SetEmail(email)
 	user.SetPassword("dev")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
@@ -110,7 +110,7 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	user.SetID(userID)
 	user.SetEmail(email)
 	user.SetPassword("dev")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
@@ -167,8 +167,7 @@ func TestProvisionerMultipleFarms(t *testing.T) {
 	CurrentTest.Cleanup()
 }
 
-func createDefaultProvisioner() (dao.FarmDAO, dao.UserDAO, FarmProvisioner,
-	dao.Initializer) {
+func createDefaultProvisioner() (dao.FarmDAO, dao.UserDAO, FarmProvisioner, dao.Initializer) {
 
 	it := NewIntegrationTest()
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_64BIT)

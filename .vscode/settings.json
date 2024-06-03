@@ -1,5 +1,5 @@
 {
-    "editor.fontFamily": "Courier New",
+    "editor.fontFamily": "FiraCode",
     "go.formatTool": "goimports",
     "editor.fontWeight": "500",
     "go.toolsManagement.autoUpdate": true,
@@ -12,9 +12,10 @@
     },
     "gopls": {
         "build.buildFlags": ["-tags=cluster,pebble"],
-    //    "build.buildFlags": ["-tags=!cluster"],
+        //"build.buildFlags": ["-tags=!cluster"],
         "usePlaceholders": true, // add parameter placeholders when completing a function
     },
     "go.testTags": "cluster,pebble"
     //"go.testTags": "!cluster"
+    
 }

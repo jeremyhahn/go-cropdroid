@@ -1,19 +1,37 @@
 package config
 
-type Algorithm struct {
-	ID             uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	Name           string `yaml:"name" json:"name"`
-	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
+type Algorithm interface {
+	GetName() string
+	SetName(string)
+	KeyValueEntity
 }
 
-func NewAlgorithm() *Algorithm {
-	return new(Algorithm)
+type AlgorithmStruct struct {
+	ID        uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
+	Name      string `yaml:"name" json:"name"`
+	Algorithm `sql:"-" gorm:"-" yaml:"-" json:"-"`
 }
 
-func (algorithm *Algorithm) SetID(id uint64) {
+func NewAlgorithm() *AlgorithmStruct {
+	return new(AlgorithmStruct)
+}
+
+func (algorithm *AlgorithmStruct) TableName() string {
+	return "algorithms"
+}
+
+func (algorithm *AlgorithmStruct) SetID(id uint64) {
 	algorithm.ID = id
 }
 
-func (algorithm *Algorithm) Identifier() uint64 {
+func (algorithm *AlgorithmStruct) Identifier() uint64 {
 	return algorithm.ID
+}
+
+func (algorithm *AlgorithmStruct) SetName(name string) {
+	algorithm.Name = name
+}
+
+func (algorithm *AlgorithmStruct) GetName() string {
+	return algorithm.Name
 }

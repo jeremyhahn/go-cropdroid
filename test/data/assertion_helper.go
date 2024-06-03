@@ -2,7 +2,7 @@ package data
 
 import "github.com/jeremyhahn/go-cropdroid/config"
 
-func OrgsEqual(org1, org2 *config.Organization) bool {
+func OrgsEqual(org1, org2 *config.OrganizationStruct) bool {
 	if org1.ID != org2.ID {
 		return false
 	}
@@ -16,7 +16,7 @@ func OrgsEqual(org1, org2 *config.Organization) bool {
 	return true
 }
 
-func FarmsEqual(farm1, farm2 *config.Farm) bool {
+func FarmsEqual(farm1, farm2 *config.FarmStruct) bool {
 	if farm1.ID != farm2.ID {
 		return false
 	}
@@ -34,7 +34,7 @@ func FarmsEqual(farm1, farm2 *config.Farm) bool {
 	return true
 }
 
-func FarmDevicesEqual(farm1Devices, farm2Devices []*config.Device) bool {
+func FarmDevicesEqual(farm1Devices, farm2Devices []*config.DeviceStruct) bool {
 	if len(farm1Devices) != len(farm2Devices) {
 		return false
 	}
@@ -52,7 +52,7 @@ func FarmDevicesEqual(farm1Devices, farm2Devices []*config.Device) bool {
 	return true
 }
 
-func DeviceConfigsEqual(f1DeviceConfigs, f2DeviceConfigs []*config.DeviceSetting) bool {
+func DeviceConfigsEqual(f1DeviceConfigs, f2DeviceConfigs []*config.DeviceSettingStruct) bool {
 	for j, f1DeviceConfig := range f1DeviceConfigs {
 		f2DeviceConfig := f2DeviceConfigs[j]
 		if f1DeviceConfig.GetKey() != f2DeviceConfig.GetKey() {

@@ -6,11 +6,11 @@ import (
 )
 
 type RaftUserDAO interface {
-	RaftDAO[*config.User]
+	RaftDAO[*config.UserStruct]
 	dao.UserDAO
 }
 
 type RaftAlgorithmDAO interface {
-	RaftDAO[*config.Algorithm]
+	RaftDAO[*config.AlgorithmStruct]
 	dao.AlgorithmDAO
 }

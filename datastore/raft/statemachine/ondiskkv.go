@@ -391,7 +391,7 @@ func (d *DiskKV[E]) Lookup(key interface{}) (interface{}, error) {
 			panic("lookup returned valid result when DiskKV is already closed")
 		}
 		if err == pebble.ErrNotFound {
-			return "", datastore.ErrNotFound
+			return "", datastore.ErrRecordNotFound
 		}
 		return v, err
 	}
@@ -407,7 +407,7 @@ func (d *DiskKV[E]) LookupBatch(keys [][]byte) ([]interface{}, error) {
 			panic("lookup returned valid result when DiskKV is already closed")
 		}
 		if err == pebble.ErrNotFound {
-			return entities, datastore.ErrNotFound
+			return entities, datastore.ErrRecordNotFound
 		}
 		// dataset := make([]interface{}, len(keys))
 		// for i, key := range keys {

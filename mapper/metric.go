@@ -1,14 +1,13 @@
 package mapper
 
 import (
-	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
 type MetricMapper interface {
-	MapConfigToModel(config *config.Metric) common.Metric
-	MapModelToConfig(model common.Metric) *config.Metric
+	MapConfigToModel(config *config.MetricStruct) model.Metric
+	MapModelToConfig(model model.Metric) *config.MetricStruct
 }
 
 type DefaultMetricMapper struct {
@@ -18,9 +17,9 @@ func NewMetricMapper() MetricMapper {
 	return &DefaultMetricMapper{}
 }
 
-func (mapper *DefaultMetricMapper) MapConfigToModel(config *config.Metric) common.Metric {
-	return &model.Metric{
-		ID:        config.ID,
+func (mapper *DefaultMetricMapper) MapConfigToModel(config *config.MetricStruct) model.Metric {
+	return &model.MetricStruct{
+		ID:        config.Identifier(),
 		DeviceID:  config.GetDeviceID(),
 		DataType:  config.GetDataType(),
 		Name:      config.GetName(),
@@ -32,9 +31,9 @@ func (mapper *DefaultMetricMapper) MapConfigToModel(config *config.Metric) commo
 		AlarmHigh: config.GetAlarmHigh()}
 }
 
-func (mapper *DefaultMetricMapper) MapModelToConfig(model common.Metric) *config.Metric {
-	return &config.Metric{
-		ID:        model.GetID(),
+func (mapper *DefaultMetricMapper) MapModelToConfig(model model.Metric) *config.MetricStruct {
+	return &config.MetricStruct{
+		ID:        model.Identifier(),
 		DeviceID:  model.GetDeviceID(),
 		DataType:  model.GetDataType(),
 		Name:      model.GetName(),

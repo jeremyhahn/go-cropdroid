@@ -1,9 +1,10 @@
-//go:build !cluster
-// +build !cluster
-
 package cmd
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/jeremyhahn/go-cropdroid/builder"
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/webservice"
@@ -11,9 +12,6 @@ import (
 )
 
 func init() {
-	// standaloneCmd.PersistentFlags().StringVarP(&DeviceStore, "device-store", "", "datastore", "Where to store metrics [ datastore | redis ]")
-	// DeviceStore = strings.ToLower(DeviceStore)
-
 	rootCmd.AddCommand(standaloneCmd)
 }
 
@@ -30,34 +28,36 @@ var standaloneCmd = &cobra.Command{
 	changefeeds to enable real-time notifications).`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		App.Mode = Mode
+		sigChan := make(chan os.Signal, 1)
 
-		rsaKeyPair, serviceRegistry, restServices, farmTickerProvisionerChan, err := builder.NewGormConfigBuilder(
-			App, DeviceDataStore, AppStateTTL, AppStateTick, DatabaseInit).Build()
-
+		serviceMapper, serviceRegistry, restServiceRegistry,
+			farmTickerProvisionerChan, err := builder.NewGormConfigBuilder(App).Build()
 		if err != nil {
 			App.Logger.Fatal(err)
 		}
 
-		App.KeyPair = rsaKeyPair
-
 		farmServices := serviceRegistry.GetFarmServices()
-
 		for _, farmService := range farmServices {
 			go farmService.Run()
 		}
 
-		webserver := webservice.NewWebserver(App, serviceRegistry, restServices, farmTickerProvisionerChan)
+		webserver := webservice.NewWebServerV1(
+			App, serviceMapper,
+			serviceRegistry,
+			restServiceRegistry,
+			farmTickerProvisionerChan)
+
 		go webserver.Run()
 		go webserver.RunProvisionerConsumer()
 
-		if changefeedService := serviceRegistry.GetChangefeedService(); changefeedService != nil {
-			changefeedService.Subscribe()
-		}
-
 		serviceRegistry.GetEventLogService(0).Create(0, common.CONTROLLER_TYPE_SERVER, "System", "Startup")
 
-		done := make(chan error, 1)
-		<-done
+		signal.Notify(sigChan, syscall.SIGINT) // catch CTRL+C // syscall.SIGTERM, syscall.SIGHUP)
+
+		<-App.ShutdownChan
+		close(App.ShutdownChan)
+		close(sigChan)
+
+		serviceRegistry.GetEventLogService(0).Create(0, common.CONTROLLER_TYPE_SERVER, "System", "Shutdown")
 	},
 }

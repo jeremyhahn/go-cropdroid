@@ -1,5 +1,3 @@
-// +build !cluster
-
 package model
 
 import (
@@ -24,13 +22,13 @@ type SystemRuntime struct {
 	NumForcedGC uint32 `json:"forcedgc"`
 }
 
-type System struct {
+type SystemStruct struct {
 	Mode                    string          `json:"mode"`
 	Version                 *app.AppVersion `json:"version"`
 	Farms                   int             `json:"farms"`
 	Changefeeds             int             `json:"changefeeds"`
 	NotificationQueueLength int             `json:"notificationQueueLength"`
-	DeviceIndexLength   int             `json:"deviceIndexLength"`
+	DeviceIndexLength       int             `json:"deviceIndexLength"`
 	ChannelIndexLength      int             `json:"channelIndexLength"`
 	Runtime                 *SystemRuntime  `json:"runtime"`
 }

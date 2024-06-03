@@ -7,37 +7,16 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
-	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
-	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/go-cropdroid/util"
-	logging "github.com/op/go-logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var App *app.App
-var NodeID uint64
-var AppStateTTL int
-var AppStateTick int
 var DebugFlag bool
-var Interval int
 var ConfigDir string
-var DataDir string
 var LogDir string
-var LogFile string
-var HomeDir string
-var WebPort int
-var ServerID int
-var SSLFlag bool
-var KeyDir string
-var RedirectHttpToHttps bool
-var Timezone string
-var Mode string
-var DowngradeUser string
-var EnableRegistrations bool
-var EnableDefaultFarm bool
 
 var DatabaseInit bool
 var DeviceDataStore string
@@ -54,44 +33,38 @@ var DataStoreTlsCert string
 var DefaultRole string
 var DefaultFarmPermission string
 
-var supportedDatastores = []string{"memory", "sqlite", "mysql", "postgres", "cockroach"}
-
-var logFormat = logging.MustStringFormatter(
-	`%{color}%{time:15:04:05.000} %{shortpkg}.%{longfunc} ▶ %{level:.4s} %{color:reset} %{message}`,
-)
-
 var rootCmd = &cobra.Command{
 	Use:   "cropdroid",
 	Short: "Automated agriculture and local farmers market",
 	Long: `
-  _______  ______  _____   _____  ______   ______  _____  _____ ______
-  |       |_____/ |     | |_____] |     \ |_____/ |     |   |   |     \
-  |_____  |    \_ |_____| |       |_____/ |    \_ |_____| __|__ |_____/
-
- Fully automate your hobby or commercial soil, hydroponics, or aeroponics
- indoor garden or outdoor farm with CropDroid. Gain real-time statistics,
- remote monitoring and administration, push notifications for critical alerts
- and sophisticated dosing algorithms with artificial intelligence to take the
- guess work out of feedings and ongoing maintenance. Configure one-time and/or
- recurring schedules to switch things on and off, program conditional logic based on
- sensor values, digital timers to control how long things stay on/off, and automate your
- own custom sequence of actions using programmable workflows. Enable cloud mode for easy
- world-wide access, store and archive your data, access powerful analytics, automate
- supply replenishment, access to social features, and an online database with valuable
- plant data and downloadable configurations to ease setup, maximize yields, and provide
- precise, reproducible grow conditions.
-
- CropDroid requires the use of hardware devices with sensors to monitor and manage your
- crop. A "room" device is used to control environment parameters for indoor grow
- rooms and greenhouses, including lights, temperature, humidity, and Co2. A "reservoir"
- device is used to manage water quality and flow while the "dosing" device
- allows precise amounts of nutrients and chemicals, and has the ability to act as a
- general purpose switching device. An "irrigation" device is used to individually monitor
- soil moisture on a pot by pot basis and hydrate them when necessary. Custom devices are
- also available via Professional Services to meet your specific requirements, or you can
- build your own and seamlessly integrate it with the rest of the CropDroid ecosystem.
-
- Complete documentation is available at https://github.com/jeremyhahn/go-cropdroid`,
+	  _______  ______  _____   _____  ______   ______  _____  _____ ______
+	  |       |_____/ |     | |_____] |     \ |_____/ |     |   |   |     \
+	  |_____  |    \_ |_____| |       |_____/ |    \_ |_____| __|__ |_____/
+	
+	 Fully automate your hobby or commercial soil, hydroponics, or aeroponics
+	 indoor garden or outdoor farm with CropDroid. Gain real-time statistics,
+	 remote monitoring and administration, push notifications for critical alerts
+	 and sophisticated dosing algorithms with artificial intelligence to take the
+	 guess work out of feedings and ongoing maintenance. Configure one-time and/or
+	 recurring schedules to switch things on and off, program conditional logic based on
+	 sensor values, digital timers to control how long things stay on/off, and automate your
+	 own custom sequence of actions using programmable workflows. Enable cloud mode for easy
+	 world-wide access, store and archive your data, access powerful analytics, automate
+	 supply replenishment, access to social features, and an online database with valuable
+	 plant data and downloadable configurations to ease setup, maximize yields, and provide
+	 precise, reproducible grow conditions.
+	
+	 CropDroid requires the use of hardware devices with sensors to monitor and manage your
+	 crop. A "room" device is used to control environment parameters for indoor grow
+	 rooms and greenhouses, including lights, temperature, humidity, and Co2. A "reservoir"
+	 device is used to manage water quality and flow while the "dosing" device
+	 allows precise amounts of nutrients and chemicals, and has the ability to act as a
+	 general purpose switching device. An "irrigation" device is used to individually monitor
+	 soil moisture on a pot by pot basis and hydrate them when necessary. Custom devices are
+	 also available via Professional Services to meet your specific requirements, or you can
+	 build your own and seamlessly integrate it with the rest of the CropDroid ecosystem.
+	
+	 Complete documentation is available at https://github.com/jeremyhahn/go-cropdroid`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		//initApp()
 	},
@@ -101,31 +74,57 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	cobra.OnInitialize(initApp)
 
-	wd, _ := os.Getwd()
+	App = app.NewApp()
 
-	rootCmd.PersistentFlags().Uint64VarP(&NodeID, "node-id", "", 1, "Unique node identifier")
+	cobra.OnInitialize(func() {
+		App.Init(&app.AppInitParams{
+			Debug:     DebugFlag,
+			LogDir:    LogDir,
+			ConfigDir: ConfigDir})
+	})
+
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("unable to get current working directory")
+		os.Exit(1)
+	}
+
+	// Required options to bootstrap the app
 	rootCmd.PersistentFlags().BoolVarP(&DebugFlag, "debug", "", false, "Enable debug mode")
-	rootCmd.PersistentFlags().IntVarP(&ServerID, "sid", "", 1, "Unique Server ID")
-	rootCmd.PersistentFlags().IntVarP(&Interval, "interval", "", 60, "Default poll interval (seconds)")
-	rootCmd.PersistentFlags().StringVarP(&Mode, "mode", "", "virtual", "Service mode: [ virtual | server | cloud | maintenance ]")
-	rootCmd.PersistentFlags().IntVarP(&AppStateTTL, "ttl", "", 0, "How long to keep farm in app state (seconds). 0 = never expire")
-	rootCmd.PersistentFlags().IntVarP(&AppStateTick, "gctick", "", 3600, "How often to check farm store for expired entries")
-	rootCmd.PersistentFlags().StringVarP(&HomeDir, "home", "", wd, "Program home directory") // doesnt work as system daemon if not wd (/)
-	rootCmd.PersistentFlags().StringVarP(&DataDir, "data-dir", "", fmt.Sprintf("%s/db", wd), "Directory where database files are stored")
-	rootCmd.PersistentFlags().StringVarP(&ConfigDir, "config-dir", "", "/etc/cropdroid", "Directory where configuration files are stored")
 	rootCmd.PersistentFlags().StringVarP(&LogDir, "log-dir", "", "/var/log", "Logging directory")
-	rootCmd.PersistentFlags().StringVarP(&LogFile, "log-file", "", "/var/log/cropdroid.log", "Application log file")
-	rootCmd.PersistentFlags().IntVarP(&WebPort, "port", "", 80, "Web service port number")
-	rootCmd.PersistentFlags().BoolVarP(&SSLFlag, "ssl", "", true, "Enable web service SSL / TLS")
-	rootCmd.PersistentFlags().StringVarP(&KeyDir, "keys", "", fmt.Sprintf("%s/keys", wd), "Directory where key files are stored")
-	rootCmd.PersistentFlags().BoolVarP(&RedirectHttpToHttps, "redirect-http-https", "", false, "Redirect HTTP to HTTPS")
-	rootCmd.PersistentFlags().StringVarP(&Timezone, "timezone", "", "America/New_York", "Local time zone")
-	rootCmd.PersistentFlags().StringVarP(&DowngradeUser, "setuid", "", "root", "Root downgrade user/group")
-	rootCmd.PersistentFlags().BoolVarP(&EnableRegistrations, "enable-registrations", "", false, "Allows user account registrations via API")
+	rootCmd.PersistentFlags().StringVarP(&ConfigDir, "config-dir", "", "/etc/cropdroid", "Directory where configuration files are stored")
 
-	rootCmd.PersistentFlags().BoolVarP(&DatabaseInit, "init", "", false, "Initialize an empty database with user and optional farm")
+	// Global options
+	rootCmd.PersistentFlags().StringVarP(&App.Domain, "domain", "d", "localhost", "Domain name used to establish the CA and access web services")
+	rootCmd.PersistentFlags().Uint64VarP(&App.NodeID, "node-id", "", 1, "Unique node identifier")
+	rootCmd.PersistentFlags().IntVarP(&App.Interval, "interval", "", 60, "Default poll interval (seconds)")
+	rootCmd.PersistentFlags().StringVarP(&App.Mode, "mode", "", "virtual", "Service mode: [ virtual | server | cloud | maintenance ]")
+	rootCmd.PersistentFlags().StringVarP(&App.HomeDir, "home", "", wd, "Program home directory") // doesnt work as system daemon if not wd (/)
+	rootCmd.PersistentFlags().StringVarP(&App.DataDir, "data-dir", "", fmt.Sprintf("%s/db", wd), "Directory where database files are stored")
+	rootCmd.PersistentFlags().StringVarP(&App.Timezone, "timezone", "", "America/New_York", "Local time zone")
+	rootCmd.PersistentFlags().StringVarP(&App.DowngradeUser, "setuid", "", "root", "Root downgrade user/group")
+	rootCmd.PersistentFlags().BoolVarP(&App.EnableDefaultFarm, "enable-default-farm", "", false, "Create a default farm on startup")
+	rootCmd.PersistentFlags().StringVarP(&App.DefaultRole, "default-role", "", "admin", "Default role to assign to newly registered users [ admin | cultivator | analyst ]")
+	rootCmd.PersistentFlags().StringVarP(&App.DefaultPermission, "default-permission", "", "all", "Default permission given to newly registered users to access existing farms [ all | owner | none ]")
+
+	// State store options
+	rootCmd.PersistentFlags().IntVarP(&App.StateTTL, "state-ttl", "", 0, "How long to keep farm in app state (seconds). 0 = never expire")
+	rootCmd.PersistentFlags().IntVarP(&App.StateTick, "state-tick", "", 3600, "How often to check farm store for expired entries")
+
+	// Data store options
+	rootCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
+
+	// Web service options
+	rootCmd.PersistentFlags().IntVarP(&App.WebPort, "web-port", "", 80, "Web service port number")
+	rootCmd.PersistentFlags().IntVarP(&App.WebTlsPort, "web-tls-port", "", 443, "Web service TLS port number")
+	rootCmd.PersistentFlags().IntVarP(&App.JwtExpiration, "jwt-expiration", "", 525600, "JWT expiration (minutes). Default 1 year")
+	rootCmd.PersistentFlags().StringVarP(&App.CertDir, "cert-dir", "", fmt.Sprintf("%s/db/certs", wd), "Directory where key files are stored")
+	rootCmd.PersistentFlags().BoolVarP(&App.RedirectHttpToHttps, "redirect-http-https", "", false, "Redirect HTTP to HTTPS")
+	rootCmd.PersistentFlags().BoolVarP(&App.EnableRegistrations, "enable-registrations", "", false, "Allows user account registrations via API")
+
+	// Database options
+	rootCmd.PersistentFlags().BoolVarP(&DatabaseInit, "init", "", false, "Initialize an empty database with a default user and optional farm")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreEngine, "datastore", "", "memory", "Data store type [ memory | sqlite | mysql | postgres | cockroach ]")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreUser, "datastore-user", "", "root", "Data store username")
 	rootCmd.PersistentFlags().StringVarP(&DataStorePass, "datastore-pass", "", "", "Data store password")
@@ -135,12 +134,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DataStoreCACert, "datastore-ca-cert", "", "", "TLS Certificate Authority public key")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreTlsKey, "datastore-tls-key", "", "", "TLS key used to encrypt the database connection")
 	rootCmd.PersistentFlags().StringVarP(&DataStoreTlsCert, "datastore-tls-cert", "", "", "TLS certificate used to encrypt the database connection")
-
-	rootCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
-
-	rootCmd.PersistentFlags().BoolVarP(&EnableDefaultFarm, "enable-default-farm", "", false, "Create a default farm on startup")
-	rootCmd.PersistentFlags().StringVarP(&DefaultRole, "default-role", "", "admin", "Default role to assign to newly registered users [ admin | cultivator | analyst ]")
-	rootCmd.PersistentFlags().StringVarP(&DefaultFarmPermission, "default-permission", "", "all", "Default permission given to newly registered users to access existing farms [ all | owner | none ]")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
@@ -154,125 +147,4 @@ func Execute() error {
 		log.Fatal(err)
 	}
 	return nil
-}
-
-func initApp() {
-	location, err := time.LoadLocation(Timezone)
-	if err != nil {
-		log.Fatalf("Unable to parse default timezone %s: %s", location, err)
-	}
-	App.Location = location
-	App.DebugFlag = viper.GetBool("debug")
-	App.HomeDir = viper.GetString("home")
-	App.KeyDir = viper.GetString("keys")
-	App.DataStoreEngine = viper.GetString("datastore")
-	App.IdGenerator = util.NewIdGenerator(App.DataStoreEngine)
-	initLogger()
-	initConfig()
-	if App.DebugFlag {
-		//listFiles()
-		logging.SetLevel(logging.DEBUG, "")
-		App.Logger.Debug("Starting logger in debug mode...")
-		for k, v := range viper.AllSettings() {
-			App.Logger.Debugf("%s: %+v", k, v)
-		}
-	} else {
-		logging.SetLevel(logging.INFO, "")
-	}
-	if viper.GetBool("ssl") && viper.GetInt("port") == 80 {
-		App.WebPort = 443
-	}
-}
-
-func initLogger() {
-	App.LogDir = LogDir
-	App.LogFile = LogFile
-	f := App.InitLogFile(os.Getuid(), os.Getgid())
-	stdout := logging.NewLogBackend(os.Stdout, "", 0)
-	logfile := logging.NewLogBackend(f, "", log.Lshortfile)
-	logFormatter := logging.NewBackendFormatter(logfile, logFormat)
-	//syslog, _ := logging.NewSyslogBackend(appName)
-	backends := logging.MultiLogger(stdout, logFormatter)
-	logging.SetBackend(backends)
-	if App.DebugFlag {
-		logging.SetLevel(logging.DEBUG, "")
-	} else {
-		logging.SetLevel(logging.ERROR, "")
-	}
-	App.Logger = logging.MustGetLogger(App.Name)
-}
-
-func initConfig() {
-	datastoreEngine := viper.GetString("datastore")
-	App.GORMInitParams = &gormstore.GormInitParams{
-		AppMode:           viper.GetString("mode"),
-		DebugFlag:         viper.GetBool("debug"),
-		EnableDefaultFarm: viper.GetBool("enable-default-farm"),
-		DataDir:           viper.GetString("data-dir"),
-		Engine:            datastoreEngine,
-		Host:              viper.GetString("datastore-host"),
-		Port:              viper.GetInt("datastore-port"),
-		Username:          viper.GetString("datastore-user"),
-		Password:          viper.GetString("datastore-pass"),
-		CACert:            viper.GetString("datastore-ca-cert"),
-		TLSKey:            viper.GetString("datastore-tls-key"),
-		TLSCert:           viper.GetString("datastore-tls-cert"),
-		DBName:            App.Name,
-		Location:          App.Location}
-
-	configTypeSupported := false
-	for _, t := range supportedDatastores {
-		if datastoreEngine == t {
-			configTypeSupported = true
-			break
-		}
-	}
-	if !configTypeSupported {
-		log.Fatalf("Config type not supported: %s", datastoreEngine)
-	}
-
-	if datastoreEngine == "sqlite" {
-		App.GORMInitParams.DataDir = fmt.Sprintf("%s/db", HomeDir)
-	}
-
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(ConfigDir)
-	viper.AddConfigPath(fmt.Sprintf("/etc/%s/", App.Name))
-	viper.AddConfigPath(fmt.Sprintf("$HOME/.%s/", App.Name))
-	viper.AddConfigPath(".")
-
-	if err := viper.ReadInConfig(); err != nil {
-		App.Logger.Errorf("%s", err)
-	}
-
-	viper.Unmarshal(&App)
-
-	App.NodeID = viper.GetInt("node-id")
-	App.DefaultRole = viper.GetString("default-role")
-	App.DefaultPermission = viper.GetString("default-permission")
-	App.DataStoreEngine = viper.GetString("datastore")
-	App.DataStoreCDC = viper.GetBool("datastore-cdc")
-	App.Interval = viper.GetInt("interval")
-	App.DataDir = viper.GetString("data-dir")
-	App.WebPort = viper.GetInt("port")
-	App.SSLFlag = viper.GetBool("ssl")
-	App.RedirectHttpToHttps = viper.GetBool("redirect-http-https")
-	App.Mode = viper.GetString("mode")
-	App.DowngradeUser = viper.GetString("setuid")
-	App.EnableRegistrations = viper.GetBool("enable-registrations")
-	App.EnableDefaultFarm = viper.GetBool("enable-default-farm")
-
-	if viper.Get("argon2") == nil {
-		App.PasswordHasherParams = &util.PasswordHasherParams{
-			Memory:      64 * 1024,
-			Iterations:  3,
-			Parallelism: 2,
-			SaltLength:  16,
-			KeyLength:   32}
-	}
-
-	App.Logger.Debugf("%+v", App)
-
-	//App.ValidateConfig()
 }

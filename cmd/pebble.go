@@ -38,7 +38,7 @@ var pebbleCmd = &cobra.Command{
 	Long:  `Manages the embedded pebble database`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		db, err := pebble.Open(DataDir, &pebble.Options{})
+		db, err := pebble.Open(App.DataDir, &pebble.Options{})
 		if err != nil {
 			log.Fatal(err)
 		}

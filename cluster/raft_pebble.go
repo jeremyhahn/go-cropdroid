@@ -53,6 +53,7 @@ type RaftNode interface {
 	IsLeader(clusterID uint64) bool
 	Shutdown() error
 	ReadLocal(clusterID uint64, query interface{}) (interface{}, error)
+	RequestLeaderTransfer(clusterID uint64, targetNodeID uint64) error
 	SyncPropose(clusterID uint64, cmd []byte) error
 	SyncRead(clusterID uint64, query interface{}) (interface{}, error)
 	WaitForClusterReady(clusterID uint64) bool
@@ -561,6 +562,10 @@ func (r *Raft) LeaderUpdated(info raftio.LeaderInfo) {
 		r.params.Logger.Warningf("Raft cluster membership updated! info=%+v, clusterInfo=%+v",
 			info, clusterInfo)
 	}
+}
+
+func (r *Raft) RequestLeaderTransfer(clusterID uint64, targetNodeID uint64) error {
+	return r.nodeHost.RequestLeaderTransfer(clusterID, targetNodeID)
 }
 
 func (r *Raft) GetNodeHost() *dragonboat.NodeHost {

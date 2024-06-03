@@ -57,7 +57,7 @@ func NewRaftRegistry(logger *logging.Logger,
 		raftNode, raftOptions.OrganizationClusterID, serverDAO)
 	orgDAO.(RaftOrganizationDAO).StartClusterNode(false)
 
-	userDAO := NewGenericRaftDAO[*config.User](logger,
+	userDAO := NewGenericRaftDAO[*config.UserStruct](logger,
 		raftNode, raftOptions.UserClusterID).(dao.UserDAO)
 	userDAO.(RaftUserDAO).StartClusterNode(false)
 
@@ -69,7 +69,7 @@ func NewRaftRegistry(logger *logging.Logger,
 		raftNode, raftOptions.CustomerClusterID)
 	customerDAO.(RaftCustomerDAO).StartClusterNode(false)
 
-	algorithmDAO := NewGenericRaftDAO[*config.Algorithm](logger,
+	algorithmDAO := NewGenericRaftDAO[*config.AlgorithmStruct](logger,
 		raftNode, raftOptions.AlgorithmClusterID)
 	algorithmDAO.(RaftAlgorithmDAO).StartClusterNode(false)
 

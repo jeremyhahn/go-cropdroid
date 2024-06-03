@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"github.com/jeremyhahn/go-cropdroid/config"
+	"github.com/jeremyhahn/go-cropdroid/datastore"
 	"github.com/jeremyhahn/go-cropdroid/datastore/dao"
 	logging "github.com/op/go-logging"
 	"gorm.io/gorm"
@@ -17,19 +18,24 @@ func NewScheduleDAO(logger *logging.Logger, db *gorm.DB) dao.ScheduleDAO {
 	return &GormScheduleDAO{logger: logger, db: db}
 }
 
-func (dao *GormScheduleDAO) Save(farmID, deviceID uint64, schedule *config.Schedule) error {
+func (dao *GormScheduleDAO) Save(farmID, deviceID uint64, schedule *config.ScheduleStruct) error {
 	return dao.db.Save(schedule).Error
 }
 
-func (dao *GormScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.Schedule) error {
+func (dao *GormScheduleDAO) Delete(farmID, deviceID uint64, schedule *config.ScheduleStruct) error {
 	return dao.db.Delete(schedule).Error
 }
 
 func (dao *GormScheduleDAO) GetByChannelID(farmID, deviceID,
-	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Schedule, error) {
+	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.ScheduleStruct, error) {
 
-	var entities []*config.Schedule
+	var entities []*config.ScheduleStruct
 	if err := dao.db.Where("channel_id = ?", channelID).Find(&entities).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			dao.logger.Warning(err)
+			return nil, datastore.ErrRecordNotFound
+		}
+		dao.logger.Error(err)
 		return nil, err
 	}
 	return entities, nil

@@ -31,7 +31,7 @@ func NewRaftConditionDAO(logger *logging.Logger,
 }
 
 func (dao *RaftConditionDAO) Save(farmID, deviceID uint64,
-	condition *config.Condition) error {
+	condition *config.ConditionStruct) error {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -51,11 +51,11 @@ func (dao *RaftConditionDAO) Save(farmID, deviceID uint64,
 			}
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftConditionDAO) Get(farmID, deviceID, channelID,
-	conditionID uint64, CONSISTENCY_LEVEL int) (*config.Condition, error) {
+	conditionID uint64, CONSISTENCY_LEVEL int) (*config.ConditionStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
@@ -74,16 +74,16 @@ func (dao *RaftConditionDAO) Get(farmID, deviceID, channelID,
 			}
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }
 
-func (dao *RaftConditionDAO) Delete(farmID, deviceID uint64, condition *config.Condition) error {
+func (dao *RaftConditionDAO) Delete(farmID, deviceID uint64, condition *config.ConditionStruct) error {
 	dao.logger.Debugf(fmt.Sprintf("Deleting condition record: %+v", condition))
 	farmConfig, err := dao.farmDAO.Get(farmID, common.CONSISTENCY_LOCAL)
 	if err != nil {
 		return err
 	}
-	newConditionList := make([]*config.Condition, 0)
+	newConditionList := make([]*config.ConditionStruct, 0)
 	for _, device := range farmConfig.GetDevices() {
 		if device.ID == deviceID {
 			for _, channel := range device.GetChannels() {
@@ -105,11 +105,11 @@ func (dao *RaftConditionDAO) Delete(farmID, deviceID uint64, condition *config.C
 			}
 		}
 	}
-	return datastore.ErrNotFound
+	return datastore.ErrRecordNotFound
 }
 
 func (dao *RaftConditionDAO) GetByChannelID(farmID, deviceID,
-	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.Condition, error) {
+	channelID uint64, CONSISTENCY_LEVEL int) ([]*config.ConditionStruct, error) {
 
 	farmConfig, err := dao.farmDAO.Get(farmID, CONSISTENCY_LEVEL)
 	if err != nil {
@@ -117,12 +117,12 @@ func (dao *RaftConditionDAO) GetByChannelID(farmID, deviceID,
 	}
 	device, err := farmConfig.GetDeviceById(deviceID)
 	if err != nil {
-		return nil, datastore.ErrNotFound
+		return nil, datastore.ErrRecordNotFound
 	}
 	for _, channel := range device.GetChannels() {
 		if channel.ID == channelID {
 			return channel.GetConditions(), nil
 		}
 	}
-	return nil, datastore.ErrNotFound
+	return nil, datastore.ErrRecordNotFound
 }

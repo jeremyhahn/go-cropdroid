@@ -12,7 +12,20 @@
             "args": ["config", "--debug", "--init", "--enable-default-farm", "--datastore=sqlite"],
             "showLog": true,
             "debugAdapter": "legacy"
-        }, {
+        }, 
+        {
+            "name": "Debug ca --issue test.com",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "${workspaceRoot}",
+            "args": ["ca", "--issue", "test.com"],
+            "showLog": true,
+            "debugAdapter": "legacy"
+        },
+        {
             "name": "Debug cropdroid config show",
             "type": "go",
             "request": "launch",
@@ -53,7 +66,8 @@
             "port": 2345,
             "host": "127.0.0.1",
             "program": "${workspaceRoot}",
-            "args": ["standalone", "--debug", "--ssl=false", "--port=8091", "--enable-registrations"],
+            "args": ["standalone", "--debug", "--init", "--web-port=8080", "--web-tls-port=8443", "--enable-registrations"],
+            //"args": ["standalone", "--debug", "--init", "--ssl=false", "--port=8091", "--enable-registrations"],
             "showLog": true,
             "debugAdapter": "legacy"
         }, {
@@ -65,7 +79,7 @@
             "host": "127.0.0.1",
             "preLaunchTask": "rmsqlite",
             "program": "${workspaceRoot}",
-            "args": ["standalone", "--debug", "--init", "--ssl=false", "--port=8091", "--enable-registrations", "--datastore=sqlite"],
+            "args": ["standalone", "--debug", "--init", "--web-port=8080", "--web-tls-port=8443", "--enable-registrations", "--datastore=sqlite"],
             "showLog": true,
             "debugAdapter": "legacy"
         }, {
@@ -78,7 +92,7 @@
             //"preLaunchTasks": ["buildStandalone", "initsqlite"],
             "preLaunchTask": "rmsqlite",
             "program": "${workspaceRoot}",
-            "args": ["standalone", "--debug", "--ssl=false", "--port=8091", "--enable-registrations", "--datastore=sqlite"],
+            "args": ["standalone", "--debug", "--web-port=8080", "--web-tls-port=8443", "--enable-registrations", "--datastore=sqlite"],
             "showLog": true,
             "debugAdapter": "legacy"
         }, {
@@ -112,8 +126,8 @@
                 "--log-dir=/var/log/cropdroid/cluster",
                 "--log-file=/var/log/cropdroid/cluster/node-1.log",
                 "--keys=keys",
-                "--ssl=false", 
-                "--port=8091",
+                "--web-port=8091",
+                "--web-tls-port=8443",
                 "--data-store=raft",
                 "--enable-registrations",
                 "--listen=192.168.1.20",
@@ -137,8 +151,8 @@
                 "--log-file=/var/log/cropdroid/cluster/node-3.log",
                 "--init=true",
                 "--keys=keys",
-                "--ssl=false", 
-                "--port=8091",
+                "--web-port=8091",
+                "--web-tls-port=8443",
                 "--data-store=raft",
                 "--enable-registrations",
                 "--listen=192.168.1.20",
@@ -168,8 +182,8 @@
                 "--log-file=/var/log/cropdroid/cluster/node-4.log",
                 "--keys=keys",
                 "--join=true",
-                "--ssl=false", 
-                "--port=8094",
+                "--web-port=8091",
+                "--web-tls-port=8443",
                 "--datastore=cockroach",
                 "--enable-registrations",
                 "--listen=192.168.1.20",

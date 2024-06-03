@@ -27,13 +27,13 @@ type FarmStore struct {
 	farms        map[uint64]storeItem
 	mutex        *sync.RWMutex
 	gcTickerStop bool
-	FarmStorer
+	FarmStateStorer
 }
 
 // Creates a new memory based state store to hold farms. This store holds
 // a single FarmStateMap that represents the current state of a farm and
 // it's associated device states.
-func NewMemoryFarmStore(logger *logging.Logger, len, ttl int, gcTicker time.Duration) FarmStorer {
+func NewMemoryFarmStore(logger *logging.Logger, len, ttl int, gcTicker time.Duration) FarmStateStorer {
 	farmStoreMutex.Lock()
 	defer farmStoreMutex.Unlock()
 	appstate := &FarmStore{

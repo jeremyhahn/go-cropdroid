@@ -4,43 +4,49 @@ import (
 	"time"
 
 	"github.com/jeremyhahn/go-cropdroid/app"
-	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/model"
 )
 
-type DeviceViewModel struct {
-	Metrics           []common.Metric  `json:"metrics"`
-	Channels          []common.Channel `json:"channels"`
-	Timestamp         time.Time        `json:"timestamp"`
-	common.DeviceView `json:"-"`
+type DeviceView interface {
+	GetMetrics() []model.Metric
+	GetChannels() []model.Channel
+	GetTimestamp() time.Time
 }
 
-func NewDeviceView(app *app.App, metrics []common.Metric, channels []common.Channel) common.DeviceView {
+type DeviceViewModel struct {
+	Metrics    []model.Metric  `json:"metrics"`
+	Channels   []model.Channel `json:"channels"`
+	Timestamp  time.Time       `json:"timestamp"`
+	DeviceView `json:"-"`
+}
+
+func NewDeviceView(app *app.App, metrics []model.Metric, channels []model.Channel) DeviceView {
 	return &DeviceViewModel{
 		Metrics:   metrics,
 		Channels:  channels,
 		Timestamp: time.Now().In(app.Location)}
 }
 
-func CreateDeviceView(metrics []common.Metric, channels []common.Channel, timestamp time.Time) common.DeviceView {
+func CreateDeviceView(metrics []model.Metric, channels []model.Channel, timestamp time.Time) DeviceView {
 	return &DeviceViewModel{
 		Metrics:   metrics,
 		Channels:  channels,
 		Timestamp: timestamp}
 }
 
-func (device *DeviceViewModel) SetMetrics(metrics []common.Metric) {
+func (device *DeviceViewModel) SetMetrics(metrics []model.Metric) {
 	device.Metrics = metrics
 }
 
-func (device *DeviceViewModel) GetMetrics() []common.Metric {
+func (device *DeviceViewModel) GetMetrics() []model.Metric {
 	return device.Metrics
 }
 
-func (device *DeviceViewModel) SetChannels(channels []common.Channel) {
+func (device *DeviceViewModel) SetChannels(channels []model.Channel) {
 	device.Channels = channels
 }
 
-func (device *DeviceViewModel) GetChannels() []common.Channel {
+func (device *DeviceViewModel) GetChannels() []model.Channel {
 	return device.Channels
 }
 

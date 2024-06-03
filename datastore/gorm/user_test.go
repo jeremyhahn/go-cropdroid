@@ -13,11 +13,11 @@ func TestUserDAO_CreateAndGetByOrgID(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Organization{})
-	currentTest.gorm.AutoMigrate(&config.Farm{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
-	currentTest.gorm.AutoMigrate(&config.Permission{})
+	currentTest.gorm.AutoMigrate(&config.OrganizationStruct{})
+	currentTest.gorm.AutoMigrate(&config.FarmStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_32BIT)
 	orgDAO := NewOrganizationDAO(currentTest.logger, currentTest.gorm, idGenerator)
@@ -35,7 +35,7 @@ func TestUserDAO_CreateAndGetByOrgID(t *testing.T) {
 	user := config.NewUser()
 	user.SetEmail("root@localhost")
 	user.SetPassword("test")
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 	err = userDAO.Save(user)
 	assert.Nil(t, err)
 
@@ -48,7 +48,7 @@ func TestUserDAO_CreateAndGetByOrgID(t *testing.T) {
 	org := config.NewOrganization()
 	org.SetName("test org")
 	//org.SetFarms([]config.FarmConfig{farm})
-	org.SetUsers([]*config.User{user})
+	org.SetUsers([]*config.UserStruct{user})
 	err = orgDAO.Save(org)
 	assert.Nil(t, err)
 
@@ -78,8 +78,8 @@ func TestUserDAO_CreateAndGetByEmail(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 
@@ -88,7 +88,7 @@ func TestUserDAO_CreateAndGetByEmail(t *testing.T) {
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 
-	entity := &config.User{
+	entity := &config.UserStruct{
 		ID:       userID,
 		Email:    email,
 		Password: "test"}
@@ -107,8 +107,8 @@ func TestUserDAO_Update(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 
@@ -117,7 +117,7 @@ func TestUserDAO_Update(t *testing.T) {
 
 	userDAO := NewUserDAO(currentTest.logger, currentTest.gorm)
 
-	entity := &config.User{
+	entity := &config.UserStruct{
 		ID:       userID,
 		Email:    email,
 		Password: "test"}
@@ -130,7 +130,7 @@ func TestUserDAO_Update(t *testing.T) {
 	assert.Equal(t, "root@localhost", persistedUser.GetEmail())
 	assert.Equal(t, "test", persistedUser.GetPassword())
 
-	user := &config.User{
+	user := &config.UserStruct{
 		ID:       persistedUser.ID,
 		Email:    "nologin@localhost",
 		Password: "test123"}
@@ -147,9 +147,9 @@ func TestUserDAO_WithRoles(t *testing.T) {
 	currentTest := NewIntegrationTest()
 	defer currentTest.Cleanup()
 
-	currentTest.gorm.AutoMigrate(&config.Permission{})
-	currentTest.gorm.AutoMigrate(&config.User{})
-	currentTest.gorm.AutoMigrate(&config.Role{})
+	currentTest.gorm.AutoMigrate(&config.PermissionStruct{})
+	currentTest.gorm.AutoMigrate(&config.UserStruct{})
+	currentTest.gorm.AutoMigrate(&config.RoleStruct{})
 
 	idGenerator := util.NewIdGenerator(common.DATASTORE_TYPE_SQLITE)
 
@@ -165,13 +165,13 @@ func TestUserDAO_WithRoles(t *testing.T) {
 	user := config.NewUser()
 	user.SetID(userID)
 	user.SetEmail(email)
-	user.SetRoles([]*config.Role{role})
+	user.SetRoles([]*config.RoleStruct{role})
 	user.SetPassword("test")
 
 	err := userDAO.Save(user)
 	assert.Nil(t, err)
 
-	permissionDAO.Save(&config.Permission{
+	permissionDAO.Save(&config.PermissionStruct{
 		UserID: user.ID,
 		RoleID: role.ID})
 

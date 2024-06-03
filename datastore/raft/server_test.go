@@ -62,5 +62,5 @@ func TestServerCRUD(t *testing.T) {
 
 	persistedServer2, err := serverDAO.Get(server.ID, consistencyLevel)
 	assert.Nil(t, persistedServer2)
-	assert.Equal(t, err, datastore.ErrNotFound)
+	assert.Equal(t, err, datastore.ErrRecordNotFound)
 }

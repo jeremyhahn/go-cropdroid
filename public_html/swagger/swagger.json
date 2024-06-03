@@ -10,27 +10,4833 @@
             "email": "support@cropdroid.com"
         },
         "license": {
-            "name": "GNU AFFERO GENERAL PUBLIC LICENSE",
-            "url": "https://www.gnu.org/licenses/agpl-3.0.txt"
+            "name": "Commercial",
+            "url": "https://www.cropdroid.com/licenses/commercial.txt"
         },
         "version": "v0.0.3"
     },
-    "host": "www.cropdroid.com",
-    "basePath": "/",
+    "host": "localhost:8443",
+    "basePath": "/api/v1",
     "paths": {
-        "/api/v1/shoppingcart": {
+        "/algorithms/{page}": {
             "get": {
-                "description": "Returns a list of products from the merchange provider / credit card processor",
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of algorithm entries",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "GetProducts",
+                "tags": [
+                    "Algorithms"
+                ],
+                "summary": "List algorithms",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/config": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the server configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "System configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.App"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/endpoints": {
+            "get": {
+                "description": "Returns a list of REST API endpoints",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "REST API Endpoints",
                 "responses": {
                     "200": {
                         "description": "OK"
                     }
                 }
             }
+        },
+        "/eventlog/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of event log entries",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Event Log"
+                ],
+                "summary": "List events",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/events/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of system event log entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "System Event Log",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farm/{farmID}/schedule": {
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates a new channel schedule",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Update channel schedule",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.Schedule struct",
+                        "name": "Schedule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Schedule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new channel schedule",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Create channel schedule",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.Schedule struct",
+                        "name": "Schedule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Schedule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farm/{farmID}/schedule/channel/{channelID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the requested channel schedule",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Get channel schedule",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "channelID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farm/{farmID}/schedule/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Deletes a channel schedule",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Delete channel schedule",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a paginated list of farm entites",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "List farms",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Farm"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/channel/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates a farm channel",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Channels"
+                ],
+                "summary": "Update channel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/channels/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of channel entries",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Channels"
+                ],
+                "summary": "List channels",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/conditions": {
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates an existing channel condition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Conditions"
+                ],
+                "summary": "Update channel condition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.Condition struct",
+                        "name": "condition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Condition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new channel condition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Conditions"
+                ],
+                "summary": "Create channel condition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.Condition struct",
+                        "name": "condition",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Condition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Deletes an existing channel condition",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Conditions"
+                ],
+                "summary": "Delete channel condition",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/conditions/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of condition entries",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Conditions"
+                ],
+                "summary": "List conditions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/config": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the complete farm configuration.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Get farm configuration",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Farm"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/config/{deviceID}/{key}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Sets a farm device configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Set device configuration",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "key",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{deviceType}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the current device state",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Get current device state",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceType",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{deviceType}/history/{metric}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a historical data set for the requested metric",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Get metric history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "metric",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{deviceType}/metrics/{key}/{value}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Sets the value of a metric",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Sets metric value",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "value",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{deviceType}/switch/{channel}/{position}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Switch a farm channel on / off",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Switch channel on / off",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "channel",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "position",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{deviceType}/timerSwitch/{channel}/{duration}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Switches the specified channel on for the specified number of seconds",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Switch channel for precise number of seconds",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "channel",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "duration",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{deviceType}/view": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a user-interface view of the device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Returns a UI view of the device",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "deviceType",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/devices/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of devices that belong to the farm",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Get farm devices",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/events/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of event log entries for the requested farm",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "List event log",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/notification/{type}/{message}/{priority}": {
+            "get": {
+                "description": "Sends a push notification to all clients connected to the farm websocket",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Sends a push notification",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message text",
+                        "name": "message",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Message priority",
+                        "name": "priority",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Stream real-time farm push notifications via websocket",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Stream real-time farm push notifications via websocket",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "user model",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/pubkey": {
+            "get": {
+                "description": "Returns the unique public key for the farm.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Returns the farm public key",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/users": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns all users who have are members and able to access the farm.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "List farm user membership",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Farm"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/users/{userID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the complete farm state",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Get the farm state",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Farm"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates a users password",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Reset user password",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "UserCredentials struct",
+                        "name": "UserCredentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UserCredentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Deletes the users permission to access the farm",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Disassociate a user",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Farm"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/workflows": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a list of workflows",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "List workflows",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new workflow",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Create workflow",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/workflows/view": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a list of workflows to be consumed by a UI",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "List workflows for UI view",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/workflows/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the requested workflow",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get workflow",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates an existing workflow",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Update workflow",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Deletes an existing workflow",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Delete workflow",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/workflows/{id}/run": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Runs a workflow",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Run workflow",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/workflows/{workflowID}/steps": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns all of the steps (with current state) associated with a workflow.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "List workflow steps",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "workflowID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new workflow step",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Create workflow step",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "workflowID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.WorkflowStep struct",
+                        "name": "WorkflowStep",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.WorkflowStep"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Delete an existing workflow step",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Delete workflow step",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "workflowID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "stepID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.WorkflowStep struct",
+                        "name": "WorkflowStep",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.WorkflowStep"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farms/{farmID}/workflows/{workflowID}/steps/{stepID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the specified workflow step",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get workflow step",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "workflowID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "stepID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates an existing workflow step",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Update workflow step",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "workflowID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "stepID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "config.WorkflowStep struct",
+                        "name": "WorkflowStep",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.WorkflowStep"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/farmticker/{farmID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Create a websocket and start receiving real-time farm updates",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Farms"
+                ],
+                "summary": "Stream real-time farm configuration and state updates via websocket",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "user model",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/google/login": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Authenticates the user using the Google Auth API",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Google Authentication",
+                "parameters": [
+                    {
+                        "description": "UserCredentials struct",
+                        "name": "UserCredentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UserCredentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "description": "Authenticate a user and returns a new JWT",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Authenticate and obtain JWT",
+                "parameters": [
+                    {
+                        "description": "UserCredentials struct",
+                        "name": "UserCredentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UserCredentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    }
+                }
+            }
+        },
+        "/login/refresh": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a new JWT token with a new, extended expiration date",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Refresh JWT",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/viewmodel.JsonWebToken"
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics": {
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of metric entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Metric"
+                ],
+                "summary": "List metrics",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns all metrics for the specified device ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Metric"
+                ],
+                "summary": "Get metrics for device",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "Create an organization",
+                "parameters": [
+                    {
+                        "description": "config.Organization struct",
+                        "name": "Organization",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Organization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Deletes the organization referenced in the user JWT (current logged in organization)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "Delete an organization",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/{organizationID}/users": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns all users in the organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "List all users in the organization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "organizationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/{page}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of organization entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "List organizations",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/provisioner/deprovision/{farmID}": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Deletes the farm and all associated data, running services, and API endpoints",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provisioner"
+                ],
+                "summary": "Derovision existing farm",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "farmID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/provisioner/provision/{orgId}/{farmName}": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new farm using system configured defaults",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provisioner"
+                ],
+                "summary": "Provision new farm",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "0",
+                        "description": "string default",
+                        "name": "orgId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "farmName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pubkey": {
+            "get": {
+                "description": "Returns the server public RSA key",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Retrieve RSA pubilc key",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/raft/transfer/{clusterID}/{nodeID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Transfer raft leader to another node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Raft"
+                ],
+                "summary": "Request leader transfer",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "clusterID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "nodeID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/register": {
+            "post": {
+                "description": "Creates a new user registration and sends an activation email",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Registration"
+                ],
+                "summary": "New user registration",
+                "parameters": [
+                    {
+                        "description": "UserCredentials struct",
+                        "name": "UserCredentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UserCredentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.RegistrationResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/register/activate/{token}": {
+            "get": {
+                "description": "Creates a new user and deletes the pending registration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Registration"
+                ],
+                "summary": "Activte pending registration",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rest.RegistrationResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/roles": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a page of role entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Role"
+                ],
+                "summary": "List roles",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/attach-and-set-default-payment-method": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Attaches the specified payment method and sets it as the customers default",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Attach and set default payment method",
+                "parameters": [
+                    {
+                        "description": "shoppingcart.SetDefaultPaymentMethodRequest struct",
+                        "name": "SetDefaultPaymentMethodRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/shoppingcart.SetDefaultPaymentMethodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/attach-payment-method": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Attaches a payment method to the customer",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Attach new payment method",
+                "parameters": [
+                    {
+                        "description": "shoppingcart.AttachPaymentMethodRequest struct",
+                        "name": "AttachPaymentMethodRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/shoppingcart.AttachPaymentMethodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/customers": {
+            "put": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Updates an existing Stripe and local customer",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Update customer",
+                "parameters": [
+                    {
+                        "description": "config.Customer struct",
+                        "name": "Customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Customer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new Stripe and local customer",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Create customer",
+                "parameters": [
+                    {
+                        "description": "config.Customer struct",
+                        "name": "Customer",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/config.Customer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/customers/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns a Customer with the unique Stripe assigned cust_* ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Get customer",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/default-payment-method": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Sets an attached payment method as the default",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Set default payment method",
+                "parameters": [
+                    {
+                        "description": "shoppingcart.SetDefaultPaymentMethodRequest struct",
+                        "name": "SetDefaultPaymentMethodRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/shoppingcart.SetDefaultPaymentMethodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/ephemeral-key/{customerID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the stripe customer ephemeral key for the customer/user session",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Get stripe customer ephemeral key",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "string valid",
+                        "name": "customerID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/invoice": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new customer invoice",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Create invoice",
+                "parameters": [
+                    {
+                        "description": "shoppingcart.CreateInvoiceRequest struct",
+                        "name": "CreateInvoiceRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/shoppingcart.CreateInvoiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/payment-intent": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new payment-intent for the user in the JWT request",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Create new payment-intent",
+                "parameters": [
+                    {
+                        "description": "shoppingcart.CreatePaymentIntentRequest struct",
+                        "name": "CreatePaymentIntentRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/shoppingcart.CreatePaymentIntentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/payment-methods/{processorID}": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the customers default payment method",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Get customer default payment method",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "processorID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/products": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns all products configured in Stripe",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Get product list",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/publishable-key": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the Stripe API publishable key that corresponds with the configured Stripe account",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Get stripe publishable key",
+                "parameters": [
+                    {
+                        "maxLength": 20,
+                        "minLength": 1,
+                        "type": "string",
+                        "description": "string valid",
+                        "name": "page",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/setup-intent": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Creates a new setup-intent",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Create setup-intent",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/setup-intent/secret": {
+            "post": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Retrieves an existing setup-intent using a POST request to protect the client secret",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Retrieve a setup-intent",
+                "parameters": [
+                    {
+                        "description": "shoppingcart.SetupIntentRequest struct",
+                        "name": "SetupIntentRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/shoppingcart.SetupIntentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/tax-rate": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns the configured tax rates. When a tax rate is not configured, Stripe Automatic Tax is used instead.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "Get tax rate",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shoppingcart/webhook": {
+            "post": {
+                "description": "Handles public webhook callbacks from Stripe",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stripe"
+                ],
+                "summary": "WebHook Handler",
+                "parameters": [
+                    {
+                        "description": "stripe.Event struct",
+                        "name": "Event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/stripe.Event"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.WebServiceResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/status": {
+            "get": {
+                "security": [
+                    {
+                        "JWT": []
+                    }
+                ],
+                "description": "Returns current system status metrics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "System Status",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "app.App": {
+            "type": "object",
+            "properties": {
+                "argon2": {
+                    "$ref": "#/definitions/util.PasswordHasherParams"
+                },
+                "cluster_id": {
+                    "type": "integer"
+                },
+                "config_dir": {
+                    "type": "string"
+                },
+                "data_dir": {
+                    "type": "string"
+                },
+                "database_init": {
+                    "type": "boolean"
+                },
+                "datastore": {
+                    "type": "string"
+                },
+                "debug": {
+                    "type": "boolean"
+                },
+                "default_config_store": {
+                    "type": "integer"
+                },
+                "default_consistency_level": {
+                    "type": "integer"
+                },
+                "default_data_store": {
+                    "type": "integer"
+                },
+                "default_permission": {
+                    "type": "string"
+                },
+                "default_role": {
+                    "type": "string"
+                },
+                "default_state_store": {
+                    "type": "integer"
+                },
+                "enable_default_farm": {
+                    "type": "boolean"
+                },
+                "enable_registrations": {
+                    "type": "boolean"
+                },
+                "home-dir": {
+                    "type": "string"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "key_dir": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
+                "log_dir": {
+                    "type": "string"
+                },
+                "log_file": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "integer"
+                },
+                "redirect_http_https": {
+                    "type": "boolean"
+                },
+                "smtp": {
+                    "$ref": "#/definitions/config.Smtp"
+                },
+                "state_tick": {
+                    "type": "integer"
+                },
+                "state_ttl": {
+                    "type": "integer"
+                },
+                "stripe": {
+                    "$ref": "#/definitions/config.Stripe"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "web_port": {
+                    "type": "integer"
+                },
+                "web_tls_port": {
+                    "type": "integer"
+                },
+                "www_user": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Address": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "line1": {
+                    "type": "string"
+                },
+                "line2": {
+                    "type": "string"
+                },
+                "postal_code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Channel": {
+            "type": "object",
+            "properties": {
+                "algorithm_id": {
+                    "type": "integer"
+                },
+                "backoff": {
+                    "type": "integer"
+                },
+                "channel_id": {
+                    "type": "integer"
+                },
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Condition"
+                    }
+                },
+                "debounce": {
+                    "type": "integer"
+                },
+                "device_id": {
+                    "type": "integer"
+                },
+                "duration": {
+                    "type": "integer"
+                },
+                "enable": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notify": {
+                    "type": "boolean"
+                },
+                "schedule": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Schedule"
+                    }
+                }
+            }
+        },
+        "config.Condition": {
+            "type": "object",
+            "properties": {
+                "channel_id": {
+                    "type": "integer"
+                },
+                "comparator": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metric_id": {
+                    "type": "integer"
+                },
+                "threshold": {
+                    "type": "number"
+                },
+                "workflow_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "config.Customer": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/config.Address"
+                },
+                "address_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "payment_method_last4": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "processor_id": {
+                    "description": "A reference to the customer id created and stored by the credit card processor",
+                    "type": "string"
+                },
+                "shipping": {
+                    "$ref": "#/definitions/config.ShippingAddress"
+                },
+                "shipping_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "config.Device": {
+            "type": "object",
+            "properties": {
+                "channels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Channel"
+                    }
+                },
+                "configMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enable": {
+                    "type": "boolean"
+                },
+                "farmId": {
+                    "type": "integer"
+                },
+                "fwVersion": {
+                    "type": "string"
+                },
+                "hwVersion": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Metric"
+                    }
+                },
+                "notify": {
+                    "type": "boolean"
+                },
+                "settings": {
+                    "description": "Configs         []DeviceConfigItem `yaml:\"-\" json:\"-\"`",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.DeviceSetting"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.DeviceSetting": {
+            "type": "object",
+            "properties": {
+                "device_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Farm": {
+            "type": "object",
+            "properties": {
+                "config_store": {
+                    "type": "integer"
+                },
+                "consistency": {
+                    "type": "integer"
+                },
+                "data_store": {
+                    "type": "integer"
+                },
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Device"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "orgId": {
+                    "type": "integer"
+                },
+                "private_key": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "replicas": {
+                    "type": "integer"
+                },
+                "smtp": {
+                    "$ref": "#/definitions/config.Smtp"
+                },
+                "state_store": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.User"
+                    }
+                },
+                "workflows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Workflow"
+                    }
+                }
+            }
+        },
+        "config.License": {
+            "type": "object",
+            "properties": {
+                "deviceQuota": {
+                    "type": "integer"
+                },
+                "farmQuota": {
+                    "type": "integer"
+                },
+                "organizationId": {
+                    "type": "integer"
+                },
+                "userQuota": {
+                    "type": "integer"
+                }
+            }
+        },
+        "config.Metric": {
+            "type": "object",
+            "properties": {
+                "alarmHigh": {
+                    "type": "number"
+                },
+                "alarmLow": {
+                    "type": "number"
+                },
+                "datatype": {
+                    "type": "integer"
+                },
+                "device_id": {
+                    "type": "integer"
+                },
+                "enable": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notify": {
+                    "type": "boolean"
+                },
+                "unit": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Organization": {
+            "type": "object",
+            "properties": {
+                "farms": {
+                    "description": "Disabling gorm:\"many2many:permissions on Farm so a permission\nrecord doesn't get saved to the database without a role or user id\nFarms []Farm `gorm:\"many2many:permissions\" yaml:\"farms\" json:\"farms\"`",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Farm"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "license": {
+                    "description": "Users              []User   `yaml:\"users\" json:\"users\"`",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.License"
+                        }
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "users": {
+                    "description": "Devices        []Device `yaml:\"devices\" json:\"devices\"`",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.User"
+                    }
+                }
+            }
+        },
+        "config.Role": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Schedule": {
+            "type": "object",
+            "properties": {
+                "channel_id": {
+                    "type": "integer"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "days": {
+                    "type": "string"
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "executionCount": {
+                    "type": "integer"
+                },
+                "frequency": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "lastExecuted": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "workflow_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "config.ShippingAddress": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/config.Address"
+                },
+                "address_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Smtp": {
+            "type": "object",
+            "properties": {
+                "enable": {
+                    "type": "boolean"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "recipient": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.Stripe": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "$ref": "#/definitions/config.StripeKey"
+                },
+                "tax": {
+                    "$ref": "#/definitions/config.StripeTax"
+                }
+            }
+        },
+        "config.StripeKey": {
+            "type": "object",
+            "properties": {
+                "publishable": {
+                    "type": "string"
+                },
+                "secret": {
+                    "type": "string"
+                },
+                "webhook": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.StripeTax": {
+            "type": "object",
+            "properties": {
+                "dynamic": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "fixed": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "config.User": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "farmRefs": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "organizationRefs": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "password": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Role"
+                    }
+                }
+            }
+        },
+        "config.Workflow": {
+            "type": "object",
+            "properties": {
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Condition"
+                    }
+                },
+                "farm_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastCompleted": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Schedule"
+                    }
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.WorkflowStep"
+                    }
+                }
+            }
+        },
+        "config.WorkflowStep": {
+            "type": "object",
+            "properties": {
+                "channel_id": {
+                    "type": "integer"
+                },
+                "device_id": {
+                    "type": "integer"
+                },
+                "duration": {
+                    "description": "AlgorithmID        int    `yaml:\"algorithm\" json:\"algorithm_id\"`",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "integer"
+                },
+                "wait": {
+                    "type": "integer"
+                },
+                "webhook": {
+                    "type": "string"
+                },
+                "workflow_id": {
+                    "description": "Name string `gorm:\"name\" yaml:\"name\" json:\"name\"`",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.User": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {}
+                }
+            }
+        },
+        "response.WebServiceResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "payload": {},
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "rest.RegistrationResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "service.UserCredentials": {
+            "type": "object",
+            "properties": {
+                "authType": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "orgId": {
+                    "type": "integer"
+                },
+                "orgName": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "shoppingcart.AttachPaymentMethodRequest": {
+            "type": "object",
+            "properties": {
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "processor_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "shoppingcart.CreateInvoiceRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "products": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/shoppingcart.Product"
+                    }
+                }
+            }
+        },
+        "shoppingcart.CreatePaymentIntentRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "currencyCode": {
+                    "type": "string"
+                },
+                "customerId": {
+                    "type": "string"
+                }
+            }
+        },
+        "shoppingcart.Product": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "shoppingcart.SetDefaultPaymentMethodRequest": {
+            "type": "object",
+            "properties": {
+                "customer_id": {
+                    "type": "integer"
+                },
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "processor_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "shoppingcart.SetupIntentRequest": {
+            "type": "object",
+            "properties": {
+                "client_secret": {
+                    "type": "string"
+                }
+            }
+        },
+        "stripe.Event": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "description": "The connected account that originates the event.",
+                    "type": "string"
+                },
+                "api_version": {
+                    "description": "The Stripe API version used to render `data`. This property is populated only for events on or after October 31, 2014.",
+                    "type": "string"
+                },
+                "created": {
+                    "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/stripe.EventData"
+                },
+                "id": {
+                    "description": "Unique identifier for the object.",
+                    "type": "string"
+                },
+                "livemode": {
+                    "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+                    "type": "boolean"
+                },
+                "object": {
+                    "description": "String representing the object's type. Objects of the same type share the same value.",
+                    "type": "string"
+                },
+                "pending_webhooks": {
+                    "description": "Number of webhooks that haven't been successfully delivered (for example, to return a 20x response) to the URLs you specify.",
+                    "type": "integer"
+                },
+                "request": {
+                    "description": "Information on the API request that triggers the event.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/stripe.EventRequest"
+                        }
+                    ]
+                },
+                "type": {
+                    "description": "Description of the event (for example, `invoice.created` or `charge.refunded`).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/stripe.EventType"
+                        }
+                    ]
+                }
+            }
+        },
+        "stripe.EventData": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "previous_attributes": {
+                    "description": "Object containing the names of the updated attributes and their values prior to the event (only included in events of type `*.updated`). If an array attribute has any updated elements, this object contains the entire array. In Stripe API versions 2017-04-06 or earlier, an updated array attribute in this object includes only the updated array elements.",
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "stripe.EventRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "ID is the request ID of the request that created an event, if the event\nwas created by a request.\nID of the API request that caused the event. If null, the event was automatic (e.g., Stripe's automatic subscription handling). Request logs are available in the [dashboard](https://dashboard.stripe.com/logs), but currently not in the API.",
+                    "type": "string"
+                },
+                "idempotency_key": {
+                    "description": "IdempotencyKey is the idempotency key of the request that created an\nevent, if the event was created by a request and if an idempotency key\nwas specified for that request.\nThe idempotency key transmitted during the request, if any. *Note: This property is populated only for events on or after May 23, 2017*.",
+                    "type": "string"
+                }
+            }
+        },
+        "stripe.EventType": {
+            "type": "string",
+            "enum": [
+                "account.application.authorized",
+                "account.application.deauthorized",
+                "account.external_account.created",
+                "account.external_account.deleted",
+                "account.external_account.updated",
+                "account.updated",
+                "application_fee.created",
+                "application_fee.refund.updated",
+                "application_fee.refunded",
+                "balance.available",
+                "billing_portal.configuration.created",
+                "billing_portal.configuration.updated",
+                "billing_portal.session.created",
+                "capability.updated",
+                "cash_balance.funds_available",
+                "charge.captured",
+                "charge.dispute.closed",
+                "charge.dispute.created",
+                "charge.dispute.funds_reinstated",
+                "charge.dispute.funds_withdrawn",
+                "charge.dispute.updated",
+                "charge.expired",
+                "charge.failed",
+                "charge.pending",
+                "charge.refund.updated",
+                "charge.refunded",
+                "charge.succeeded",
+                "charge.updated",
+                "checkout.session.async_payment_failed",
+                "checkout.session.async_payment_succeeded",
+                "checkout.session.completed",
+                "checkout.session.expired",
+                "climate.order.canceled",
+                "climate.order.created",
+                "climate.order.delayed",
+                "climate.order.delivered",
+                "climate.order.product_substituted",
+                "climate.product.created",
+                "climate.product.pricing_updated",
+                "coupon.created",
+                "coupon.deleted",
+                "coupon.updated",
+                "credit_note.created",
+                "credit_note.updated",
+                "credit_note.voided",
+                "customer.created",
+                "customer.deleted",
+                "customer.discount.created",
+                "customer.discount.deleted",
+                "customer.discount.updated",
+                "customer.source.created",
+                "customer.source.deleted",
+                "customer.source.expiring",
+                "customer.source.updated",
+                "customer.subscription.created",
+                "customer.subscription.deleted",
+                "customer.subscription.paused",
+                "customer.subscription.pending_update_applied",
+                "customer.subscription.pending_update_expired",
+                "customer.subscription.resumed",
+                "customer.subscription.trial_will_end",
+                "customer.subscription.updated",
+                "customer.tax_id.created",
+                "customer.tax_id.deleted",
+                "customer.tax_id.updated",
+                "customer.updated",
+                "customer_cash_balance_transaction.created",
+                "entitlements.active_entitlement_summary.updated",
+                "file.created",
+                "financial_connections.account.created",
+                "financial_connections.account.deactivated",
+                "financial_connections.account.disconnected",
+                "financial_connections.account.reactivated",
+                "financial_connections.account.refreshed_balance",
+                "financial_connections.account.refreshed_ownership",
+                "financial_connections.account.refreshed_transactions",
+                "identity.verification_session.canceled",
+                "identity.verification_session.created",
+                "identity.verification_session.processing",
+                "identity.verification_session.redacted",
+                "identity.verification_session.requires_input",
+                "identity.verification_session.verified",
+                "invoice.created",
+                "invoice.deleted",
+                "invoice.finalization_failed",
+                "invoice.finalized",
+                "invoice.marked_uncollectible",
+                "invoice.paid",
+                "invoice.payment_action_required",
+                "invoice.payment_failed",
+                "invoice.payment_succeeded",
+                "invoice.sent",
+                "invoice.upcoming",
+                "invoice.updated",
+                "invoice.voided",
+                "invoiceitem.created",
+                "invoiceitem.deleted",
+                "issuing_authorization.created",
+                "issuing_authorization.request",
+                "issuing_authorization.updated",
+                "issuing_card.created",
+                "issuing_card.updated",
+                "issuing_cardholder.created",
+                "issuing_cardholder.updated",
+                "issuing_dispute.closed",
+                "issuing_dispute.created",
+                "issuing_dispute.funds_reinstated",
+                "issuing_dispute.submitted",
+                "issuing_dispute.updated",
+                "issuing_token.created",
+                "issuing_token.updated",
+                "issuing_transaction.created",
+                "issuing_transaction.updated",
+                "mandate.updated",
+                "payment_intent.amount_capturable_updated",
+                "payment_intent.canceled",
+                "payment_intent.created",
+                "payment_intent.partially_funded",
+                "payment_intent.payment_failed",
+                "payment_intent.processing",
+                "payment_intent.requires_action",
+                "payment_intent.succeeded",
+                "payment_link.created",
+                "payment_link.updated",
+                "payment_method.attached",
+                "payment_method.automatically_updated",
+                "payment_method.detached",
+                "payment_method.updated",
+                "payout.canceled",
+                "payout.created",
+                "payout.failed",
+                "payout.paid",
+                "payout.reconciliation_completed",
+                "payout.updated",
+                "person.created",
+                "person.deleted",
+                "person.updated",
+                "plan.created",
+                "plan.deleted",
+                "plan.updated",
+                "price.created",
+                "price.deleted",
+                "price.updated",
+                "product.created",
+                "product.deleted",
+                "product.updated",
+                "promotion_code.created",
+                "promotion_code.updated",
+                "quote.accepted",
+                "quote.canceled",
+                "quote.created",
+                "quote.finalized",
+                "radar.early_fraud_warning.created",
+                "radar.early_fraud_warning.updated",
+                "refund.created",
+                "refund.updated",
+                "reporting.report_run.failed",
+                "reporting.report_run.succeeded",
+                "reporting.report_type.updated",
+                "review.closed",
+                "review.opened",
+                "setup_intent.canceled",
+                "setup_intent.created",
+                "setup_intent.requires_action",
+                "setup_intent.setup_failed",
+                "setup_intent.succeeded",
+                "sigma.scheduled_query_run.created",
+                "source.canceled",
+                "source.chargeable",
+                "source.failed",
+                "source.mandate_notification",
+                "source.refund_attributes_required",
+                "source.transaction.created",
+                "source.transaction.updated",
+                "subscription_schedule.aborted",
+                "subscription_schedule.canceled",
+                "subscription_schedule.completed",
+                "subscription_schedule.created",
+                "subscription_schedule.expiring",
+                "subscription_schedule.released",
+                "subscription_schedule.updated",
+                "tax.settings.updated",
+                "tax_rate.created",
+                "tax_rate.updated",
+                "terminal.reader.action_failed",
+                "terminal.reader.action_succeeded",
+                "test_helpers.test_clock.advancing",
+                "test_helpers.test_clock.created",
+                "test_helpers.test_clock.deleted",
+                "test_helpers.test_clock.internal_failure",
+                "test_helpers.test_clock.ready",
+                "topup.canceled",
+                "topup.created",
+                "topup.failed",
+                "topup.reversed",
+                "topup.succeeded",
+                "transfer.created",
+                "transfer.reversed",
+                "transfer.updated",
+                "treasury.credit_reversal.created",
+                "treasury.credit_reversal.posted",
+                "treasury.debit_reversal.completed",
+                "treasury.debit_reversal.created",
+                "treasury.debit_reversal.initial_credit_granted",
+                "treasury.financial_account.closed",
+                "treasury.financial_account.created",
+                "treasury.financial_account.features_status_updated",
+                "treasury.inbound_transfer.canceled",
+                "treasury.inbound_transfer.created",
+                "treasury.inbound_transfer.failed",
+                "treasury.inbound_transfer.succeeded",
+                "treasury.outbound_payment.canceled",
+                "treasury.outbound_payment.created",
+                "treasury.outbound_payment.expected_arrival_date_updated",
+                "treasury.outbound_payment.failed",
+                "treasury.outbound_payment.posted",
+                "treasury.outbound_payment.returned",
+                "treasury.outbound_transfer.canceled",
+                "treasury.outbound_transfer.created",
+                "treasury.outbound_transfer.expected_arrival_date_updated",
+                "treasury.outbound_transfer.failed",
+                "treasury.outbound_transfer.posted",
+                "treasury.outbound_transfer.returned",
+                "treasury.received_credit.created",
+                "treasury.received_credit.failed",
+                "treasury.received_credit.succeeded",
+                "treasury.received_debit.created"
+            ],
+            "x-enum-varnames": [
+                "EventTypeAccountApplicationAuthorized",
+                "EventTypeAccountApplicationDeauthorized",
+                "EventTypeAccountExternalAccountCreated",
+                "EventTypeAccountExternalAccountDeleted",
+                "EventTypeAccountExternalAccountUpdated",
+                "EventTypeAccountUpdated",
+                "EventTypeApplicationFeeCreated",
+                "EventTypeApplicationFeeRefundUpdated",
+                "EventTypeApplicationFeeRefunded",
+                "EventTypeBalanceAvailable",
+                "EventTypeBillingPortalConfigurationCreated",
+                "EventTypeBillingPortalConfigurationUpdated",
+                "EventTypeBillingPortalSessionCreated",
+                "EventTypeCapabilityUpdated",
+                "EventTypeCashBalanceFundsAvailable",
+                "EventTypeChargeCaptured",
+                "EventTypeChargeDisputeClosed",
+                "EventTypeChargeDisputeCreated",
+                "EventTypeChargeDisputeFundsReinstated",
+                "EventTypeChargeDisputeFundsWithdrawn",
+                "EventTypeChargeDisputeUpdated",
+                "EventTypeChargeExpired",
+                "EventTypeChargeFailed",
+                "EventTypeChargePending",
+                "EventTypeChargeRefundUpdated",
+                "EventTypeChargeRefunded",
+                "EventTypeChargeSucceeded",
+                "EventTypeChargeUpdated",
+                "EventTypeCheckoutSessionAsyncPaymentFailed",
+                "EventTypeCheckoutSessionAsyncPaymentSucceeded",
+                "EventTypeCheckoutSessionCompleted",
+                "EventTypeCheckoutSessionExpired",
+                "EventTypeClimateOrderCanceled",
+                "EventTypeClimateOrderCreated",
+                "EventTypeClimateOrderDelayed",
+                "EventTypeClimateOrderDelivered",
+                "EventTypeClimateOrderProductSubstituted",
+                "EventTypeClimateProductCreated",
+                "EventTypeClimateProductPricingUpdated",
+                "EventTypeCouponCreated",
+                "EventTypeCouponDeleted",
+                "EventTypeCouponUpdated",
+                "EventTypeCreditNoteCreated",
+                "EventTypeCreditNoteUpdated",
+                "EventTypeCreditNoteVoided",
+                "EventTypeCustomerCreated",
+                "EventTypeCustomerDeleted",
+                "EventTypeCustomerDiscountCreated",
+                "EventTypeCustomerDiscountDeleted",
+                "EventTypeCustomerDiscountUpdated",
+                "EventTypeCustomerSourceCreated",
+                "EventTypeCustomerSourceDeleted",
+                "EventTypeCustomerSourceExpiring",
+                "EventTypeCustomerSourceUpdated",
+                "EventTypeCustomerSubscriptionCreated",
+                "EventTypeCustomerSubscriptionDeleted",
+                "EventTypeCustomerSubscriptionPaused",
+                "EventTypeCustomerSubscriptionPendingUpdateApplied",
+                "EventTypeCustomerSubscriptionPendingUpdateExpired",
+                "EventTypeCustomerSubscriptionResumed",
+                "EventTypeCustomerSubscriptionTrialWillEnd",
+                "EventTypeCustomerSubscriptionUpdated",
+                "EventTypeCustomerTaxIDCreated",
+                "EventTypeCustomerTaxIDDeleted",
+                "EventTypeCustomerTaxIDUpdated",
+                "EventTypeCustomerUpdated",
+                "EventTypeCustomerCashBalanceTransactionCreated",
+                "EventTypeEntitlementsActiveEntitlementSummaryUpdated",
+                "EventTypeFileCreated",
+                "EventTypeFinancialConnectionsAccountCreated",
+                "EventTypeFinancialConnectionsAccountDeactivated",
+                "EventTypeFinancialConnectionsAccountDisconnected",
+                "EventTypeFinancialConnectionsAccountReactivated",
+                "EventTypeFinancialConnectionsAccountRefreshedBalance",
+                "EventTypeFinancialConnectionsAccountRefreshedOwnership",
+                "EventTypeFinancialConnectionsAccountRefreshedTransactions",
+                "EventTypeIdentityVerificationSessionCanceled",
+                "EventTypeIdentityVerificationSessionCreated",
+                "EventTypeIdentityVerificationSessionProcessing",
+                "EventTypeIdentityVerificationSessionRedacted",
+                "EventTypeIdentityVerificationSessionRequiresInput",
+                "EventTypeIdentityVerificationSessionVerified",
+                "EventTypeInvoiceCreated",
+                "EventTypeInvoiceDeleted",
+                "EventTypeInvoiceFinalizationFailed",
+                "EventTypeInvoiceFinalized",
+                "EventTypeInvoiceMarkedUncollectible",
+                "EventTypeInvoicePaid",
+                "EventTypeInvoicePaymentActionRequired",
+                "EventTypeInvoicePaymentFailed",
+                "EventTypeInvoicePaymentSucceeded",
+                "EventTypeInvoiceSent",
+                "EventTypeInvoiceUpcoming",
+                "EventTypeInvoiceUpdated",
+                "EventTypeInvoiceVoided",
+                "EventTypeInvoiceItemCreated",
+                "EventTypeInvoiceItemDeleted",
+                "EventTypeIssuingAuthorizationCreated",
+                "EventTypeIssuingAuthorizationRequest",
+                "EventTypeIssuingAuthorizationUpdated",
+                "EventTypeIssuingCardCreated",
+                "EventTypeIssuingCardUpdated",
+                "EventTypeIssuingCardholderCreated",
+                "EventTypeIssuingCardholderUpdated",
+                "EventTypeIssuingDisputeClosed",
+                "EventTypeIssuingDisputeCreated",
+                "EventTypeIssuingDisputeFundsReinstated",
+                "EventTypeIssuingDisputeSubmitted",
+                "EventTypeIssuingDisputeUpdated",
+                "EventTypeIssuingTokenCreated",
+                "EventTypeIssuingTokenUpdated",
+                "EventTypeIssuingTransactionCreated",
+                "EventTypeIssuingTransactionUpdated",
+                "EventTypeMandateUpdated",
+                "EventTypePaymentIntentAmountCapturableUpdated",
+                "EventTypePaymentIntentCanceled",
+                "EventTypePaymentIntentCreated",
+                "EventTypePaymentIntentPartiallyFunded",
+                "EventTypePaymentIntentPaymentFailed",
+                "EventTypePaymentIntentProcessing",
+                "EventTypePaymentIntentRequiresAction",
+                "EventTypePaymentIntentSucceeded",
+                "EventTypePaymentLinkCreated",
+                "EventTypePaymentLinkUpdated",
+                "EventTypePaymentMethodAttached",
+                "EventTypePaymentMethodAutomaticallyUpdated",
+                "EventTypePaymentMethodDetached",
+                "EventTypePaymentMethodUpdated",
+                "EventTypePayoutCanceled",
+                "EventTypePayoutCreated",
+                "EventTypePayoutFailed",
+                "EventTypePayoutPaid",
+                "EventTypePayoutReconciliationCompleted",
+                "EventTypePayoutUpdated",
+                "EventTypePersonCreated",
+                "EventTypePersonDeleted",
+                "EventTypePersonUpdated",
+                "EventTypePlanCreated",
+                "EventTypePlanDeleted",
+                "EventTypePlanUpdated",
+                "EventTypePriceCreated",
+                "EventTypePriceDeleted",
+                "EventTypePriceUpdated",
+                "EventTypeProductCreated",
+                "EventTypeProductDeleted",
+                "EventTypeProductUpdated",
+                "EventTypePromotionCodeCreated",
+                "EventTypePromotionCodeUpdated",
+                "EventTypeQuoteAccepted",
+                "EventTypeQuoteCanceled",
+                "EventTypeQuoteCreated",
+                "EventTypeQuoteFinalized",
+                "EventTypeRadarEarlyFraudWarningCreated",
+                "EventTypeRadarEarlyFraudWarningUpdated",
+                "EventTypeRefundCreated",
+                "EventTypeRefundUpdated",
+                "EventTypeReportingReportRunFailed",
+                "EventTypeReportingReportRunSucceeded",
+                "EventTypeReportingReportTypeUpdated",
+                "EventTypeReviewClosed",
+                "EventTypeReviewOpened",
+                "EventTypeSetupIntentCanceled",
+                "EventTypeSetupIntentCreated",
+                "EventTypeSetupIntentRequiresAction",
+                "EventTypeSetupIntentSetupFailed",
+                "EventTypeSetupIntentSucceeded",
+                "EventTypeSigmaScheduledQueryRunCreated",
+                "EventTypeSourceCanceled",
+                "EventTypeSourceChargeable",
+                "EventTypeSourceFailed",
+                "EventTypeSourceMandateNotification",
+                "EventTypeSourceRefundAttributesRequired",
+                "EventTypeSourceTransactionCreated",
+                "EventTypeSourceTransactionUpdated",
+                "EventTypeSubscriptionScheduleAborted",
+                "EventTypeSubscriptionScheduleCanceled",
+                "EventTypeSubscriptionScheduleCompleted",
+                "EventTypeSubscriptionScheduleCreated",
+                "EventTypeSubscriptionScheduleExpiring",
+                "EventTypeSubscriptionScheduleReleased",
+                "EventTypeSubscriptionScheduleUpdated",
+                "EventTypeTaxSettingsUpdated",
+                "EventTypeTaxRateCreated",
+                "EventTypeTaxRateUpdated",
+                "EventTypeTerminalReaderActionFailed",
+                "EventTypeTerminalReaderActionSucceeded",
+                "EventTypeTestHelpersTestClockAdvancing",
+                "EventTypeTestHelpersTestClockCreated",
+                "EventTypeTestHelpersTestClockDeleted",
+                "EventTypeTestHelpersTestClockInternalFailure",
+                "EventTypeTestHelpersTestClockReady",
+                "EventTypeTopupCanceled",
+                "EventTypeTopupCreated",
+                "EventTypeTopupFailed",
+                "EventTypeTopupReversed",
+                "EventTypeTopupSucceeded",
+                "EventTypeTransferCreated",
+                "EventTypeTransferReversed",
+                "EventTypeTransferUpdated",
+                "EventTypeTreasuryCreditReversalCreated",
+                "EventTypeTreasuryCreditReversalPosted",
+                "EventTypeTreasuryDebitReversalCompleted",
+                "EventTypeTreasuryDebitReversalCreated",
+                "EventTypeTreasuryDebitReversalInitialCreditGranted",
+                "EventTypeTreasuryFinancialAccountClosed",
+                "EventTypeTreasuryFinancialAccountCreated",
+                "EventTypeTreasuryFinancialAccountFeaturesStatusUpdated",
+                "EventTypeTreasuryInboundTransferCanceled",
+                "EventTypeTreasuryInboundTransferCreated",
+                "EventTypeTreasuryInboundTransferFailed",
+                "EventTypeTreasuryInboundTransferSucceeded",
+                "EventTypeTreasuryOutboundPaymentCanceled",
+                "EventTypeTreasuryOutboundPaymentCreated",
+                "EventTypeTreasuryOutboundPaymentExpectedArrivalDateUpdated",
+                "EventTypeTreasuryOutboundPaymentFailed",
+                "EventTypeTreasuryOutboundPaymentPosted",
+                "EventTypeTreasuryOutboundPaymentReturned",
+                "EventTypeTreasuryOutboundTransferCanceled",
+                "EventTypeTreasuryOutboundTransferCreated",
+                "EventTypeTreasuryOutboundTransferExpectedArrivalDateUpdated",
+                "EventTypeTreasuryOutboundTransferFailed",
+                "EventTypeTreasuryOutboundTransferPosted",
+                "EventTypeTreasuryOutboundTransferReturned",
+                "EventTypeTreasuryReceivedCreditCreated",
+                "EventTypeTreasuryReceivedCreditFailed",
+                "EventTypeTreasuryReceivedCreditSucceeded",
+                "EventTypeTreasuryReceivedDebitCreated"
+            ]
+        },
+        "util.PasswordHasherParams": {
+            "type": "object",
+            "properties": {
+                "iterations": {
+                    "type": "integer"
+                },
+                "keyLen": {
+                    "type": "integer"
+                },
+                "memory": {
+                    "type": "integer"
+                },
+                "parallelism": {
+                    "type": "integer"
+                },
+                "saltLen": {
+                    "type": "integer"
+                }
+            }
+        },
+        "viewmodel.JsonWebToken": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "JWT": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

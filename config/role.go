@@ -1,28 +1,40 @@
 package config
 
-type Role struct {
-	ID             uint64 `gorm:"primaryKey" yaml:"id" json:"id"`
-	Name           string `yaml:"name" json:"name"`
-	Users          []User `gorm:"many2many:permissions" yaml:"-" json:"-"`
-	KeyValueEntity `gorm:"-" yaml:"-" json:"-"`
+type Role interface {
+	GetName() string
+	SetName(name string)
+	KeyValueEntity
 }
 
-func NewRole() *Role {
-	return &Role{}
+type RoleStruct struct {
+	ID    uint64       `gorm:"primaryKey" yaml:"id" json:"id"`
+	Name  string       `yaml:"name" json:"name"`
+	Users []UserStruct `gorm:"many2many:user_role" yaml:"-" json:"-"`
+	Role  `sql:"-" gorm:"-" yaml:"-" json:"-"`
 }
 
-func (role *Role) SetID(id uint64) {
+// gorm:"many2many:permissions"
+
+func NewRole() *RoleStruct {
+	return &RoleStruct{}
+}
+
+func (role *RoleStruct) TableName() string {
+	return "roles"
+}
+
+func (role *RoleStruct) SetID(id uint64) {
 	role.ID = id
 }
 
-func (role *Role) Identifier() uint64 {
+func (role *RoleStruct) Identifier() uint64 {
 	return role.ID
 }
 
-func (role *Role) SetName(name string) {
+func (role *RoleStruct) SetName(name string) {
 	role.Name = name
 }
 
-func (role *Role) GetName() string {
+func (role *RoleStruct) GetName() string {
 	return role.Name
 }

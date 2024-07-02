@@ -75,10 +75,8 @@ var rootCmd = &cobra.Command{
 
 func init() {
 
-	App = app.NewApp()
-
 	cobra.OnInitialize(func() {
-		App.Init(&app.AppInitParams{
+		App = app.NewApp().Init(&app.AppInitParams{
 			Debug:     DebugFlag,
 			LogDir:    LogDir,
 			ConfigDir: ConfigDir})
@@ -116,9 +114,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&DeviceDataStore, "data-store", "", "gorm", "Where to store historical device data [ gorm | redis ]")
 
 	// Web service options
-	rootCmd.PersistentFlags().IntVarP(&App.WebPort, "web-port", "", 80, "Web service port number")
-	rootCmd.PersistentFlags().IntVarP(&App.WebTlsPort, "web-tls-port", "", 443, "Web service TLS port number")
-	rootCmd.PersistentFlags().IntVarP(&App.JwtExpiration, "jwt-expiration", "", 525600, "JWT expiration (minutes). Default 1 year")
+	rootCmd.PersistentFlags().IntVarP(&App.WebService.Port, "web-port", "", 8080, "Web service port number")
+	rootCmd.PersistentFlags().IntVarP(&App.WebService.TLSPort, "web-tls-port", "", 8443, "Web service TLS port number")
+	rootCmd.PersistentFlags().IntVarP(&App.WebService.JWTExpiration, "jwt-expiration", "", 525600, "JWT expiration (minutes). Default 1 year")
 	rootCmd.PersistentFlags().StringVarP(&App.CertDir, "cert-dir", "", fmt.Sprintf("%s/db/certs", wd), "Directory where key files are stored")
 	rootCmd.PersistentFlags().BoolVarP(&App.RedirectHttpToHttps, "redirect-http-https", "", false, "Redirect HTTP to HTTPS")
 	rootCmd.PersistentFlags().BoolVarP(&App.EnableRegistrations, "enable-registrations", "", false, "Allows user account registrations via API")

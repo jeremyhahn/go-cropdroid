@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/jeremyhahn/go-cropdroid/pki/ca"
+	"github.com/jeremyhahn/go-trusted-platform/pki/ca"
 	"gopkg.in/yaml.v2"
 
 	"github.com/spf13/cobra"
@@ -70,7 +71,7 @@ var caCmd = &cobra.Command{
 
 		// --revoke cn
 		if CARevokeCert != "" {
-			_, err := App.CA.Revoke(CARevokeCert)
+			err := App.CA.Revoke(CARevokeCert)
 			if err != nil {
 				App.Logger.Fatal(err)
 			}
@@ -78,10 +79,19 @@ var caCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		// --instal-ca
+		// --install-ca
 		if CAInstallCACert {
-			if err := App.CA.TrustStore().Install("ca"); err != nil {
+			rootCA, intermediateCAs, err := ca.NewCA(App.Logger, App.CertDir, App.CAConfig, nil)
+			if err != nil {
 				App.Logger.Fatal(err)
+			}
+			if err := rootCA.TrustStore().Install(App.CAConfig.Identity[0].Subject.CommonName); err != nil {
+				App.Logger.Fatal(err)
+			}
+			for cn, intermediateCA := range intermediateCAs {
+				if err := intermediateCA.TrustStore().Install(cn); err != nil {
+					App.Logger.Fatal(err)
+				}
 			}
 			App.Logger.Info("CA certificate successfully installed")
 			os.Exit(0)
@@ -89,8 +99,17 @@ var caCmd = &cobra.Command{
 
 		// --uninstal-ca
 		if CAUninstallCACert {
-			if err := App.CA.TrustStore().Uninstall("ca"); err != nil {
+			rootCA, intermediateCAs, err := ca.NewCA(App.Logger, App.CertDir, App.CAConfig, nil)
+			if err != nil {
 				App.Logger.Fatal(err)
+			}
+			if err := rootCA.TrustStore().Uninstall(App.CAConfig.Identity[0].Subject.CommonName); err != nil {
+				App.Logger.Fatal(err)
+			}
+			for cn, intermediateCA := range intermediateCAs {
+				if err := intermediateCA.TrustStore().Uninstall(cn); err != nil {
+					App.Logger.Fatal(err)
+				}
 			}
 			App.Logger.Info("CA certificate successfully uninstalled")
 			os.Exit(0)
@@ -148,7 +167,8 @@ var caCmd = &cobra.Command{
 					IPs:   ips,
 					Email: emails}}
 
-			_, err = App.CA.IssueCertificate(request)
+			// Hard coding random number generator for now
+			_, err = App.CA.IssueCertificate(request, rand.Reader)
 			if err != nil {
 				App.Logger.Error(err)
 			}

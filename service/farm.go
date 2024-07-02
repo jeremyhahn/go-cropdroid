@@ -13,9 +13,9 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/device"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
-	"github.com/jeremyhahn/go-cropdroid/pki/ca"
 	"github.com/jeremyhahn/go-cropdroid/state"
 	"github.com/jeremyhahn/go-cropdroid/util"
+	"github.com/jeremyhahn/go-trusted-platform/pki/ca"
 )
 
 type FarmServicer interface {

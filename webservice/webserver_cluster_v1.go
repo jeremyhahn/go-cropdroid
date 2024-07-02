@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	ErrFarmNotFound = errors.New("Farm not found")
+	ErrFarmNotFound = errors.New("farm not found")
 )
 
 type ClusterWebServerV1 struct {
@@ -57,7 +57,7 @@ func (server ClusterWebServerV1) RunClusterProvisionerConsumer() {
 	for {
 		select {
 		case farmID := <-server.WebServerV1.farmTickerProvisionerChan:
-			server.WebServerV1.app.Logger.Warningf("[Webserver.RunClusterProvisionerConsumer] Received message for farmID %d", farmID)
+			server.WebServerV1.app.Logger.Warningf("webserver: received message for farm: %d", farmID)
 			server.buildRoutes()
 		}
 	}
@@ -71,7 +71,7 @@ func (server *ClusterWebServerV1) Run() {
 
 	server.buildRoutes()
 
-	if server.app.WebTlsPort > 0 {
+	if server.app.WebService.TLSPort > 0 {
 		go server.startHttps()
 	} else {
 		go server.startHttp()

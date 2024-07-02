@@ -246,7 +246,7 @@ func (registry *RestRegistry) createJsonWebTokenService(roleDAO dao.RoleDAO) {
 	}
 	jsonWebTokenService, err := CreateJsonWebTokenService(registry.app,
 		registry.app.IdGenerator, defaultRole, registry.mapperRegistry.GetDeviceMapper(),
-		registry.serviceRegistry, httpWriter, registry.app.JwtExpiration) // 1 year jwt expiration
+		registry.serviceRegistry, httpWriter, registry.app.WebService.JWTExpiration) // 1 year jwt expiration
 	if err != nil {
 		registry.app.Logger.Fatal(err)
 	}

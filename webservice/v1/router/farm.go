@@ -6,11 +6,11 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/jeremyhahn/go-cropdroid/pki/ca"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/webservice/v1/middleware"
 	"github.com/jeremyhahn/go-cropdroid/webservice/v1/response"
 	"github.com/jeremyhahn/go-cropdroid/webservice/v1/rest"
+	"github.com/jeremyhahn/go-trusted-platform/pki/ca"
 )
 
 type FarmRouter struct {

@@ -1,8 +1,11 @@
 package app
 
 import (
+	"crypto/rand"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"os"
 	"os/user"
 	"runtime"
@@ -16,8 +19,9 @@ import (
 
 	"github.com/jeremyhahn/go-cropdroid/config"
 	gormstore "github.com/jeremyhahn/go-cropdroid/datastore/gorm"
-	"github.com/jeremyhahn/go-cropdroid/pki/ca"
 	"github.com/jeremyhahn/go-cropdroid/util"
+	"github.com/jeremyhahn/go-trusted-platform/pki/ca"
+	"github.com/jeremyhahn/go-trusted-platform/pki/tpm2"
 )
 
 //     	   cloud.cropdroid.com              (cloud: seed nodes, gossip, dragonboat, OLTP, OLAP, commercial control plane - auth, billing, & licensing)
@@ -33,50 +37,50 @@ import (
 var supportedDatastores = []string{"sqlite-memory", "sqlite", "mysql", "postgres"}
 
 type App struct {
-	CA                      ca.CertificateAuthority    `yaml:"-" json:"-" mapstructure:"-"`
-	CAConfig                *ca.Config                 `yaml:"certificate-authority" json:"certificate_authority" mapstructure:"certificate-authority"`
-	CertDir                 string                     `yaml:"cert-dir" json:"cert_dir" mapstructure:"cert-dir"`
-	ClusterID               uint64                     `yaml:"cluster-id" json:"cluster_id" mapstructure:"cluster-id"`
-	ConfigDir               string                     `yaml:"config-dir" json:"config_dir" mapstructure:"config-dir"`
-	DatabaseInit            bool                       `yaml:"database-init" json:"database_init" mapstructure:"database-init"`
-	DebugFlag               bool                       `yaml:"debug" json:"debug" mapstructure:"debug"`
-	DataDir                 string                     `yaml:"data-dir" json:"data_dir" mapstructure:"data-dir"`
-	DataStoreEngine         string                     `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
-	DefaultRole             string                     `yaml:"default-role" json:"default_role" mapstructure:"default-role"`
-	DefaultPermission       string                     `yaml:"default-permission" json:"default_permission" mapstructure:"default-permission"`
-	DefaultConsistencyLevel int                        `yaml:"default-consistency-level" json:"default_consistency_level" mapstructure:"default-onsistency-level"`
-	DefaultConfigStoreType  int                        `yaml:"default-config-store" json:"default_config_store" mapstructure:"default-config-store"`
-	DefaultStateStoreType   int                        `yaml:"default-state-store" json:"default_state_store" mapstructure:"default-state-store"`
-	DefaultDataStoreType    int                        `yaml:"default-data-store" json:"default_data_store" mapstructure:"default-data-store"`
-	Domain                  string                     `yaml:"domain" json:"domain" mapstructure:"domain"`
-	DowngradeUser           string                     `yaml:"www-user" json:"www_user" mapstructure:"www-user"`
-	EnableDefaultFarm       bool                       `yaml:"enable-default=farm" json:"enable_default_farm" mapstructure:"enable-default-farm"`
-	EnableRegistrations     bool                       `yaml:"enable-registrations" json:"enable_registrations" mapstructure:"enable-registrations"`
-	GORMInitParams          *gormstore.GormInitParams  `yaml:"-" json:"-" mapstructure:"-"`
-	HomeDir                 string                     `yaml:"home-dir" json:"home-dir" mapstructure:"home-dir"`
-	IdGenerator             util.IdGenerator           `yaml:"-" json:"-" mapstructure:"-"`
-	IdSetter                util.IdSetter              `yaml:"-" json:"-" mapstructure:"-"`
-	Interval                int                        `yaml:"interval" json:"interval" mapstructure:"interval"`
-	JwtExpiration           int                        `yaml:"jwt-expiration" json:"jwt_expiration" mapstructure:"jwt-expiration"`
-	LicenseBlob             string                     `yaml:"license" json:"license" mapstructure:"license"`
-	ServerLicense           *config.ServerLicense      `yaml:"-" json:"-" mapstructure:"-"`
-	Location                *time.Location             `yaml:"-" json:"-" mapstructure:"-"`
-	LogDir                  string                     `yaml:"log-dir" json:"log_dir" mapstructure:"log-dir"`
-	LogFile                 string                     `yaml:"log-file" json:"log_file" mapstructure:"log-file"`
-	Logger                  *logging.Logger            `yaml:"-" json:"-" mapstructure:"-"`
-	Mode                    string                     `yaml:"mode" json:"mode" mapstructure:"mode"`
-	Name                    string                     `yaml:"-" json:"-" mapstructure:"-"`
-	NodeID                  uint64                     `yaml:"node-id" json:"node_id" mapstructure:"node-id"`
-	PasswordHasherParams    *util.PasswordHasherParams `yaml:"argon2" json:"argon2" mapstructure:"argon2"`
-	RedirectHttpToHttps     bool                       `yaml:"redirect-http-https" json:"redirect_http_https" mapstructure:"redirect-http-https"`
-	ShutdownChan            chan bool                  `yaml:"-" json:"-" mapstructure:"-"`
-	Smtp                    *config.SmtpStruct         `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
-	Stripe                  *config.Stripe             `yaml:"stripe" json:"stripe" mapstructure:"stripe"`
-	StateTTL                int                        `yaml:"state-ttl" json:"state_ttl" mapstructure:"state-ttl"`
-	StateTick               int                        `yaml:"state-tick" json:"state_tick" mapstructure:"state-tick"`
-	Timezone                string                     `yaml:"timezone" json:"timezone" mapstructure:"timezone"`
-	WebPort                 int                        `yaml:"web-port" json:"web_port" mapstructure:"web-port"`
-	WebTlsPort              int                        `yaml:"web-tls-port" json:"web_tls_port" mapstructure:"web-tls-port"`
+	ClusterID               uint64                      `yaml:"cluster-id" json:"cluster_id" mapstructure:"cluster-id"`
+	CA                      ca.CertificateAuthority     `yaml:"-" json:"-" mapstructure:"-"`
+	CAConfig                *ca.Config                  `yaml:"certificate-authority" json:"certificate_authority" mapstructure:"certificate-authority"`
+	TPM                     tpm2.TrustedPlatformModule2 `yaml:"-" json:"-" mapstructure:"-"`
+	TPMConfig               *tpm2.Config                `yaml:"tpm" json:"tpm" mapstructure:"tpm"`
+	CertDir                 string                      `yaml:"cert-dir" json:"cert_dir" mapstructure:"cert-dir"`
+	ConfigDir               string                      `yaml:"config-dir" json:"config_dir" mapstructure:"config-dir"`
+	DatabaseInit            bool                        `yaml:"database-init" json:"database_init" mapstructure:"database-init"`
+	DebugFlag               bool                        `yaml:"debug" json:"debug" mapstructure:"debug"`
+	DataDir                 string                      `yaml:"data-dir" json:"data_dir" mapstructure:"data-dir"`
+	DataStoreEngine         string                      `yaml:"datastore" json:"datastore" mapstructure:"datastore"`
+	DefaultRole             string                      `yaml:"default-role" json:"default_role" mapstructure:"default-role"`
+	DefaultPermission       string                      `yaml:"default-permission" json:"default_permission" mapstructure:"default-permission"`
+	DefaultConsistencyLevel int                         `yaml:"default-consistency-level" json:"default_consistency_level" mapstructure:"default-onsistency-level"`
+	DefaultConfigStoreType  int                         `yaml:"default-config-store" json:"default_config_store" mapstructure:"default-config-store"`
+	DefaultStateStoreType   int                         `yaml:"default-state-store" json:"default_state_store" mapstructure:"default-state-store"`
+	DefaultDataStoreType    int                         `yaml:"default-data-store" json:"default_data_store" mapstructure:"default-data-store"`
+	Domain                  string                      `yaml:"domain" json:"domain" mapstructure:"domain"`
+	DowngradeUser           string                      `yaml:"www-user" json:"www_user" mapstructure:"www-user"`
+	EnableDefaultFarm       bool                        `yaml:"enable-default=farm" json:"enable_default_farm" mapstructure:"enable-default-farm"`
+	EnableRegistrations     bool                        `yaml:"enable-registrations" json:"enable_registrations" mapstructure:"enable-registrations"`
+	GORMInitParams          *gormstore.GormInitParams   `yaml:"-" json:"-" mapstructure:"-"`
+	HomeDir                 string                      `yaml:"home-dir" json:"home-dir" mapstructure:"home-dir"`
+	IdGenerator             util.IdGenerator            `yaml:"-" json:"-" mapstructure:"-"`
+	IdSetter                util.IdSetter               `yaml:"-" json:"-" mapstructure:"-"`
+	Interval                int                         `yaml:"interval" json:"interval" mapstructure:"interval"`
+	LicenseBlob             string                      `yaml:"license" json:"license" mapstructure:"license"`
+	ServerLicense           *config.ServerLicense       `yaml:"-" json:"-" mapstructure:"-"`
+	Location                *time.Location              `yaml:"-" json:"-" mapstructure:"-"`
+	LogDir                  string                      `yaml:"log-dir" json:"log_dir" mapstructure:"log-dir"`
+	LogFile                 string                      `yaml:"log-file" json:"log_file" mapstructure:"log-file"`
+	Logger                  *logging.Logger             `yaml:"-" json:"-" mapstructure:"-"`
+	Mode                    string                      `yaml:"mode" json:"mode" mapstructure:"mode"`
+	Name                    string                      `yaml:"-" json:"-" mapstructure:"-"`
+	NodeID                  uint64                      `yaml:"node-id" json:"node_id" mapstructure:"node-id"`
+	PasswordHasherParams    *util.PasswordHasherParams  `yaml:"argon2" json:"argon2" mapstructure:"argon2"`
+	RedirectHttpToHttps     bool                        `yaml:"redirect-http-https" json:"redirect_http_https" mapstructure:"redirect-http-https"`
+	ShutdownChan            chan bool                   `yaml:"-" json:"-" mapstructure:"-"`
+	Smtp                    *config.SmtpStruct          `yaml:"smtp" json:"smtp" mapstructure:"smtp"`
+	Stripe                  *config.Stripe              `yaml:"stripe" json:"stripe" mapstructure:"stripe"`
+	StateTTL                int                         `yaml:"state-ttl" json:"state_ttl" mapstructure:"state-ttl"`
+	StateTick               int                         `yaml:"state-tick" json:"state_tick" mapstructure:"state-tick"`
+	Timezone                string                      `yaml:"timezone" json:"timezone" mapstructure:"timezone"`
+	WebService              config.WebService           `yaml:"webservice" json:"webservice" mapstructure:"webservice"`
 }
 
 type AppInitParams struct {
@@ -91,20 +95,23 @@ func NewApp() *App {
 		ShutdownChan: make(chan bool, 1)}
 }
 
-func (app *App) Init(initParams *AppInitParams) {
+func (app *App) Init(initParams *AppInitParams) *App {
 	app.DebugFlag = initParams.Debug
 	app.LogDir = initParams.LogDir
 	app.ConfigDir = initParams.ConfigDir
 	app.initLogger()
 	app.initConfig()
+	app.initTPM()
 	app.initCA()
 	location, err := time.LoadLocation(app.Timezone)
 	if err != nil {
 		log.Fatalf("invalid timezone %s: %s", location, err)
 	}
 	app.Location = location
+	return app
 }
 
+// Initializes the application logger
 func (app *App) initLogger() {
 	logFormat := logging.MustStringFormatter(
 		`%{color}%{time:15:04:05.000} %{shortpkg}.%{longfunc} ▶ %{level:.4s} %{color:reset} %{message}`,
@@ -130,6 +137,8 @@ func (app *App) initLogger() {
 	}
 }
 
+// Initializes the application configuration using the CLI parameters
+// and configuration file.
 func (app *App) initConfig() {
 
 	viper.SetConfigName("config")
@@ -148,9 +157,6 @@ func (app *App) initConfig() {
 
 	viper.Unmarshal(&app)
 
-	// app.DebugFlag = viper.GetBool("debug")
-	// app.HomeDir = viper.GetString("home")
-	// app.CertDir = viper.GetString("cert-dir")
 	app.DataStoreEngine = viper.GetString("datastore")
 	app.IdGenerator = util.NewIdGenerator(app.DataStoreEngine)
 
@@ -181,21 +187,6 @@ func (app *App) initConfig() {
 		log.Fatalf("datastore engine not supported: %s", app.DataStoreEngine)
 	}
 
-	// app.Timezone = viper.GetString("timezone")
-	// app.NodeID = viper.GetInt("node-id")
-	// app.DefaultRole = viper.GetString("default-role")
-	// app.DefaultPermission = viper.GetString("default-permission")
-	// app.DataStoreEngine = viper.GetString("datastore")
-	// app.Interval = viper.GetInt("interval")
-	// app.DataDir = viper.GetString("data-dir")
-	// app.WebPort = viper.GetInt("port")
-	// app.SSLFlag = viper.GetBool("ssl")
-	// app.RedirectHttpToHttps = viper.GetBool("redirect-http-https")
-	// app.Mode = viper.GetString("mode")
-	// app.DowngradeUser = viper.GetString("setuid")
-	// app.EnableRegistrations = viper.GetBool("enable-registrations")
-	// app.EnableDefaultFarm = viper.GetBool("enable-default-farm")
-
 	if viper.Get("argon2") == nil {
 		app.PasswordHasherParams = &util.PasswordHasherParams{
 			Memory:      64 * 1024,
@@ -218,29 +209,99 @@ func (app *App) initConfig() {
 	//app.ValidateConfig()
 }
 
-// Initializes the Certificate Authority. If this is the first time the CA is
-// being initialized, new root CA private and public certificates are created
-// and a web server certificate is issued for the configured domain. If the CA
-// or web server certificate already exist, they are loaded from the cert store.
+// Open a connection to the TPM, using an unauthenticated, unverified
+// and un-attested connection.
+func (app *App) initTPM() {
+	tpm, err := tpm2.New(app.Logger, app.TPMConfig)
+	if err != nil {
+		app.Logger.Error(err)
+		app.Logger.Error("continuing as untrusted platform!")
+	}
+	app.TPM = tpm
+}
+
+// Initializes a new Root and Intermediate Certificate Authorities according
+// to the configuration. If this is the first time the CA is being initialized,
+// new keys and certificates are created for the Root and Intermediate CAs
+// and a web server certificate is issued for the configured domain by the
+// Intermediate CA. If the CA and web server certificates have already been
+// initialized, load them from persistent storage.
+//
+// If a Trusted Platform Module is found, use it as the random generator for
+// the CA private keys. Use the TPM "Encrypt" configuration option to encrypt
+// the session / bus communication between the CPU <-> TPM.
 func (app *App) initCA() {
-	CA, err := ca.NewCertificateAuthority(app.Logger, app.CertDir, app.CAConfig)
+
+	// No need to keep the TPM open after local attestation
+	// and the Certificate Authority initialization is complete.
+	// Open and close it again later when needed.
+	defer app.TPM.Close()
+
+	// Initalize TPM based random reader if present.
+	// If "Encrypt" flag is set, the Read operation is
+	// performed using an encrypted session between the
+	// CPU <-> TPM.
+	var random io.Reader
+	if app.TPM != nil {
+		r, err := app.TPM.RandomReader()
+		if err != nil {
+			app.Logger.Fatal(err)
+		}
+		random = r
+	} else {
+		// Use golang runtime random reader
+		random = rand.Reader
+	}
+
+	// Create new Root and Intermediate CA(s)
+	_, intermediateCAs, err := ca.NewCA(app.Logger, app.CertDir, app.CAConfig, random)
 	if err != nil {
 		app.Logger.Fatal(err)
 	}
-	CA.Init()
-	_, err = CA.PEM(app.Domain)
+
+	intermediateIdentity := app.CAConfig.Identity[1]
+	intermediateCN := intermediateIdentity.Subject.CommonName
+	intermediateCA := intermediateCAs[intermediateCN]
+
+	app.TPM.SetCertificateAuthority(intermediateCA)
+
+	// Try to load the web services TLS cert
+	_, err = intermediateCA.PEM(app.Domain)
 	if err != nil {
 		if err == ca.ErrCertNotFound {
-			CA.IssueCertificate(ca.CertificateRequest{
-				Valid:   365, // days
-				Subject: app.CAConfig.Identity.Subject,
-				SANS:    app.CAConfig.Identity.SANS,
-			})
+			// Issue a TLS certificate fpr encrypted web services
+			certReq := ca.CertificateRequest{
+				Valid: 365, // days
+				Subject: ca.Subject{
+					CommonName:   app.Domain,
+					Organization: app.WebService.Certificate.Subject.Organization,
+					Country:      app.WebService.Certificate.Subject.Country,
+					Locality:     app.WebService.Certificate.Subject.Locality,
+					Address:      app.WebService.Certificate.Subject.Address,
+					PostalCode:   app.WebService.Certificate.Subject.PostalCode,
+				},
+				SANS: &ca.SubjectAlternativeNames{
+					DNS: []string{
+						app.Domain,
+						"localhost",
+						"localhost.localdomain",
+					},
+					IPs: app.parseLocalAddresses(),
+					Email: []string{
+						"root@localhost",
+						"root@test.com",
+					},
+				},
+			}
+			_, err := intermediateCA.IssueCertificate(certReq, random)
+			if err != nil {
+				app.Logger.Fatal(err)
+			}
 		} else {
 			app.Logger.Fatal(err)
 		}
 	}
-	app.CA = CA
+	app.CA = intermediateCA
 }
 
 // Initializes the application log file
@@ -281,6 +342,8 @@ func (app *App) InitLogFile(uid, gid int) *os.File {
 	return f
 }
 
+// If started as root, drop the privileges after startup to
+// the lesser privileged app user.
 func (app *App) DropPrivileges() {
 	if runtime.GOOS != "linux" {
 		return
@@ -312,4 +375,20 @@ func (app *App) DropPrivileges() {
 		}
 		app.InitLogFile(int(uid), int(gid))
 	}
+}
+
+// Parses a list of usable local IP addresses
+func (app *App) parseLocalAddresses() []string {
+	ips := make([]string, 0)
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		app.Logger.Fatal(err)
+	}
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
+			ips = append(ips, ipNet.IP.String())
+		}
+	}
+	return ips
 }

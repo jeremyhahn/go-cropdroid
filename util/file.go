@@ -1,6 +1,9 @@
 package util
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 func FileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
@@ -11,4 +14,16 @@ func FileExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func FileName(path string) string {
+	// Parse the certificate file name from the URL
+	filePieces := strings.Split(path, "/")
+	filename := filePieces[len(filePieces)-1]
+	namePieces := strings.Split(filename, ".")
+	return namePieces[0]
+	// extension := ""
+	// if len(namePieces) > 1  {
+	// 	extension := namePieces[1]
+	// }
 }

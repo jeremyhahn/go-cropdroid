@@ -65,7 +65,7 @@ func NewJsonWebTokenService(
 	responseWriter response.HttpWriter) (JsonWebTokenServicer, error) {
 
 	return CreateJsonWebTokenService(app, idGenerator, defaultRole,
-		deviceMapper, serviceRegistry, responseWriter, app.JwtExpiration)
+		deviceMapper, serviceRegistry, responseWriter, app.WebService.JWTExpiration)
 }
 
 // Createa a new JsonWebBokenService with custom expiration
@@ -78,18 +78,6 @@ func CreateJsonWebTokenService(
 	responseWriter response.HttpWriter,
 	expiration int) (JsonWebTokenServicer, error) {
 
-	publicKey, err := app.CA.PublicKey("ca")
-	if err != nil {
-		return nil, err
-	}
-
-	// Don't store the private key, just attempt to load it
-	// for now so an error is returned if it doesn't exist
-	// and it's safe to ignore errors later.
-	if _, err = app.CA.PrivateKey(app.Domain); err != nil {
-		return nil, err
-	}
-
 	return &JWTService{
 		app:             app,
 		idGenerator:     idGenerator,
@@ -97,18 +85,26 @@ func CreateJsonWebTokenService(
 		serviceRegistry: serviceRegistry,
 		responseWriter:  responseWriter,
 		expiration:      time.Duration(expiration),
-		defaultRole:     defaultRole,
-		publicKey:       publicKey}, nil
+		defaultRole:     defaultRole}, nil
 }
 
 // Returns the RSA private key for the web server, ignoring errors. The
 // constructor already makes sure the private key exists when the service
 // is instantiated.
 func (jwtService *JWTService) privateKey() *rsa.PrivateKey {
-	privateKey, _ := jwtService.app.CA.PrivateKey("ca")
-	return privateKey
+	privKey, err := jwtService.app.CA.CertStore().PrivKey(jwtService.app.Domain)
+	if err != nil {
+		jwtService.app.Logger.Fatal(err)
+	}
+	if jwtService.publicKey == nil {
+		jwtService.publicKey = &privKey.PublicKey
+	}
+	return privKey
 }
 
+// Creates a new web service session by parsing the organization and farm from
+// the JWT Claims and creating a service.Session object that represents the
+// user and their organization and farm membership.
 func (jwtService *JWTService) CreateSession(w http.ResponseWriter,
 	r *http.Request) (service.Session, error) {
 

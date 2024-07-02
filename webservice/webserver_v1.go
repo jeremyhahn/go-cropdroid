@@ -36,6 +36,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jeremyhahn/go-cropdroid/app"
 	"github.com/jeremyhahn/go-cropdroid/common"
+	"github.com/jeremyhahn/go-cropdroid/config"
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/webservice/v1/middleware"
@@ -48,11 +49,12 @@ import (
 
 var (
 	ErrLoadTlsCerts = errors.New("unable to load TLS certificates")
-	ErrBindPort     = errors.New("unable to bind port")
+	ErrBindPort     = errors.New("unable to bind to web service port")
 )
 
 type WebServerV1 struct {
 	app                       *app.App
+	config                    config.WebService
 	baseURI                   string
 	eventType                 string
 	endpointList              []string
@@ -129,7 +131,7 @@ func (server *WebServerV1) Run() {
 	server.router.PathPrefix("/").Handler(fs)
 	http.Handle("/", server.httpServer.Handler)
 
-	if server.app.WebTlsPort > 0 {
+	if server.app.WebService.TLSPort > 0 {
 		go server.startHttps()
 	} else {
 		go server.startHttp()
@@ -160,7 +162,7 @@ func (server WebServerV1) Shutdown() {
 
 func (server *WebServerV1) startHttp() {
 
-	sWebPort := fmt.Sprintf(":%d", server.app.WebPort)
+	sWebPort := fmt.Sprintf(":%d", server.app.WebService.Port)
 
 	insecureWebServicesMsg := fmt.Sprintf(
 		"Starting insecure web services on plain-text HTTP port %s (not recommended)", sWebPort)
@@ -181,23 +183,49 @@ func (server *WebServerV1) startHttp() {
 
 func (server *WebServerV1) startHttps() {
 
-	sWebPort := fmt.Sprintf(":%d", server.app.WebPort)
-	sTlsPort := fmt.Sprintf(":%d", server.app.WebTlsPort)
+	sWebPort := fmt.Sprintf(":%d", server.app.WebService.Port)
+	sTlsPort := fmt.Sprintf(":%d", server.app.WebService.TLSPort)
 
 	message := fmt.Sprintf("Starting secure web services on TLS port %s", sTlsPort)
 	server.app.Logger.Debugf(message)
 	server.systemEventLogService.Create(0, common.CONTROLLER_TYPE_SERVER, server.eventType, message)
 
-	certfile := fmt.Sprintf("%s/%s.crt", server.app.CertDir, server.app.Domain)
-	keyfile := fmt.Sprintf("%s/%s.key", server.app.CertDir, server.app.Domain)
-
-	cert, err := tls.LoadX509KeyPair(certfile, keyfile)
+	server.app.Logger.Info("retrieving server private PEM key from cert store")
+	privKeyPEM, err := server.app.CA.CertStore().PrivKeyPEM(server.app.Domain)
 	if err != nil {
-		server.app.Logger.Fatalf(ErrLoadTlsCerts.Error())
+		server.app.Logger.Fatal(err)
+	}
+
+	server.app.Logger.Info("retrieving server public PEM key from cert store")
+	certPEM, err := server.app.CA.PEM(server.app.Domain)
+	if err != nil {
+		server.app.Logger.Fatal(err)
+	}
+
+	server.app.Logger.Info("creating server x509 key pair")
+	serverCertificate, err := tls.X509KeyPair(certPEM, privKeyPEM)
+	if err != nil {
+		server.app.Logger.Fatal(err)
+	}
+
+	rootCertPool, err := server.app.CA.CertStore().TrustedRootCertPool(server.app.CAConfig.AutoImportIssuingCA)
+	if err != nil {
+		server.app.Logger.Fatal(err)
 	}
 
 	tlsconf := &tls.Config{
-		Certificates: []tls.Certificate{cert},
+		// ClientCAs:    clientCertPool,
+		// ClientAuth:   tls.RequireAndVerifyClientCert,
+		//GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+		// Always get latest certificate
+		// cert, err := tls.X509KeyPair(newPubPEM, newPrivPEM)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// return &cert, nil
+		//},
+		RootCAs:      rootCertPool,
+		Certificates: []tls.Certificate{serverCertificate},
 	}
 
 	// Set up an HTTPS client configured to trust the CA
@@ -219,11 +247,12 @@ func (server *WebServerV1) startHttps() {
 	// http := http.Client{
 	// 	Transport: transport,
 	// }
+
 	server.httpServer.TLSConfig = tlsconf
 
 	tlsListener, err := tls.Listen("tcp4", sTlsPort, tlsconf)
 	if err != nil {
-		server.app.Logger.Fatalf("%s: %d", ErrBindPort, server.app.WebTlsPort)
+		server.app.Logger.Fatalf("%s: %d", ErrBindPort, server.app.WebService.TLSPort)
 	}
 
 	if server.app.RedirectHttpToHttps {

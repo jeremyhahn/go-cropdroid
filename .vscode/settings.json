@@ -1,7 +1,7 @@
 {
-    "editor.fontFamily": "FiraCode",
+    //"editor.fontFamily": "FiraCode",
+    //"editor.fontSize": 12,
     "go.formatTool": "goimports",
-    "editor.fontWeight": "500",
     "go.toolsManagement.autoUpdate": true,
     "[go]": {
         "editor.snippetSuggestions": "none",

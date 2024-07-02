@@ -10,9 +10,9 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/common"
 	"github.com/jeremyhahn/go-cropdroid/datastore/raft/query"
 	"github.com/jeremyhahn/go-cropdroid/model"
-	"github.com/jeremyhahn/go-cropdroid/pki/ca"
 	"github.com/jeremyhahn/go-cropdroid/service"
 	"github.com/jeremyhahn/go-cropdroid/webservice/v1/response"
+	"github.com/jeremyhahn/go-trusted-platform/pki/ca"
 )
 
 type SystemRestServicer interface {

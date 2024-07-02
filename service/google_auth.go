@@ -12,7 +12,7 @@ import (
 	"github.com/jeremyhahn/go-cropdroid/mapper"
 	"github.com/jeremyhahn/go-cropdroid/model"
 	"github.com/jeremyhahn/go-cropdroid/util"
-	oauth2 "google.golang.org/api/oauth2/v2"
+	"google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
 
